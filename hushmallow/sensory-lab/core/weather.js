@@ -13,6 +13,7 @@
 //     resolved;
 //   - how a dial pick plays out: TransitionPlanner (a same-realm turn, or a
 //     weather front that covers a realm change) inside WeatherSession;
+//   - how big the Mallow stands on a short, wide stage: landFit;
 //   - every user-facing string (COPY), so the copy lint sees all of it.
 //
 // The weather is a metaphor the person picks. Nothing here infers, labels or
@@ -308,6 +309,42 @@ export function captionFor(w, realmId) {
 export function lineFor(mallowId, w) {
   const l = Object.hasOwn(COPY.lines, mallowId) ? COPY.lines[mallowId] : null;
   return (l && isWeather(w) && l[w]) || '';
+}
+
+// ---------------------------------------------------- landscape framing --
+// A phone on its side: styles/weather.css moves the controls into the lower corners (the action chips on the
+// left, the dial as a 4 × 2 keypad on the right) and the Mallow stands between them on the realm's ground. The
+// rig scales by min(W·fit, H·(fit + 0.06)) / ref, so on a wide stage its height rule binds and stage-screen's
+// fit (half the band under a full-width bottom bar) leaves it small; landFit asks for the fit that makes it as
+// big as frames well: its head clears the hint spot's two lines (the resolve caption and the Mallow's line) with
+// room for it to rise (a calm float, an ordinary hop), it is at most half the stage tall (sky left above it), and
+// it keeps SIDE px clear of both corner clusters. Every Mallow then gets the same height there. (The bigger jumps,
+// a celebrate or a double tap, reach 0.06–0.15 × H: in landscape the resolve caption waits until the Mallow lands.)
+export const LAND = Object.freeze({
+  caption: 44,     // px: the hint spot's two lines at 16 and 14 px (styles/weather.css), from the hint's top
+  lift: 0.08,      // × H: how far the Mallow may rise above its rest (a hop peaks at 0.05–0.076 × H; moonlit or windy floats)
+  max: 0.5,        // × H: the Mallow at most half the stage tall
+  side: 12,        // px between the Mallow and a corner cluster
+  fitMax: 0.64,    // stage-screen's own cap (a body never wider than 64 % of its stage)
+  fitMin: 0.12,
+});
+
+/**
+ * The rig fit for a short, wide stage. o: { W, H, floor, hintTop, left, right, hU, wU, ref }: the stage size, the
+ * floor the Mallow stands on, the hint spot's top, the actions' right edge and the dial's left edge (px), the
+ * body's height and width in Mallow units (soft body, else bodyBox) and the rig's ref (√(bw·bh) of bodyBox).
+ * Returns { fit, size, h, w, headTop }: the body is then h × w px, its top at floor − h ≥ headTop.
+ */
+export function landFit({ W, H, floor, hintTop, left, right, hU, wU, ref }) {
+  const headTop = hintTop + LAND.caption + LAND.lift * H;
+  const half = Math.min(W / 2 - left, right - W / 2) - LAND.side;
+  const maxH = Math.min(floor - headTop, LAND.max * H);
+  const S = Math.max(0, Math.min(maxH / hU, (2 * half) / wU));
+  const size = S * ref;
+  // the rig's scale is min(W·fit, H·(fit + 0.06)) / ref: the smallest fit that reaches size on both rules
+  const fit = clamp(Math.max(size / W, size / H - 0.06), LAND.fitMin, LAND.fitMax);
+  const s = Math.min(W * fit, H * (fit + 0.06)) / ref;
+  return { fit, size, h: hU * s, w: wU * s, headTop };
 }
 
 // -------------------------------------------------------- transition plan --

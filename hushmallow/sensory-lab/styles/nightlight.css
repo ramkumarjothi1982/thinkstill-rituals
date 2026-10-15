@@ -100,14 +100,27 @@
   background: var(--nl-sheet); border-color: var(--chrome-line); overscroll-behavior: contain; }
 .nightlight .sheet.on { transform: none; }
 .nightlight .sheet h3 { margin-bottom: 4px; }
-.nightlight .nl-row { gap: 6px 12px; padding: 9px 0; min-height: 48px; }
+.nightlight .nl-row { gap: 4px 12px; padding: 8px 0; min-height: 48px; }
 .nightlight .nl-row > .lbl { flex: 1 1 140px; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.nightlight .nl-lbl { display: flex; align-items: baseline; gap: 8px; }
+.nightlight .nl-lbl { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 8px; }
 .nightlight .nl-val { color: var(--text-2); font-size: var(--fs-small); font-variant-numeric: tabular-nums; }
-.nightlight .nl-row .sub { color: var(--text-3); line-height: 1.35; }
-.nightlight .nl-range { width: min(180px, 46vw); height: 40px; margin: 0; accent-color: var(--accent); cursor: pointer; }
+.nightlight .nl-row .sub, .nightlight .nl-subrow .sub, .nightlight .nl-more .sub { color: var(--text-3); line-height: 1.35; }
+/* an inline row (the sliders, Fade out): the label and its value in one column, the same width in every row, so the
+   controls line up (a value that changes never resizes the slider under the finger); the column grows rather than
+   overflow when a wider system font needs more ("Brightness 100 %"); the control takes the rest and drops under its
+   label when it would be shorter than 120 px; the sub-label runs under both */
+.nightlight .nl-inline > .lbl { flex: 0 0 auto; min-width: var(--nl-lblw); }
+.nightlight .nl-inline .nl-lbl { flex-wrap: nowrap; white-space: nowrap; }   /* "Brightness 100 %" never breaks (no row jump at 100) */
+.nightlight .nl-inline > .nl-range, .nightlight .nl-inline > .nl-vol, .nightlight .nl-inline > .nl-seg { flex: 1 1 120px; max-width: 260px; margin-left: auto; }
+.nightlight .nl-inline > .sub { flex: 1 0 100%; margin-top: -2px; }
+.nightlight .sheet { --nl-lblw: 8.8em; }   /* "Brightness 100 %" with a few px to spare (Inter); a wider font grows the column */
+.nightlight .nl-range { width: 100%; height: 40px; margin: 0; accent-color: var(--accent); cursor: pointer; }
 .nightlight .nl-vol { display: flex; align-items: center; min-height: 40px; }
-.nightlight .nl-muted { display: flex; align-items: center; gap: 10px; color: var(--text-2); font-size: var(--fs-small); }
+.nightlight .nl-vol > .nl-range { flex: 1 1 auto; min-width: 0; }
+.nightlight .nl-muted { display: flex; align-items: center; justify-content: flex-end; gap: 10px; flex: 1 1 auto; color: var(--text-2); font-size: var(--fs-small); }
+/* "Sound is off" and Turn on stay whole: without room beside the label they drop under it together, never broken */
+.nightlight .nl-muted-txt, .nightlight .nl-turn-on { flex: none; white-space: nowrap; }
+.nightlight .nl-row-volume:has(.nl-muted:not([hidden])) > .lbl { min-width: 0; }   /* no value shown: "Volume" gives them its column */
 /* choices sit under their label, across the sheet; they wrap rather than shrink below 40 px */
 .nightlight .nl-row.nl-stack { flex-direction: column; align-items: stretch; }
 .nightlight .nl-row.nl-stack > .lbl { flex: none; }
@@ -117,6 +130,22 @@
 .nightlight .nl-seg button { flex: 1 0 auto; min-width: 40px; min-height: 40px; padding: 7px 10px; font-size: 14px; color: var(--text-2); }
 .nightlight .nl-seg button[aria-checked="true"] { color: var(--chip-on-text); }
 .nightlight .nl-seg button:disabled { opacity: 0.4; cursor: default; }
+/* the Timer: its end time beside the label; Fade out folded in under its choices (one group: no line between them) */
+.nightlight .nl-row-timer .nl-lbl > .sub { display: inline; color: var(--text-2); font-size: var(--fs-small); font-variant-numeric: tabular-nums; }
+.nightlight .nl-subrow { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; padding-top: 4px; min-height: 44px; }
+.nightlight .nl-subrow > .lbl { display: flex; flex-direction: column; font-size: 15px; }   /* (its width: the inline label column) */
+/* the disclosure for the rarer rows: the whole row is the button, a chevron turns when it is open */
+.nightlight .nl-row-more { padding: 4px 0; }
+.nightlight .nl-more { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 48px; margin: 0; padding: 4px 2px 4px 0;
+  border: 0; border-radius: 14px; background: transparent; color: var(--text-1); font: inherit; text-align: left; cursor: pointer; }
+.nightlight .nl-more > .lbl { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; font-size: 15px; }
+.nightlight .nl-more .sub { display: block; font-size: var(--fs-micro); }
+.nightlight .nl-chev { flex: none; width: 22px; height: 22px; color: var(--text-2); transition: transform 240ms ease; }
+.nightlight .nl-chev svg { display: block; width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.nightlight .nl-more[aria-expanded="true"] .nl-chev { transform: rotate(180deg); }
+.nightlight .nl-more:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.nightlight .nl-more-body > .row:first-child { border-top: 1px solid var(--line); }
+.nightlight.nl-calm .nl-chev { transition: none; }
 .nightlight .sheet .btn-quiet { min-height: 40px; padding: 8px 14px; font-size: 14px; color: var(--text-1); border-color: var(--line-strong); }
 .nightlight .nl-row-stop { justify-content: flex-start; gap: 10px; }
 .nightlight .nl-row-stop > :last-child { margin-left: 0; }
@@ -143,6 +172,9 @@
 }
 @media (max-width: 340px) {
   .nightlight .bottom { padding-left: 8px; padding-right: 8px; }
+  .nightlight .sheet { --nl-pad: 16px; }
+  .nightlight .nl-row-timer .nl-seg { gap: 2px; }
+  .nightlight .nl-row-timer .nl-seg button { padding-left: 4px; padding-right: 4px; }
   .nightlight .nl-modes { gap: 0; }
   .nightlight .nl-modes button { min-width: 40px; padding-left: 7px; padding-right: 7px; font-size: 13px; }
 }
@@ -172,17 +204,29 @@
 }
 /* landscape on a bedside stand, and wide screens: the sheet is a side panel and the Mallow stays in view */
 @media (min-width: 900px), (max-height: 420px) and (min-width: 540px) {
-  .nightlight .sheet { top: 0; bottom: 0; left: auto; right: 0; width: min(380px, 42vw); max-width: none; max-height: none; margin: 0;
+  .screen.nightlight { --nl-panel: min(380px, 42vw); }
+  .nightlight .sheet { top: 0; bottom: 0; left: auto; right: 0; width: var(--nl-panel); max-width: none; max-height: none; margin: 0;
     border: 0; border-left: 1px solid var(--chrome-line); border-radius: var(--r-lg) 0 0 var(--r-lg);
     --nl-pad: 16px; --nl-padb: calc(var(--safe-bottom) + 14px);
-    padding: calc(var(--safe-top) + 14px) var(--nl-pad) var(--nl-padb); transform: translateX(100%); }
+    padding: calc(var(--safe-top) + 14px) var(--nl-pad) var(--nl-padb); transform: translateX(100%);
+    display: flex; flex-direction: column; }
+  /* Done keeps to the panel's foot when the rows are shorter than the panel (the rarer rows folded away) */
+  .nightlight .sheet > .nl-sheet { flex: none; margin-bottom: 16px; }
+  .nightlight .sheet .done { flex: none; margin-top: auto; }
   .nightlight .sheet.on { transform: none; }
   .nightlight.nl-calm .sheet { transform: none; }
   /* while the panel is open the Mallow (the stage, and its halo and pool on the sky) moves to the middle of the
      space beside it, so it is framed there rather than pushed against the panel; with less motion it stays put */
   .nightlight .stage, .nightlight .nl-sky { transition: transform 450ms ease; }
-  .nightlight.nl-sheet-open .stage, .nightlight.nl-sheet-open .nl-sky { transform: translateX(calc(min(380px, 42vw) / -2)); }
+  .nightlight.nl-sheet-open .stage, .nightlight.nl-sheet-open .nl-sky { transform: translateX(calc(var(--nl-panel) / -2)); }
   .nightlight.nl-calm.nl-sheet-open .stage, .nightlight.nl-calm.nl-sheet-open .nl-sky { transform: none; }
+}
+/* the narrow side panel (568 × 320, 667 × 375…): at least 300 px, so the sliders stay beside their labels and the
+   sub-labels keep to one line (the Mallow, centred in the space left, still fits whole); the Timer is an even 3 × 2
+   grid rather than 4 + 2 at uneven widths */
+@media (max-height: 420px) and (min-width: 540px) and (max-width: 779px) {
+  .screen.nightlight { --nl-panel: min(380px, max(42vw, 300px)); }
+  .nightlight .nl-row-timer > .nl-seg { display: grid; grid-template-columns: repeat(3, 1fr); }
 }
 @media (max-height: 420px) and (min-width: 540px) {
   .nightlight .sheet h3 { font-size: 18px; margin-bottom: 0; }
@@ -198,4 +242,5 @@
   .nightlight .sheet, .nightlight .sheet.on { transform: none; transition: opacity 200ms ease; }
   .nightlight .sheet { opacity: 0; pointer-events: none; }
   .nightlight .sheet.on { opacity: 1; pointer-events: auto; }
+  .nightlight .nl-chev { transition: none; }
 }

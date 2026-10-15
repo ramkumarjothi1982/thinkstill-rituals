@@ -11,7 +11,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import {
   DIAL_ORDER, WEATHER_IDS, WEATHERS, TOOLS, ALL_TOOLS, COPY, ENTRY, REALM_ORDER, DAY_REALMS, WATER_REALMS, DRY_REALMS, TIMING, POINTER, PULSE_EVENTS,
   hostScore, pickRealm, entryWeather, moodFor, transformFor, pulseFor, progressFor, captionFor, lineFor, realmShort, realmPhrase,
-  classify, isFling, TransitionPlanner, WeatherSession,
+  classify, isFling, TransitionPlanner, WeatherSession, LAND, landFit,
 } from '../core/weather.js';
 import { FieldGrid, scatter } from '../core/weather/field.js';
 import { CloudBank, MistField, StrikeClock, glowEnvelope, COLS, CENTRAL, GLOW_RISE, STRIKE_MIN, MIST_TAU, PATH_R, PUFFS } from '../core/weather/clouds.js';
@@ -24,7 +24,7 @@ import { FEEL, REST, EVENT_TYPES, GAP, CLOSED_EYES, decide, createMemory, restFo
 import { REALM_GEO, homeRealm } from '../core/environment.js';
 import { softened } from '../core/personality.js';
 import { REALMS, REALM_IDS } from '../../src/world/realm.js';
-import { MALLOW_IDS } from '../../src/mallows/registry.js';
+import { MALLOW_IDS, MALLOWS } from '../../src/mallows/registry.js';
 import { REACTIONS } from '../../src/mallows/reactions.js';
 import { PRESETS } from '../../src/mallows/expressions.js';
 import { rng } from '../core/math.js';
@@ -1570,4 +1570,42 @@ test('R7 (visual QA) each puff is one crisp body: rim and gold twin inside the s
   } finally {
     if (had) Object.defineProperty(globalThis, 'document', had); else delete globalThis.document;
   }
+});
+
+// ------------------------------------------------------------------- R8 --
+test('R8 landscape framing: landFit grows every Mallow between the corner controls, head clear of the hint spot', () => {
+  // the corner layout (styles/weather.css): floor at stage-screen's floorMax (0.84), the hint spot's top 74 px,
+  // a 178 px cluster 14 px in from each side; stage-screen's own fit there is its floor of 0.2
+  const SIDE = 14 + 178, before = (W, H, ref, hU) => hU * Math.min(W * 0.2, H * 0.26) / ref;
+  for (const [W, H] of [[844, 390], [568, 320], [667, 375], [640, 360], [915, 412], [932, 430]]) {
+    const floor = 0.84 * H, left = SIDE, right = W - SIDE, band = H - 56;   // band: the stage under the 56 px top bar
+    let heights = new Set();
+    for (const id of MALLOW_IDS) {
+      const [bx0, by0, bx1, by1] = MALLOWS[id].bodyBox, hU = by1 - by0, wU = bx1 - bx0, ref = Math.sqrt(hU * wU);
+      const r = landFit({ W, H, floor, hintTop: 74, left, right, hU, wU, ref });
+      const at = `${W}×${H} ${id}`;
+      // the rig's own scale rule gives exactly the size landFit reports
+      const S = Math.min(W * r.fit, H * (r.fit + 0.06)) / ref;
+      assert.ok(Math.abs(hU * S - r.h) < 1e-6 && Math.abs(wU * S - r.w) < 1e-6, `${at}: the rig's scale gives h × w`);
+      assert.ok(r.fit >= LAND.fitMin && r.fit <= LAND.fitMax, `${at}: fit ${r.fit} within its caps`);
+      assert.equal(r.headTop, 74 + LAND.caption + LAND.lift * H, `${at}: the head line is under the hint spot's two lines and room to rise`);
+      assert.ok(floor - r.h >= r.headTop - 1e-6, `${at}: the head (top ${(floor - r.h).toFixed(1)}) clears ${r.headTop.toFixed(1)}`);
+      assert.ok(r.h <= LAND.max * H + 1e-6, `${at}: at most half the stage tall`);
+      assert.ok(W / 2 - r.w / 2 >= left + LAND.side - 1e-6 && W / 2 + r.w / 2 <= right - LAND.side + 1e-6, `${at}: ${LAND.side} px clear of both clusters`);
+      assert.ok(r.h >= 1.4 * before(W, H, ref, hU), `${at}: clearly (≥ 40 %) larger than stage-screen's framing (${r.h.toFixed(0)} vs ${before(W, H, ref, hU).toFixed(0)} px)`);
+      assert.ok(r.h / band >= 0.45, `${at}: ≥ 45 % of the stage under the top bar (${(r.h / band).toFixed(3)})`);
+      heights.add(Math.round(r.h));
+    }
+    assert.equal(heights.size, 1, `${W}×${H}: every Mallow stands the same height (head on the same line): ${[...heights]}`);
+  }
+  // a narrow stage is bound by the clusters instead: the body narrows to keep clear of both
+  const [bx0, by0, bx1, by1] = MALLOWS.noomi.bodyBox, hU = by1 - by0, wU = bx1 - bx0, ref = Math.sqrt(hU * wU);
+  const n = landFit({ W: 470, H: 320, floor: 268.8, hintTop: 74, left: SIDE, right: 470 - SIDE, hU, wU, ref });
+  assert.ok(Math.abs(n.w - (470 - 2 * SIDE - 2 * LAND.side)) < 1e-6 && 268.8 - n.h > n.headTop, 'width-bound: exactly the gap between the clusters');
+  // a lower hint spot (a two-line subtitle) gives a smaller Mallow, never one under it
+  const a = landFit({ W: 568, H: 320, floor: 268.8, hintTop: 74, left: SIDE, right: 568 - SIDE, hU, wU, ref });
+  const b = landFit({ W: 568, H: 320, floor: 268.8, hintTop: 84, left: SIDE, right: 568 - SIDE, hU, wU, ref });
+  assert.ok(b.h < a.h && 268.8 - b.h >= b.headTop - 1e-6);
+  // nothing fits: the smallest fit, never a negative or empty one
+  assert.equal(landFit({ W: 400, H: 280, floor: 100, hintTop: 74, left: SIDE, right: 400 - SIDE, hU, wU, ref }).fit, LAND.fitMin);
 });

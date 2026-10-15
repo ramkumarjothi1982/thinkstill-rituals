@@ -75,3 +75,27 @@
   .weather .wx-more-r::before { right: 3px; transform: translateY(-50%) rotate(-45deg); }
   .weather .wx-dial.fade-l .wx-more-l, .weather .wx-dial.fade-r .wx-more-r { opacity: 1; }
 }
+
+/* Short, wide stages (a phone on its side; keep this query in step with --wx-land below, which features/weather.js
+   reads): the controls go to the lower corners so the Mallow can stand between them on the realm's ground, as tall
+   as the hint spot above it allows (landFit, core/weather.js). The action chips stack in a fixed column on the left
+   (always two chips tall: the column never changes size between weathers; its empty top lets touches through to
+   the sky), the dial becomes a 4 × 2 keypad on the right (all eight radios, no scrolling), both 178 × 94 px and
+   bottom-aligned. The bottom bar keeps only its padding (height 0: the clusters overflow upwards), so stage-screen
+   puts the floor at its floorMax, as in portrait. A phone on its side has its notch and rounded corners at the
+   sides: the bars keep clear of the side safe areas (0 elsewhere). Portrait is untouched. */
+@media (min-aspect-ratio: 7/5) and (max-height: 460px) {
+  .weather { --wx-land: 1; --wx-side: 178px; --wx-inset-l: calc(14px + env(safe-area-inset-left, 0px)); --wx-inset-r: calc(14px + env(safe-area-inset-right, 0px)); }
+  .weather .topbar { padding-left: var(--wx-inset-l); padding-right: var(--wx-inset-r); }
+  .weather .bottom { height: 0; flex-direction: row; justify-content: space-between; align-items: flex-end; gap: 12px;
+    padding-left: var(--wx-inset-l); padding-right: var(--wx-inset-r); }
+  .weather .bottom > * { max-width: none; }
+  .weather .wx-actions { flex-direction: column; align-items: stretch; justify-content: flex-end; width: var(--wx-side); height: auto;
+    min-height: calc(2 * 44px + 6px); padding: 0; overflow: visible; pointer-events: none; }
+  .weather .wx-actions > * { pointer-events: auto; }
+  .weather .wx-chip { min-width: 0; padding: 10px 14px; }
+  .weather .wx-dial { display: grid; grid-template-columns: repeat(4, 40px); grid-auto-rows: 40px; gap: 2px; padding: 5px; width: var(--wx-side); height: auto;
+    justify-content: center; align-content: center; border-radius: 26px; overflow: visible; }   /* 2 × 40 + 2 + 2 × 5 + 2 = 94: level with the chips */
+  /* the stage's focus frame: between the two clusters, around where the Mallow stands */
+  .weather .stage:focus-visible::after { left: calc(var(--wx-inset-l) + var(--wx-side) + 8px); right: calc(var(--wx-inset-r) + var(--wx-side) + 8px); }
+}

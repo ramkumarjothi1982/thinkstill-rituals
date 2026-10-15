@@ -1552,7 +1552,7 @@ test('U23 settings sheet: what every row shows (values, names, sub-labels, disab
   assert.deepEqual([v.volume.value, v.volume.text, v.volume.muted], [50, '50 %', false]);
   assert.equal(v.timer.value, 30);
   assert.equal(v.timer.sub, `Ends at ${clock(T0 + 30 * MIN, 'en-GB')}`);
-  assert.deepEqual([v.fade.value, v.fade.disabled, v.fade.sub], [true, false, 'Light, sound and movement ease down over the last 8 minutes']);
+  assert.deepEqual([v.fade.value, v.fade.disabled, v.fade.sub], [true, false, 'Eases down over the last 8 minutes']);
   assert.deepEqual([v.motion.value, v.motion.gentle, v.motion.sub], ['gentle', true, '']);
   assert.deepEqual([v.wake.shown, v.wake.value, v.wake.sub], [true, false, COPY.sheet.wake.sub]);
   assert.equal(v.fadeNow.hidden, false);
@@ -1569,6 +1569,23 @@ test('U23 settings sheet: what every row shows (values, names, sub-labels, disab
   assert.equal(sheetView({ settings: { ...base, fade: false } }).fade.sub, COPY.sheet.fade.offSub);
   assert.deepEqual(TIMER_MINUTES.map(fadeMinutes), [3, 7, 8, 8, 8, 0]);
   assert.equal(sheetView({ settings: { ...base, minutes: 10 } }).fade.sub, COPY.sheet.fade.sub(3));
+  // the fade the clock has scheduled: its usual length → the usual line (fadeMs left out → the same)
+  for (const [m, f] of [[10, true], [30, true], [30, false], [60, false]]) {
+    const st = { settings: { ...base, minutes: m, fade: f }, endsAt: T0 + m * MIN, locale: 'en-GB' };
+    assert.equal(sheetView({ ...st, fadeMs: fadeSeconds(m, f) * 1000, fading: true }).fade.sub, sheetView(st).fade.sub, `${m} ${f}`);
+  }
+  // …switched on late (a 40 s fade under way, 10-minute timer): when it ends, not "over the last 3 minutes"
+  const lateOn = sheetView({ settings: { ...base, minutes: 10, fade: true }, endsAt: T0 + 40e3, fadeMs: 39710, fading: true, locale: 'en-GB' });
+  assert.equal(lateOn.fade.sub, `Easing down until ${clock(T0 + 40e3, 'en-GB')}`);
+  assert.equal(lateOn.fade.value, true);
+  // …"Fade out now" (12 s) with Fade out on or off: when it ends
+  for (const f of [true, false]) assert.equal(sheetView({ settings: { ...base, fade: f }, endsAt: T0 + 12e3, fadeMs: 12e3, fading: true, locale: 'en-GB' }).fade.sub, COPY.sheet.fade.until(clock(T0 + 12e3, 'en-GB')));
+  // …and not yet under way (then "A little longer"): how long it will really take
+  assert.equal(sheetView({ settings: base, endsAt: T0 + 10 * MIN, fadeMs: 12e3, fading: false }).fade.sub, COPY.sheet.fade.offSub);
+  assert.equal(sheetView({ settings: base, endsAt: T0 + 10 * MIN, fadeMs: 150e3, fading: false }).fade.sub, COPY.sheet.fade.sub(3));
+  assert.equal(sheetView({ settings: base, endsAt: T0 + 10 * MIN, fadeMs: 70e3, fading: false }).fade.sub, 'Eases down over the last minute');
+  // No timer: still "Needs a timer", even during "Fade out now"
+  assert.equal(sheetView({ settings: { ...base, minutes: 0 }, endsAt: T0 + 12e3, fadeMs: 12e3, fading: true }).fade.sub, COPY.sheet.fade.needsTimer);
   // the device asks for less motion: Gentle is disabled and the effective choice is Less (Still stays Still)
   const red = sheetView({ settings: base, labReduced: true });
   assert.deepEqual([red.motion.value, red.motion.gentle, red.motion.sub], ['less', false, COPY.sheet.motion.reduced]);
@@ -1580,8 +1597,11 @@ test('U23 settings sheet: what every row shows (values, names, sub-labels, disab
   // muted: "Sound is off" with Turn on; fading: "Fade out now" is hidden
   assert.equal(sheetView({ settings: base, soundOn: false }).volume.muted, true);
   assert.equal(sheetView({ settings: base, fading: true }).fadeNow.hidden, true);
+  // the folded Fade out row and the disclosure: short enough for one line on a 320 px phone (≤ 46 characters)
+  for (const t of [COPY.sheet.fade.sub(8), COPY.sheet.fade.sub(1), COPY.sheet.fade.until('12:59 a.m.'), COPY.sheet.fade.offSub, COPY.sheet.fade.needsTimer, COPY.sheet.brightness.sub, COPY.sheet.volume.sub, COPY.sheet.more.label, COPY.sheet.more.sub]) assert.ok(t.length <= 46, t);
+  assert.deepEqual([COPY.sheet.more.label, COPY.sheet.more.sub], ['More settings', 'Speed, movement and screen']);
   // every row's text fits the sheet (≤ 70 characters), with no claims
-  const texts = TIMER_MINUTES.flatMap((m) => [true, false].map((f) => sheetView({ settings: { ...base, minutes: m, fade: f }, endsAt: m ? T0 : null, locale: 'en-US', labReduced: true, wakeSupported: true, wakeFailed: true })))
+  const texts = TIMER_MINUTES.flatMap((m) => [true, false].flatMap((f) => [null, 12e3].map((ms) => sheetView({ settings: { ...base, minutes: m, fade: f }, endsAt: m ? T0 : null, fadeMs: ms, fading: !!ms, locale: 'en-US', labReduced: true, wakeSupported: true, wakeFailed: true }))))
     .flatMap((x) => Object.values(x).flatMap((r) => [r.text, r.sub])).filter(Boolean);
   for (const t of texts) assert.ok(t.length <= 70, t);
   assert.deepEqual(lintCopy(texts, { extra: [SPEC_BANNED] }), []);
@@ -1635,9 +1655,25 @@ test('U24 stylesheet: every rule scoped to .nightlight, night tokens, no blur, n
   // the sheet is opaque (nothing glows through it), and its scrim is clear (the live preview)
   assert.match(root, /--nl-sheet: #[0-9a-f]{6}\b/);
   assert.ok(rules.some((r) => r.selectors.includes('.nightlight .sheet-scrim') && /background:\s*transparent/.test(r.body)));
-  // range inputs: 40 px high, at most min(180 px, 46 vw) wide; every sheet choice ≥ 40 px
+  // range inputs: 40 px high, filling the control column of an inline row (≥ 120 px or under the label, ≤ 260 px); the
+  // label column is one width in every inline row (the controls line up); every sheet choice ≥ 40 px
   const range = rules.find((r) => r.selectors.includes('.nightlight .nl-range')).body;
-  assert.match(range, /height:\s*40px/); assert.match(range, /width:\s*min\(180px,\s*46vw\)/);
+  assert.match(range, /height:\s*40px/); assert.match(range, /width:\s*100%/);
+  const ctlCol = rules.find((r) => r.selectors.includes('.nightlight .nl-inline > .nl-range')).body;
+  assert.match(ctlCol, /flex:\s*1 1 120px/); assert.match(ctlCol, /max-width:\s*260px/);
+  // (the column grows rather than overflow: a wider system font never pushes "Brightness 100 %" into the slider's gap)
+  assert.ok(rules.some((r) => r.selectors.includes('.nightlight .nl-inline > .lbl') && /flex:\s*0 0 auto/.test(r.body) && /min-width:\s*var\(--nl-lblw\)/.test(r.body)));
+  // the narrow side panel (short landscape, under 780 px): at least 300 px wide, the Timer an even 3 × 2 grid
+  const narrow = rules.filter((r) => r.media === '@media (max-height: 420px) and (min-width: 540px) and (max-width: 779px)');
+  assert.ok(narrow.some((r) => r.selectors.includes('.screen.nightlight') && /--nl-panel:\s*min\(380px, max\(42vw, 300px\)\)/.test(r.body)));
+  assert.ok(narrow.some((r) => r.selectors.includes('.nightlight .nl-row-timer > .nl-seg') && /grid-template-columns:\s*repeat\(3, 1fr\)/.test(r.body)));
+  assert.ok(rules.some((r) => /translateX\(calc\(var\(--nl-panel\) \/ -2\)\)/.test(r.body)), 'the Mallow moves by half the panel, whatever its width');
+  // the disclosure: a whole-row button ≥ 48 px with a visible focus ring; its chevron turns at once with less motion
+  const more = rules.find((r) => r.selectors.includes('.nightlight .nl-more') && /min-height/.test(r.body)).body;
+  assert.match(more, /min-height:\s*48px/); assert.match(more, /width:\s*100%/);
+  assert.ok(rules.some((r) => r.selectors.includes('.nightlight .nl-more:focus-visible') && /outline:\s*2px solid/.test(r.body)));
+  assert.ok(rules.some((r) => r.media === '@media (prefers-reduced-motion: reduce)' && r.selectors.includes('.nightlight .nl-chev') && /transition:\s*none/.test(r.body)));
+  assert.ok(rules.some((r) => !r.media && r.selectors.includes('.nightlight.nl-calm .nl-chev') && /transition:\s*none/.test(r.body)));
   // the sticky Done: an opaque pill (::after) on an opaque strip the sheet's full width (::before), so rows scroll
   // under it and never show through or beside it
   const doneAfter = rules.find((r) => r.selectors.includes('.nightlight .sheet .done::after') && /inset:/.test(r.body)).body;
@@ -1777,4 +1813,155 @@ test('U26 the sigh at night: a soft wisp in the Mallow\'s grade that rises away 
   assert.ok(near(Math.hypot(slow.vx, slow.vy) * 2, Math.hypot(fast.vx, fast.vy), 1e-9));
   assert.equal(gradeHex('#ffffff', [0.51, 0.5, 0.49]), gradeHex('#ffffff', [0.5, 0.5, 0.5]));
   assert.match(gradeHex('nope', null), /^#[0-9a-f]{6}$/);
+});
+
+// ================================================================= U27 ==
+test('U27 Fade out keeps the timer: setFade moves only the fade (both ways, before and during it); a Timer change still restarts', () => {
+  const lv = (c, t) => c.levels(t, {});
+  // before the fade: On → Off → On keeps endsAt; the fade is 10 s, then 8 min again; still steady
+  const a = session({ minutes: 30, fade: true });
+  a.time.t += 5 * MIN;
+  const E = a.c.endsAt, rev0 = a.c.rev;
+  assert.equal(a.c.setFade(false), true);
+  assert.deepEqual([a.c.endsAt, a.c.fadeFrom, a.c.fadeMs, a.c.fade, a.c.phase()], [E, E - 10e3, 10e3, false, 'steady']);
+  assert.ok(a.c.rev > rev0, 'saved');
+  assert.equal(a.c.setFade(false), false, 'the same choice changes nothing');
+  assert.equal(a.c.setFade(true), true);
+  assert.deepEqual([a.c.endsAt, a.c.fadeFrom, a.c.fadeMs, a.c.startedAt], [E, E - 480e3, 480e3, T0]);
+  assert.equal(a.c.extra, 0);
+  for (const m of [10, 20, 45, 60]) {   // every timer: the end stays, the fade is fadeSeconds long
+    const s = session({ minutes: m, fade: false });
+    s.time.t += 60e3;
+    const e = s.c.endsAt;
+    s.c.setFade(true);
+    assert.deepEqual([s.c.endsAt, s.c.fadeMs], [e, fadeSeconds(m, true) * 1000], `${m} min`);
+  }
+
+  // during the fade, switched off: the same end, the fade put back to the last 10 s, so the light comes back up
+  const b = session({ minutes: 30, fade: true });
+  b.time.t = b.c.fadeFrom + 240e3;                     // half way
+  const Eb = b.c.endsAt, mid = lv(b.c);
+  assert.ok(mid.u > 0.49 && mid.world < 0.5 && b.c.phase() === 'fading');
+  assert.equal(b.c.setFade(false), true);
+  assert.deepEqual([b.c.endsAt, b.c.fadeFrom, b.c.phase()], [Eb, Eb - 10e3, 'steady']);
+  assert.deepEqual(lv(b.c), { world: 1, mallow: 1, sound: 1, u: 0 }, 'the light is back up (the screen eases it over 2 s)');
+  assert.equal(b.c.remaining(), 240e3, 'the time left is the same');
+  // …and switched on again with 4 min left (less than the 8-minute fade): it starts now and ends at the same time
+  b.time.t += 30e3;
+  const tOn = b.time.t;
+  assert.equal(b.c.setFade(true), true);
+  assert.deepEqual([b.c.endsAt, b.c.fadeFrom, b.c.fadeMs, b.c.phase()], [Eb, tOn, Eb - tOn, 'fading']);
+  assert.ok(near(lv(b.c).world, 1), 'no jump: it starts from where the light is');
+  b.time.t += 105e3;                                     // half of what was left
+  assert.ok(near(lv(b.c).u, 0.5, 1e-9));
+  b.time.t = Eb;
+  assert.equal(b.c.phase(), 'ended', 'it ends at the same time');
+
+  // switched on with more than the fade left: the fade starts 8 min before the same end (later), steady until then
+  const c = session({ minutes: 30, fade: false });
+  c.time.t += 10 * MIN;
+  const Ec = c.c.endsAt;
+  c.c.setFade(true);
+  assert.deepEqual([c.c.endsAt, c.c.fadeFrom, c.c.phase()], [Ec, Ec - 480e3, 'steady']);
+
+  // in the last seconds nothing visible changes: Off in the last 10 s of an 8-min fade, On during the 10 s settle
+  const d = session({ minutes: 30, fade: true });
+  d.time.t = d.c.endsAt - 6e3;
+  const [Fd, ld] = [d.c.fadeFrom, lv(d.c)];
+  assert.equal(d.c.setFade(false), false);
+  assert.deepEqual([d.c.fadeFrom, d.c.fade], [Fd, false]);
+  assert.deepEqual(lv(d.c), ld, 'the levels carry on down');
+  const e = session({ minutes: 30, fade: false });
+  e.time.t = e.c.endsAt - 4e3;
+  const [Fe, le] = [e.c.fadeFrom, lv(e.c)];
+  assert.equal(e.c.setFade(true), false);
+  assert.deepEqual([e.c.fadeFrom, lv(e.c)], [Fe, le]);
+
+  // after "A little longer" and after a clock jump the end it keeps is the moved one
+  const f = session({ minutes: 20, fade: true });
+  f.time.t = f.c.fadeFrom + 60e3;
+  f.c.extend(10);
+  const Ef = f.c.endsAt;
+  f.c.setFade(false);
+  assert.deepEqual([f.c.endsAt, f.c.fadeMs, f.c.extra], [Ef, 10e3, 10]);
+  f.time.t -= 3600e3; f.c.sync();                        // backwards an hour: the session shifts with it
+  const Ef2 = f.c.endsAt;
+  f.c.setFade(true);
+  assert.deepEqual([f.c.endsAt, f.c.fadeMs], [Ef2, 400e3]);
+
+  // No timer, "Fade out now", not started, ended: only the choice is kept
+  const n = session({ minutes: 0 });
+  assert.equal(n.c.setFade(false), false);
+  assert.deepEqual([n.c.endsAt, n.c.fadeFrom, n.c.fade], [null, null, false]);
+  n.time.t += 60e3; n.c.stopSoon();
+  const [En, Fn] = [n.c.endsAt, n.c.fadeFrom];
+  n.c.setFade(true);
+  assert.deepEqual([n.c.endsAt, n.c.fadeFrom], [En, Fn], '"Fade out now" keeps its own 12 s fade');
+  // "Fade out now" (from steady, from an arriving session, from mid-fade) then Fade out changed: its 12 s fade is never
+  // moved, at its very first moment (u = 0) or a little in (u ≈ 0.1): the same end, the same start, still fading
+  const q = session({ minutes: 30, fade: true });
+  q.time.t += 3 * MIN; q.c.stopSoon(12);
+  const [Eq, Fq] = [q.c.endsAt, q.c.fadeFrom];
+  assert.equal(q.c.setFade(false), false);
+  assert.deepEqual([q.c.endsAt, q.c.fadeFrom, q.c.phase(), q.c.fade], [Eq, Fq, 'fading', false], 'at u = 0');
+  for (const [mins, fade, at, dt, label] of [[30, true, 3 * MIN, 1200, 'steady, u ≈ 0.1'], [30, false, 5e3, 0, 'arriving, u = 0'], [30, false, 5e3, 1500, 'arriving, u ≈ 0.12'],
+    [10, true, 10 * MIN - 100e3, 0, 'mid-fade, carried on'], [10, true, 10 * MIN - 100e3, 2000, 'mid-fade, 2 s later'], [20, false, 10 * MIN, 600, 'fade off, u = 0.05']]) {
+    const x = session({ minutes: mins, fade });
+    x.time.t = x.c.startedAt + at;
+    assert.equal(x.c.stopSoon(), true, label);
+    x.time.t += dt;
+    const [E1, F1, lv1] = [x.c.endsAt, x.c.fadeFrom, lv(x.c)];
+    assert.equal(x.c.setFade(!fade), false, label);
+    assert.deepEqual([x.c.endsAt, x.c.fadeFrom, x.c.phase(), x.c.fade], [E1, F1, 'fading', !fade], label);
+    assert.deepEqual(lv(x.c), lv1, `${label}: the levels carry on down`);
+    assert.equal(x.c.setFade(fade), false, `${label}: and back`);
+    assert.deepEqual([x.c.endsAt, x.c.fadeFrom], [E1, F1], label);
+    // a reload in between changes nothing (no flag: it is the fade's own shape)
+    const back = SessionClock.restore(JSON.stringify(x.c.toJSON()), () => x.time.t);
+    assert.equal(back.setFade(!back.fade), false, `${label}: restored`);
+    assert.deepEqual([back.endsAt, back.fadeFrom], [E1, F1], `${label}: restored`);
+  }
+  // …while "Fade out now" then "A little longer" (the 12 s fade ten minutes on, not under way) takes the choice again
+  const qx = session({ minutes: 30, fade: false });
+  qx.time.t += 3 * MIN; qx.c.stopSoon(); qx.c.extend(10);
+  const Eqx = qx.c.endsAt;
+  assert.equal(qx.c.setFade(true), true);
+  assert.deepEqual([qx.c.endsAt, qx.c.fadeMs, qx.c.phase()], [Eqx, 480e3, 'steady']);
+  const idle = new SessionClock({ now: () => T0, minutes: 30, fade: true });
+  assert.equal(idle.setFade(false), false);
+  assert.equal(idle.started, false);
+  assert.equal(idle.fade, false);
+  idle.start();
+  assert.equal(idle.fadeMs, 10e3, 'a clock started after the choice uses it');
+  const z = session({ minutes: 10, fade: true });
+  z.time.t = z.c.endsAt + 1;
+  const [Ez, Fz] = [z.c.endsAt, z.c.fadeFrom];
+  assert.equal(z.c.setFade(false), false);
+  assert.deepEqual([z.c.endsAt, z.c.fadeFrom, z.c.phase()], [Ez, Fz, 'ended']);
+
+  // the record: always valid, and it resumes with the same end and fade
+  for (const x of [a, b, c, d, e, f, q]) {
+    const rec = x.c.toJSON();
+    assert.ok(validRecord(rec, x.time.t), JSON.stringify(rec));
+    const back = SessionClock.restore(JSON.stringify(rec), () => x.time.t);
+    if (x.time.t < rec.endsAt) assert.deepEqual([back.endsAt, back.fadeFrom, back.fade], [rec.endsAt, rec.fadeFrom, rec.fade]);
+  }
+
+  // a Timer change still restarts from now (and takes the fade choice)
+  const r = session({ minutes: 30, fade: true });
+  r.time.t += 7 * MIN;
+  r.c.setFade(false);
+  r.c.restart({ minutes: 20, fade: r.c.fade });
+  assert.deepEqual([r.c.startedAt, r.c.endsAt, r.c.fadeMs], [r.time.t, r.time.t + 20 * MIN, 10e3]);
+
+  // levels never jump down: a choice switched on at any moment of a fade-off session starts from the light as it is
+  for (let k = 0; k <= 60; k++) {
+    const s = session({ minutes: 10, fade: false });
+    s.time.t = s.c.startedAt + k * 10e3;
+    const before = lv(s.c);
+    s.c.setFade(true);
+    const after = lv(s.c);
+    for (const key of ['world', 'mallow', 'sound']) assert.ok(after[key] >= before[key] - 1e-9, `${key} at ${k * 10} s`);
+    assert.equal(s.c.endsAt, s.c.startedAt + 10 * MIN);
+  }
 });

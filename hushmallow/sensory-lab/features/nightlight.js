@@ -538,6 +538,7 @@ function sessionView(root, ctx, { clock: restored, now, store, onEnd }) {
     nightMood(nw, { temp: S.temp, heavy: fadeStep }, moodOut);
     world.setMood(moodOut, { force });
   }
+  const fadeProbe = {};   // the clock's levels before and after a Fade out change
   const offSettings = settings.onChange((k, val, cur) => {
     S = cur;
     switch (k) {
@@ -551,8 +552,18 @@ function sessionView(root, ctx, { clock: restored, now, store, onEnd }) {
         bed.touch();
         break;
       case 'keepAwake': if (val) wakeFailed = false; syncWake(); break;
-      case 'minutes': case 'fade':   // a new timer from now: the light comes back up (2 s), as after "A little longer"
+      case 'minutes':   // a new timer from now: the light comes back up (2 s), as after "A little longer"
         clock.restart({ minutes: S.minutes, fade: S.fade }); display.rise(2); pacer.event(2000); updateStatus(); break;
+      case 'fade': {    // Fade out keeps the end time: only the fade moves (a fade put back lets the light rise over 2 s)
+        const u0 = clock.levels(undefined, fadeProbe).u;
+        if (!clock.setFade(S.fade)) break;
+        if (clock.levels(undefined, fadeProbe).u < u0 - 1e-9) display.rise(2);
+        pacer.event(2000);
+        const ph = clock.phase();
+        if (revealed && !leaving && ph !== state && ph !== 'ended') enterPhase(ph);   // "Fading out." when it starts now
+        updateStatus();
+        break;
+      }
       default: break;
     }
     sheet?.sync();
@@ -589,7 +600,7 @@ function sessionView(root, ctx, { clock: restored, now, store, onEnd }) {
     s.screen.classList.add('nl-sheet-open');   // the caption steps aside (and in landscape the chrome the panel would cut)
     sheet = openNightSheet(s.screen, {
       state: () => ({ settings: S, labReduced: ctx.prefs.reducedMotion(), wakeSupported: wake.supported, wakeFailed,
-        soundOn: ctx.prefs.get('sound') !== false, endsAt: clock.endsAt, fading: state === 'fading' }),
+        soundOn: ctx.prefs.get('sound') !== false, endsAt: clock.endsAt, fadeMs: clock.fadeMs, fading: state === 'fading' }),
       change: (k, v, o) => sheetChange(k, v, o),
       fadeNow: () => { if (!dead && !leaving) clock.stopSoon(); },
       exit: () => leave(),

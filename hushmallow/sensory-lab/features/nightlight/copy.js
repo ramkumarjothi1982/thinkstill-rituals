@@ -66,7 +66,7 @@ export const COPY = Object.freeze({
     title: 'Nightlight',
     brightness: Object.freeze({
       label: 'Brightness',
-      sub: "Dims the scene. Your screen's own brightness still applies.",
+      sub: "Your screen's own brightness still applies.",
       value: (pct) => `${pct} %`,
     }),
     light: Object.freeze({ label: 'Light', names: Object.freeze(['Moon', 'Soft', 'Warm', 'Candle', 'Ember']) }),
@@ -77,7 +77,7 @@ export const COPY = Object.freeze({
     }),
     volume: Object.freeze({
       label: 'Volume',
-      sub: 'Sound pauses when the screen locks or you switch apps.',
+      sub: 'Pauses if you lock the screen or switch apps.',
       muted: 'Sound is off',
       value: (pct) => `${pct} %`,
     }),
@@ -92,8 +92,11 @@ export const COPY = Object.freeze({
       label: 'Fade out',
       on: 'On',
       off: 'Off',
-      sub: (n) => `Light, sound and movement ease down over the last ${n} minutes`,
-      offSub: 'Light and sound go down in the last few seconds',
+      // folded into the Timer row; a change keeps the end time (only the fade moves)
+      sub: (n) => (n === 1 ? 'Eases down over the last minute' : `Eases down over the last ${n} minutes`),
+      /** a fade under way that is not the choice's usual length (switched on late, "Fade out now"): when it ends */
+      until: (t) => `Easing down until ${t}`,
+      offSub: 'Just dims in the last few seconds',
       needsTimer: 'Needs a timer',
     }),
     motion: Object.freeze({
@@ -109,6 +112,8 @@ export const COPY = Object.freeze({
       failed: 'Not available right now',
       unsupported: 'Your screen sleeps on its usual timer.',
     }),
+    // the rarer rows (Speed, Movement, Keep screen on) sit behind one disclosure
+    more: Object.freeze({ label: 'More settings', sub: 'Speed, movement and screen' }),
     // the last row: stop gently (hidden while already fading), or leave now with the goodnight
     stop: 'Finish',
   }),

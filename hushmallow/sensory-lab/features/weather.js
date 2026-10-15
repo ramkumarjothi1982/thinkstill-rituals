@@ -36,6 +36,7 @@ import { clearGlowSprites } from '../core/effects.js';
 import { clamp, smoothstep, rng } from '../core/math.js';
 import {
   COPY, WEATHERS, DIAL_ORDER, DRY_REALMS, WeatherSession, moodFor, transformFor, pulseFor, progressFor, captionFor, lineFor, realmShort, realmPhrase,
+  landFit,
 } from '../core/weather.js';
 import { CloudBank, MistField, StrikeClock, COLS } from '../core/weather/clouds.js';
 import { RainField } from '../core/weather/rain.js';
@@ -67,6 +68,7 @@ const MOON_STAR_GAP = 6000;                     // ms between falling stars from
 const DEW_S = 3;                                // s of dew glints after the fog lifts
 const WATER_HINT_WAIT = 4;                      // s after a weather change before the one-time water hint may show
 const INK = [0.35, 0.5];                        // top-band darkness that turns the title's ink light (off, on) over a bright realm
+const CAP_JUMP = [0.35, 1.5];                   // s (landscape): a resolve jump starts within the first, the caption shows by the second
 
 export function mount(root, ctx) {
   const id = ctx.mallowId, mallow = MALLOWS[id], name = mallow.name;
@@ -83,6 +85,8 @@ export function mount(root, ctx) {
   let firstGap = false, saidLight = false, saidThin = false, saidShelter = false, saidMoon = false, saidStars = false, saidMist = false, saidWind = false, saidEmbers = false, saidHearth = false;
   let hearthT = 0, hearthK = 0, heatStep = 0, dewT = -1, haloA = 0, haloKind = 'sun', morphSun = false;
   let sndT = -Infinity, bolt = 1, idleT = 0;
+  let land = null, lastL = null;   // land: landFit's answer while the stage is short and wide (styles/weather.css), else null
+  let capWait = null;               // landscape: the resolve caption waiting for the Mallow's jump to land
   const idleRnd = rng(7 + id.length);
   let idleAt = IDLE[0] + (IDLE[1] - IDLE[0]) * idleRnd();
   const touchedW = new Set();
@@ -271,6 +275,8 @@ export function mount(root, ctx) {
     geo.topBottom = L.topBottom; geo.bottomTop = L.bottomTop; geo.skyTop = L.topBottom + 8;
     if (closed) return;
     fitSubtitle();
+    lastL = L;
+    frameLand(L);
     if (!ready) { begin(); return; }
     applyGeo(false);
     // a new ground line: rebuild the realm in place (debounced, never under a front)
@@ -299,6 +305,24 @@ export function mount(root, ctx) {
     say(COPY.announce.at(WEATHERS[shownW].label, realmPhrase(REALMS[realm].name), howTo(shownW)));
     kick();
   }
+
+  // A short, wide stage (styles/weather.css sets --wx-land and puts the controls in the lower corners): the Mallow
+  // grows to landFit's size between them, its head clear of the hint spot; the swells' row keeps above the corner
+  // clusters. stage-screen sets its own fit on every reframe just before this, so portrait keeps exactly that one.
+  function frameLand(L) {
+    land = getComputedStyle(s.screen).getPropertyValue('--wx-land').trim() === '1' ? land || {} : null;
+    if (!land) return;
+    const st = s.stage.getBoundingClientRect(), ar = actions.el.getBoundingClientRect(), dr = dial.el.getBoundingClientRect();
+    const [bx0, by0, bx1, by1] = rig.mallow.bodyBox, soft = rig.soft;
+    const r = landFit({ W: L.W, H: L.H, floor: L.floor, hintTop: hint.el.getBoundingClientRect().top - st.top,
+      left: ar.right - st.left, right: dr.left - st.left, hU: soft ? soft.H : by1 - by0, wU: soft ? soft.W : bx1 - bx0,
+      ref: Math.sqrt((bx1 - bx0) * (by1 - by0)) });
+    Object.assign(land, r);
+    if (Math.abs(r.fit - rig.opts.fit) > 1e-4) companion.setLayout({ fit: r.fit });
+    geo.bottomTop = Math.min(L.bottomTop, ar.top - st.top, dr.top - st.top);
+  }
+  // the soft body replaces the drawn one's box with its own: frame it again by its real size
+  rig.softReady?.then(() => { if (!closed && lastL && land) { frameLand(lastL); if (ready) applyGeo(false); } });
 
   function remount() {
     remountT = 0;
@@ -390,10 +414,11 @@ export function mount(root, ctx) {
     noticeWeather();   // a queued pick that ran inside the update
     if (session.arrivedNow) reactor.event('arrive', { x: body.cx, y: body.top - 140 });
     if (session.resolvedNow) resolve();
+    if (capWait) waitCaption();
     frontState(st);
     if (hintAt >= 0 && simT >= hintAt) { hintAt = -1; if (!session.resolved) showHint(session.weather); }
     if (waterHintAt >= 0 && simT >= waterHintAt) {   // the one-time water hint never cuts a hint or caption short: it waits its turn
-      if (hint.busy || hint.captioning || front.on || simT - lastPickT < WATER_HINT_WAIT) waterHintAt = simT + 1;
+      if (hint.busy || hint.captioning || capWait || front.on || simT - lastPickT < WATER_HINT_WAIT) waterHintAt = simT + 1;
       else { waterHintAt = -1; if (waterOn()) hint.show(COPY.water.hint, 3000); }
     }
     if (leanT && simT >= leanT) { leanT = 0; env.setFocus(0, 0); }
@@ -719,13 +744,24 @@ export function mount(root, ctx) {
     layer.addBloom(body.cx, body.mid, body.h * 1.25, REALMS[realm].palette.glow, 2);
     ctx.sound.motif(id, 'bright');
     const cap = captionFor(w, realm);
-    hint.caption(cap, lineFor(id, w), name, 4000);
+    // on a short, wide stage the Mallow's head stands close under the hint spot, and a celebrate or a big hop would
+    // jump through the caption's second line: there it waits until the jump has landed (the announcer says it now)
+    if (land) { hint.hide(); capWait = { cap, line: lineFor(id, w), t: simT, flew: false }; }
+    else hint.caption(cap, lineFor(id, w), name, 4000);
     hintAt = -1;
     say(cap);
     if (w === 'storm') tools.storm.drift = true;   // the remaining clouds drift leeward
     if (w === 'rain') tools.rain.drift = true;     // the deck drifts off; puddles glint
     if (w === 'fog') { mist.lift(true); dewT = 0; }   // the fog lifts as a whole; dew glints
     updateActions();
+  }
+
+  // the landscape resolve caption: once the Mallow is down again after its jump (or had none), at the latest CAP_JUMP[1]
+  function waitCaption() {
+    if (!session.resolved || leaving) { capWait = null; return; }
+    const b = rig.body, up = !b.grounded || b.hop > 0, t = simT - capWait.t;
+    if (up) capWait.flew = true;
+    if ((!up && (capWait.flew || t >= CAP_JUMP[0])) || t >= CAP_JUMP[1]) { hint.caption(capWait.cap, capWait.line, name, 4000); capWait = null; }
   }
 
   // Again ran its reset step: everything the weather left behind goes too
@@ -790,14 +826,18 @@ export function mount(root, ctx) {
     const text = COPY.subtitle(WEATHERS[session.weather].label, realmShort(REALMS[env.realmId].name)), at = text.indexOf(' · ');
     if (at < 0) subtitleEl.textContent = text;
     else subtitleEl.replaceChildren(text.slice(0, at), h('span', { class: 'wx-sep' }, ' · '), h('span', { class: 'wx-where' }, text.slice(at + 3)));
-    fitSubtitle();
+    // the hint spot moved (a subtitle that now wraps, or no longer does): a landscape Mallow is framed under it again
+    if (fitSubtitle() && land && lastL) { frameLand(lastL); applyGeo(false); }
   }
+  /** Wrap the subtitle's world onto its own line where it has to; true when that changed (the hint steps with it). */
   function fitSubtitle() {
-    if (!subtitleEl) return;
+    if (!subtitleEl) return false;
+    const was = subtitleEl.classList.contains('wx-two');
     subtitleEl.classList.remove('wx-two');
     const lh = parseFloat(getComputedStyle(subtitleEl).lineHeight) || 17, two = subtitleEl.getBoundingClientRect().height > lh * 1.5;
     subtitleEl.classList.toggle('wx-two', two);
     s.screen.classList.toggle('wx-sub-two', two);
+    return two !== was;
   }
 
   // ---------------------------------------------------- weather events --
@@ -1047,6 +1087,8 @@ export function mount(root, ctx) {
     /** Fast-forward for tests: the realm eases to its target at once, and the planner finishes. */
     settle() { env.realm?.debug?.settle(); planner.finish(); },
     debug() { return { state: session.state, weather: session.weather, realmId: env.realmId, progress: +session.progress.toFixed(3), resolved: session.resolved, metrics: metrics() }; },
+    /** The landscape framing (landFit's { fit, size, h, w, headTop }) on a short, wide stage, else null. */
+    get land() { return land ? { ...land } : null; },
   };
   if (globalThis.__lab) globalThis.__lab.weather = handle;
   // keyboard gestures and keys work straight away. The ring waits for the keyboard: Chrome shows

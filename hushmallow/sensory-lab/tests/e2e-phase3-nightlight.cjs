@@ -92,10 +92,26 @@
 //   layout     at rest no sheet label or control is cut by the Done strip's edge; the five mode chips fit at 375 and 320 px;
 //              beside a side panel the Mallow is centred in the space left of it
 //
+// Phase 4 (the Phase 3 follow-ups):
+//   sheet      follow-up 2: Speed, Movement and Keep screen on behind one disclosure button (aria-expanded, Enter, Tab on into
+//              Speed, remembered when the sheet opens again); Fade out folded into the Timer row; all eight settings kept;
+//              Fade out Off keeps the end time
+//   motion     (E14 through the disclosure)   theme   (the rows behind the disclosure audited too)
+//   layout     follow-up 2 at every viewport: a calm sheet on phones (the everyday rows in view at rest, ≤ 1.7 sheet heights,
+//              one-line sub-labels), the disclosure open (≥ 40 px, nothing sideways, Done reachable), no sub-label cut by Done
+//   fadeout    (new) follow-up 3 on 320 px: a Fade out change keeps the end time, both ways, before and during the fade
+//              (the light back up when switched off mid-fade; a fade that starts now when switched on with less left); the record,
+//              a reload and the end keep it; a Timer change still restarts from now
+// Review of the follow-ups:
+//   sheet      every aria-describedby / aria-labelledby / aria-controls ID in the sheet resolves (disclosure closed and open);
+//              "Fade out now" then Fade out Off keeps that 12 s fade (same start and end, still fading, said once, "Easing down until …")
+//   layout     the inline rows' controls line up at one x (≥ 120 px) at every viewport; the reveal scroll stops with Done's strip in
+//              a gap; at 568 × 320 the narrow side panel (≥ 300 px, the Timer an even 3 × 2 grid, sliders beside labels, one-line subs)
+//
 // Brief line → blocks (spec §13):
 //   gentle night-time companion: open, moonlight, mallows · Moonlight: moonlight · Breathing Together: breathe,
 //   press · Sleepy Companion: sleepy · Ambient Drift: drift · Quiet Company: sound · brightness, colour, speed,
-//   volume: sheet, sound · session duration and fade-out: fade, sheet · motion reduction: motion, breathe, drift,
+//   volume: sheet, sound · session duration and fade-out: fade, fadeout, sheet · motion reduction: motion, breathe, drift,
 //   sleepy · stop or exit: exit, access, sheet, layout, fade · background restrictions: background, privacy ·
 //   battery: drift, sound, fade · no constant wake lock: wake · no sleep claims: sheet, theme · phone-sized
 //   screens: layout, access, theme, scroll · predictable when backgrounded: background · general: open, sound,
@@ -174,6 +190,39 @@ function slide(page, sel, value, commit = true) {
 }
 /** Click the choice with this text in a sheet row. */
 const pick = (page, row, text) => page.click(`.nightlight .sheet .nl-row-${row} button:text-is("${text}")`);
+/** Open the sheet's "More settings" disclosure (Speed, Movement, Keep screen on) with the keyboard; it stays open while the page lives. */
+async function openMore(page) {
+  if (await nl(page, () => document.querySelector('.nightlight .sheet .nl-more').getAttribute('aria-expanded') === 'true')) return;
+  await page.focus('.nightlight .sheet .nl-more');
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => !document.querySelector('.nightlight .sheet .nl-more-body').hidden, null, { timeout: 5000 });
+  await sleep(700);   // the reveal scroll (smooth)
+}
+
+/** Every aria-describedby / aria-labelledby / aria-controls ID inside the sheet that does not resolve (axe: aria-valid-attr-value). */
+const badIdrefs = (page) => nl(page, () => [...document.querySelectorAll('.nightlight .sheet [aria-describedby], .nightlight .sheet [aria-labelledby], .nightlight .sheet [aria-controls]')]
+  .flatMap((e) => ['aria-describedby', 'aria-labelledby', 'aria-controls'].filter((a) => e.hasAttribute(a))
+    .flatMap((a) => e.getAttribute(a).trim().split(/\s+/).filter((id) => !id || !document.getElementById(id)).map((id) => `${e.getAttribute('aria-label') || e.className} ${a}=${id}`))));
+/** Wait for the sheet's scroll to come to rest (the reveal scroll is smooth); returns scrollTop. */
+async function scrollRest(page) {
+  let last = NaN;
+  for (let i = 0; i < 40; i++) {
+    const v = await nl(page, () => document.querySelector('.nightlight .sheet').scrollTop);
+    if (Math.abs(v - last) < 0.5) return v;
+    last = v;
+    await sleep(150);
+  }
+  return last;
+}
+/** Where the Done strip's opaque top edge is now, and every label, control, sub-label or footnote it runs through (none: it is in a gap). */
+const stripCut = (page) => nl(page, () => {
+  const s = document.querySelector('.nightlight .sheet'), d = s.querySelector('.done'), bf = getComputedStyle(d, '::before');
+  const edge = d.getBoundingClientRect().top + parseFloat(bf.top);
+  const cut = [...s.querySelectorAll('.nl-sheet .lbl, .nl-sheet .nl-seg, .nl-sheet input, .nl-sheet .btn-quiet, .nl-sheet .nl-muted, .nl-sheet .nl-foot, .nl-sheet .nl-more, .nl-sheet .sub')]
+    .filter((e) => e.offsetHeight).map((e) => { const b = e.getBoundingClientRect(); return { c: e.className || e.tagName, t: Math.round(b.top), b: Math.round(b.bottom) }; })
+    .filter((x) => x.t < edge - 1.5 && x.b > edge + 1.5);
+  return { edge: Math.round(edge), top: Math.round(s.scrollTop), opaque: bf.backgroundImage.replace(/\s+/g, ''), line: bf.borderTopWidth, cut };
+});
 
 async function run(browser, { out = OUT_DEFAULT, only = (b) => H.only(SCOPE) || H.only(`${SCOPE}:${b}`) } = {}) {
   // ------------------------------------------------------------------- E1 --
@@ -665,6 +714,94 @@ async function run(browser, { out = OUT_DEFAULT, only = (b) => H.only(SCOPE) || 
     noErrors(scope, errors);
   });
 
+  // ------------------------------------------------------------- E13: Fade out keeps the timer --
+  // Phase 3 follow-up 3, through the sheet on the narrowest phone: a Fade out change keeps the session's end time and
+  // moves only the fade, both ways, before and during the fade (switched off mid-fade the light comes back up and the
+  // end stays; switched on with less than the fade left, the fade starts now and ends at the same time). The record,
+  // a reload and the end itself keep that time. A Timer change still restarts from now.
+  if (only('fadeout')) await guard(`${SCOPE}:fadeout`, async (scope, own) => {
+    const { ctx, page, errors } = await openNl(browser, 'small', 'noomi');
+    own(ctx);
+    const KEY = 'hm.sensorylab.nightlight.session.v1';
+    const clk = () => nl(page, (key) => {
+      const n = __lab.nightlight, c = n.clock, rec = JSON.parse(sessionStorage.getItem(key) || 'null');
+      return { endsAt: c.endsAt, fadeFrom: c.fadeFrom, fadeMs: c.fadeMs, startedAt: c.startedAt, now: c.now(), state: n.state, phase: c.phase(), fade: c.fade, setting: n.settings.fade,
+        row: document.querySelector('.nl-row-timer .sub')?.textContent ?? null, status: document.querySelector('.nl-st-full')?.textContent ?? null, lv: n.debug().levels,
+        rec: rec && { endsAt: rec.endsAt, fadeFrom: rec.fadeFrom, fade: rec.fade }, sr: n.debug().sr.slice(-1)[0] ?? null };
+    }, KEY);
+    const closeSheet = async () => { await page.click('.nightlight .sheet .done'); await page.waitForFunction(() => !__lab.nightlight.sheet, null, { timeout: 5000 }); };
+    // the record is written on the next frame after a change
+    const saved = (fade) => page.waitForFunction(([key, f]) => JSON.parse(sessionStorage.getItem(key) || 'null')?.fade === f, [KEY, fade], { timeout: 10000, polling: 50 });
+
+    // a Timer change restarts from now (20 min, an 8-minute fade… 400 s)
+    await openSheet(page);
+    const t20 = await nl(page, () => __lab.nightlight.clock.now());
+    await pick(page, 'timer', '20');
+    const a0 = await clk();
+    check(scope, 'a Timer change still restarts from now (20 min, a 400 s fade)', Math.abs(a0.endsAt - (t20 + 1200000)) < 3000 && a0.startedAt >= t20 - 1 && a0.fadeMs === 400000, JSON.stringify({ a0, t20 }));
+    await H.shot(page, out, 'nightlight-small-fadeout-sheet');
+
+    // before the fade: Off, then On: the same end time in the clock, the Timer row, the status row and the record
+    await pick(page, 'fade', 'Off');
+    await saved(false);
+    const a1 = await clk();
+    check(scope, 'before the fade, Fade out Off: the end time is kept (clock, "Ends at", "Until", record); only the fade moves (a 10 s settle)',
+      a1.endsAt === a0.endsAt && a1.startedAt === a0.startedAt && a1.fadeMs === 10000 && a1.fadeFrom === a0.endsAt - 10000 && a1.row === a0.row && a1.status === a0.status
+      && a1.rec?.endsAt === a0.endsAt && a1.rec?.fade === false && a1.setting === false && a1.phase !== 'fading', JSON.stringify({ a0, a1 }));
+    await pick(page, 'fade', 'On');
+    await saved(true);
+    const a2 = await clk();
+    check(scope, 'before the fade, Fade out On again: the same end time, the 400 s fade back',
+      a2.endsAt === a0.endsAt && a2.fadeMs === 400000 && a2.fadeFrom === a0.endsAt - 400000 && a2.row === a0.row && a2.rec?.endsAt === a0.endsAt && a2.rec?.fade === true, JSON.stringify(a2));
+    await closeSheet();
+
+    // during the fade (half way): Off brings the light back up (over ~2 s, never at once) and keeps the end time
+    await nl(page, () => { const c = __lab.nightlight.clock; __lab.nightlight.skew(c.fadeFrom - c.now() + c.fadeMs / 2); });
+    await page.waitForFunction(() => { const n = __lab.nightlight, lv = n.clock.levels(n.clock.now(), {}); return n.state === 'fading' && Math.abs(n.levels.world - lv.world) < 0.03; }, null, { timeout: T, polling: 100 });
+    const b0 = await clk();
+    await openSheet(page);
+    await pick(page, 'fade', 'Off');
+    const tOff = Date.now();
+    const b1 = await clk();
+    const up = await until(page, () => __lab.nightlight.debug().levels.world, (w) => w > 0.995, 20000, 100);   // the 2 s rise has finished
+    const b2 = await until(page, () => ({ state: __lab.nightlight.state, chip: __lab.nightlight.debug().chip }), (v) => v.state !== 'fading', 5000, 100);
+    check(scope, 'during the fade, Fade out Off: the same end time; the fade moves to the last 10 s, so it is steady again',
+      b0.phase === 'fading' && b1.endsAt === b0.endsAt && b1.fadeFrom === b0.endsAt - 10000 && b1.phase === 'steady' && b2.state === 'steady' && b2.chip !== 'longer' && b1.rec?.endsAt === b0.endsAt, JSON.stringify({ b0, b1, b2 }));
+    check(scope, 'during the fade, Fade out Off: the light eases back up (still low just after, then all the way up: the 2 s rise on the rig clock)',
+      b0.lv.world < 0.6 && b1.lv.world < 0.9 && up > 0.97, JSON.stringify({ from: b0.lv.world, right: b1.lv.world, up, ms: Date.now() - tOff }));
+    // …and On again with about 3 min left (less than the 400 s fade): the fade starts now and still ends at the same time
+    // (no travel back in time here: a backwards clock jump would shift the whole session, by design)
+    const c0 = await clk();
+    await pick(page, 'fade', 'On');
+    const c1 = await clk();
+    await sleep(1500);
+    const c2 = await clk();
+    check(scope, 'switched on with less than the fade left: the fade starts now and ends at the same time (fading, announced "Fading out.")',
+      c0.endsAt - c0.now < 400000 && c1.endsAt === b0.endsAt && c1.phase === 'fading' && c1.state === 'fading' && Math.abs(c1.fadeFrom - c0.now) < 3000 && c1.fadeMs === c1.endsAt - c1.fadeFrom && c1.fadeMs < c0.endsAt - c0.now + 3000 && c1.sr === 'Fading out.' && c1.rec?.endsAt === b0.endsAt,
+      JSON.stringify({ c0, c1 }));
+    check(scope, 'switched on: no jump down (the light starts from where it is and falls from there)', c0.lv.world > 0.95 && c1.lv.world > 0.9 && c2.lv.world <= c1.lv.world + 1e-6, JSON.stringify({ c0: c0.lv, c1: c1.lv, c2: c2.lv }));
+    await closeSheet();
+
+    // a reload keeps the same end and the shorter fade (the debug skew resets on reload: travel back to the same moment);
+    // the session ends then, not before
+    const skew0 = await nl(page, () => __lab.nightlight.debug().skew);
+    await page.reload();
+    await ready(page);
+    await nl(page, (ms) => __lab.nightlight.skew(ms), skew0);
+    await page.waitForFunction(() => __lab.nightlight.state === 'fading', null, { timeout: T, polling: 100 });
+    const r0 = await clk();
+    check(scope, 'a reload resumes the same end time and the same (shorter) fade', r0.endsAt === b0.endsAt && r0.fadeFrom === c1.fadeFrom && r0.fade === true && r0.state === 'fading', JSON.stringify({ r0, c1 }));
+    // (15 s of margin: under load an evaluate can take seconds of wall time, and the clock keeps running)
+    await nl(page, () => { const c = __lab.nightlight.clock; __lab.nightlight.skew(c.endsAt - c.now() - 15000); });
+    await sleep(800);
+    const e0 = await nl(page, (end) => ({ view: __lab.nightlight.view, state: __lab.nightlight.state, left: __lab.nightlight.clock ? end - __lab.nightlight.clock.now() : null }), b0.endsAt);
+    await nl(page, () => { const c = __lab.nightlight.clock; if (c) __lab.nightlight.skew(c.endsAt - c.now() + 1000); });
+    await page.waitForFunction(() => __lab.nightlight?.view === 'end', null, { timeout: T });
+    const e1 = await nl(page, (end) => ({ view: __lab.nightlight.view, endsAt: __lab.nightlight.debug().endsAt ?? null, end }), b0.endsAt);
+    check(scope, 'the session ends at that end time: still fading just before it, the end view after it', e0.view === 'session' && e0.state === 'fading' && e0.left > 0 && e1.view === 'end', JSON.stringify({ e0, e1 }));
+    noErrors(scope, errors);
+  });
+
   // ------------------------------------------------- E16, E17, E18, E19, E20 --
   if (only('background')) await guard(`${SCOPE}:background`, async (scope, own) => {
     const { ctx, page, errors } = await openNl(browser, 'phone', 'noomi', { prefs: { nightlight: { minutes: 30 } } });
@@ -889,6 +1026,31 @@ async function run(browser, { out = OUT_DEFAULT, only = (b) => H.only(SCOPE) || 
       a.foot.length === 1 && /isn't a treatment/.test(a.foot[0]) && a.fadeNow && a.exit === 'Close Nightlight', JSON.stringify(a.foot));
     check(scope, 'opaque, no blur, over a clear scrim (the scene behind is the live preview)', a.scrim === 'rgba(0, 0, 0, 0)' && /^rgb\(/.test(a.bg) && a.blur === 'none', JSON.stringify({ scrim: a.scrim, bg: a.bg, blur: a.blur }));
 
+    // Phase 3 follow-up 2: the rarer rows behind one disclosure button, Fade out folded into the Timer row, no setting lost
+    const d0 = await nl(page, () => {
+      const sh = document.querySelector('.nightlight .sheet'), b = sh.querySelector('.nl-more'), body = document.getElementById(b.getAttribute('aria-controls'));
+      const txt = (ids) => (ids || '').split(' ').map((x) => document.getElementById(x)?.textContent ?? '').join(' ').trim();
+      return { tag: b.tagName, type: b.type, exp: b.getAttribute('aria-expanded'), name: txt(b.getAttribute('aria-labelledby')), desc: txt(b.getAttribute('aria-describedby')), body: !!body && body.classList.contains('nl-more-body'), hidden: body?.hidden,
+        inside: ['speed', 'motion', 'wake'].filter((k) => body?.querySelector(`.nl-row-${k}`)), shownRare: [...sh.querySelectorAll('.nl-row-speed button, .nl-row-motion button, .nl-row-wake button')].filter((e) => e.offsetParent !== null).length,
+        fadeInTimer: !!sh.querySelector('.nl-row-timer .nl-row-fade [role="radiogroup"][aria-label="Fade out"]'),
+        settings: ['brightness', 'light', 'volume', 'timer', 'fade', 'speed', 'motion', 'wake'].filter((k) => sh.querySelector(`.nl-row-${k} input, .nl-row-${k} [role="radiogroup"]`)) };
+    });
+    check(scope, 'follow-up 2: Speed, Movement and Keep screen on behind one disclosure button (closed, aria-expanded, aria-controls); Fade out folded into the Timer row; all eight settings kept',
+      d0.tag === 'BUTTON' && d0.type === 'button' && d0.exp === 'false' && d0.name === 'More settings' && d0.desc === 'Speed, movement and screen' && d0.body && d0.hidden === true && d0.inside.length === 3 && d0.shownRare === 0
+      && d0.fadeInTimer && d0.settings.length === 8, JSON.stringify(d0));
+    const ids0 = await badIdrefs(page);
+    await openMore(page);
+    const ids1 = await badIdrefs(page);
+    check(scope, 'every aria-describedby, aria-labelledby and aria-controls ID in the sheet resolves (disclosure closed and open; Light has no sub-label, so no description)',
+      !ids0.length && !ids1.length && !(await nl(page, () => document.querySelector('.nightlight .sheet .nl-row-light input').hasAttribute('aria-describedby'))), JSON.stringify({ ids0, ids1 }));
+    const d1 = await nl(page, () => { const b = document.querySelector('.nightlight .sheet .nl-more'), s = b.closest('.sheet'), body = s.querySelector('.nl-more-body'), done = s.querySelector('.done').getBoundingClientRect();
+      const sp = s.querySelector('.nl-row-speed').getBoundingClientRect();
+      return { exp: b.getAttribute('aria-expanded'), hidden: body.hidden, focus: document.activeElement === b, shown: [...body.querySelectorAll('button')].filter((e) => e.offsetParent !== null).length, speedInView: sp.top >= s.getBoundingClientRect().top - 0.5 && sp.bottom <= done.top - 10 }; });
+    await page.keyboard.press('Tab');
+    const d2 = await nl(page, () => ({ row: document.activeElement?.closest('.nl-row')?.classList.contains('nl-row-speed') ?? false, checked: document.activeElement?.getAttribute('aria-checked') }));
+    check(scope, 'Enter opens it in place (aria-expanded true, focus kept); its rows show and Speed is scrolled into view above Done; Tab goes on into Speed',
+      d1.exp === 'true' && !d1.hidden && d1.focus && d1.shown >= 7 && d1.speedInView && d2.row && d2.checked === 'true', JSON.stringify({ d1, d2 }));
+
     // live preview: a slide moves the scene at once, the setting is stored on release
     await slide(page, '.nightlight .sheet .nl-row-brightness input', 70, false);
     const mid = await nl(page, () => ({ s: __lab.nightlight.settings.brightness, stored: __lab.prefs.get('nightlight')?.brightness ?? null, out: document.querySelector('.nl-row-brightness .nl-val').textContent }));
@@ -973,9 +1135,10 @@ async function run(browser, { out = OUT_DEFAULT, only = (b) => H.only(SCOPE) || 
     check(scope, 'Timer None: no end, "Runs until you close it", "No timer"; Fade out disabled ("Needs a timer")',
       tn.endsAt === null && tn.sub === 'Runs until you close it' && tn.st === 'No timer' && tn.fadeOff && tn.fadeSub === 'Needs a timer', JSON.stringify(tn));
     await pick(page, 'timer', '30');
+    const e30 = await nl(page, () => __lab.nightlight.clock.endsAt);
     await pick(page, 'fade', 'Off');
-    const fo = await nl(page, () => ({ ms: __lab.nightlight.clock.fadeMs, sub: document.querySelector('.nl-row-fade .sub').textContent, fade: __lab.nightlight.settings.fade }));
-    check(scope, 'Fade out Off: a 10 s settle at the end, and the row says so', fo.ms === 10000 && fo.fade === false && /last few seconds/.test(fo.sub), JSON.stringify(fo));
+    const fo = await nl(page, () => ({ ms: __lab.nightlight.clock.fadeMs, endsAt: __lab.nightlight.clock.endsAt, sub: document.querySelector('.nl-row-fade .sub').textContent, fade: __lab.nightlight.settings.fade }));
+    check(scope, 'Fade out Off: a 10 s settle at the end (the end time kept), and the row says so', fo.ms === 10000 && fo.endsAt === e30 && fo.fade === false && /last few seconds/.test(fo.sub), JSON.stringify({ fo, e30 }));
     await pick(page, 'fade', 'On');
 
     // Movement Still: effective at once (calm transitions, a static sky)
@@ -1019,6 +1182,8 @@ async function run(browser, { out = OUT_DEFAULT, only = (b) => H.only(SCOPE) || 
       esc.view === 'session' && esc.state !== 'leaving' && esc.route === 'nightlight' && esc.focus === 'Nightlight settings' && esc.sheets === 0, JSON.stringify(esc));
     // Escape with focus outside the sheet (a click on its plain text) still only closes the sheet
     await openSheet(page);
+    const kept = await nl(page, () => ({ exp: document.querySelector('.nightlight .sheet .nl-more').getAttribute('aria-expanded'), hidden: document.querySelector('.nightlight .sheet .nl-more-body').hidden }));
+    check(scope, 'the disclosure stays as the person left it (open) when the sheet opens again', kept.exp === 'true' && kept.hidden === false, JSON.stringify(kept));
     await page.click('.nightlight .sheet .nl-foot');
     await page.keyboard.press('Escape');
     await sleep(500);
@@ -1032,6 +1197,18 @@ async function run(browser, { out = OUT_DEFAULT, only = (b) => H.only(SCOPE) || 
     check(scope, 'Fade out now: the sheet closes, the fade starts (ends within 12 s), "Fading out."', fading.state === 'fading' && !fading.sheet && fading.endsIn <= 12000 && fading.sr === 'Fading out.', JSON.stringify(fading));
     await openSheet(page);
     const hid = await nl(page, () => document.querySelector('.nightlight .sheet .nl-fade-now').hidden);
+    // …and Fade out Off straight after: that 12 s fade is never moved (the same start and end, still fading, said once);
+    // the row says when it ends rather than "the last few seconds"
+    const fnow = () => nl(page, () => { const n = __lab.nightlight, c = n.clock; return { endsAt: c.endsAt, fadeFrom: c.fadeFrom, state: n.state, phase: c.phase(), setting: n.settings.fade,
+      said: n.debug().sr.filter((x) => x === 'Fading out.').length, hidden: document.querySelector('.nightlight .sheet .nl-fade-now').hidden, sub: document.querySelector('.nl-row-fade .sub').textContent }; });
+    const fn0 = await fnow();
+    await pick(page, 'fade', 'Off');
+    await sleep(500);
+    const fn1 = await fnow();
+    const fnEnd = await nl(page, (t) => new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' }).format(t), fn0.endsAt);
+    check(scope, '"Fade out now", then Fade out Off: its 12 s fade is not moved (same start and end), still fading, Fade out now still hidden, "Fading out." said once; the row says "Easing down until …"',
+      fn1.endsAt === fn0.endsAt && fn1.fadeFrom === fn0.fadeFrom && fn1.state === 'fading' && fn1.phase === 'fading' && fn1.hidden && fn1.setting === false && fn0.said >= 1 && fn1.said === fn0.said
+      && fn0.sub === `Easing down until ${fnEnd}` && fn1.sub === fn0.sub, JSON.stringify({ fn0, fn1 }));
     await page.click('.nightlight .sheet .nl-exit');
     await page.waitForFunction(() => __lab.route === 'home', null, { timeout: T });
     const gone = await nl(page, () => ({ nl: __lab.nightlight, rec: sessionStorage.getItem('hm.sensorylab.nightlight.session.v1'), trim: __lab.sound.trim, sheets: document.querySelectorAll('.sheet').length, wake: window.__wake }));
@@ -1044,6 +1221,7 @@ async function run(browser, { out = OUT_DEFAULT, only = (b) => H.only(SCOPE) || 
     const { ctx, page, errors } = await openNl(browser, 'phone', 'pipzi', { prefs: { motion: 'reduced' } });
     own(ctx);
     await openSheet(page);
+    await openMore(page);
     const a = await nl(page, () => {
       const r = document.querySelector('.nl-row-motion'), b = [...r.querySelectorAll('button')];
       return { motion: __lab.nightlight.motion, setting: __lab.nightlight.settings.motion, reduced: __lab.companion.rig.opts.reducedMotion, gentle: b[0].disabled,
@@ -1171,6 +1349,7 @@ async function run(browser, { out = OUT_DEFAULT, only = (b) => H.only(SCOPE) || 
     await nl(page, () => __lab.nightlight.setMode('quiet'));   // a status chip too
     await sleep(800);
     await openSheet(page);
+    await openMore(page);   // the rows behind the disclosure are audited too
     const audit = () => nl(page, () => {
       const parse = (c) => { const m = c.match(/rgba?\(([^)]+)\)/); if (!m) return null; const p = m[1].split(/[ ,/]+/).filter(Boolean).map(Number); return [p[0], p[1], p[2], p.length > 3 ? p[3] : 1]; };
       const lin = (v) => { v /= 255; return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; };
@@ -1577,6 +1756,14 @@ async function run(browser, { out = OUT_DEFAULT, only = (b) => H.only(SCOPE) || 
             inView: sr.left >= -0.5 && sr.right <= innerWidth + 0.5 && sr.bottom <= innerHeight + 0.5, mallowClear: body.r <= sr.left + 1 || body.l >= sr.right - 1, body };
         });
         check(sc, 'the sheet fits the screen with no sideways overflow; every control ≥ 40 px', sh.inView && !sh.hscroll && !sh.wide.length && !sh.small.length, JSON.stringify(sh));
+        // the inline rows share one label column: every control (the three sliders and Fade out's On / Off) starts at one x
+        const cols = await nl(r.page, () => [...document.querySelectorAll('.nightlight .sheet .nl-inline')].map((row) => {
+          const l = row.children[0].getBoundingClientRect(), c = row.children[1].getBoundingClientRect();
+          return { k: row.className.match(/nl-row-(\w+)/)[1], beside: c.left >= l.right - 0.5 && c.top < l.bottom, left: Math.round(c.left), w: Math.round(c.width) };
+        }));
+        const lefts = cols.map((c) => c.left);
+        check(sc, 'the inline rows (Brightness, Light, Volume, Fade out) line up: each control beside its label, all starting at one x, ≥ 120 px',
+          cols.length === 4 && cols.every((c) => c.beside && c.w >= 119.5) && Math.max(...lefts) - Math.min(...lefts) <= 1, JSON.stringify(cols));
         if (['desktop', 'land', 'land-small'].includes(vp)) check(sc, 'a side panel: the Mallow stays in view beside it (live preview)', sh.side && sh.mallowClear, JSON.stringify(sh));
         else check(sc, 'a bottom sheet that leaves the top of the scene in view', !sh.side && sh.rect[1] >= 120, JSON.stringify(sh.rect));
         // Done is an opaque pill on an opaque strip the sheet's full width: rows scroll under it, never show through
@@ -1591,14 +1778,7 @@ async function run(browser, { out = OUT_DEFAULT, only = (b) => H.only(SCOPE) || 
           /^rgb\(/.test(strip.pill) && strip.pillImg.startsWith('linear-gradient') && strip.strip.startsWith('linear-gradient') && strip.own === 'rgba(0, 0, 0, 0)' && strip.span.every((v) => Math.abs(v) <= 1.5), JSON.stringify(strip));
         check(sc, "E23: Done's pill fills the whole button (its height, from the top): never a half pill with the label below", Math.abs(strip.pillH - strip.h) <= 1 && Math.abs(strip.pillTop) <= 0.5, JSON.stringify(strip));
         // visual QA: at rest the strip's opaque top edge falls in a gap, never through a label or a control (no half row)
-        const rest = await nl(r.page, () => {
-          const s = document.querySelector('.nightlight .sheet'), d = s.querySelector('.done'), bf = getComputedStyle(d, '::before');
-          const edge = d.getBoundingClientRect().top + parseFloat(bf.top);
-          const cut = [...s.querySelectorAll('.nl-sheet .lbl, .nl-sheet .nl-seg, .nl-sheet input, .nl-sheet .btn-quiet, .nl-sheet .nl-muted, .nl-sheet .nl-foot')]
-            .filter((e) => e.offsetHeight).map((e) => { const b = e.getBoundingClientRect(); return { c: e.className || e.tagName, t: Math.round(b.top), b: Math.round(b.bottom) }; })
-            .filter((x) => x.t < edge - 1.5 && x.b > edge + 1.5);
-          return { edge: Math.round(edge), top: s.scrollTop, opaque: bf.backgroundImage.replace(/\s+/g, ''), line: bf.borderTopWidth, cut };
-        });
+        const rest = await stripCut(r.page);
         check(sc, "visual QA: at rest the Done strip's opaque edge (a hairline, no fade) falls in a gap: no label or control is cut in half", rest.top === 0 && !rest.cut.length && rest.line === '1px' && !/rgba\([^)]*,0\)/.test(rest.opaque), JSON.stringify(rest));
         if (sh.side) {
           // beside the panel the Mallow is centred in the space left of it (the stage moves with its halo); less motion: it stays
@@ -1606,13 +1786,62 @@ async function run(browser, { out = OUT_DEFAULT, only = (b) => H.only(SCOPE) || 
             (v) => Math.abs(v.cx - v.free) <= 6, 5000, 100);
           check(sc, 'visual QA: beside the side panel the Mallow is centred in the space left of it', Math.abs(mid.cx - mid.free) <= 6, JSON.stringify(mid));
         }
+        if (vp === 'land-small') {
+          // the narrow side panel (follow-up 2 in landscape): ≥ 300 px, the Timer an even 3 × 2 grid, every slider and Fade out beside
+          // its label, one-line sub-labels, so the everyday rows read at a glance
+          const np = await nl(r.page, () => {
+            const s = document.querySelector('.nightlight .sheet');
+            const tb = [...s.querySelectorAll('.nl-row-timer > .nl-seg button')].map((b) => { const q = b.getBoundingClientRect(); return [Math.round(q.top), Math.round(q.width)]; });
+            const inline = [...s.querySelectorAll('.nl-inline')].map((row) => { const l = row.children[0].getBoundingClientRect(), c = row.children[1].getBoundingClientRect(); return { k: row.className.match(/nl-row-(\w+)/)[1], beside: c.left >= l.right - 0.5 && c.top < l.bottom }; });
+            const subs = [...s.querySelectorAll('.nl-sheet .sub')].filter((e) => e.offsetParent !== null && e.textContent && !e.closest('.nl-more-body'))
+              .map((e) => ({ t: e.textContent.slice(0, 24), n: Math.round(e.getBoundingClientRect().height / parseFloat(getComputedStyle(e).lineHeight)) }));
+            return { w: Math.round(s.getBoundingClientRect().width), tb, inline, subs };
+          });
+          const tops = [...new Set(np.tb.map((x) => x[0]))], widths = np.tb.map((x) => x[1]);
+          check(sc, 'the narrow side panel: ≥ 300 px; the Timer an even 3 × 2 grid; the sliders and Fade out beside their labels; one-line sub-labels',
+            np.w >= 299 && np.tb.length === 6 && tops.length === 2 && np.tb.filter((x) => x[0] === tops[0]).length === 3 && Math.max(...widths) - Math.min(...widths) <= 1
+            && np.inline.length === 4 && np.inline.every((x) => x.beside) && np.subs.every((x) => x.n === 1), JSON.stringify({ ...np, tops }));
+        }
         if (vp.startsWith('land')) {
           const aside = await until(r.page, () => ['.nightlight .topbar .title', '.nightlight .bottom', '.nightlight .nl-caption'].map((q) => +getComputedStyle(document.querySelector(q)).opacity), (v) => v.every((o) => o < 0.02), 4000, 100);
           check(sc, 'landscape: while the panel is open the title, mode row and caption it would cut step aside', aside.every((o) => o < 0.02), JSON.stringify(aside));
         }
+        // follow-up 2 (Phase 3): a calm sheet, not a dashboard. On phones the everyday rows show at rest (Brightness to the Timer's
+        // choices on 375 px and taller, Brightness to Volume on 320 px), the rows scroll at most ~1.7 sheet heights with the rarer
+        // rows folded away, and every sub-label but the wake line (behind the disclosure) keeps to one line
+        if (!sh.side) {
+          const calm = await nl(r.page, () => {
+            const s = document.querySelector('.nightlight .sheet'), sr = s.getBoundingClientRect(), edge = s.querySelector('.done').getBoundingClientRect().top - 12;
+            const seen = (q) => { const e = s.querySelector(q); if (!e) return false; const b = e.getBoundingClientRect(); return b.top >= sr.top - 0.5 && b.bottom <= edge + 0.5; };
+            const lines = [...s.querySelectorAll('.nl-sheet .sub')].filter((e) => e.offsetParent !== null && e.textContent && !e.closest('.nl-row-wake'))
+              .map((e) => ({ t: e.textContent.slice(0, 24), n: Math.round(e.getBoundingClientRect().height / parseFloat(getComputedStyle(e).lineHeight)) })).filter((x) => x.n > 1);
+            return { pages: +(s.scrollHeight / s.clientHeight).toFixed(2), volume: seen('.nl-row-volume input'), timer: seen('.nl-row-timer .nl-seg'), lines, tall: innerHeight >= 800 };
+          });
+          check(sc, 'follow-up 2: a calm sheet: the everyday rows in view at rest, ≤ 1.7 sheet heights of rows (the rarer ones folded), one-line sub-labels',
+            calm.volume && (!calm.tall || calm.timer) && calm.pages <= 1.7 && !calm.lines.length, JSON.stringify(calm));
+        }
         await H.shot(r.page, out, `nightlight-${vp}-sheet`);
         const done = await nl(r.page, () => { const s = document.querySelector('.nightlight .sheet'); s.scrollTop = s.scrollHeight; const d = s.querySelector('.done').getBoundingClientRect(), e = s.querySelector('.nl-exit').getBoundingClientRect(); return { d: d.bottom <= innerHeight + 0.5 && d.top >= 0, exit: e.bottom <= d.top + 1 && e.top >= s.getBoundingClientRect().top - 0.5 }; });
         check(sc, 'scrolled to its end: Done and the last row are reachable (Done does not cover them)', done.d && done.exit, JSON.stringify(done));
+        // the disclosure open: the rarer rows fit too (≥ 40 px, nothing sideways), Done and the last row still reachable
+        await nl(r.page, () => { document.querySelector('.nightlight .sheet').scrollTop = 0; });
+        await openMore(r.page);
+        // the reveal scroll stops with the strip's edge between rows (or under a stacked row's label): no row half under it
+        const revealTop = await scrollRest(r.page);
+        const rv = await stripCut(r.page);
+        check(sc, 'visual QA: "More settings" opened, the reveal stops with the Done strip\'s edge in a gap (no label or control cut in half)', !rv.cut.length, JSON.stringify({ ...rv, revealTop }));
+        const more = await nl(r.page, () => {
+          const s = document.querySelector('.nightlight .sheet'), sr = s.getBoundingClientRect();
+          const ctl = [...s.querySelectorAll('.nl-more-body button')].filter((e) => e.offsetParent !== null);
+          const small = ctl.map((e) => { const b = e.getBoundingClientRect(); return { t: e.textContent.trim().slice(0, 12), w: Math.round(b.width), h: Math.round(b.height) }; }).filter((b) => b.w < 39.5 || b.h < 39.5);
+          const wide = [...s.querySelectorAll('.nl-more-body *')].filter((e) => { const b = e.getBoundingClientRect(); return b.width > 0 && (b.left < sr.left - 0.5 || b.right > sr.right + 0.5); }).length;
+          const m = s.querySelector('.nl-more').getBoundingClientRect();
+          return { n: ctl.length, small, wide, hscroll: s.scrollWidth > s.clientWidth + 1, moreH: Math.round(m.height), moreW: Math.round(m.width) };
+        });
+        await H.shot(r.page, out, `nightlight-${vp}-sheet-more`);
+        const done2 = await nl(r.page, () => { const s = document.querySelector('.nightlight .sheet'); s.scrollTop = s.scrollHeight; const d = s.querySelector('.done').getBoundingClientRect(), e = s.querySelector('.nl-exit').getBoundingClientRect(); return { d: d.bottom <= innerHeight + 0.5 && d.top >= 0, exit: e.bottom <= d.top + 1 && e.top >= s.getBoundingClientRect().top - 0.5 }; });
+        check(sc, 'the disclosure open: its rows fit (every control ≥ 40 px, nothing sideways; the disclosure itself ≥ 48 px tall); Done and the last row reachable',
+          more.n >= 7 && !more.small.length && !more.wide && !more.hscroll && more.moreH >= 47.5 && done2.d && done2.exit, JSON.stringify({ more, done2 }));
         await r.page.click('.nightlight .sheet .done');
         await r.page.waitForFunction(() => !__lab.nightlight.sheet, null, { timeout: 5000 });
 

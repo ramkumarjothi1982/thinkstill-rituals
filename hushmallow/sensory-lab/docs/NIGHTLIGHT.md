@@ -27,7 +27,8 @@ Five beats per session:
    close (Glitzi's last). When the world reaches 0.25 it gives one soft sigh: a faint wisp of breath in its own
    night grade rises from the mouth, up and away, and is gone within a second. The world is repainted a little
    heavier (mist, a dimmer moon) at 25, 50 and 75 % of the fade. **A little longer** adds ten minutes, and a new
-   Timer (or Fade out) choice restarts from now; either way the light eases back up over 2 s and the Mallow wakes.
+   Timer choice restarts from now; either way the light eases back up over 2 s and the Mallow wakes. A **Fade out**
+   change keeps the end time and moves only the fade (switched off mid-fade, the light eases back up the same way).
 5. **Finished.** The stage is torn down. A near-black end view shows the sleeping Mallow above a card:
    "Nightlight finished at 23:42." (between 05:00 and 11:00, "Good morning.") with one of the Mallow's own
    authored rest lines, and **Again** / **Done**. After 8 s the card rests dim (opacity 0.5), its text still
@@ -91,20 +92,46 @@ mode row, which the panel would cut in half, step aside while it is open. The sh
 focus, closes on Done, the scrim or Escape, and hands focus back to the sliders button. Done stays at its foot as
 an opaque pill on an opaque strip the sheet's full width, so the rows scroll under it and never show through: the
 strip is opaque from its top edge, under a hairline (no fade), and at rest that edge falls in a gap, never through a
-label or a control: between two rows, or between a stacked row's label and its choices, so a whole label can peek
-above it as a hint that more follows (the bottom sheet takes the height that ends at such a gap, a little taller when
-that is a small step, else a little shorter; the full-height side panel's strip reaches up to the gap above and lowers
-back to its own edge as the panel scrolls). The
-chrome stays awake while it is open.
+label, a sub-label or a control: between two rows, between a stacked row's label and its choices, or above the folded
+Fade out, so a whole label can peek above it as a hint that more follows (the bottom sheet takes the height that
+ends at such a gap, a little taller when that is a small step, else a little shorter; the full-height side panel's
+strip reaches up to the gap above and lowers back to its own edge as the panel scrolls). When the rows are shorter
+than the side panel, Done keeps to the panel's foot. The side panel is `min(380px, 42vw)` wide; in a narrow short
+landscape (540–779 px wide, ≤ 420 px tall, such as 568 × 320 or 667 × 375) it is at least 300 px, so the sliders
+stay beside their labels and the sub-labels keep to one line, and the Timer's six choices form an even 3 × 2 grid;
+the Mallow, centred in the space left of it (half the panel's width, `--nl-panel`), still fits whole. The chrome
+stays awake while it is open.
+
+**A calm sheet on a small phone (Phase 4).** The everyday rows come first and the rarer ones sit behind one
+disclosure, so a 320 × 568 phone shows Brightness, Light and Volume at rest (on 375 px and taller, the Timer and
+Fade out too) and the rows scroll about 1.6 sheet heights instead of 2.7; nothing is dropped:
+
+- **Inline rows** (Brightness, Light, Volume, and Fade out): the label and its value on the left in one column the
+  same width in every row (8.8 em, room for "Brightness 100 %" on one line with a few px to spare), so the sliders
+  line up and a changing value never resizes the slider or the row under the finger; a wider system font grows the
+  column rather than running the value into the slider; the control takes the rest (at least 120 px, at most 260 px;
+  without that room it drops under its label); the sub-label runs under both, on one line at 320 px. Brightness and
+  Volume are described by their sub-labels (`aria-describedby`); Light has no sub-label, so no description (every
+  ID the sheet refers to resolves).
+- **Timer** shows its end time beside the label ("Timer  Ends at 23:40"), its six choices on one line (at 340 px
+  and narrower with tighter padding, each still ≥ 40 px), and **Fade out** folded in under them as one group.
+- **More settings** is a whole-row button (≥ 48 px, `aria-expanded`, `aria-controls`, named "More settings" and
+  described "Speed, movement and screen"; a chevron turns, at once with less motion). It opens in place, keeps focus
+  (Tab goes on into Speed) and scrolls the rows it shows into view above Done, never past itself; the scroll stops
+  where Done's strip falls in a gap (between rows, or under a stacked row's label), so no row is left half under it:
+  on a 320 × 568 phone Speed and Movement show whole and Keep screen on peeks by its label. It stays as the
+  person left it while the page lives (never stored). A button rather than `<details>`, so the sheet's focus trap
+  counts it; closing it with focus inside hands focus back to it.
 
 | Row | Choices | Notes |
 |---|---|---|
-| Brightness | 5–100 % in 5s (default 40 %) | "Dims the scene. Your screen's own brightness still applies." The value is shown beside the label and spoken as "40 %". |
+| Brightness | 5–100 % in 5s (default 40 %) | "Your screen's own brightness still applies." The value is shown beside the label and spoken as "40 %". |
 | Light | Moon · Soft · Warm (default) · Candle · Ember | While sliding, only the colour grade follows; the world is repainted on release. |
+| Volume | 0–100 % (default 50 %) | The session trim on the lab's own volume; reset when you leave. "Pauses if you lock the screen or switch apps." When sound is off: "Sound is off" and **Turn on** (together under the label on a narrow phone). |
+| Timer | 10 · 20 · 30 (default) · 45 · 60 · None | Restarts from now (during the fade the light eases back up over 2 s). "Ends at 23:40" or "Runs until you close it", beside the label. |
+| Fade out (in the Timer row) | On · Off | "Eases down over the last {n} minutes" (a third of the session, 2–8 min). Off: "Just dims in the last few seconds" (a 10 s settle). Disabled with None ("Needs a timer"). **A change keeps the end time**: only the fade moves (section 3, Time). When the fade under way is not the choice's usual length (switched on late, or "Fade out now"), the line says when it ends: "Easing down until 23:41". |
+| More settings | the three rows below | A disclosure, closed at first. |
 | Speed | Slowest · Slow · Natural | The rig's speed (0.62 / 0.75 / 0.9) and the breath and script tempo (× 1.25 / 1.1 / 1), live: the breath, the Sleepy script's next intervals and Moonlight's glow wave (its rate only, never a jump). It never changes when drowsiness arrives. |
-| Volume | 0–100 % (default 50 %) | The session trim on the lab's own volume; reset when you leave. "Sound pauses when the screen locks or you switch apps." When sound is off: "Sound is off" and **Turn on**. |
-| Timer | 10 · 20 · 30 (default) · 45 · 60 · None | Restarts from now (during the fade the light eases back up over 2 s). "Ends at 23:40" or "Runs until you close it". |
-| Fade out | On · Off | "Light, sound and movement ease down over the last {n} minutes" (a third of the session, 2–8 min). Off: a 10 s settle. Disabled with None ("Needs a timer"). A change restarts the timer from now, like a Timer change. |
 | Movement | Gentle · Less · Still | When the lab or the device asks for less motion, Gentle is disabled ("Your device asks for less motion") and arrow keys skip it. |
 | Keep screen on | Off (default) · On | Only where the browser has a screen wake lock: "Until the light fades, an hour at most. Uses more battery." A refusal turns it back to Off with "Not available right now". Elsewhere: "Your screen sleeps on its usual timer." |
 | Finish | **Fade out now** · **Close Nightlight** | Fade out now ends gently within 12 s (hidden while already fading). Close Nightlight says goodnight and goes home. |
@@ -201,11 +228,30 @@ same deadline; a reload after the end (within 6 h) shows the end view, never a b
 view any way (Again, Done, Escape, or back, which changes the route) forgets the session. A backwards
 clock jump shifts the whole session, so the time left never grows; a forward jump can only end it early.
 
+**Timer and Fade out.** A Timer change is a new session length from now (`restart`). A Fade out change keeps the
+end time and moves only the fade's start, so its length (`setFade`, Phase 4):
+
+- before the new fade would begin, it starts its usual length before the same end: On, a third of the session
+  (2–8 min); Off, the last 10 s. Switched off during the fade, the fade moves back to the last 10 s, so the session
+  is steady again and the light eases back up over 2 s (as after "A little longer"), still ending on time;
+- switched on with less than the fade's length left, the fade starts now and still ends at the same time (shorter),
+  from the light as it is (no jump down), announced "Fading out.";
+- a fade already under way inside the new window carries on from where it is (switched off in the last 10 s,
+  nothing visible changes);
+- a short fade under way (12 s or less: "Fade out now", which always starts at once, or the last seconds) is never
+  moved, from its very first moment: the same start and end, still fading, "Fading out." said once. It is read from
+  the fade's own length, so it holds after a reload too; after "Fade out now" and then "A little longer" the fade is
+  ten minutes away, not under way, so a Fade out change applies to it again;
+- with No timer, or once ended, only the choice is kept.
+
+The record (and so a reload) keeps the end and the fade as moved. "A little longer" then moves both by ten minutes,
+keeping the fade's length.
+
 ### States
 
 `booting → arriving (15 s) → steady → fading → ended (end view)`, with `leaving` (600 ms, then home) from any
-state (an end that falls inside those 600 ms still goes home), "Fade out now" (12 s) from arriving or steady, and
-"A little longer" or a new Timer back from fading.
+state (an end that falls inside those 600 ms still goes home), "Fade out now" (12 s) from arriving or steady,
+"A little longer", a new Timer or Fade out switched off back from fading, and Fade out switched on late into fading.
 While hidden the screen is veiled at once (opacity 0, no transition): nothing runs and nothing catches up. On
 return the levels are set from the clock under the veil, which lifts over 600 ms; after more than 30 s away the
 Mallow gives its "still here" sign; a session that ended while away opens the end view at once and quietly.
@@ -217,7 +263,8 @@ Mallow gives its "still here" sign; a session that ended while away opens the en
 ### `features/nightlight/session.js` (pure)
 `STORE_KEY`, `TIMER_MINUTES`, `ARRIVE_S` 15, `EXTEND_MIN` 10, `MAX_EXTRA_MIN` 60, `STOP_SOON_S` 12,
 `fadeSeconds(minutes, fade)` (clamp(min·20, 120, 480) s, 10 s off, 0 with no timer), `levelsAt(u, out)`,
-`validRecord(o, now)`. **`SessionClock({ now, minutes, fade, mode })`**: `start()`, `restart({ minutes, fade })`,
+`validRecord(o, now)`. **`SessionClock({ now, minutes, fade, mode })`**: `start()`, `restart({ minutes, fade })`
+(a Timer change: from now), `setFade(fade)` (a Fade out change: the same end, only the fade moves; true when it moved),
 `extend(10)`, `stopSoon(12)`, `setMode(id)`, `sync()`, `phase(t)`, `levels(t, out)`, `remaining(t)`,
 `toJSON(leftAt)`, `static restore(json, now)` → clock | `{ ended, endsAt }` | null; getters `startedAt endsAt
 fadeFrom minutes fade mode extra fadeMs canExtend`, and `rev`. **`DisplayLevels`**: `step(dt, target)`,
@@ -273,11 +320,11 @@ twinkles and fireflies take the nearest step), `setLight(light, star)` (one colo
 `debug()`, `destroy()`.
 
 ### `features/nightlight/sheet.js`
-**`openNightSheet(root, model)`** → `{ el, sync(), close({ quiet }), open }` (it fits the foot between rows on open,
-when a row changes height and on resize; let go on close). The model is getters and callbacks:
-`state()` → `{ settings, labReduced, wakeSupported, wakeFailed, soundOn, endsAt, fading }`,
-`change(k, v, { persist, live })`, `fadeNow()`, `exit()`, `turnSoundOn()`, `onClosed({ byUser })`.
-**`sheetView(state)`** (pure) is what each row shows; `fadeMinutes(minutes)`.
+**`openNightSheet(root, model)`** → `{ el, sync(), setMore(open), more, close({ quiet }), open }` (it fits the foot
+between rows on open, when a row changes height, when the disclosure opens or closes, and on resize; let go on close). The model is getters and callbacks:
+`state()` → `{ settings, labReduced, wakeSupported, wakeFailed, soundOn, endsAt, fadeMs, fading }` (`fadeMs`: the
+clock's fade as now scheduled), `change(k, v, { persist, live })`, `fadeNow()`, `exit()`, `turnSoundOn()`,
+`onClosed({ byUser })`. **`sheetView(state)`** (pure) is what each row shows; `fadeMinutes(minutes)`.
 
 ### `core/frame-pacer.js` (pure) and `core/screen-wake.js`
 `NIGHT_CAPS`, `PACE`, **`fpsFor({ mode, phase, interacting, event, motion, quality, worldLevel, hidden })`**,
@@ -370,6 +417,7 @@ node --test hushmallow/sensory-lab/tests/nightlight.test.mjs             # unit,
 python3 -m http.server 8000                                              # (from the repository root)
 node hushmallow/sensory-lab/tests/e2e-phase3-nightlight.cjs [outDir]     # browser, all blocks
 PART=nightlight:sheet,nightlight:layout node hushmallow/sensory-lab/tests/e2e-phase3-nightlight.cjs
+PART=nightlight:fadeout node hushmallow/sensory-lab/tests/e2e-phase3-nightlight.cjs <scratch outDir>   # Phase 4 follow-up 3
 ```
 
 **Unit** (`tests/nightlight.test.mjs`): U1–U5 the session clock, fade, clock jumps, actions and resume records;
@@ -384,7 +432,16 @@ tokens, no blur, no `!important`, 40 px controls, the viewport and reduced-motio
 Speed change reaches Sleepy's script and moves Moonlight's wave without a jump, Moonlight is the glow mode, the
 Light's two steps, Zuzu's lids, the one footnote); U26 the sigh at night (the rig's own puff on the production
 particle field lingers on the mouth; as a wisp it is faint, in the Mallow's grade, rises ≥ 0.45 body heights, is gone
-within 0.9 s, and the field's own draw never paints it as a disc).
+within 0.9 s, and the field's own draw never paints it as a disc). Phase 4 added U27 (Fade out keeps the timer:
+`setFade` both ways, before and during the fade, every timer, in the last seconds, after "A little longer" and a clock
+jump, with No timer, after "Fade out now", unstarted and ended; the record stays valid and resumes; a Timer change
+still restarts; switched on at any moment of a fade-off session the levels never jump down; "Fade out now" from
+steady, arriving and mid-fade, then Fade out changed at u = 0 and a little in, both ways and after a reload, keeps
+its start and end; after "A little longer" it takes the choice again), and in U23 / U24 the folded Fade out copy
+and the disclosure's strings (one line at 320 px), Fade out's line from the clock's own fade ("Easing down until …"
+when switched on late or after "Fade out now", the usual line for the usual length), the inline rows' growing label
+column and control column, the narrow side panel (≥ 300 px, the Timer a 3 × 2 grid, the Mallow moved by half the
+panel), and the disclosure's 48 px row, focus ring and still chevron with less motion.
 
 **Browser** (`tests/e2e-phase3-nightlight.cjs`, on the shared harness; reports and screenshots in
 `docs/phase3/nightlight/`): `open` (E1), `moonlight` (E3), `sleepy` (E5), `mallows` (E28), `modes`, `exit`
@@ -404,6 +461,23 @@ the side panel. Every night
 world is also shot at the default and the minimum brightness (`nightlight-phone-<mallow>[-min].jpg`), and each mode
 once (`nightlight-phone-mode-<mode>.jpg`). Each block's header in the file maps it to its brief line. Software GL
 runs slowly, so every wait is on state.
+
+Phase 4 (the Phase 3 follow-ups): `fadeout` (new, on 320 × 568 through the sheet: a Timer change still restarts; Fade
+out Off then On before the fade keep the end time in the clock, "Ends at", "Until" and the record; Off half way
+through the fade keeps it, the session is steady again and the light eases back up; On again with about 3 min left (less than the
+400 s fade) starts the fade now, ends at the same time, announced, with no jump down; a reload resumes the same end and fade;
+still fading just before the end, the end view after it); `sheet` (the disclosure: closed, `aria-expanded` / `aria-controls`,
+named and described, Enter opens it in place with focus kept and Speed scrolled into view, Tab goes on into Speed,
+remembered when the sheet opens again; Fade out folded into the Timer row; all eight settings present; Fade out Off
+keeps the end time); `motion` and `theme` through the disclosure (its rows audited for contrast too); `layout` at all
+seven viewports: on phones a calm sheet (the everyday rows in view at rest, ≤ 1.7 sheet heights of rows, one-line
+sub-labels), no sub-label or the disclosure cut by Done at rest, the disclosure open (every control ≥ 40 px, the
+disclosure ≥ 48 px, nothing sideways, Done and the last row reachable; `nightlight-<vp>-sheet-more.jpg`).
+The review of the follow-ups added: in `sheet`, every `aria-describedby`, `aria-labelledby` and `aria-controls` ID in
+the sheet resolves (disclosure closed and open), and "Fade out now" then Fade out Off keeps that 12 s fade (same start
+and end, still fading, said once, the row "Easing down until …"); in `layout`, the reveal scroll stops with Done's
+strip in a gap at every viewport, and at 568 × 320 the narrow side panel (≥ 300 px, the Timer an even 3 × 2 grid, the
+sliders and Fade out beside their labels, one-line sub-labels).
 
 ---
 
@@ -429,3 +503,10 @@ and nothing here counts as tested on a phone until it has been tried there:
 7. **The night bed's level**: it is quiet by design (peak 0.035 × the 50 % trim); listen at night volume on a phone
    speaker before tuning it (Loomi's pad root is low and carries mostly through its overtone).
 8. **Leaving at night** in the light theme returns to a bright home screen; this is outside the Nightlight.
+9. **The settings sheet on a real small phone** (Phase 4, pending): the disclosure and the folded Fade out with
+   VoiceOver and TalkBack (the expanded state is announced; the rows it reveals are read in order), the sliders'
+   one label column with a larger system text size, and the Fade out change during a real locked-phone session.
+
+Known behaviour, by design: a Fade out switched on late gives a shorter fade that still ends on time; "A little
+longer" afterwards moves the end and that fade by ten minutes and keeps its (shorter) length, as it keeps the 12 s
+fade of "Fade out now". No production file was needed for the Phase 4 follow-ups (none was changed).

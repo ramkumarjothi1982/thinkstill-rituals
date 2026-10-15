@@ -10,6 +10,8 @@
 //   const t = clock.sync();               // once per frame: reads now() and absorbs clock jumps
 //   clock.phase(t);                        // 'arriving' | 'steady' | 'fading' | 'ended'
 //   clock.levels(t, out);                  // { world, mallow, sound, u } (no allocation)
+//   clock.restart({ minutes: 20 });        // a Timer change: a new session length from now
+//   clock.setFade(false);                  // a Fade out change: the same end time, only the fade moves
 //   sessionStorage[STORE_KEY] = JSON.stringify(clock.toJSON());
 //   SessionClock.restore(sessionStorage[STORE_KEY], () => Date.now());
 //
@@ -101,7 +103,7 @@ export class SessionClock {
     return this;
   }
 
-  /** A new timer (or fade choice) from now; the mode is kept. Does not arrive again. */
+  /** A new timer from now (a Timer change); the mode is kept. Does not arrive again. */
   restart({ minutes = this._minutes, fade = this._fade } = {}) {
     const t = this.sync();
     if (TIMER_MINUTES.includes(minutes)) this._minutes = minutes;
@@ -109,6 +111,31 @@ export class SessionClock {
     if (!this.started) this._arriveEnd = t + ARRIVE_S * 1000;
     this._schedule(t);
     return this;
+  }
+
+  /**
+   * A new Fade out choice keeps the end time: only the fade's start (so its length) moves.
+   *   the new fade has not begun yet: it starts fadeSeconds(minutes, fade) before the same end; a fade
+   *     under way that this moves later (switched off) lets the light come back up (the caller eases it)
+   *   inside the new fade already: switched on, the fade starts now and still ends at the same time (shorter);
+   *     a fade under way carries on from where it is (in the last seconds, switched off, nothing changes)
+   * A short fade under way (≤ 12 s: "Fade out now", which always starts at once, or the last seconds) is never
+   * moved, at its very first moment too. No timer, not started or ended: only the choice is kept.
+   * True when the fade moved.
+   */
+  setFade(fade) {
+    const f = !!fade;
+    if (f === this._fade) return false;
+    this._fade = f;
+    this.rev++;                                   // the record keeps the choice
+    const t = this.sync(), E = this._endsAt;
+    if (!this.started || E == null || this._minutes === 0 || t >= E) return false;
+    if (t >= this._fadeFrom && this.fadeMs <= STOP_SOON_S * 1000 + 1) return false;   // (+1 ms: float sums of wall-clock ms)
+    const from = E - fadeSeconds(this._minutes, f) * 1000;
+    const next = t < from ? from : this._u(t) > 0 ? this._fadeFrom : t;
+    if (next === this._fadeFrom) return false;
+    this._fadeFrom = next;
+    return true;
   }
 
   /** "A little longer": endsAt and fadeFrom move by `min` minutes. False when ended, with No timer, or past the cap. */

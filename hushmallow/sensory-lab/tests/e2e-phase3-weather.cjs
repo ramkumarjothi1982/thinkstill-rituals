@@ -5,6 +5,7 @@
 //   PART=weather:open,weather:storm      (blocks: open, storm, rain, sun, moon, stars, wind, fog, warm, water, front, morph,
 //                                         resolve, motion, dial, keys, exit, sound, photo, dna, mallows, access, tier, states,
 //                                         reach, touch, chips, smooth, leak, layout; default all)
+//   LAYOUT_VPS=land,land-small           (layout only: a subset of its seven viewports while iterating)
 //
 // Also runs inside tests/e2e-phase3.cjs through run(browser, { out, only }).
 // Simulated input proves state, never smoothness: software GL can run at ~6 fps,
@@ -42,7 +43,10 @@
 //           on a window blur; a grab cursor over touchable weather
 //   exit    W14 (part): Close and Escape fade home; nothing left behind; listeners back to baseline
 //   layout  W13 (part): no overlap, on screen, targets ≥ 40 px, the Mallow between the bars, the
-//           chosen radio visible at 320 px, the same baseline for every weather
+//           chosen radio visible at 320 px, the same baseline for every weather; (Phase 4) on the short,
+//           wide stages (844×390, 568×320) the corner layout: the Mallow ≥ LAND_FRAC of the stage under the top
+//           bar, fully visible, clear of the chips, the dial and the hint spot for all eight weathers, through a
+//           front and the resolve caption; portrait keeps stage-screen's framing exactly
 //
 // Blocks (slice 4):
 //   sound   W11/W12: nothing before a gesture; one bed after a tap; drips and a rising note for a bead;
@@ -71,7 +75,7 @@
 //           the outgoing weather 300 ms in; a dragged front's shorter reveal
 //   leak    W14: TouchTalk after Weather starts clean (face, rest, inflate, realm, timers, rAF, voices);
 //           blocked storage still opens
-//   (W7, W9 and W15 checks were added to storm, motion and resolve; layout now covers all six viewports
+//   (W7, W9 and W15 checks were added to storm, motion and resolve; layout now covers all seven viewports
 //   and all eight weathers, plus the caption)
 //
 // Brief line → blocks (spec §13; every check's name says what it proves):
@@ -163,6 +167,46 @@ async function resolvedView(page) {
   await page.waitForFunction(() => __lab.weather.resolved && document.querySelector('.wx-actions [data-action="again"]'), null, { timeout: T });
   return page.evaluate(() => ({ cap: document.querySelector('.weather .wx-hint .wx-cap')?.textContent, line: document.querySelector('.weather .wx-hint .line')?.textContent,
     chips: [...document.querySelectorAll('.wx-actions button')].map((b) => b.textContent), p: __lab.weather.progress }));
+}
+
+// ---------------------------------------------------- landscape framing --
+// A short, wide stage (844×390, 568×320: styles/weather.css puts the chips and the dial in the lower corners and
+// landFit sizes the Mallow between them). The band the Mallow is measured against is the stage under the top bar
+// (H − the top bar's bottom): in landscape the controls no longer make a bar across the bottom (they sit beside the
+// Mallow), and it is the same quantity before and after the change, so the two compare fairly. Before: 0.31 of it
+// at 844×390 (a 102 px body over a 334 px band), 0.32 at 568×320 (84 / 264) and 0.30–0.31 on the other short,
+// wide phones; the corner layout gives every Mallow ≥ LAND_FRAC.
+const LAND_VPS = ['land', 'land-small'];
+const LAND_FRAC = 0.45;
+const LAND_CAPTION = 44;   // the hint spot's two lines (LAND.caption in core/weather.js): the Mallow's head stays under them
+/** In the page: the Mallow's body (rig.bodyRect, its float included), the controls, the hint spot and the top bar, in page px. */
+function landProbe() {
+  const q = (s) => document.querySelector(s), box = (r) => ({ l: r.left, t: r.top, r: r.right, b: r.bottom });
+  const vis = (e) => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0; };
+  const rig = __lab.companion.rig, o = rig.container.getBoundingClientRect(), b = rig.bodyRect();
+  const body = { l: o.left + b.cx - b.w / 2, t: o.top + b.top, r: o.left + b.cx + b.w / 2, b: o.top + b.bottom };
+  const bar = [...document.querySelectorAll('.weather .topbar button')].filter(vis);
+  const ctrls = [...document.querySelectorAll('.weather .bottom button'), ...bar].filter(vis)
+    .map((e) => ({ t: (e.textContent.trim() || e.getAttribute('aria-label') || '').slice(0, 24), ...box(e.getBoundingClientRect()) }));
+  const hint = q('.weather .wx-hint');
+  return { body, h: b.h, ctrls, dial: box(q('.wx-dial').getBoundingClientRect()), actions: box(q('.wx-actions').getBoundingClientRect()),
+    hint: box(hint.getBoundingClientRect()), hintOn: hint.classList.contains('on'),
+    topBottom: Math.max(...bar.map((e) => e.getBoundingClientRect().bottom), q('.weather .topbar .title').getBoundingClientRect().bottom),
+    vw: innerWidth, vh: innerHeight, fit: +rig.opts.fit.toFixed(4), land: __lab.weather.land, front: !!__lab.weather.front, grounded: !!rig.body.grounded,
+    weather: __lab.weather.weather };
+}
+const hits = (a, b) => a.l < b.r - 1 && b.l < a.r - 1 && a.t < b.b - 1 && b.t < a.b - 1;
+/** What is wrong with a landProbe frame: off screen, under the top bar, over a control or the clusters, under the hint. */
+function landIssues(p, { spot = true } = {}) {
+  const out = [], B = p.body, r = (v) => Math.round(v);
+  if (B.l < 0 || B.r > p.vw || B.b > p.vh) out.push(`off screen ${[B.l, B.t, B.r, B.b].map(r)}`);
+  if (B.t < p.topBottom) out.push(`under the top bar ${r(B.t)} < ${r(p.topBottom)}`);
+  for (const c of p.ctrls) if (hits(B, c)) out.push(`over ${c.t}`);
+  if (hits(B, p.dial)) out.push('over the dial');
+  if (hits(B, p.actions)) out.push('over the action column');
+  if (p.hintOn && hits(B, p.hint)) out.push(`under the hint ${r(B.t)} < ${r(p.hint.b)}`);
+  if (spot && B.t < p.hint.t + LAND_CAPTION) out.push(`head ${r(B.t)} in the hint spot's two lines (to ${r(p.hint.t + LAND_CAPTION)})`);
+  return out;
 }
 
 // ------------------------------------------------------ thunderhead edges --
@@ -2106,25 +2150,42 @@ async function run(browser, { out = OUT_DEFAULT, only = (b) => H.only(SCOPE) || 
   });
 
   // ----------------------------------------------------------- W13 layout --
-  // At all six viewports: no overlap, everything on screen, targets ≥ 40 px, no horizontal scroll, the Mallow
+  // At all seven viewports: no overlap, everything on screen, targets ≥ 40 px, no horizontal scroll, the Mallow
   // between the bars, the chosen radio in view, the same baseline for all eight weathers; the caption and the
-  // Mallow's line fit on screen at 14 px or more.
+  // Mallow's line fit on screen at 14 px or more. Portrait and desktop keep stage-screen's framing; on the short,
+  // wide stages (844×390, 568×320) the controls sit in the lower corners and the Mallow stands between them, at
+  // least LAND_FRAC of the stage under the top bar tall, clear of every control and of the hint spot, for all
+  // eight weathers, through a weather front and at the resolve caption.
   if (only('layout')) await guard(`${SCOPE}:layout`, async (scope) => {
-    const WHO = { phone: 'pipzi', p375: 'zuzu', small: 'blubi', android: 'noomi', desktop: 'boppo', land: 'glitzi' };
-    for (const vp of ['phone', 'p375', 'small', 'android', 'desktop', 'land']) {
+    const WHO = { phone: 'pipzi', p375: 'zuzu', small: 'blubi', android: 'noomi', desktop: 'boppo', land: 'glitzi', 'land-small': 'loomi' };
+    const VPS = (process.env.LAYOUT_VPS || 'phone,p375,small,android,desktop,land,land-small').split(',');   // LAYOUT_VPS: a subset while iterating
+    for (const vp of VPS) {
       const { ctx, page, errors } = await openWx(browser, vp, WHO[vp]);
       try {
-        const sc = `${scope}:${vp}`;
+        const sc = `${scope}:${vp}`, isLand = LAND_VPS.includes(vp);
         const entry = await wx(page, () => __lab.weather.weather);
         await settled(page, entry);
         await sleep(900);   // the arrival hint is up from 0.8 s
         await H.shot(page, out, `weather-${vp}-layout-${entry}`);
-        const bases = {}, dialWhy = [];
+        // portrait and desktop: exactly stage-screen's framing (its fitFor over the band above a full-width bottom bar)
+        const pf = await wx(page, () => {
+          const st = document.querySelector('.weather .stage'), W = st.clientWidth, H = st.clientHeight, bh = document.querySelector('.weather .bottom').getBoundingClientRect().height;
+          const band = Math.min(H - bh - 18, H * 0.84) - 96;
+          return { land: __lab.weather.land, fit: __lab.companion.rig.opts.fit, want: Math.max(0.2, Math.min(0.64, Math.min(W * 0.64, band * 0.58) / W)), bottomH: Math.round(bh) };
+        });
+        if (isLand) check(sc, 'landscape: the corner layout is on (landFit frames the Mallow; the bottom bar is only its padding)', pf.land && pf.fit > pf.want && pf.bottomH <= 40, JSON.stringify(pf));
+        else check(sc, 'portrait keeps stage-screen\'s own framing: no landscape fit, the bottom rows as before', pf.land === null && Math.abs(pf.fit - pf.want) < 1e-6, JSON.stringify(pf));
+        const bases = {}, dialWhy = [], rowsBy = {}, frames = [];
         let inView = true, wholeDial = true;
         for (const w of DIAL) {
           await wx(page, (w) => __lab.weather.setWeather(w, { instant: true }), w);
           await settled(page, w);
           bases[w] = await wx(page, () => __lab.companion.rig.BASE.toFixed(1));
+          rowsBy[w] = (await wx(page, () => [...document.querySelectorAll('.weather .bottom > *')].map((e) => Math.round(e.getBoundingClientRect().height)))).join();
+          if (isLand) {   // the Mallow at rest (on the ground: an arrival hop is a moment, not the framing)
+            await page.waitForFunction(() => __lab.companion.rig.body.grounded && !__lab.companion.rig.body.hop, null, { timeout: T });
+            frames.push(await wx(page, landProbe));
+          }
           inView = inView && await wx(page, () => { const dial = document.querySelector('.wx-dial'), r = dial.getBoundingClientRect(), b = dial.querySelector('[aria-checked="true"]').getBoundingClientRect(); return b.left >= r.left - 1 && b.right <= r.right + 1; });
           // visual QA: the dial rests on whole radios (none cut in half at the pill's end) and shows a cue when it scrolls
           const dw = await wx(page, () => {
@@ -2150,8 +2211,23 @@ async function run(browser, { out = OUT_DEFAULT, only = (b) => H.only(SCOPE) || 
             check(sc, 'Storm: the subtitle never ends a line on its dot, and the hint sits ≥ 14 px under it', (sub.lines < 2 || sub.sep === false) && sub.gap >= 14 && / · /.test(sub.text), JSON.stringify(sub));
           }
         }
-        const rows = await wx(page, () => [...document.querySelectorAll('.weather .bottom > *')].map((e) => Math.round(e.getBoundingClientRect().height)));
-        check(sc, 'the chosen radio stays in view for every weather; both bottom rows 50 px', inView && rows.join() === '50,50', JSON.stringify({ inView, rows }));
+        if (!isLand) check(sc, 'the chosen radio stays in view for every weather; both bottom rows 50 px', inView && Object.values(rowsBy).every((r) => r === '50,50'), JSON.stringify({ inView, rowsBy }));
+        else {
+          // the corner clusters: the action column always two chips tall (94 px), the dial a 4 × 2 keypad level with it (94 px) with all eight radios, no scrolling
+          const pad = await wx(page, () => {
+            const d = document.querySelector('.wx-dial'), rs = [...d.querySelectorAll('.wx-radio')].map((b) => b.getBoundingClientRect());
+            return { rows: new Set(rs.map((r) => Math.round(r.top))).size, cols: new Set(rs.map((r) => Math.round(r.left))).size, scrolls: d.scrollWidth > d.clientWidth + 1, n: rs.length,
+              small: rs.filter((r) => r.width < 40 || r.height < 40).length };
+          });
+          check(sc, 'landscape: the chosen radio in view; the action column and the dial both 94 px for every weather; the dial a 4 × 2 keypad of all eight radios that never scrolls',
+            inView && Object.values(rowsBy).every((r) => r === '94,94') && pad.rows === 2 && pad.cols === 4 && pad.n === 8 && !pad.scrolls && !pad.small, JSON.stringify({ inView, rowsBy, pad }));
+          const bad = frames.map((f) => ({ w: f.weather, why: landIssues(f) })).filter((f) => f.why.length);
+          check(sc, 'landscape: for all eight weathers the Mallow is fully on screen, under the top bar, clear of the hint spot\'s two lines, every chip, radio and both clusters', !bad.length, JSON.stringify(bad));
+          const fr = frames.map((f) => +(f.h / (f.vh - f.topBottom)).toFixed(3));
+          check(sc, `landscape: the Mallow is ≥ ${LAND_FRAC} of the stage under the top bar for all eight weathers (before: 0.31 at 844×390, 0.32 at 568×320)`, Math.min(...fr) >= LAND_FRAC,
+            JSON.stringify({ frac: fr, h: frames.map((f) => Math.round(f.h)), band: frames[0].vh - Math.round(frames[0].topBottom) }));
+          check(sc, 'landscape: the same framing (fit) for all eight weathers', new Set(frames.map((f) => f.fit)).size === 1, JSON.stringify(frames.map((f) => f.fit)));
+        }
         check(sc, 'the dial always rests on whole radios, with an edge cue whenever it scrolls (visual QA)', wholeDial, JSON.stringify(dialWhy));
         check(sc, 'the baseline is the same for all eight weathers', new Set(Object.values(bases)).size === 1, JSON.stringify(bases));
         // the resolve beat's caption and line (Rain, caught): on screen, clear of the chrome, ≥ 14 px
@@ -2166,17 +2242,61 @@ async function run(browser, { out = OUT_DEFAULT, only = (b) => H.only(SCOPE) || 
           const bar = [...document.querySelectorAll('.weather .topbar button')].map((b) => b.getBoundingClientRect());
           const sizes = ['.wx-cap', '.line', '.line .who'].map((s) => parseFloat(getComputedStyle(hint.querySelector(s)).fontSize));
           const hit = bar.some((b) => r.left < b.right && b.left < r.right && r.top < b.bottom && b.top < r.bottom);
-          return { box: [r.left, r.top, r.right, r.bottom].map(Math.round), vw: innerWidth, bottom: Math.round(bottom), sizes, hit, text: hint.textContent, lines: Math.round(r.height / 20) };
+          // the Mallow resting where it stands (its own top, without a hop or float), against the caption box
+          const rig = __lab.companion.rig, o = rig.container.getBoundingClientRect(), bb = rig.bodyRect(), rest = o.top + rig.BASE - bb.h;
+          const ctl = [...document.querySelectorAll('.weather .bottom > *')].map((e) => e.getBoundingClientRect().top);
+          return { box: [r.left, r.top, r.right, r.bottom].map(Math.round), vw: innerWidth, bottom: Math.round(Math.min(bottom, ...ctl)), sizes, hit, text: hint.textContent, lines: Math.round(r.height / 20),
+            rest: Math.round(rest), bodyX: [o.left + bb.cx - bb.w / 2, o.left + bb.cx + bb.w / 2].map(Math.round) };
         }, null, { timeout: T }))).jsonValue();
+        // landscape: while the caption shows, the live head (floats and hops included) is watched every frame
+        if (isLand) await wx(page, () => {
+          window.__capMin = { top: 1e9, cap: 0, frames: 0 };
+          const end = performance.now() + 2500, tick = () => {
+            const hint = document.querySelector('.weather .wx-hint.on'), rig = __lab.companion.rig;
+            if (hint) { const o = rig.container.getBoundingClientRect(), t = o.top + rig.bodyRect().top, m = window.__capMin; m.frames++; if (t < m.top) { m.top = t; m.cap = hint.getBoundingClientRect().bottom; } }
+            if (performance.now() < end) requestAnimationFrame(tick);
+          };
+          requestAnimationFrame(tick);
+        });
         await sleep(700);   // its fade-in, for the screenshot
         check(sc, 'the caption and the Mallow\'s line sit on screen under the top bar, clear of its buttons and the bottom rows, at ≥ 14 px',
           cap.box[0] >= 4 && cap.box[2] <= cap.vw - 4 && cap.box[3] < cap.bottom && !cap.hit && cap.sizes.every((v) => v >= 14), JSON.stringify(cap));
+        if (isLand) {
+          await sleep(2000);
+          const cm = await wx(page, () => window.__capMin);
+          check(sc, 'landscape: the caption and the Mallow\'s line sit above the Mallow\'s head, at rest and through 2.5 s of the resolve beat (it shows once the jump has landed)',
+            cap.box[3] <= cap.rest && cm.frames > 0 && cm.top >= cm.cap, JSON.stringify({ cap: cap.box, rest: cap.rest, live: { top: Math.round(cm.top), cap: Math.round(cm.cap), frames: cm.frames } }));
+        }
         await H.shot(page, out, `weather-${vp}-layout-resolved`);
+        if (isLand) {
+          // a weather front (Moonlight → Sunshine always changes realm): sampled until it has passed, nothing overlaps
+          // and the framing holds (an arrival hop may lift the head into the spot's second line; it never meets the hint)
+          await wx(page, () => __lab.weather.setWeather('moonlight', { instant: true }));
+          await settled(page, 'moonlight');
+          const fit0 = await wx(page, () => +__lab.companion.rig.opts.fit.toFixed(4));
+          await page.click('.wx-dial [data-weather="sunshine"]');
+          await step('the front starts', page.waitForFunction(() => __lab.weather.front, null, { timeout: T }));
+          const fbad = [], fits = new Set();
+          let n = 0, shotDone = false;
+          for (let i = 0; i < 400; i++) {
+            const f = await wx(page, landProbe);
+            if (!f.front && i > 0) break;
+            n++; fits.add(f.fit);
+            const why = landIssues(f, { spot: f.grounded });
+            if (why.length) fbad.push({ i, why });
+            if (!shotDone && i >= 2) { shotDone = true; await H.shot(page, out, `weather-${vp}-layout-front`); }
+            await sleep(120);
+          }
+          await settled(page, 'sunshine');
+          const after = await wx(page, landProbe);
+          check(sc, 'landscape: through a weather front the Mallow stays clear of every control and the hint, fully visible, at the same framing',
+            n >= 3 && !fbad.length && fits.size === 1 && fits.has(fit0) && !landIssues(after, { spot: after.grounded }).length, JSON.stringify({ n, fbad: fbad.slice(0, 4), fits: [...fits], fit0 }));
+        }
         noErrors(sc, errors);
       } finally { await ctx.close(); }
     }
     // two chips (a water realm: the lead chip and "Push the water") at the narrowest phone and in landscape
-    for (const vp of ['small', 'land']) {
+    for (const vp of ['small', 'land', 'land-small'].filter((v) => VPS.includes(v))) {
       const { ctx, page, errors } = await openWx(browser, vp, 'noomi');
       try {
         const sc = `${scope}:${vp}:water`;
@@ -2184,7 +2304,18 @@ async function run(browser, { out = OUT_DEFAULT, only = (b) => H.only(SCOPE) || 
         const chips = await wx(page, () => [...document.querySelectorAll('.wx-actions button')].map((b) => b.textContent));
         await H.layout(page, sc, { scrollers: ['.wx-dial', '.wx-actions'] });
         const rows = await wx(page, () => [...document.querySelectorAll('.weather .bottom > *')].map((e) => Math.round(e.getBoundingClientRect().height)));
-        check(sc, 'two chips side by side, the rows still 50 px', chips.length === 2 && rows.join() === '50,50', JSON.stringify({ chips, rows }));
+        if (!LAND_VPS.includes(vp)) check(sc, 'two chips side by side, the rows still 50 px', chips.length === 2 && rows.join() === '50,50', JSON.stringify({ chips, rows }));
+        else {
+          const st = await wx(page, () => {
+            const col = document.querySelector('.wx-actions').getBoundingClientRect(), bs = [...document.querySelectorAll('.wx-actions button')].map((b) => b.getBoundingClientRect());
+            return { col: [col.left, col.top, col.right, col.bottom].map(Math.round), bs: bs.map((b) => [b.left, b.top, b.right, b.bottom].map(Math.round)) };
+          });
+          const [a, b] = st.bs;
+          check(sc, 'landscape: the two chips stack in the left column (the same width, one above the other, inside it), the column and the dial both 94 px',
+            chips.length === 2 && a && b && a[0] === b[0] && a[2] === b[2] && a[3] <= b[1] && a[1] >= st.col[1] && b[3] <= st.col[3] && rows.join() === '94,94', JSON.stringify({ chips, rows, st }));
+          const f = await wx(page, landProbe);
+          check(sc, 'landscape: the Mallow stands clear of both chips and the dial', !landIssues(f, { spot: f.grounded }).length, JSON.stringify(landIssues(f)));
+        }
         await H.shot(page, out, `weather-${vp}-layout-two-chips`);
         noErrors(sc, errors);
       } finally { await ctx.close(); }
