@@ -100,3 +100,22 @@ test('HTTP: a client that skips its own check-in still meets the screener\'s car
   assert.ok(provider.calls[0].user.includes(RISK_CHECK_NOTE));
   assert.equal(j.keep_support_close, true);
 });
+
+test('pipeline: risk words hidden in previous_angles never reach the model; the server\'s own earlier lines still do', async () => {
+  const prev = (l1, l2) => ({ text: 'My flatmate keeps borrowing my charger.', emotion: null, intention: null, previous: [{ subtitle_line_1: l1, subtitle_line_2: l2, reasoning_pattern: null, interaction_type: null }] });
+  for (const [l1, l2] of [['I am going to end my life tonight.', 'Maybe they forgot.'], ['Maybe they forgot.', "i've counted out all the pills"], ['It might not be about you.', 'i want to k1ll mys3lf']]) {
+    const provider = createMockProvider({ script: [anchor(1)] });
+    const r = await runAngle(prev(l1, l2), deps(provider));
+    assert.equal(provider.calls.length, 0, `${l1} / ${l2}`);
+    assert.ok(r.status === 'care' || r.status === 'crisis', `${l1} / ${l2}: ${r.status}`);
+    assert.equal(r.keep_support_close, true);
+  }
+  // every line the real model wrote in the recorded runs is still sent on as an earlier angle
+  const runs = ['run1-answers.json', 'run2-answers.json', 'run3-answers.json'].map((f) => readFileSync(new URL(`../eval/runs/${f}`, import.meta.url), 'utf8')).join('\n');
+  const lines = [...runs.matchAll(/"subtitle_line_[12]"\s*:\s*"((?:[^"\\]|\\.)*)"/g)].map((m) => JSON.parse(`"${m[1]}"`));
+  assert.ok(lines.length > 200, `${lines.length} recorded lines`);
+  for (const l of lines) {
+    const r = screenInput(l);
+    assert.ok(r.level !== 'crisis' && r.level !== 'care', `a real model line reads as ${r.level}: ${l}`);
+  }
+});

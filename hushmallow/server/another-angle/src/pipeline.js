@@ -101,6 +101,19 @@ export async function runAngle(input, deps) {
     meta.safety_category = screened.category;
     return /** @type {AngleResult} */ (done({ status: screened.level, support: supportPayload(screened.level, screened.category, screened.source || 'lexicon'), keep_support_close: true }));
   }
+  // 1c. Earlier angles come back from the device, and the model reads them: a client could hide risk words there. The
+  // server's own lines never read as crisis or care (outputIsSafe below; 0 of the 255 real ones in eval/runs), so any
+  // that do were not written here: support, no model call.
+  for (const p of input.previous) {
+    if (deps.skipLexicon) break;
+    const prev = [p.subtitle_line_1, p.subtitle_line_2].map((l) => screenInput(l)).find((r) => r.level === 'crisis' || r.level === 'care');
+    if (!prev) continue;
+    meta.safety_source = prev.source;
+    meta.safety_level = prev.level;
+    meta.safety_category = prev.category;
+    const level = /** @type {'crisis' | 'care'} */ (prev.level);
+    return /** @type {AngleResult} */ (done({ status: level, support: supportPayload(level, prev.category, prev.source || 'lexicon'), keep_support_close: true }));
+  }
   const riskCheck = screened.check;
   const concern = safety.level === 'concern' || screened.level === 'concern' || riskCheck;
   // Earlier angles come back from the device too, so they are checked as well.
