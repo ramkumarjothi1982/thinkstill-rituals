@@ -170,6 +170,7 @@ export function createAuth({
   onExpired = () => {},
   passive = false,
   storage,   // Node tests: the Storage supabase-js keeps its session in (the browser: localStorage)
+  readiness = null,   // () → Promise<boolean>: the project is ready for sign-in (src/auth/readiness.js); null: not asked
 } = {}) {
   const enabled = !!config?.enabled;
   const mode = ns?.mode || 'off';
@@ -372,8 +373,15 @@ export function createAuth({
   }
 
   // -------------------------------------------------------------- flows --
+  // the flows that start a sign-in or send an email: never against a project that is not ready (readiness.js)
+  const ENTRY_FLOWS = ['signup', 'signin', 'resend', 'reset'];
   async function flow(name, fn) {
     if (!enabled) return fail(friendlyError({ code: 'signup_disabled' }, name));
+    if (readiness && ENTRY_FLOWS.includes(name)) {
+      let ok = false;
+      try { ok = !!(await readiness()); } catch { ok = false; }
+      if (!ok) return fail(friendlyError({ code: 'signup_disabled' }, name));
+    }
     const before = intent;
     intent = name;
     let keep = false;

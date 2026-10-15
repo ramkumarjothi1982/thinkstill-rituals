@@ -8,6 +8,8 @@
 //   authBoot() → { config, ns, store, forwarding, deepLink, guestChoice, notice }
 //   createAuthHandle(boot, { onReload, onExpired }) → app.auth
 //     enabled, namespace, status(), user(), pendingGuestChoice,
+//     ready() → Promise<boolean>: may the guest's account entry show? (src/auth/readiness.js:
+//       the project's tables exist and email sign-up is set up; asked once a session, never in a loop)
 //     load() → Promise<the full API of src/auth/client.js>  (lazy import)
 //
 // Links that land on the app's root with sign-in parameters (?code=,
@@ -19,6 +21,7 @@ import PUBLISHED from './public-config.js';
 import { resolveAuthConfig } from './config.js';
 import { bootNamespace, createNamespacedStore, settleNamespace, needsGuestChoice, readPersistedSession, readMarker, guestHasData, cleanupWipes, honourWipe, wipedSince, wipeKey, WIPE_RELOAD, maskEmail } from './namespace.js';
 import { createStore } from '../engine/storage.js';
+import { createReadiness } from './readiness.js';
 
 const AUTH_PARAMS = ['code', 'token_hash', 'error_code', 'error_description'];
 const NOTICE_KEY = 'hm2:auth.notice';
@@ -86,10 +89,13 @@ export function noticeText(kind, ns) {
   return base;
 }
 
-export function createAuthHandle(boot, { onReload, onExpired, win = globalThis, ls = safe(() => globalThis.localStorage) } = {}) {
+export function createAuthHandle(boot, { onReload, onExpired, win = globalThis, ls = safe(() => globalThis.localStorage), readiness = null } = {}) {
   const { config, ns } = boot;
   const enabled = !!config.enabled && !boot.forwarding;
   let real = null, loading = null;
+  // production never shows a half-configured sign-in: the project is asked first (once a session)
+  const gate = enabled ? (readiness || createReadiness(config)) : null;
+  const ready = () => (gate ? gate.check().catch(() => false) : Promise.resolve(false));
   const listeners = new Set();
   // before (or without) the full client: another tab signing in or out changes which
   // namespace this page belongs to, so it reloads at the next calm moment; another
@@ -117,12 +123,20 @@ export function createAuthHandle(boot, { onReload, onExpired, win = globalThis, 
     /** "Not now" at the first sign-in here, and the guest still has things: the account screen offers them again. */
     get guestDataWaiting() { return real ? real.guestDataWaiting : (ns.mode === 'account' && !!safe(() => readMarker(ls, ns.uid)?.guestChoice === 'fresh' && guestHasData(ls), false)); },
     get loaded() { return !!real; },
+    /**
+     * May a guest's account entry show (Settings' row, a #account link, the sign-in screens)? True once the project
+     * has answered that its tables exist and email sign-up is set up; false when sign-in is off or the project is not
+     * ready (one console info line says why). A signed-in account's own entry never waits on it (it must always be
+     * able to sign out or delete itself).
+     */
+    ready,
+    get readiness() { return gate?.result || null; },
     /** The full sign-in API (src/auth/client.js), imported on first use. */
     load() {
       if (!enabled) return Promise.reject(Object.assign(new Error('sign-in is off'), { code: 'not_configured' }));
       if (!loading) {
         loading = import('./client.js').then((m) => {
-          real = m.createAuth({ config, ns, onReload, onExpired });
+          real = m.createAuth({ config, ns, onReload, onExpired, readiness: ready });
           for (const fn of listeners) real.onChange(fn);
           return real;
         }).catch((e) => { loading = null; throw e; });

@@ -261,7 +261,10 @@ function afterAuthBoot() {
   const opensAccount = AUTH.deepLink === 'account' || AUTH.guestChoice;
   // the account scene says an arrival on its card (or toasts it itself); everywhere else it is a toast
   if (said && !opensAccount) setTimeout(() => toast(said, 3600), 500);
-  if (opensAccount) app.go('account', { arrived: AUTH.notice || null, notice: said });
+  // (a guest's #account opens only on a project ready for sign-in — src/auth/readiness.js; an account's never waits)
+  if (opensAccount && AUTH.ns.mode !== 'account') {
+    app.auth.ready().then((ok) => { if (ok && stack[stack.length - 1]?.name === 'home') app.go('account', { arrived: AUTH.notice || null, notice: said }); }, () => {});
+  } else if (opensAccount) app.go('account', { arrived: AUTH.notice || null, notice: said });
   // signed in: supabase-js loads after the first screen, checks the session with the server,
   // then keeps in step only what the person opted into on the account screen (src/auth/autosync.js)
   if (AUTH.ns.mode === 'account') {

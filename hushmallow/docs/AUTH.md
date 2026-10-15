@@ -68,6 +68,7 @@ ever clears its own session (below, "Shared browsers").
 | `src/auth/public-config.js` | `{ enabled: false }` in the repository; the build writes the public values here |
 | `tools/site/auth-config.mjs` | build step: validates `SUPABASE_URL` / `SUPABASE_PUBLISHABLE_KEY`, refuses secrets in the build environment, writes `public-config.js` and `_headers` |
 | `src/auth/boot.js` | synchronous boot step: namespace, store, root → callback forward, `#account`, notices; `app.auth` handle (lazy `load()`) |
+| `src/auth/readiness.js` | the readiness gate: the project's tables and email sign-up checked once a session before a guest's entry shows or a sign-in starts (`app.auth.ready()`) |
 | `src/auth/namespace.js` | per-account local namespaces, device-level keys, the guest-data question, cleanup |
 | `src/auth/client.js` | the sign-in API over supabase-js (below) |
 | `src/auth/errors.js` | friendly messages without account enumeration; client-side checks; password hint |
@@ -113,6 +114,27 @@ ever clears its own session (below, "Shared browsers").
 * **Data access**: every server call filters by the booted account's id,
   checks the live session belongs to it, and drops any row that is not its
   own; Row Level Security enforces the same on the server.
+* **Readiness gate** (`src/auth/readiness.js`, 15 Oct 2026): a build with
+  the two public values never shows a half-configured sign-in. Before a
+  guest's account entry is shown (Settings' row, a `/#account` link, the
+  sign-in screens) and before any sign-up, sign-in, resend or reset call
+  (`client.js` `flow()`), the app asks the project two public questions with
+  the publishable key, once a browser session (`sessionStorage`
+  `hm2:auth.ready`):
+  * `GET /rest/v1/profiles?select=user_id&limit=0`: 200, or 401/403 with
+    code `42501` (the table is there; `anon` may not read it, by design) =
+    the schema is present; 404 / `PGRST205` = missing;
+  * `GET /auth/v1/settings`: `external.email` true and `mailer_autoconfirm`
+    false (a local dev / ci build may confirm at once).
+  Not ready: the entry stays hidden exactly as with sign-in off (the account
+  screen shows its "doesn't use accounts" card), and one console info line
+  says why (`[auth] sign-in is hidden: …`). Offline, a timeout or a 5xx
+  counts as not ready for that page only (a reload asks again); nothing is
+  retried in a loop, nothing is asked at boot, and guests never wait on it.
+  A signed-in account's own entry never waits (it can always sign out or
+  delete itself). Tests: `tests/auth-readiness.test.mjs` (the fake with
+  `noSchema`, `emailOff`, `autoconfirm`, a network error, a hang); the
+  production answers are printed by `hushmallow-infra-probe.yml`.
 
 ### Local namespaces (shared devices)
 
