@@ -152,7 +152,8 @@ function home() {
   const offers = dna.suggestions(3).map(offer).filter(Boolean);
   const inner = h('div', { class: 'home-inner' });
   const hero = h('div', { class: 'hero', role: 'img', 'aria-label': `${m.name}, ready to be touched` });
-  inner.append(
+  // Element.append prints null as "null" (h() drops it, append doesn't): filter the optional parts out
+  inner.append(...[
     h('div', { class: 'brand' },
       h('h1', {}, 'hushmallow ', h('span', {}, 'Sensory Lab')),
       h('div', { style: { display: 'flex', gap: '8px', alignItems: 'center' } },
@@ -164,7 +165,8 @@ function home() {
     offers.length ? h('div', { class: 'offers' }, ...offers) : null,
     h('p', { class: 'section-label' }, 'Experiences'),
     h('div', { class: 'cards' }, ...EXPERIENCES.map(card)),
-    h('p', { class: 'foot' }, 'Development preview. Not part of the hushmallow app yet. Nothing here is saved anywhere except this browser.'));
+    h('p', { class: 'foot' }, 'Development preview. Not part of the hushmallow app yet. Nothing here is saved anywhere except this browser.'),
+  ].filter(Boolean));
   screen.append(inner);
   root.append(screen);
   const c = new Companion(hero, { mallowId, material: prefs.get('material'), quality, sound, prefs, rig: { fit: 0.62, baseline: 0.9 } });

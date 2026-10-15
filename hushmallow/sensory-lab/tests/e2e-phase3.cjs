@@ -391,6 +391,10 @@ async function sharedBlock(browser) {
   if (shared('keys')) await guard('shared:keys', async (scope, own) => {
     const { ctx, page, errors } = await H.open(browser, { width: 1280, height: 860, touch: false }, '#home', { initScripts: [H.INIT.listenerCounter] });
     own(ctx); await H.waitRig(page);
+    // home with no "For you" offers: the optional parts leave no stray "null" text behind
+    const stray = await page.evaluate(() => [...document.querySelector('.home-inner').childNodes]
+      .filter((n) => n.nodeType === 3 && n.textContent.trim()).map((n) => n.textContent));
+    check(scope, 'home without offers shows no stray text', stray.length === 0, JSON.stringify(stray));
     const blurL = () => page.evaluate(() => __listeners().window?.blur || 0);
     const b0 = await blurL();
     await go(page, 'touchtalk');
