@@ -97,13 +97,46 @@ Five independent reviews kept finding new ways of saying someone died that the w
 | A death named beside a borderline wish | As decided above for a death, then words about ending, joining or following: the screener reads a bereavement's known risk, but a death named lifts a self frame only to the check-in's level, which beside a loss is the gentle path with support first (no world, nothing sent), as the earlier rounds held "my dad died, i want out", "dad died and im gonna do it tonight" and "planning how to get to her". Care when the words are care without the death, or the grief rules read the clause as explicit |
 | Context across a visit | The screener reads the visit's last three Tells too, in memory only (never stored or sent), so "I'm so tired of everything" then "goodbye everyone" is care; a message with nothing of its own never inherits anything, and a time word alone ("see you tomorrow") rises to the check-in at most |
 | Server parity | The server keeps a byte-identical copy of the screener (`npm run sync:screen`, a test fails while they differ) and runs it after the lexicon, with the lexicon again on the normalised words: its care never reaches the model; its check-in reading still asks the model, with a fixed note to judge safety first, and keeps support close. A client that skips its own check-in cannot bypass the lexicon or the screener's care |
-| Free test purchases on the GitHub Pages copy | Removed for the pilot: `ramkumarjothi1982.github.io` no longer unlocks Flow or Beyond for free, so nobody there reaches the real model through Another Angle without a plan; only this machine (`localhost`, `127.0.0.1`) keeps test purchases. One line in `src/app/config.js` puts it back |
+| Free test purchases on the GitHub Pages copy | Removed for the pilot: `ramkumarjothi1982.github.io` no longer offers the free test purchase, so the app there shows no way to unlock Flow or Beyond; only this machine (`localhost`, `127.0.0.1`) keeps test purchases. This is a convenience gate only: a plan is held on the phone and can be forged, and the Worker accepts any client that sends an allowed Origin, so **the only real gate on the real model is `TESTER_INVITE_CODES`** (still unset: owner step). One line in `src/app/config.js` puts the test purchase back |
 | Another Angle and a half-configured server | The app asks `/v1/health` before the first session and sends no words unless the server answers ok, as the Another Angle service, on this app's scene schema, with its keys configured and (in production) not the mock provider; otherwise Zuzu's authored angles play on the phone |
 | Earlier angles sent back to the server | The server reads each `previous_angles` line with the same checks as the person's words (the lexicon, its normalised spelling and the risk screener): crisis or care there means support and no model call. Its own lines never read that way (0 of the 255 the real model wrote in `eval/runs`), so a second angle is unaffected |
 | Sign-in on a project that is not ready | Hidden exactly as with sign-in off until the project answers that its tables exist and email sign-up with "Confirm email" is on (`src/auth/readiness.js`); Settings' About mentions accounts only once that is true |
 
+## Defaults taken on the owner's behalf (2026-10-15, launch fix round)
+
+Taken after six independent reviews of `fb1bae2` (blind held-out safety, privacy, accessibility, usability, regressions, security). Each is reversible.
+
+| Topic | Default |
+|---|---|
+| A safety floor that does not depend on detection | Offline detection cannot read every way of saying something (the blind sets showed it). So the ordinary question on both screens ("Shall we play with this, or just be with it?" / "Shall we look at this from another angle, or just be with it?") now carries a third, equal-weight answer, **"I’m not okay"**, which does exactly what the check-in's "Not really" does (support first, no world or angle for the visit, nothing sent), and the Support pill is visible whenever a question is up |
+| Distress alone | The word list's distress (not a loss, nothing heavier this visit) gets the check-in instead of support first; "I’m okay" carries on and lifts that quiet for the visit (never for care, crisis, a loss, death care or harm to others); "Not really" is support first. In Another Angle the same |
+| After the care line | "Would you like to see who can help?" with [See support] [Stay here quietly], focused and announced, never timed out; the same after "Not really" / "I’m not okay" |
+| The urgent crisis sheet while typing | Opens below the words, never takes the focus from the text field (it moves to the sheet's heading on Send or after 8 s idle), ignores taps for its first 700 ms, never puts a call button where Send is, and shows again on Send if it was closed while typing |
+| Sheets | Everything behind an open sheet is inert; first focus is the heading, never ✕; focus returns to the opener or the Support pill. Choice clocks wait while a sheet covers the stage. Calls are named by their visible words; after the check-in or "Not really" the support sheet leads with the calls |
+| A loss on the main screen | Answered first with "I’m so sorry. That’s a lot to carry.", then the calm choice (the classic path uses the same line) |
+| After the check-in's "I’m okay" | The attentive face stays for the rest of the visit on both screens (no grin, no quips); play itself goes on |
+| The server's own safety in Another Angle | Crisis or care from the server, including the model's own `safety_status`, is always support, even when the rest of the flagged scene fails validation; model and screener care speak with the follow lines |
+| The classic Express → Encounter path | Words typed there get the main screen's reading and outcome (support, the gentle response, the check-in) before any ritual; a reading that rules out any offer is kept for the visit |
+| What the tab keeps for a reload | `hm2:visit-safety` keeps routing flags only (`level`, `crisisSpoken`, `abuseFirst`, `noWorld`, `noResume`, `liftable`), never the category or anything typed; "Delete everything" clears it |
+| Harm in what the model writes | Every visible field is read as written, as a first-person copy, and against second-person means, worthlessness and violence rules; any hit falls back at once (never regenerated). 0 of 938 real model lines are rejected |
+| Characters the server keeps | Invisible and format characters (tags, variation selectors, Hangul fillers, bidi controls, default-ignorables) are removed before every check and before the prompt |
+| Earlier angles sent back | A check-in reading on any earlier line gives the model its safety-first note; crisis or care there is support with no model call |
+| Usage counters | Removed two days after their day by a Durable Object alarm, so the delete sheet's "cleared after two days" holds for idle devices |
+| The tag Anthropic sees | `metadata.user_id` changes every UTC day (a keyed hash of the device subject and the day) |
+| Public CI output | The repository is public, so the real-model check's log and step summary show ids, verdicts, counts and costs only; the full report stays in the artifact (which any signed-in GitHub user can download). Held-out sets used for the final evaluation are not committed |
+| Gentle ocean | The stand-in Mallow cards float as plain bubbles in a gentle session (no grins) |
+| Ocean end | A quiet Finish chip beside "Stay as long as you like" (Finish stays in the panel) |
+| Updates | Never reload while a world shows the person's Thought Mallow |
+| "Keep sealed predictions" | The Settings row formerly "Keep my saved angles" names what it really keeps (the fallback ritual's sealed predictions, with the words); "Delete my Another Angle data" now removes them too |
+| Copy | The dictation hint says hushmallow keeps the words on the phone and the keyboard's dictation follows the phone's settings; About names the feeling and kind of help Another Angle sends; account copy names "when you last opened the app" and that the sign-in service's own security log is not deleted from here; returning github.io testers see "Test access ended for the pilot." |
+
 ## Still open for the owner
 
+- **Tester invite codes** (`TESTER_INVITE_CODES` on the production Worker): the only server-side gate on who reaches the real model.
+- Separate Anthropic API keys for production and for staging/CI, each with its own Console spend limit.
+- Whether a refusal from the provider should count as care (today Zuzu's own angle plays).
+- Whether harm-to-others idioms ("…I'm going to kill him") should get the check-in like distress, instead of support first.
+- Whether the urgent sheet should also open for the risk screener's strongest readings (today only the word list's crisis opens it).
 - Monthly spend limit in the Anthropic Console.
 - Development Partner Program: confirm not enrolled.
 - Art: is the browless cyan drawing Loomi; do Blubi, Noomi and Loomi read as distinct.
