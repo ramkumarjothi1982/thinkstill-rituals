@@ -22,8 +22,8 @@
 import { h } from '../ui.js';
 import { MALLOWS, MALLOW_IDS, loadMallowAssets } from '../../mallows/registry.js';
 import { addTicker, removeTicker, setStageFloor } from '../../mallows/rig.js';
-import { rememberVisitSafety, recallVisitSafety } from '../visit-safety.js';
-import { openSupport } from './support.js';
+import { rememberVisitSafety, recallVisitSafety, forgetVisitSafety, visitFlags } from '../visit-safety.js';
+import { openSupport, abuseFirst } from './support.js';
 import { createSubtitles } from '../../hushfold/subtitles.js';
 import { createLines, SHARED_LINES, PLAY_CHECK, CHECK_IN, flowEmotion } from '../../hushfold/lines.js';
 import { requireEntitlement } from '../entitlements.js';
@@ -111,10 +111,14 @@ export function worldHeldLines() {
  *               instead, "Before we go on — are you okay right now?" (CHECK_IN): the same one question, never two.
  *   'play'    — the person already chose "Play with it" for these words (back from the plans page with a plan).
  * `level` is the visit's (never lower than the words'); `carried`: care was answered earlier and these words are not heavy.
+ * (fix round) `liftable`: the visit's only heavy reading is the lexicon's distress (concern 'distress' — "I can't do this
+ * anymore, the wifi has dropped five times"), no loss, no care, nothing the screener held: those words are asked the check-in
+ * ('ask', with the check-in's options) instead of support first, and "I'm okay — let's play" lifts that quiet for the visit.
  */
-export function tellRoute({ level = 'none', carried = false, chosen = null } = {}) {
+export function tellRoute({ level = 'none', carried = false, chosen = null, liftable = false } = {}) {
   if (level === 'crisis') return 'crisis';
   if (carried && level !== 'none') return 'carried';
+  if (level === 'concern' && liftable) return 'ask';
   if (level === 'care' || level === 'concern') return 'support';
   return chosen === 'play' ? 'play' : 'ask';
 }
@@ -126,8 +130,8 @@ export function tellRoute({ level = 'none', carried = false, chosen = null } = {
  *   'quiet' — no answer within PLAY_CHECK.ms, or Back: nothing is made of the words, the stage stays quiet (a world stays
  *             paused, its Resume theirs) and the visit stays gentle from here;
  *   'retold' — a new Tell opened over the question: it is asked again for those words, once they are sent;
- *   'notreally' — (the check-in) "Not really": the care-lite path — a calm line, the Support sheet one tap away, support first
- *               and no world for the visit (careLite).
+ *   'notreally' — (the check-in) "Not really", or (fix round) "I'm not okay" at the question: the care-lite path — a calm
+ *               line, [See support] [Stay here quietly], support first and no world for the visit (careLite).
  */
 export function askOutcome(v, { telling = false } = {}) {
   if (v === 'play') return 'play';
@@ -172,6 +176,13 @@ export default function hushfold(app, params = {}) {
     // (15 Oct 2026) the visit's recent Tells, for the risk screener's context (the last 3, in memory only: never stored)
     recent: [],
     tellGen: 0,      // Tells sent this visit (softChoice acts only for the one it followed)
+    // (fix round) every category read this visit, at any level (only ever names, never words): a concern that is distress and
+    // nothing else is the one "I'm okay — let's play" may lift (liftable)
+    seen: new Set(),
+    // (fix round) checked: the check-in was asked this visit — the Support pill stays for it; attentive: it was answered
+    // "I'm okay" — the attentive face and no playful lines for the rest of the visit (kept for the page session); notOkay:
+    // "Not really" or "I'm not okay" — the support sheet leads with its calls
+    checked: !!app.state.hfChecked, attentive: !!app.state.hfAttentive, notOkay: false,
   };
   const timers = new Set();
   const later = (fn, ms) => { const t = setTimeout(() => { timers.delete(t); if (!S.left) fn(); }, ms); timers.add(t); return t; };
@@ -186,8 +197,9 @@ export default function hushfold(app, params = {}) {
   const gearBtn = h('button', { class: 'hf-btn', type: 'button', 'aria-label': 'Settings', onclick: () => app.go('settings') }, hfIcon('gear'));
   const topEl = h('header', { class: 'hf-top' }, logoBox, h('div', { class: 'grow' }), panelBtn, gearBtn);
   const tellLabel = h('span', { class: 'label' });
-  const tellBtn = h('button', { class: 'hf-pill is-hidden', type: 'button', 'data-hf': 'tell', onclick: () => openTell('pill') }, h('span', { class: 'dot', 'aria-hidden': 'true' }), hfIcon('talk'), tellLabel);
-  const supportPill = h('button', { class: 'hf-pill support', type: 'button', hidden: true, onclick: () => openSupportSheet() }, hfIcon('support'), 'Support');
+  const tellBtn = h('button', { class: 'hf-pill is-hidden', type: 'button', 'data-hf': 'tell', 'data-sheet-return': '2', onclick: () => openTell('pill') }, h('span', { class: 'dot', 'aria-hidden': 'true' }), hfIcon('talk'), tellLabel);
+  // (the focus comes back to the Support pill when a sheet closes and its opener has gone: data-sheet-return, ui.js)
+  const supportPill = h('button', { class: 'hf-pill support', type: 'button', hidden: true, 'data-sheet-return': '1', onclick: () => openSupportSheet({ category: pillCategory() }) }, hfIcon('support'), 'Support');
   // a paused world says so on the stage, with one tap back into it
   const pausedPill = h('button', { class: 'hf-pill paused', type: 'button', hidden: true, 'aria-label': 'Paused. Resume the world.', onclick: () => resumeFlow() },
     hfIcon('play'), h('span', {}, h('span', { class: 'pz' }, 'Paused · '), 'Resume'));
@@ -256,6 +268,8 @@ export default function hushfold(app, params = {}) {
     root.classList.add('hf-sheet-open');
     // (a world under it waits, rather than talking on unseen: the subtitles are hidden under sheets)
     holdForSheet(true);
+    // (fix round) ...and a choice's clock waits with it (the 45 s question never runs out under the Support sheet)
+    subtitles.cover(true);
     const done = () => {
       if (rec.done) return;
       rec.done = true;
@@ -263,6 +277,7 @@ export default function hushfold(app, params = {}) {
       const i = sheets.indexOf(rec);
       if (i >= 0) sheets.splice(i, 1);
       if (!sheets.length) { root.classList.remove('hf-sheet-open'); holdForSheet(false); }
+      if (!sheets.length) subtitles.cover(false);
       // closed another way (✕, its button, the backdrop, Escape, a pick): its history entry goes too
       if (rec.token) { const t = rec.token; rec.token = 0; app.popLayer?.(t); }
       if (!S.left) afterSheet();
@@ -278,7 +293,10 @@ export default function hushfold(app, params = {}) {
     rec.obs = [onClass, onGone].filter(Boolean);
     return sheet;
   }
-  /** The support sheet, as a layer of its own (urgent when the words were a crisis). */
+  /**
+   * The support sheet, as a layer of its own (urgent when the words were a crisis). (fix round) `category`: the layout it
+   * leads with — the visit's own when none is named (pillCategory: the calls first after "Not really").
+   */
   const openSupportSheet = (opts = {}) => {
     const sh = trackSheet(openSupport(app, opts));
     // the sheet gives the shared stage its loving, heart-eyed face; after something heavy the Mallow stays attentive
@@ -417,7 +435,16 @@ export default function hushfold(app, params = {}) {
     // (a short phone: a little smaller still, so two Thought Mallows and their words have room round it)
     if (thought && vw < 700) B *= vh < 640 ? 0.74 : 0.84;
     // in a world the Mallow stands on the floor in the foreground, smaller, leaving the sky to play in
-    if (worldMode && !ov?.height && !panelSheet()) B = Math.min(vw * 0.58, vh * 0.27, 300);
+    if (worldMode && !ov?.height && !panelSheet()) {
+      B = Math.min(vw * 0.58, vh * 0.27, 300);
+      // (fix round) a question that needs more room than the world's band leaves it (three chips on a small phone, the largest
+      // text): the host makes room under it, smaller on its floor (with the room for a hop over its head), for as long as the
+      // lines ask for it (onBand) — the chips never sit over its face
+      if (bandNeed) {
+        const fit = Math.floor((floorBottom - (bandTop() + bandNeed + 10) - 18) / 1.14);
+        if (fit < B) { B = Math.max(64, fit); minB = Math.min(minB, B); }
+      }
+    }
     B = Math.max(minB, Math.min(B, regionH));
     const lw = B / 0.64, lh = lw * 1.1;
     const cx = thought ? (vw < 700 ? vw * 0.4 : vw / 2 - B * 0.35) : vw / 2;
@@ -535,13 +562,40 @@ export default function hushfold(app, params = {}) {
   const flowSubtitles = {
     // a world held for a crisis says nothing more (not even a line that was on its way)
     // (nor a finished one, while its last frame fades out)
-    say: (lines, o) => { if (S.hold === 'crisis' || S.finishing) return Promise.resolve(null); if (quietWorldLine(o)) return Promise.resolve(null); S.lastLineAt = now(); return worldHeld.track(subtitles.say(lines, whoOf(o)), waitsForTap(lines, o)); },
+    // (fix round, decision P1 keeps Finish: the last world's "Stay as long as you like" comes with a quiet Finish chip — finishBeside)
+    say: (lines, o) => { if (S.hold === 'crisis' || S.finishing) return Promise.resolve(null); if (quietWorldLine(o)) return Promise.resolve(null); S.lastLineAt = now(); const end = finalStayLine(lines, o); if (end) return finishBeside(end, o); return worldHeld.track(subtitles.say(lines, whoOf(o)), waitsForTap(lines, o)); },
     choice: (prompt, options, o) => (S.hold === 'crisis' || S.finishing ? Promise.resolve(null) : worldHeld.track(subtitles.choice(prompt, options, whoOf(o)), waitsForTap(null, o, true))),
     // a paused world drops its passing lines (a held discovery stays); the shell says "Paused" itself
     // (the shell's own question is never the world's to take: a world arriving, or pausing, under it leaves it as it is)
     clear: () => subtitles.clear({ keep: isAsk }), pause: () => subtitles.clear({ keepHeld: true, keep: isAsk }), resume: () => subtitles.resume(),
     get busy() { return subtitles.busy; }, get holding() { return subtitles.holding; },
   };
+  /**
+   * (fix round) The line a world with nothing after it (the ocean, owner P1) says once it is complete — its completeStay,
+   * "…Stay as long as you like." — when no world follows: its text, else null.
+   */
+  function finalStayLine(lines, o) {
+    if (o?.kind !== 'dialogue' || !o.world || !flowRef || flowRef.stub) return null;
+    let entry = null;
+    try { entry = flowReg?.registry?.get?.(o.world) || null; } catch { entry = null; }
+    const stay = entry?.final ? entry.dialogue?.completeStay : null;
+    const first = [].concat(lines ?? [])[0];
+    const text = typeof first === 'string' ? first : first?.text;
+    if (!stay || text !== stay) return null;
+    try { if (flowRef.state?.canNext) return null; } catch { return null; }
+    return text;
+  }
+  /** "…Stay as long as you like." with a quiet Finish chip beside it (it fades after FINISH_MS; the panel keeps Finish). */
+  const FINISH_MS = 30000;
+  function finishBeside(text, o) {
+    return subtitles.choice(text, [{ label: 'Finish', value: 'finish', soft: true }], { ...whoOf(o), transient: true, timeoutMs: FINISH_MS, label: text })
+      .then((v) => {
+        if (v !== 'finish' || S.left || !worldMode || S.finishing || !flowRef || flowRef.stub) return v;
+        try { flowRef.finish?.(); } catch (e) { console.warn(e); }
+        if (worldMode && !S.finishing) onFinished();
+        return v;
+      });
+  }
   const safeRect = () => {
     const top = (topEl.getBoundingClientRect().bottom || 60) + 8;
     // (where the Mallow rests, not where its live body is this frame: the worlds plan round it)
@@ -1371,7 +1425,7 @@ export default function hushfold(app, params = {}) {
    * (S.soft). The Mallow's own playful chatter stays away for the rest of it (squeeze quips, invitations, hellos, the
    * feeling and "just play" lines, the cheery goodbye) and its face stays attentive. Only gentle() brings support close.
    */
-  const softNow = () => gentle() || !!S.soft;
+  const softNow = () => gentle() || !!S.soft || !!S.attentive;
   function softVisit() {
     if (S.soft || S.left) return;
     S.soft = true;
@@ -1388,6 +1442,8 @@ export default function hushfold(app, params = {}) {
     if (!S.soft || S.left) return;
     S.soft = false;
     app.state.hfSoft = false;
+    // (fix round) after the check-in's "I'm okay" the face stays attentive (markChecked)
+    if (S.attentive) return;
     if (!gentle()) stageMallow?.setStage?.('neutral', { quiet: true });
   }
   /**
@@ -1401,7 +1457,12 @@ export default function hushfold(app, params = {}) {
     // (final) the lexicon's care beside a wish to follow or a suicide named (input-overlay readSafety's deathCare)
     if (DEATH_CARE.has(r?.deathCare)) S.deathCare = true;
     if (r?.supportFirst) S.supportFirst = true;
-    if (!r?.level || LEVELS.indexOf(r.level) <= LEVELS.indexOf(S.level)) return;
+    // (fix round) what was read, by name only (liftable); what a reload kept, by its routing flags only (visit-safety.js)
+    if (r?.level && r.level !== 'none') S.seen.add(r.category || r.level);
+    if (r?.noResume && !S.noResume) { S.noResume = true; if (S.hold === 'care') holdQuiet(); }
+    if (r?.noWorld) S.supportFirst = true;
+    // (a flag read at the same level is kept for a reload too)
+    if (!r?.level || LEVELS.indexOf(r.level) <= LEVELS.indexOf(S.level)) { if (gentle()) keepSafety(); return; }
     S.level = r.level;
     S.category = r.category || null;
     if (r.level === 'crisis') S.crisis = true;
@@ -1462,6 +1523,8 @@ export default function hushfold(app, params = {}) {
     stage?.thoughts.release(900);
     // (a running world, or one on its way that the director already has)
     const running = flowRef && !flowRef.stub && (worldMode || starting > 0);
+    // (fix round: a world made gentle here, not by the person's choice, is the one liftConcern gives back)
+    if (running && !flowRef.state?.gentle) S.gentledWorld = true;
     if (running) { try { flowRef.setThoughts?.(null); flowRef.setGentle?.(true); } catch (e) { console.warn(e); } }
     if (level === 'crisis') {
       S.hold = 'crisis';
@@ -1535,6 +1598,75 @@ export default function hushfold(app, params = {}) {
     if (worldMode && !S.finishing) onFinished();
   }
   /**
+   * (fix round) The check-in was asked this visit: the Support pill stays for the rest of it (and comes back after the plans
+   * page). attentive: it was answered "I'm okay" — from here every Mallow keeps the attentive face (no grin, the stage's floor)
+   * and no squeeze quips, invitations or cheery lines (softNow), while play itself goes on as chosen. Page session only.
+   */
+  function markChecked({ attentive = false } = {}) {
+    if (S.left) return;
+    S.checked = true; app.state.hfChecked = true;
+    if (supportPill.hidden) { supportPill.hidden = !supportWanted(); layout(); }
+    if (!attentive || S.attentive) return;
+    S.attentive = true; app.state.hfAttentive = true;
+    setStageFloor(CARE_FACE);
+    stageMallow?.setStage?.(CARE_FACE, { quiet: true });
+    clearTimeout(inviteT); timers.delete(inviteT);
+    clearNudge();
+  }
+  /** (fix round) Is the Support pill wanted now: anything heavy this visit, the check-in asked, or the question up (the floor). */
+  const supportWanted = () => gentle() || !!S.checked || !!S.asking;
+  /**
+   * (fix round) The support sheet's layout from the pill or a "See support" chip: after abuse, violence or threats the abuse
+   * family's (support.js abuseFirst); after "Not really" / "I'm not okay", or while the check-in is up, the calls first
+   * ('check-in'); else the visit's own (undefined).
+   */
+  function pillCategory() {
+    const c = app.state.hfSafety?.category ?? null;
+    if (abuseFirst(c)) return c;
+    if (S.notOkay || (S.asking && S.askingCheck)) return 'check-in';
+    return undefined;
+  }
+  /**
+   * (fix round) The lexicon's distress, and nothing else heavy this visit (no loss, care, crisis, nothing the screener or the
+   * gentle path held, no "Not really"): the one quiet "I'm okay — let's play" may lift. Its Tells are asked the check-in.
+   */
+  function liftable() {
+    if (S.level !== 'concern' || S.crisis || S.deathCare || S.supportFirst || S.noResume || S.notOkay) return false;
+    return S.seen.size > 0 && [...S.seen].every((c) => c === 'distress');
+  }
+  /**
+   * (fix round) "I'm okay — let's play" after a distress-only check-in: the quiet that concern brought is over for this visit —
+   * no Support-first routing, no 'carried' Tells, no gentle-only worlds, nothing kept for a reload — and play goes on as chosen.
+   * The Support pill stays (the check-in was asked) and the face stays attentive (markChecked). Never after care, crisis, a
+   * loss or death care (liftable).
+   */
+  function liftConcern() {
+    if (!liftable()) return false;
+    S.level = 'none'; S.category = null; S.care = false; S.careSaid = false; S.concernSaid = false;
+    S.seen.clear();
+    app.state.hfSafety = null;
+    forgetVisitSafety();
+    root.classList.remove('hf-heavy');
+    // (the stage's calm was the visit's, not the person's: their own low-stimulation setting stands)
+    try { world.setLowStim?.(!!prefs.get('lowStim')); } catch (e) { console.warn(e); }
+    applyCalm();
+    // a world the distress held (its Resume theirs, owner P4) plays on with the answer (holdForAsk lets it go), no longer gentle
+    if (S.hold === 'care') { S.hold = null; if (askHold) askHold.paused = true; }
+    if (S.gentledWorld && flowRef && !flowRef.stub) { try { flowRef.setGentle?.(false); } catch (e) { console.warn(e); } }
+    S.gentledWorld = false;
+    markChecked({ attentive: true });
+    return true;
+  }
+  /**
+   * (fix round) The visit's reading as it was kept: from this page session (app.state.hfSafety, with its category) or from
+   * before a reload (visit-safety.js: the level and its routing flags only) — as noteSafety reads it.
+   */
+  function keptReading(k) {
+    if (!k?.level) return null;
+    const category = k.category ?? (k.abuseFirst ? 'abuse' : k.liftable ? 'distress' : null);
+    return { level: k.level, category, ...(k.noWorld ? { noWorld: true } : {}), ...(k.noResume ? { noResume: true } : {}), crisisSpoken: !!k.crisisSpoken };
+  }
+  /**
    * The visit's level outlives the scene for the page session (no words): back from Settings, the plans page, the
    * garden or a ritual, support is still close and the visit is still a gentle one (no jokes, no invitations, no world
    * after a crisis). It outlives a reload in this tab too (visit-safety.js: the level only, for this tab, 12 h at most),
@@ -1542,8 +1674,11 @@ export default function hushfold(app, params = {}) {
    */
   function keepSafety() {
     if (S.level === 'none') return;
-    app.state.hfSafety = { level: S.level, category: S.category, crisisSpoken: S.crisisSpoken };
-    rememberVisitSafety(app.state.hfSafety);
+    // (in memory for the page session: the category too, and how the visit routes; for a reload, the routing flags only —
+    // visitFlags: never the category itself)
+    const flags = { abuseFirst: abuseFirst(S.category), noWorld: !!(S.deathCare || S.supportFirst), noResume: !!S.noResume, liftable: liftable() };
+    app.state.hfSafety = { level: S.level, category: S.category, crisisSpoken: S.crisisSpoken, ...flags };
+    rememberVisitSafety({ level: S.level, crisisSpoken: S.crisisSpoken, ...visitFlags(flags) });
   }
 
   // ---------------------------------------------------- telling --
@@ -1629,7 +1764,13 @@ export default function hushfold(app, params = {}) {
                 .catch((e) => console.warn(e)).finally(() => { if (S.quietBeat === beat) S.quietBeat = null; });
             }
           // care or distress typed and closed without sending: support stays close, said once, quietly
-          } else if (!S.crisis && gentle() && !S.careSaid) { S.careSaid = true; say(S.category === 'harm-others' ? SHARED_LINES.harmOthers : S.category === 'suicide-loss' ? SHARED_LINES.supportLoss : S.level === 'care' ? SHARED_LINES.supportCare : SHARED_LINES.supportConcern, { interrupt: !subtitles.holding }); }
+          // (fix round: distress alone is said once too, but stays liftable — the next Tell is asked the check-in, never 'carried')
+          } else if (!S.crisis && gentle() && !S.careSaid && !(S.concernSaid && liftable())) {
+            if (liftable()) S.concernSaid = true; else S.careSaid = true;
+            say(S.category === 'harm-others' ? SHARED_LINES.harmOthers : S.category === 'suicide-loss' ? SHARED_LINES.supportLoss : S.level === 'care' ? SHARED_LINES.supportCare : S.category === 'loss' ? SHARED_LINES.supportGrief : SHARED_LINES.supportConcern, { interrupt: !subtitles.holding });
+            // (the focus where the person can reach support, never the page itself)
+            focusHome();
+          }
           app.applyUpdateIfSafe?.();
         }
       },
@@ -1639,7 +1780,7 @@ export default function hushfold(app, params = {}) {
     layout();
   }
 
-  async function afterTell({ text, emotion, intention, safety, input, reading = null, chosen = null }) {
+  async function afterTell({ text, emotion, intention, safety, input, reading = null, chosen = null, heard: heardBefore = null, check = false }) {
     S.pendingResume = false;
     // (the risk screener's context for the next Tell: these words, in memory only, the last 3 kept)
     if (text) { S.recent.push(String(text)); if (S.recent.length > 3) S.recent.shift(); }
@@ -1648,11 +1789,18 @@ export default function hushfold(app, params = {}) {
     // safety comes first, before anything else is decided (with or without a plan)
     noteSafety(safety);
     noteNoResume(safety);
+    // (fix round) the overlay has gone: after something heavy the focus waits on the Support pill (the chips that follow take
+    // it), never on the page itself; back from the plans page after the check-in, the Support pill is back (check)
+    if (check || safety?.check) markChecked({ attentive: !!check });
+    if (gentle()) focusHome();
     // the visit's level counts, not only the words sent: crisis or care seen earlier (typed and closed, or
     // reworded before Send) still means no Thought Mallow, no world by itself and never the plans page
     // (carried: these words were not heavy themselves; the visit was, earlier, and was answered then)
     const carried = !!S.careSaid && (safety?.level || 'none') === 'none';
     if (LEVELS.indexOf(S.level) > LEVELS.indexOf(safety?.level || 'none')) safety = { level: S.level, category: S.category };
+    // (fix round) distress alone this visit (the lexicon's concern, not a loss): the check-in, not support first (tellRoute)
+    const lift = safety?.level === 'concern' && liftable();
+    let lifted = false;
     const fam = emotion ? await setFeeling(emotion, { quiet: true }) : null;
     if (S.left) return;
     if (intention) S.intention = intention;
@@ -1675,12 +1823,14 @@ export default function hushfold(app, params = {}) {
     // care (abuse, violence, threats…), distress, wanting to hurt someone, or a loss the words name: the person stays
     // on the stage with or without a plan. No jokes, no Thought Mallow made of it, nothing starts by itself:
     // support first, then they choose whether anything plays (the plans page only if they ask to play)
-    if (safety?.level === 'care' || safety?.level === 'concern') { S.told = true; S.careSaid = true; await careBeat({ emotion, intention, safety }); return; }
+    if (safety?.level === 'care' || safety?.level === 'concern') { if (!lift) { S.told = true; S.careSaid = true; await careBeat({ emotion, intention, safety }); return; } }
     // everything else (owner decision 'Ask before every world'): before any Thought Mallow, any world or the plans page,
     // "Shall we play with this, or just be with it?" — a loss the lists are only unsure of is asked exactly this, once
-    if (tellRoute({ level: safety?.level || 'none', carried, chosen }) === 'ask') {
+    if (tellRoute({ level: safety?.level || 'none', carried, chosen, liftable: lift }) === 'ask') {
       // (15 Oct 2026) words the risk screener reads as possibly at risk: the check-in instead of the question (askPlay, CHECK_IN)
-      S.askCheck = !!safety?.check;
+      // (fix round) and distress alone, the lexicon's concern (lift): the same check-in — "I'm okay" lifts that quiet
+      S.askCheck = !!safety?.check || lift;
+      const asked = S.askCheck;
       // (review P2: the words wait for the next Tell meanwhile, in memory only — left unanswered, closed with Back or with a
       // Tell opened over the question, they are in the Tell when it opens again, their feeling too, as after the plans page;
       // an answer lets them go: askPlay)
@@ -1688,6 +1838,9 @@ export default function hushfold(app, params = {}) {
       const out = askOutcome(await askPlay(kept), { telling: !!overlay });
       if (S.left) return;
       if (out === 'notreally') { await careLite({ emotion, intention }); return; }
+      // (fix round) "I'm okay — let's play": distress alone is lifted for the visit; after any check-in the face stays attentive
+      if (out === 'play' && lift) lifted = liftConcern();
+      if (out === 'play' && asked) markChecked({ attentive: true });
       if (out === 'stay') { await beWithIt({ emotion, intention }); return; }
       if (out === 'quiet') { quietAfterAsk(); return; }
       // (a new Tell opened over the question: those words are asked about once they are sent)
@@ -1700,7 +1853,11 @@ export default function hushfold(app, params = {}) {
     if (!ent.has('paid')) {
       // D4: the Thought Mallow and Hushflow are part of hushmallow Flow. The words wait in memory only.
       // (chosen: they said "Play with it" — back with a plan, the words are not asked about again)
-      app.state.pendingTell = { input, emotion, intention, chosen: 'play', at: Date.now() };
+      // (fix round) with the feeling their words suggested (it steers the same world) and whether the check-in was asked
+      // (the Support pill and the attentive face come back with them)
+      const suggested = !emotion && !gentle() ? await wordsFeeling(reading) : null;
+      if (S.left) return;
+      app.state.pendingTell = { input, emotion, intention, chosen: 'play', at: Date.now(), heard: suggested, check: !!S.checked, ...(lifted ? { lifted: true } : {}) };
       app.go('plans', { reason: 'tell' });
       return;
     }
@@ -1717,7 +1874,7 @@ export default function hushfold(app, params = {}) {
     // no feeling tapped: a confident reading of the words (the overlay's own highlighted suggestion) still steers the
     // world — "I'm so angry…" reaches the Static Storm — without choosing the feeling for the person: no chip is pressed
     // for them, no feeling is acknowledged that they did not pick, and it is never kept as theirs (S.emotion)
-    const heard = !emotion && !gentle() ? await wordsFeeling(reading) : null;
+    const heard = !emotion && !gentle() ? (heardBefore || await wordsFeeling(reading)) : null;
     if (S.left) return;
     const steer = emotion || heard || S.emotion;
     const go = () => startFlow({ emotion: steer, intention: intention || S.intention, input, safety });
@@ -1747,9 +1904,13 @@ export default function hushfold(app, params = {}) {
     stageMallow.setStage(CARE_FACE, { quiet: true });
     // (15 Oct 2026) the check-in (S.askCheck, set by afterTell for these words only): the Support pill is there while it is up,
     // and stays for the visit
+    // (fix round, the safety floor) the Support pill is there whenever the question is up, the check-in's or the ordinary one;
+    // after the ordinary one it goes again unless something heavy was seen (supportWanted)
     const check = !!S.askCheck;
     S.askCheck = false;
-    if (check) { supportPill.hidden = false; layout(); }
+    S.askingCheck = check;
+    if (check) markChecked();
+    supportPill.hidden = false; layout();
     // (first: the world's own passing lines go with its pause, never the question; its postcards fold away under it)
     holdForAsk(true);
     foldWorld(true);
@@ -1764,12 +1925,17 @@ export default function hushfold(app, params = {}) {
       // and the clock (PLAY_CHECK.ms) waits while the page is hidden (WCAG 2.2.1)
       // (15 Oct 2026) the check-in replaces the question with the same machinery (askCheckIn: the clock, focus, words kept, equal
       // weight): "I'm okay — let's play" is Play, "Just be with it" is as before, "Not really" is the care-lite path (careLite)
-      const v = check ? await askCheckIn(pick) : await subtitles.choice(PLAY_CHECK.ask, [{ label: PLAY_CHECK.play, value: 'play', onPick: pick('play') }, { label: PLAY_CHECK.stay, value: 'stay', onPick: pick('stay') }],
+      // (fix round, the safety floor) a third chip of equal weight, last in reading order: "I'm not okay" is the check-in's "Not
+      // really" (careLite) — no word list is perfect, so the ordinary question itself carries a way to support
+      const v = check ? await askCheckIn(pick) : await subtitles.choice(PLAY_CHECK.ask, [{ label: PLAY_CHECK.play, value: 'play', onPick: pick('play') }, { label: PLAY_CHECK.stay, value: 'stay', onPick: pick('stay') }, { label: PLAY_CHECK.notOkay, value: 'notreally', onPick: pick('notreally') }],
         { who: M().name, colour: M().colours.glow, timeoutMs: PLAY_CHECK.ms, transient: true, ask: true, focus: true, waitHidden: true, interrupt: !subtitles.holding });
       return picked || v;
     } finally {
       S.asking = false;
       popLayer('ask');
+      S.askingCheck = false;
+      // (the floor's pill goes with the ordinary question, unless the visit wants it: "I'm not okay" keeps it — careLite)
+      if (picked !== 'notreally' && !supportWanted() && !supportPill.hidden) { supportPill.hidden = true; layout(); }
       // ("Just be with it": the soft chip asks over it next — it stays folded, never a flicker)
       if (picked !== 'stay') foldWorld(false);
       focusTell();
@@ -1789,6 +1955,18 @@ export default function hushfold(app, params = {}) {
     const a = document.activeElement;
     if (a && a !== document.body && !subtitles.el.contains(a)) return;
     if (!tellBtn.classList.contains('is-hidden')) tellBtn.focus?.({ preventScroll: true });
+  }
+  /**
+   * (fix round) After Send on the care, crisis and gentle paths, or once their chips have gone: the keyboard focus waits on
+   * the Support pill (else the Tell button) — never left on the page itself, never taken from a field, a sheet or a chip.
+   */
+  function focusHome() {
+    if (S.left || overlay || typeof document === 'undefined') return;
+    const a = document.activeElement;
+    if (a && a !== document.body && !subtitles.el.contains(a)) return;
+    if (a && subtitles.el.contains(a) && a.isConnected && !a.closest?.('[hidden]')) return;
+    const to = [supportPill, tellBtn].find((b) => !b.hidden && !b.inert && !b.classList.contains('is-hidden') && !b.classList.contains('is-under'));
+    to?.focus?.({ preventScroll: true });
   }
   /**
    * A running world waits under its veil while the question waits (review P3: it kept playing for 20 s). on: paused,
@@ -1946,6 +2124,8 @@ export default function hushfold(app, params = {}) {
   async function careLite({ emotion = null, intention = null } = {}) {
     S.told = true; S.careSaid = true;
     S.noResume = true;
+    // (fix round) the support sheet from here leads with its calls (pillCategory: 'check-in')
+    S.notOkay = true;
     askHold = null;
     if (worldMode && flowRef && !flowRef.stub && !S.finishing) { S.hold = 'quiet'; pausedPill.hidden = true; try { flowRef.setThoughts?.(null); if (!flowRef.state?.paused) flowRef.pause?.({ reason: 'safety' }); } catch (e) { console.warn(e); } }
     noteSafety({ level: 'concern', category: 'check-in', supportFirst: true });
@@ -1953,15 +2133,33 @@ export default function hushfold(app, params = {}) {
     stageMallow.setStage(CARE_FACE, { quiet: true });
     stage?.thoughts.release(900);
     layout();
+    // (the focus waits on the Support pill meanwhile, never on the page itself)
+    focusHome();
     await say(CHECK_IN.heard, { interrupt: !subtitles.holding });
     if (S.left || overlay) return;
-    const v = await subtitles.choice(null, [{ label: CHECK_IN.support, value: 'support', primary: true }, { label: CHECK_IN.quiet, value: 'stay' }],
-      { who: M().name, colour: M().colours.glow, timeoutMs: 30000 });
-    if (S.left) return;
-    if (v === 'support') openSupportSheet();
+    await supportChoice();
+  }
+  /**
+   * (fix round) "Would you like to see who can help?" with [See support] [Stay here quietly]: after "Not really" / "I'm not
+   * okay", and after the care line wherever nothing playful is offered. The prompt and the chips come through the status
+   * region together, the group is named by the prompt, the first chip has the keyboard focus, and there is no clock — it
+   * never goes by itself (a new Tell, or its question, decides instead). See support: the support sheet (the calls first after
+   * "Not really"); stay: a quiet line. A world held quietly for it ends quietly either way.
+   */
+  async function supportChoice() {
+    if (S.left || overlay) return null;
+    const ask = SHARED_LINES.supportAsk[0];
+    const v = await subtitles.choice(ask, [{ label: CHECK_IN.support, value: 'support', primary: true }, { label: CHECK_IN.quiet, value: 'stay' }],
+      { who: M().name, colour: M().colours.glow, focus: true, label: ask });
+    if (S.left) return v;
+    // (the question asked for new words took the stage: what follows is its answer's, not this choice's)
+    if (v == null && S.asking) return v;
+    if (v === 'support') openSupportSheet({ category: pillCategory() });
     if (S.hold === 'quiet' && worldMode) endQuietWorld();
     else foldWorld(false);
     if (v === 'stay') say(SHARED_LINES.careQuiet);
+    if (v) focusHome();
+    return v;
   }
   /** The world a gentle choice plays, named for what it is (a calm one first, once it is playable). */
   async function gentleWorld({ calmOnly = false } = {}) {
@@ -1989,8 +2187,9 @@ export default function hushfold(app, params = {}) {
     supportPill.hidden = false;
     layout();
     stageMallow.setStage(CARE_FACE, { quiet: true });
+    // (fix round) a loss the words name: a tender first line that acknowledges it (supportGrief), never the distress line
     const first = safety?.category === 'harm-others' ? SHARED_LINES.harmOthers : safety?.category === 'suicide-loss' ? SHARED_LINES.supportLoss
-      : safety?.level === 'care' ? SHARED_LINES.supportCare : SHARED_LINES.supportConcern;
+      : safety?.level === 'care' ? SHARED_LINES.supportCare : safety?.category === 'loss' ? SHARED_LINES.supportGrief : SHARED_LINES.supportConcern;
     await say(first, { interrupt: !subtitles.holding });
     if (S.left || overlay) return;
     await careChoice({ emotion, intention, safety });
@@ -2016,17 +2215,24 @@ export default function hushfold(app, params = {}) {
     // (r3-esc) after a suicide named or a wish to follow someone who died: no world is offered, not even somewhere calm (a world
     // held quietly ends quietly); the Support pill stays. (Final round 4) So too on the gentle path when the safety net held the
     // words (supportFirst): support first, the world can wait
-    if (S.deathCare || S.supportFirst) { if (S.hold === 'quiet' && worldMode) endQuietWorld(); return; }
+    // (fix round) and something to tap: [See support] [Stay here quietly] (supportChoice), never a line alone
+    if (S.deathCare || S.supportFirst) { await supportChoice(); return; }
     const gw = await gentleWorld({ calmOnly: soft });
     if (S.left || overlay) return;
+    // (fix round) care (abuse, violence, threats, not feeling safe…): See support leads the chips, then stay, then the calm world
+    const care = !soft && (safety?.level === 'care' || S.level === 'care');
+    if (!gw && care) { await supportChoice(); return; }
     // (no world to offer: a world held quietly ends quietly, never left waiting under its veil)
     if (!gw) { if (S.hold === 'quiet' && worldMode) endQuietWorld(); else say(SHARED_LINES.careQuiet); return; }
-    const v = await subtitles.choice(SHARED_LINES.careAsk[0],
-      [{ label: 'Stay here quietly', value: 'stay', primary: true }, { label: gw.label, value: 'play' }],
-      { who: M().name, colour: M().colours.glow, timeoutMs: 30000 });
+    // (fix round) no clock (it never goes by itself), the first chip focused, the group named by the line
+    const ask = SHARED_LINES.careAsk[0];
+    const v = await subtitles.choice(ask,
+      [...(care ? [{ label: CHECK_IN.support, value: 'support', primary: true }] : []), { label: 'Stay here quietly', value: 'stay', primary: !care }, { label: gw.label, value: 'play' }],
+      { who: M().name, colour: M().colours.glow, focus: true, label: ask });
     if (S.left) return;
     // (the question asked for new words took the stage: what follows is its answer's, not this choice's)
     if (v == null && S.asking) return;
+    if (v === 'support') { openSupportSheet({ category: pillCategory() }); if (S.hold === 'quiet' && worldMode) endQuietWorld(); return; }
     // a crisis seen while the choice waited: nothing plays from it (support stays, the calm line was said)
     if (v === 'play' && !S.crisis) {
       playCalm({ emotion, intention, worldId: gw.worldId, safety, soft });
@@ -2035,6 +2241,7 @@ export default function hushfold(app, params = {}) {
       // ends quietly — it never waits under its veil to be played again — and the quiet line follows it
       endQuietWorld();
     } else if (v === 'stay') say(SHARED_LINES.careQuiet);
+    if (v === 'stay') focusHome();
   }
   /**
    * The calm world, because they asked for it (careChoice's, or the soft chip after "Just be with it"): plan or no plan,
@@ -2444,9 +2651,13 @@ export default function hushfold(app, params = {}) {
     }
     // their words wait for this (no reload for a new deploy in between); their world starts loading now
     S.pendingResume = true;
-    if (p.input?.text) warmWorld({ emotion: p.emotion, intention: p.intention });
+    if (p.input?.text) warmWorld({ emotion: p.emotion || p.heard || null, intention: p.intention });
     // (they said "Play with it" before the plans page: chosen, so the words are not asked about again)
-    later(() => afterTell({ text: p.input?.text || '', emotion: p.emotion, intention: p.intention, safety: p.input?.safety?.detail || { level: 'none' }, input: p.input, chosen: p.chosen || null }), 700);
+    // (fix round) with the feeling their words suggested (the same world it steered to) and the check-in asked before (its
+    // Support pill and the attentive face come back)
+    if (p.check) markChecked({ attentive: true });
+    // (lifted: "I'm okay — let's play" answered the distress those words carried: they are not asked about again)
+    later(() => afterTell({ text: p.input?.text || '', emotion: p.emotion, intention: p.intention, safety: p.lifted ? { level: 'none' } : p.input?.safety?.detail || { level: 'none' }, input: p.input, heard: p.heard || null, check: !!p.check, chosen: p.chosen || null }), 700);
     return true;
   }
 
@@ -2499,7 +2710,7 @@ export default function hushfold(app, params = {}) {
       // something heavy earlier in this visit (in this page session, or before a reload in this tab: the level kept
       // for it, never the words): the Mallow is on its attentive face from its very first frame
       const kept = app.state.hfSafety || recallVisitSafety();
-      if (kept?.level) setStageFloor(CARE_FACE);
+      if (kept?.level || S.attentive) setStageFloor(CARE_FACE);
       // back from Another Angle after "Just be with it" there (params.soft): nothing heavy was said — at most the quiet
       // state of this visit (softVisit: no quips, the attentive face), never the Support pill, careSaid or 'carried' Tells
       if (params.soft === true || params.safety?.soft === true) softVisit();
@@ -2549,7 +2760,10 @@ export default function hushfold(app, params = {}) {
       stageMallow ||= createStageMallow(world, { touch: null });
       // something heavy earlier in this page session (Settings and back, the plans page and back…): the
       // visit is still a gentle one from the first squeeze, support stays close, and the calm line is not said twice
-      if (kept?.level) { S.crisisSpoken = !!kept.crisisSpoken; noteSafety(kept); S.careSaid = true; }
+      // (fix round: distress alone, kept, stays liftable — the next Tell is asked the check-in, never 'carried')
+      if (kept?.level) { S.crisisSpoken = !!kept.crisisSpoken; if (!kept.liftable) S.seen.add('kept'); noteSafety(keptReading(kept)); if (!liftable()) S.careSaid = true; }
+      // (fix round) the check-in asked earlier in this page session (Settings and back): its Support pill is back too
+      if (S.checked) markChecked({ attentive: S.attentive });
       router = createInputRouter({
         el: world.fx, mallow: stageMallow, thoughts: stage.thoughts,
         onEmpty: (r) => { if (r.type === 'down') stage.ripple(r.x, r.y, M().colours.glow); },
@@ -2675,8 +2889,8 @@ export default function hushfold(app, params = {}) {
       if (sheets.length || S.pendingResume) return false;
       // someone who went to call a helpline comes back to the same screen, Support pill and all
       if (S.crisis || S.care || gentle() || !supportPill.hidden) return false;
-      // their words are on stage as a Thought Mallow
-      if (!worldMode && (stage?.thoughts.list.length || 0) > 0) return false;
+      // their words are on stage as a Thought Mallow (fix round: in a world too — a reload would take them from under the person)
+      if ((stage?.thoughts.list.length || 0) > 0) return false;
       // a host cross-fading in
       if (heroGhost) return false;
       try { return flowRef?.safeForUpdate?.() ?? true; } catch { return false; }

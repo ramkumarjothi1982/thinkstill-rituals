@@ -1157,6 +1157,9 @@ export function createHushflow(opts = {}) {
       if (holds.size) return false;
       if (phase === 'idle' || phase === 'finished' || !cur) return true;
       if (melt || discoveryPending > 0) return false;
+      // (fix round) the person's own words on stage as the world's Thought Mallow: never reloaded away from under them, at
+      // any progress (a world just begun counted as safe while it showed them)
+      if (thoughtList(thoughtsSrc, thoughtOne).some((t) => t && !t.leaving)) return false;
       const p = cur.world.progress || 0;
       return p <= 0.001 || !!cur.world.complete;
     },

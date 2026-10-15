@@ -356,6 +356,9 @@ body.hf-world-held #fx-layer > canvas.hf-stage, body.hf-world-held .hushfold .tm
 @media (max-width: 360px) {
   .hushfold { --hf-edge: 12px; }
   .hf-btn { width: 44px; height: 44px; }
+  /* (fix round) a little less room round each chip, so a question's three chips take two rows, not three (320, largest text) */
+  .hf-chips { gap: 8px; }
+  .hf-chip { padding: 0 14px; }
 }
 @media (min-width: 700px) {
   .hf-input { top: calc(var(--safe-top, 0px) + 72px); }
@@ -369,7 +372,11 @@ body.hf-world-held #fx-layer > canvas.hf-stage, body.hf-world-held .hushfold .tm
 }
 
 /* a sheet (support, the A–Z list) is up: the Hushfold's own layers step back so nothing ghosts through it */
-.hushfold.hf-sheet-open .hf-input, .hushfold.hf-sheet-open .hf-panel, .hushfold.hf-sheet-open .hf-subs, .hushfold.hf-sheet-open .hf-top { opacity: 0 !important; transition: opacity 200ms; }
+.hushfold.hf-sheet-open .hf-input:not([data-sheet-beside]), .hushfold.hf-sheet-open .hf-panel, .hushfold.hf-sheet-open .hf-subs, .hushfold.hf-sheet-open .hf-top { opacity: 0 !important; transition: opacity 200ms; }
+/* (fix round) the urgent sheet opened below the words while the person types (ui.js openSheet beside): the overlay stays, in
+   reach, and keeps to the words and Send — the feeling chips, notes and photos step aside so the sheet below has the room
+   to show its calls whole */
+.hf-input.urgent .note, .hf-input.urgent .hf-scroll, .hf-input.urgent .photos, .hf-input.urgent .photo { display: none !important; }
 /* the A–Z list as a one-pick list (from the Hushfold): the tick only on the chosen feeling */
 .emo-row.single[aria-pressed="false"] .tick { visibility: hidden; }
 
