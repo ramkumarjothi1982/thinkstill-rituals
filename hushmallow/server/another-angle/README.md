@@ -221,6 +221,28 @@ The report lands in `eval/reports/angle-eval-<date>.md` (and a `.json` beside it
 
 **Replaying the gate (free).** `npm run replay:gate` re-runs the current quality gate alone over every answer of a recorded run — the accepted answers and the drafts it rejected — and lists which rejections would no longer happen, which still would (and why), and any accepted answer that would now fail. With no argument it replays the whole replay set, every `eval/runs/run*-answers.json` (runs 1, 2 and 3); `npm run replay:gate -- eval/runs/run2-answers.json` replays one run, and any later report's `.json` works too. When only the Actions log is at hand (the artifact needs a GitHub login to download), `npm run extract:log -- <job-log.txt> <out.json>` turns the report printed in the log back into that JSON; all three fixtures were made that way. From run 4 the report also names each rejected draft's reasoning pattern and, under each failure, what the regeneration was told (`- told: …`), and the extractor keeps both; for older runs a follow-up that ended in a fallback has no recorded pattern, so the replay assumes the first one no earlier angle used. `test/gate-run1.test.js`, `test/gate-run2.test.js` and `test/gate-run3.test.js` turn the three runs into regression tests; `test/gate-review3.test.js` holds the third review's probes and the verb × noun × count and verb × time-span matrices.
 
+## The real-model check
+
+A controlled, capped run of the real model through the server's real HTTP app and the real built site, in GitHub Actions (`.github/workflows/another-angle-real.yml`, with the `ANTHROPIC_API_KEY` repository secret). Nothing is deployed: the harness (`tools/local-harness.mjs`, `PROVIDER=anthropic`) runs on the runner at `127.0.0.1:8790`, and the site, built in CI mode by `tools/build-site.sh`, is served at `127.0.0.1:8000` and pointed at it with `?angleDev=8790`.
+
+* **API level** (`scripts/real-check.mjs api`), straight HTTP, bypassing the app: health and session; the error contract (empty, oversized and malformed bodies, no session, a forged token, a wrong origin, a burst over the rate limit); support that nothing can get round (no token, no consent, oversized, zero-width characters, a tripped limit); three obfuscated risk sentences only the model can read; every case in `eval/real-cases.json` (status, safety source, gate result, the two lines, latency); a second harness on `:8791` with an invalid key (the fallback path, no cost); and no words in the server log.
+* **Browser level** (`../../tools/beyond/real-client.cjs`): the consent card first; "Not now" sends nothing; Accept → the question → "Another angle" → a real angle with both of its lines on screen; "Just be with it", a crisis sentence and a care sentence send nothing; the delete-data sheet clears the phone's Another Angle data; 0 console errors; nothing leaves the runner. Screenshots go in the artifact.
+* **Report** (`scripts/real-check.mjs report`): per-case table, totals, cost, latency p50/p95 and every failure verbatim, in the log, the run summary and the artifact. A miss (risk read as an angle), false support, an error or a failed step fails the run; a fallback is listed, never hidden.
+
+**Cost.** About $0.60–$0.90 a run (about 30 model requests at ~$0.02), plus ~$0.02 for each added case that reaches the model. Hard caps: the script counts model calls and cost from the usage the harness logs (priced by `src/cost.js`) and stops before one more worst-case request (~$0.32) could pass `--max-calls` (80) or `--max-usd` ($4), keeping room for the browser's one real angle; the harness's `DAILY_SPEND_CAP_USD` is set to the same amount. Without `--yes`, a real provider only gets the estimate.
+
+**Run it:** append a line to `eval/REAL` on a `claude/**` branch (a line `--max-usd 2` or `--max-calls 40` there sets the caps), or Actions → "Another Angle real-model check" → Run workflow (once the workflow is on `main`). **Cases:** `eval/real-cases.json`, synthetic sentences only (15 ordinary, 10 safe edge cases; held-out risk cases go in as `"group": "heldout-risk"` with `"expect": ["care", "crisis"]`). **Free dry run** on the mock model, from this folder:
+
+```
+PROVIDER=mock nohup node --import ./test/register.mjs tools/local-harness.mjs --serve 8790 2> /tmp/aa.log &
+node scripts/real-check.mjs api --log /tmp/aa.log --out /tmp/real --expect-provider mock
+HM_AUTH_MODE=ci bash ../../tools/build-site.sh /tmp/site dry && (node ../../tools/auth/pages-serve.mjs /tmp/site 8000 &)
+node ../../tools/beyond/real-client.cjs --site http://127.0.0.1:8000 --dev 8790 --out /tmp/real
+node scripts/real-check.mjs report --out /tmp/real --log /tmp/aa.log
+```
+
+The mock's lines are placeholders, so a dry run proves the plumbing, never the quality or the model's own safety judgement. Not covered: the Worker on Cloudflare (its Durable Object ledger, rate-limit binding, production origins and per-device limit), iOS Safari, and real people's words.
+
 ## Prompt versions
 
 The system prompt is a versioned file; `PROMPT_VERSION` in `src/prompt.js` names the one the Worker bundles (`src/index.js`), and every response and log line carries it. Old versions stay in `prompts/` for comparison.
