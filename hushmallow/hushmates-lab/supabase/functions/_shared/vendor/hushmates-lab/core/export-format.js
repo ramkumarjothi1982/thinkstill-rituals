@@ -1,8 +1,10 @@
-// The personal-data file (format v1), worded for people. Both the lab's engine and the
+// The personal-data file (format v2), worded for people. Both the lab's engine and the
 // Hushmates Edge Function build the same raw facts and pass them here, so the file is
 // the same wherever it's made. Field by field from an allow-list: other people appear
 // only as "A Hushmate", their actions are dated by day only, and nothing that identifies
 // anyone else (or that the person was never shown) is ever in it.
+// Version 2 renamed the sharing consent (see `version` below). Fields added since only add
+// (you.confirmedYouAre18OrOverAt: when you confirmed you're 18 or over), so a v2 reader keeps working.
 
 import { FEELING_LABELS, REPORT_REASONS } from './relay-config.js';
 
@@ -21,7 +23,7 @@ const day = (t) => (typeof t === 'number' ? new Date(t).toISOString().slice(0, 1
 const choice = (v) => (v === true ? 'kept' : v === false ? 'let go' : 'not chosen yet');
 
 /**
- * raw: { now, you: { pseudonym, mallow, createdAt, catching, notifyReturn, state },
+ * raw: { now, you: { pseudonym, mallow, createdAt, adultConfirmedAt, catching, notifyReturn, state },
  *        feelings: [{ text, label, status, createdAt, returnedAt, returnReason, resends, saved, consentAt, fallbackConsentAt,
  *                     people, items: { visible, extra }, events }],          (oldest first; deleted ones left out)
  *        offered: [{ text, at, allowShare, shareConsentAt, journeyHome }],  (oldest first; taken back ones left out)
@@ -56,6 +58,7 @@ export function formatExport(raw) {
     about: 'Everything Hushmates keeps that is yours: your feelings and what came back to you, the perspectives you offered, your reports, your choices, and when you agreed to each. Other people appear only as "A Hushmate", never by name. Anything you let go of or deleted is gone and is not included.',
     you: {
       name: raw.you.pseudonym, mallow: raw.you.mallow, joinedAt: iso(raw.you.createdAt),
+      confirmedYouAre18OrOverAt: iso(raw.you.adultConfirmedAt),       // the "I'm 18 or over" you ticked when you joined (added in v2)
       letFeelingsFindYou: !!raw.you.catching, gentleNotices: raw.you.notifyReturn !== false,
       account: ACCOUNT[raw.you.state] || 'active',
     },

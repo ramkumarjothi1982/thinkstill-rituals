@@ -437,9 +437,11 @@ export class RelayService {
 
   _offerView(h) {
     const j = this.s.journeys[h.journeyId];
+    // what the catcher's screen shows, and nothing more: the words, the feeling's label and the count
+    // (never the author's Mallow, which the screen doesn't show)
     return {
       holdId: h.id, state: h.status, expiresAt: h.expiresAt,
-      feeling: { text: j.text, label: j.label, mallow: j.mallow, perspectivesSoFar: this._humans(j).length, of: this.L.perspectivesPerFeeling },
+      feeling: { text: j.text, label: j.label, perspectivesSoFar: this._humans(j).length, of: this.L.perspectivesPerFeeling },
     };
   }
 
@@ -842,7 +844,7 @@ export class RelayService {
     const mine = Object.values(this.s.journeys).filter((j) => j.owner === acc.id && j.status !== 'deleted').sort((a, b) => a.createdAt - b.createdAt);
     return formatExport({
       now: this.now(),
-      you: { pseudonym: p.pseudonym, mallow: p.mallow, createdAt: acc.createdAt, catching: p.catching, notifyReturn: p.notifyReturn, state: acc.state },
+      you: { pseudonym: p.pseudonym, mallow: p.mallow, createdAt: acc.createdAt, adultConfirmedAt: acc.adultConfirmedAt ?? null, catching: p.catching, notifyReturn: p.notifyReturn, state: acc.state },
       feelings: mine.map((j) => ({
         text: j.text, label: j.label, status: j.status, createdAt: j.createdAt, returnedAt: j.returnedAt, returnReason: j.returnReason,
         resends: j.resends || 0, saved: j.saved, consentAt: j.consentAt, fallbackConsentAt: j.fallbackConsentAt,
@@ -916,9 +918,17 @@ export class RelayService {
     const mod = this._moderator(token);
     const r = this.s.reports[id];
     if (!r) fail('not-found');
+    // one decision per report: a second one (another reader's, or the same one sent twice) changes nothing
+    if (r.status !== 'open') fail('already-decided');
     const j = this.s.journeys[r.journeyId];
     if (action === 'dismiss') r.status = 'no-action';
-    else if (action === 'resume-feeling' && j) { j.paused = false; r.status = 'no-action'; }
+    else if (action === 'resume-feeling' && j) {
+      // it carries on only when nothing else about it is still waiting: another open report on the same
+      // feeling (a priority one included) keeps it paused until that one is decided too
+      const waiting = Object.values(this.s.reports).some((x) => x.id !== r.id && x.kind === 'feeling' && x.journeyId === j.id && x.status === 'open');
+      if (!waiting) j.paused = false;
+      r.status = 'no-action';
+    }
     else if (action === 'remove-feeling' && j) { j.paused = true; if (j.status === 'travelling') this._return(j, 'removed'); r.status = 'actioned'; }
     else if (action === 'remove-perspective' && r.perspectiveId) { const x = this.s.reframes[r.perspectiveId]; if (x) { x.removed = true; x.text = ''; } r.status = 'actioned'; }   // the report keeps its own copy
     else if (action === 'restrict-user' && r.subject) {
@@ -935,7 +945,13 @@ export class RelayService {
     if (note) r.notes.push({ by: mod.id, at: this.now(), text: normaliseText(note).slice(0, 1000) });
     this._audit(mod.id, 'mod.resolve', { report: id, decision: action });   // not 'action': that names the entry
     this._save();
-    return { id, status: r.status };
+    // "Let it carry on" says whether it really did (it stays paused while another report on it is open)
+    return { id, status: r.status, ...(action === 'resume-feeling' ? { paused: !!j.paused } : {}) };
   }
-  modAuditLog(token) { const mod = this._moderator(token); this._audit(mod.id, 'mod.view-audit'); return { entries: this.s.audit.slice(-200) }; }
+  modAuditLog(token) {
+    const mod = this._moderator(token);
+    this._audit(mod.id, 'mod.view-audit');
+    // the desk never sees who reported: a report's entries name no account (the stored entry keeps its actor, for the operator)
+    return { entries: this.s.audit.slice(-200).map((e) => (e.action.startsWith('report.') ? { ...e, actor: e.actor === 'system' ? 'system' : 'a member' } : { ...e })) };
+  }
 }

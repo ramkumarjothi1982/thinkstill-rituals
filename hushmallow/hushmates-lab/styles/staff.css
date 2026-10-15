@@ -71,6 +71,8 @@ button:disabled { opacity: .55; cursor: default; }
 .desk-urgent { background: var(--urgent-bg); border: 1.5px solid var(--urgent); border-radius: 12px; padding: 14px 16px; margin: 12px 0; }
 .desk-urgent h3 { color: var(--urgent); }
 .desk-urgent ul { margin: 6px 0 0; padding-left: 18px; }
+.desk-guide { background: var(--ground); border: 1.5px solid var(--line); border-radius: 12px; padding: 14px 16px; margin: 12px 0; }
+.desk-guide .desk-meta { margin: 0; }
 .desk-steps { margin: 0 0 10px; padding-left: 22px; }
 .desk-steps li { margin: 0 0 6px; }
 .desk-notes { margin-top: 12px; }

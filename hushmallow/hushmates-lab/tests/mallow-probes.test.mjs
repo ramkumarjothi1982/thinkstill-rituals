@@ -2,6 +2,9 @@
 // (tests/fixtures/mallow-probes.json), held to what each should get. Each library case is asked of
 // every Mallow, three times over. Keyword rules are a floor, not a guarantee: these keep each fix
 // from undoing another, and give the clinical review (docs/READINESS.md) a list to start from.
+// The library's protective word lists are a floor too (core/perspectives.js, "the Tier 0 floor"):
+// whatever 0037d57, 9012d6f or 2a67f1b kept away stays away. P.floor pins every phrasing the
+// independent checks found; P.floorAccepted pins the over-caution that floor brings back, for Tier A.
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -184,18 +187,13 @@ test('the Mallow library: harm at home, a worrying silence, a mistake that hurt 
   assert.ok(answered > 1500, `only ${answered} answers were checked`);
 });
 
-test('the Mallow library: everyday words keep their lines (the wifi is down, a phone died, an admin slip at a hospital, Specialist Maths)', async () => {
+// The wifi that "has been down", a phone that "died" and an admin slip at a hospital used to be here (they kept their
+// silence and mistake lines at 2a67f1b). The Tier 0 floor counts them again, as 0037d57 did: they are in
+// P.floorAccepted now, held to the careful outcome instead.
+test('the Mallow library: everyday words keep their lines (a racing heart before a maths test, Specialist Maths, results from the exams)', async () => {
   const has = async (label, text, re) => (await ids(text, label)).some((id) => re.test(id));
   const missing = [];
   for (const [label, text, re] of [
-    ['worry', 'The wifi has been down all day and my friend has not replied to my messages.', /^um-ang/],
-    ['worry', 'I have been down to the shops twice and he still has not replied.', /^um-ang/],
-    ['worry', 'The website has been down all morning and my friend has not replied to my messages.', /^um-ang/],
-    ['worry', "My friend has been down to the coast and hasn't texted back.", /^(?:um|nt)-ang/],
-    ['worry', 'I made a mistake at the hospital where I work and booked the wrong room.', /^mj-ang/],
-    ['worry', 'I work at the hospital and I made a mistake with the rota.', /^mj-ang/],
-    ['worry', 'I made a mistake and my phone died.', /^mj-ang/],
-    ['worry', 'I made a mistake and the car just died on the freeway.', /^mj-ang/],
     ['worry', 'I have a maths test tomorrow and my heart is racing.', /^hm-exam-/],
     ['worry', 'My Specialist Maths exam is tomorrow', /^hm-exam-/],
     ['worry', 'My Specialist Maths exam is tomorrow and I am so nervous.', /^hm-exam-/],
@@ -203,4 +201,45 @@ test('the Mallow library: everyday words keep their lines (the wifi is down, a p
     ['sadness', 'I got the results from my biology exam and I failed.', /^(?:hm-exam-|bg-ang)/],
   ]) if (!(await has(label, text, re))) missing.push(`${label} · ${text}`);
   assert.deepEqual(missing, []);
+});
+
+// The Tier 0 floor (core/perspectives.js). Each case is asked of every Mallow, three times over, with the real
+// screen; a held one would check nothing. Grief lines need a clear loss; any loss word gets grief's protections.
+const FLOOR_CHECKS = async () => {
+  const { SCENARIOS } = await import('../../src/ultra/frameworks.js');
+  const { libraryCatalogue } = await import('../core/perspectives.js');
+  const { openers } = libraryCatalogue();
+  const of = (...scenarioIds) => new Set(SCENARIOS.filter((s) => scenarioIds.includes(s.id)).flatMap((s) => s.angles.map((a) => a.id)));
+  const silence = of('unanswered-message', 'no-text-back', 'group-chat-ignored', 'plans-cancelled', 'seemed-annoyed', 'left-out');
+  const habit = (r) => /^gen-[a-z]+-[a-z-]+-ang/.test(r.angleId);
+  const opens = (r, family, pick) => openers.some((o) => o.mallow === r.mallow && o.family === family && pick(o) && r.text.startsWith(o.text));
+  const some = (re) => (rs) => rs.some((r) => re.test(r.angleId));
+  const none = (re) => (rs) => !rs.some((r) => re.test(r.angleId));
+  return {
+    grief: some(/^hm-loss-/), nogrief: none(/^hm-loss-/), achieve: some(/^hm-achievement-/),
+    tender: (rs) => rs.every((r) => opens(r, 'heavy', (o) => o.tender)), bright: (rs) => rs.every((r) => opens(r, 'bright', () => true)),
+    nosilence: (rs) => !rs.some((r) => silence.has(r.angleId)), noregret: none(/^rg-ang/), nomistake: none(/^mj-ang/), nopd: none(/^pd-ang/),
+    nomissing: none(/^hm-missing-/), nosa: none(/^sa-ang/), nohabit: (rs) => !rs.some(habit), habit: (rs) => rs.some(habit),
+    school: some(/^(?:hm-exam-|bg-ang)/), noschool: none(/^(?:hm-exam-|bg-ang)/),
+  };
+};
+const floorRun = async (cases) => {
+  const CHECK = await FLOOR_CHECKS();
+  const wrong = [];
+  for (const [label, text, checks, from] of cases) {
+    const rs = (await picks(text, label)).filter((r) => r.status === 'ok');
+    if (!rs.length) { wrong.push(`${from} · ${label} · ${text}: held by the screen, so it checks nothing`); continue; }
+    const failed = checks.split(' ').filter((k) => { assert.ok(CHECK[k], `unknown check ${k}`); return !CHECK[k](rs); });
+    if (failed.length) wrong.push(`${failed.join(',')} · ${from} · ${label} · ${text}: ${rs.map((r) => r.angleId).join(' ')}`);
+  }
+  return wrong;
+};
+
+test('the Tier 0 floor: every phrasing the independent checks found gets the careful outcome (grief lines only for a clear loss)', async () => {
+  assert.ok(P.floor.cases.length >= 180, 'the floor cases are all there');
+  assert.deepEqual(await floorRun(P.floor.cases), []);
+});
+
+test('the Tier 0 floor: the over-caution it brings back is still there (accepted, listed for the Tier A review)', async () => {
+  assert.deepEqual(await floorRun(P.floorAccepted.cases), []);
 });

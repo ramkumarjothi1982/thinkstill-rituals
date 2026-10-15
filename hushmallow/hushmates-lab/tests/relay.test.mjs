@@ -252,7 +252,10 @@ test('reports: a catcher’s report removes it from their sky; two reports pause
   assert.equal(w.svc.findFeeling(w.T.fern).offer, null);
   const reports = w.svc.modListReports(w.T.mod).reports;
   assert.equal(reports.length, 2);
+  // it carries on only once no report on it is still open (tests/relay-launch-fixes.test.mjs)
   w.svc.modResolve(w.T.mod, { id: reports[0].id, action: 'resume-feeling', note: 'not abusive' });
+  assert.equal(w.svc.findFeeling(w.T.fern).offer, null, 'resumed while the other report was still open');
+  w.svc.modResolve(w.T.mod, { id: reports[1].id, action: 'resume-feeling', note: 'not abusive either' });
   assert.ok(w.svc.findFeeling(w.T.fern).offer);
   throwsCode(() => w.svc.modListReports(w.T.moon), 'forbidden');
 });

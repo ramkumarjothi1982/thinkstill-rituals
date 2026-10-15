@@ -114,7 +114,7 @@ export function release(dev, params = {}) {
     fallback.classList.add('kit-switch--plain');
     // what turning it on means, at the point of choosing
     const fallbackNote = h('p', { class: 'hf-check-hint hf-fallback-note', id: 'hf-fallback-note' },
-      'If you turn this on and nobody catches it within 30 minutes, Hushmates writes a perspective for you automatically. It isn’t a person, and your words stay with Hushmates. ',
+      'If you turn this on and nobody catches it within 30 minutes, your Mallow offers you one perspective, chosen automatically from a fixed set of lines written in advance for Hushmallow, guided by your words. It isn’t a person, and your words stay with Hushmates. ',
       h('button', { type: 'button', class: 'hf-link', dataset: { test: 'fallback-details' }, onclick: () => privacySheet(dev, { focus: 'mallow' }) }, 'How this works'));
     const sw = fallback.querySelector('[role="switch"]');
     sw?.setAttribute('aria-describedby', [sw.getAttribute('aria-describedby'), 'hf-fallback-note'].filter(Boolean).join(' '));

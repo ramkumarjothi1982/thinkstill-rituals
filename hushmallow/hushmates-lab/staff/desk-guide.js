@@ -44,6 +44,21 @@ export const URGENT_GUIDE = {
   ],
 };
 
+// What the desk shows beside a report of one of these reasons (never for a Mallow's words: a Mallow isn't a
+// person). The full procedure is the document named in `source`; these steps say the same, in short.
+export const REASON_GUIDES = {
+  under18: {
+    title: 'An age concern: Hushmates is for adults (18+)',
+    steps: [
+      'Danger first: if the words suggest danger, follow the steps for “Someone may be in danger”. The age question waits.',
+      'If the words suggest the writer is under 18, restrict the person who wrote it (they stop catching, and live holds end).',
+      'Write “age concern” in the team note, and nothing that would identify them. Tell the safety lead the same day.',
+      'The safety lead and the owner decide what happens next.',
+    ],
+    source: 'docs/legal/MODERATION.md §7.2',
+  },
+};
+
 // The team's own target for a priority report (docs/ESCALATION.md §2): looked at within 12 hours.
 // It's never promised to reporters; the desk marks a priority report still open after it.
 export const OVERDUE_MS = 12 * 60 * 60e3;

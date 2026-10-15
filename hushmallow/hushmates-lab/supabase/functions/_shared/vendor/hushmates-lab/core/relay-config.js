@@ -36,6 +36,8 @@ export const REPORT_REASONS = [
   { id: 'identifying', label: 'Shares personal details' },
   { id: 'sexual', label: 'Sexual content' },
   { id: 'scam', label: 'Spam, scam or asking for money' },
+  // Hushmates is for adults (18+): an age concern, at the usual priority (the desk's age steps: docs/legal/MODERATION.md §7.2)
+  { id: 'under18', label: 'Seems to be under 18' },
   { id: 'safety', label: 'Someone may be in danger' },
   { id: 'other', label: 'Something else' },
 ];

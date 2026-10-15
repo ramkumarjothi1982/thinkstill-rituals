@@ -1,4 +1,4 @@
-// Your data: the personal-data file (exportMyData, format v1). It must hold
+// Your data: the personal-data file (exportMyData, format v2). It must hold
 // everything that is the person's own, in plain words, and nothing that
 // belongs to anyone else: no names, Mallows, ids or order of other people,
 // no words the person was never shown, no reported text or safety-team notes.
@@ -7,6 +7,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { world, throwsCode, FEELING, REFRAMES } from './relay-helpers.mjs';
 import { libraryProvider } from '../core/perspectives.js';
+import { RelayService } from '../core/relay.js';
+import { formatExport } from '../core/export-format.js';
 
 const OTHERS = ['CloudMallow', 'StarMallow', 'FernMallow', 'DreamMallow', 'PebbleMallow', 'EmberMallow', 'SafetyTeam'];
 const INTERNAL = /\b(acc|pv|jr|hold|rep|aud|fb|tok)_[a-z0-9]{6,}/;
@@ -19,7 +21,7 @@ function keys(o, out = new Set(), path = '') {
 }
 const ALLOWED = new Set([
   '.format', '.version', '.exportedAt', '.about',
-  '.you', '.you.name', '.you.mallow', '.you.joinedAt', '.you.letFeelingsFindYou', '.you.gentleNotices', '.you.account',
+  '.you', '.you.name', '.you.mallow', '.you.joinedAt', '.you.confirmedYouAre18OrOverAt', '.you.letFeelingsFindYou', '.you.gentleNotices', '.you.account',
   '.feelings', '.feelings[].words', '.feelings[].feeling', '.feelings[].status', '.feelings[].sentAt', '.feelings[].cameHomeAt',
   '.feelings[].cameHomeBecause', '.feelings[].timesSentOutAgain', '.feelings[].saved', '.feelings[].agreedToShareWithoutYourNameAt',
   '.feelings[].agreedToAMallowPerspectiveAt', '.feelings[].peopleWhoOfferedAPerspective',
@@ -43,7 +45,7 @@ function fullJourney() {
   return { w, id };
 }
 
-test('your data: the file follows the v1 allow-list, field by field, whatever has happened', () => {
+test('your data: the file follows the v2 allow-list, field by field, whatever has happened', () => {
   const { w, id } = fullJourney();
   const col = w.svc.getJourney(w.T.moon, { journeyId: id }).collection;
   w.svc.choosePerspective(w.T.moon, { journeyId: id, perspectiveId: col[0].id, keep: true });
@@ -58,6 +60,24 @@ test('your data: the file follows the v1 allow-list, field by field, whatever ha
     assert.equal(file.format, 'hushmates-personal-data');
     assert.equal(file.version, 2);
   }
+});
+
+test('your data: the file says when you confirmed you’re 18 or over, a field added within v2 that breaks no reader', () => {
+  let t = Date.UTC(2026, 9, 14, 9);
+  const svc = new RelayService({ now: () => t });
+  const joined = new Date(t).toISOString();
+  const tok = svc.issueSession(svc.createMember({ pseudonym: 'Moonbeam', adult: true }));
+  t += 2 * 86400e3;
+  const file = svc.exportMyData(tok);
+  assert.equal(file.version, 2, 'an added field keeps the version: v2 readers keep working');
+  assert.equal(file.you.confirmedYouAre18OrOverAt, joined);
+  assert.deepEqual([...keys(file)].filter((x) => !ALLOWED.has(x)), []);
+  // everything a v2 reader already knew is still there, unchanged in shape
+  for (const k of ['name', 'mallow', 'joinedAt', 'letFeelingsFindYou', 'gentleNotices', 'account']) assert.ok(k in file.you, k);
+  // facts made before the field existed (no adultConfirmedAt) still make a file: it says nothing rather than make a date up
+  const old = formatExport({ now: t, you: { pseudonym: 'Moonbeam', mallow: 'noomi', createdAt: t, catching: true, notifyReturn: true, state: 'active' },
+    feelings: [], offered: [], feelingsThatFoundYou: 0, reports: [], blocked: 0 });
+  assert.equal(old.you.confirmedYouAre18OrOverAt, null);
 });
 
 test('your data: the author’s file never names, colours or numbers the people who answered', () => {

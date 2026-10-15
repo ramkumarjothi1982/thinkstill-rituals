@@ -35,7 +35,7 @@ function normal(value) {
   const ids = new Map();
   const ID = /^(?:(?:jr|pv|hold|mp|rep|acc|aud)_[a-z0-9]{14}|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/;
   // fields only the backend has: the desk's pattern view (subjectHistory) and the reveal flag
-  const DROP = new Set(['test', 'adultConfirmed', 'seen', 'subjectHistory']);
+  const DROP = new Set(['test', 'seen', 'subjectHistory']);
   const walk = (v) => {
     if (Array.isArray(v)) return v.map(walk);
     if (v && typeof v === 'object') {
@@ -55,9 +55,14 @@ async function run(seed, steps) {
   const clock = { t: Date.UTC(2026, 9, 14, 9) };
   const ref = new RelayService({ now: () => clock.t, random: rng(1), provider: mallowStub, limits: { fairnessPool: 1 }, testMode: true });
   const refTok = {};
-  for (const [k, m] of PEOPLE) { ref.createTestAccount({ key: k, pseudonym: `${k}Mallow`, mallow: m, catching: true }); refTok[k] = ref.signInTestAccount(k); }
-  ref.createTestAccount({ key: 'mod', pseudonym: 'SafetyDesk', mallow: 'loomi', role: 'moderator', catching: false });
-  refTok.mod = ref.signInTestAccount('mod');
+  // members as the server makes them (an invitation redeemed, 18+ confirmed), then the same first choices as b.join
+  const member = (pseudonym, mallow, role, catching) => {
+    const tok = ref.issueSession(ref.createMember({ pseudonym, mallow, role, adult: true }));
+    ref.savePreferences(tok, { catching, onboarded: true });
+    return tok;
+  };
+  for (const [k, m] of PEOPLE) refTok[k] = member(`${k}Mallow`, m, 'member', true);
+  refTok.mod = member('SafetyDesk', 'loomi', 'moderator', false);
 
   const b = await backend({ mallow: { perspective: mallowStub }, start: clock.t, settings: { limits: { fairnessPool: 1 }, mallow: { autoGenerate: false } } });
   b.clock.t = clock.t;
@@ -152,10 +157,10 @@ async function run(seed, steps) {
     else if (roll < 0.86) { const allowShare = R() > 0.5; await both(k, 'setGiftSharing', (h) => ({ perspectiveId: h.gifts[i % Math.max(1, h.gifts.length)]?.id || 'none', allowShare })); }
     else if (roll < 0.87) await both(k, 'withdrawPerspective', (h) => ({ perspectiveId: h.gifts[i % Math.max(1, h.gifts.length)]?.id || 'none' }));
     else if (roll < 0.89) {
-      const reason = pick(['unkind', 'harassment', 'safety', 'other', 'nonsense']); const details = R() > 0.5 ? 'It felt off.' : '';
+      const reason = pick(['unkind', 'harassment', 'safety', 'under18', 'other', 'nonsense']); const details = R() > 0.5 ? 'It felt off.' : '';
       await both(k, 'reportFeeling', (h) => ({ holdId: h.hold || 'none', reason, details }));
     } else if (roll < 0.91) {
-      const reason = pick(['unkind', 'identifying', 'other']); const n = Math.floor(R() * 6);
+      const reason = pick(['unkind', 'identifying', 'under18', 'other']); const n = Math.floor(R() * 6);
       await both(k, 'reportPerspective', (h) => {
         const j = h.journeys[i % Math.max(1, h.journeys.length)];
         const items = j ? [...(j.collection || []), ...(j.mallowExtra ? [j.mallowExtra] : [])] : [];

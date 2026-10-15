@@ -105,7 +105,7 @@ export function signin(dev, params = {}) {
           line('Your email', { cls: 'hf-line--sm' }),
           h('p', { class: 'hf-sub' }, 'We’ll send you a short code. That’s all you need to come in, on this device or any other.')),
         h('div', { class: 'hf-form' },
-          field('Email address', emailInput, 'We’ll only use your email to sign you in.', 'hf-signin-email')),
+          field('Email address', emailInput, 'We’ll only use your email to sign you in, to reply when you write to us, and, if we ever must, to tell you something important about your account, your data or the service. Nobody else in Hushmates sees it.', 'hf-signin-email')),
         error,
         h('div', { class: 'hf-actions' },
           send,

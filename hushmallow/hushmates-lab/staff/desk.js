@@ -9,7 +9,7 @@
 import { createAuth } from '../client/supabase-auth.js';
 import { FunctionsLink } from '../client/functions-link.js';
 import { REPORT_REASONS } from '../core/relay-config.js';
-import { DESK_ACTIONS, URGENT_GUIDE, isOverdue } from './desk-guide.js';
+import { DESK_ACTIONS, URGENT_GUIDE, REASON_GUIDES, isOverdue } from './desk-guide.js';
 
 const IDLE_MS = 30 * 60e3;
 const REFRESH_MS = 60e3;
@@ -235,8 +235,12 @@ function paint(focusHeading = false) {
   return undefined;
 }
 
+// a decision that didn't go as the reader might expect, said in plain words once the report is shown again
+const ALREADY_DECIDED = 'Someone on the team had already decided this report, so your decision wasn’t saved and nothing changed. What was decided is shown below.';
+const STILL_PAUSED = 'Decided. The feeling stays paused, because another report on it is still open: decide that one too (it carries on only when none is left).';
+
 // --------------------------------------------------------------- detail --
-async function detail(id) {
+async function detail(id, notice = '') {
   selected = id;
   let r;
   try { r = await call('modGetReport', { id }); } catch (e) {
@@ -256,19 +260,29 @@ async function detail(id) {
     err.hidden = true;
     const a = actions.find((x) => x.id === action);
     if (a.confirm && !window.confirm(a.confirm)) return;
+    let said = '';
     try {
-      await call('modResolve', { id, action, note: [`Decision: ${a.label}`, note.value.trim()].filter(Boolean).join('. ') });   // the team notes say which decision it was
-      await reloadList();
-      await detail(id);
-    } catch (e) { sayError(err, e); }
+      const done = await call('modResolve', { id, action, note: [`Decision: ${a.label}`, note.value.trim()].filter(Boolean).join('. ') });   // the team notes say which decision it was
+      if (action === 'resume-feeling' && done?.paused) said = STILL_PAUSED;
+    } catch (e) {
+      if (e?.code !== 'already-decided') { sayError(err, e); return; }
+      said = ALREADY_DECIDED;                                            // decided meanwhile (or sent twice): show what stands
+    }
+    await reloadList();
+    await detail(id, said);
   }
 
   const back = h('button', { type: 'button', class: 'desk-quiet desk-back', onclick: () => { selected = null; detailPane = null; paint(true); } }, 'Back to reports');
   const history = r.subjectHistory;
+  const guide = kind === 'mallow' ? null : REASON_GUIDES[r.reason];     // a Mallow isn't a person: no age steps for its words
   detailPane = h('section', { class: 'desk-detail', 'data-test': 'desk-detail', 'aria-labelledby': 'desk-detail-title' },
     back,
     h('h2', { id: 'desk-detail-title', tabindex: '-1' }, `${kindOf(r)} · ${reasonLabel[r.reason] || 'Something else'}`),   // focus moves here when it opens or is decided
     h('p', { class: 'desk-meta' }, `Reported ${when(r.at)} (${ago(r.at)})`),
+    notice ? h('p', { class: 'desk-note', role: 'status', 'data-test': 'desk-notice' }, notice) : null,
+    guide ? h('aside', { class: 'desk-guide', 'data-test': `desk-guide-${r.reason}` },
+      h('h3', {}, guide.title), h('ol', { class: 'desk-steps' }, guide.steps.map((s) => h('li', {}, s))),
+      h('p', { class: 'desk-meta' }, `The full steps are in ${guide.source}.`)) : null,
     r.urgent ? h('aside', { class: 'desk-urgent', 'data-test': 'desk-urgent' },
       h('h3', {}, URGENT_GUIDE.title), h('ol', { class: 'desk-steps' }, URGENT_GUIDE.steps.map((s) => h('li', {}, s))),
       h('ul', {}, URGENT_GUIDE.resources.map((x) => h('li', {}, h('strong', {}, x.label), ` ${x.detail}`)))) : null,
@@ -310,14 +324,16 @@ async function activity() {
     'account.state': 'A team lead changed an account’s access',
   };
   const decisionLabel = Object.fromEntries(Object.values(DESK_ACTIONS).flat().map((a) => [a.id, a.label.toLowerCase()]));
+  // the desk never sees who reported: a report's entries show no account reference, whatever the server sent
+  const whoDid = (e) => (String(e.action || '').startsWith('report.') ? (e.actor === 'system' ? 'system' : 'A member') : String(e.actor || '').slice(0, 8));
   show(tabs(), h('section', { class: 'desk-list desk-wide', 'data-test': 'desk-activity' },
     h('h1', {}, 'Activity log'),
-    h('p', { class: 'desk-meta' }, 'The last 200 entries, newest first. Entries name accounts by reference only.'),
+    h('p', { class: 'desk-meta' }, 'The last 200 entries, newest first. Entries name accounts by reference only, and a report never names who made it.'),
     h('table', { class: 'desk-table' },
       h('thead', {}, h('tr', {}, h('th', { scope: 'col' }, 'When'), h('th', { scope: 'col' }, 'What'), h('th', { scope: 'col' }, 'Who'))),
       h('tbody', {}, entries.slice().reverse().map((e) => h('tr', {},
         h('td', {}, when(e.at)), h('td', {}, `${label[e.action] || 'Something else happened'}${e.decision ? `: ${decisionLabel[e.decision] || e.decision}` : ''}${e.reason ? ` (${reasonLabel[e.reason] || e.reason})` : ''}`),
-        h('td', { class: 'desk-ref' }, String(e.actor || '').slice(0, 8))))))));
+        h('td', { class: 'desk-ref' }, whoDid(e))))))));
   return undefined;
 }
 

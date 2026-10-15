@@ -23,5 +23,6 @@ export const RELAY_MESSAGES = {
   'consent-required': 'Please confirm you’re happy to share this without your name first.',
   'resend-limit': 'This feeling has already travelled a few times. You can keep it with you, or let it go.',
   'invite-required': 'Please enter your invitation first.',
+  'already-decided': 'This report has already been decided, so nothing was changed.',
   'invite-invalid': 'That invitation code didn’t work. It may have been used already or expired. Please check it, or ask the person who invited you.',
 };
