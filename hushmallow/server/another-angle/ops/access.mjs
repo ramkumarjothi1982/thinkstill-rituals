@@ -19,6 +19,13 @@
 // /v1/health then reports provider_key false and the app plays Zuzu's own
 // angles. The next deploy from main puts the key back.
 //
+// It also gives the app's pilot gate the same codes: TESTER_INVITE_CODES-style
+// lists in the Cloudflare Pages project's secrets PILOT_ACCESS_CODES (with a new
+// PILOT_COOKIE_KEY), production and preview separately: production codes for
+// app.hushmallow.com and the production Worker, a separate small set for
+// previews and the staging Worker, so a preview code never opens production.
+// The Pages secrets only take effect in deployments made after this run.
+//
 // The invite codes and the signing key are generated here and never printed:
 // the codes leave this job only sealed to the RSA public key in ops/ACCESS
 // (RSA-OAEP, SHA-256), whose private key is not in this repository. The
@@ -37,10 +44,11 @@ const SUMMARY = process.env.GITHUB_STEP_SUMMARY || '';
 const DRY = process.env.ACCESS_DRY === '0' ? false : process.argv.includes('--dry-run') || /^mode:\s*dry-run\s*$/m.test(readFileSync(new URL('./ACCESS', import.meta.url), 'utf8'));
 
 const WORKERS = process.env.ACCESS_WORKERS ? JSON.parse(process.env.ACCESS_WORKERS) : [
-  { label: 'production', script: 'hushmallow-another-angle', url: 'https://hushmallow-another-angle.vibyfy-chat.workers.dev', origin: 'https://app.hushmallow.com', modelCall: true },
-  { label: 'staging', script: 'hushmallow-another-angle-staging', url: 'https://hushmallow-another-angle-staging.vibyfy-chat.workers.dev', origin: 'https://ramkumarjothi1982.github.io', modelCall: false },
+  { label: 'production', set: 'production', script: 'hushmallow-another-angle', url: 'https://hushmallow-another-angle.vibyfy-chat.workers.dev', origin: 'https://app.hushmallow.com', modelCall: true },
+  { label: 'staging', set: 'preview', script: 'hushmallow-another-angle-staging', url: 'https://hushmallow-another-angle-staging.vibyfy-chat.workers.dev', origin: 'https://ramkumarjothi1982.github.io', modelCall: false },
 ];
-const CODE_COUNT = 10;
+const PAGES_PROJECT = process.env.ACCESS_PAGES_PROJECT || 'hushmallow';
+const CODE_COUNT = { production: 10, preview: 3 };
 const ALPHABET = '23456789abcdefghjkmnpqrstuvwxyz'; // no 0/1/i/l/o: easy to read out and type
 
 const SCALE = Number(process.env.SLEEP_SCALE || 1);
@@ -90,7 +98,8 @@ const device = () => randomBytes(18).toString('base64url');
 const PROBE_FEEDBACK = { rating: 'access-probe' };
 const HARMLESS = 'My colleague got the promotion I wanted and I keep replaying the meeting.';
 
-async function lockWorker(w, codes, results) {
+async function lockWorker(w, codeSets, results) {
+  const codes = codeSets[w.set || 'production'];
   const checks = [];
   const check = (name, ok, detail) => { checks.push({ name, ok, detail }); out(`  ${ok ? 'PASS' : 'FAIL'}  ${name}  (${detail})`); };
   out(`\n## ${w.label}: ${w.url}`);
@@ -196,6 +205,34 @@ async function lockWorker(w, codes, results) {
   return checks;
 }
 
+/** The pilot gate's codes and cookie key on the Pages project (production and preview), leaving every other setting as it was. */
+async function setPages(codeSets) {
+  const checks = [];
+  const check = (name, ok, detail) => { checks.push({ name, ok, detail }); out(`  ${ok ? 'PASS' : 'FAIL'}  ${name}  (${detail})`); };
+  out(`\n## Pages project: ${PAGES_PROJECT}`);
+  const path = `/pages/projects/${PAGES_PROJECT}`;
+  const before = await cf('GET', path);
+  if (!before.ok) { check('read the Pages project', false, `HTTP ${before.http}`); return checks; }
+  const others = (r) => JSON.stringify(Object.fromEntries(['production', 'preview'].map((e) => {
+    const vars = { ...(r.data.result.deployment_configs?.[e]?.env_vars || {}) };
+    delete vars.PILOT_ACCESS_CODES; delete vars.PILOT_COOKIE_KEY;
+    return [e, Object.fromEntries(Object.entries(vars).sort().map(([k, v]) => [k, { type: v?.type, value: v?.type === 'secret_text' ? '(secret)' : v?.value }]))];
+  })));
+  const keep = others(before);
+  check('read the Pages project', true, `production vars ${Object.keys(before.data.result.deployment_configs?.production?.env_vars || {}).sort().join(', ') || 'none'}`);
+  if (DRY) { out('  (dry run: no settings changed)'); return checks; }
+  const vars = (set) => ({ PILOT_ACCESS_CODES: { type: 'secret_text', value: codeSets[set].join(',') }, PILOT_COOKIE_KEY: { type: 'secret_text', value: randomBytes(48).toString('base64url') } });
+  const p = await cf('PATCH', path, { deployment_configs: { production: { env_vars: vars('production') }, preview: { env_vars: vars('preview') } } });
+  check('set PILOT_ACCESS_CODES and PILOT_COOKIE_KEY (production and preview)', p.ok, `HTTP ${p.http}`);
+  const after = await cf('GET', path);
+  for (const e of ['production', 'preview']) {
+    const v = after.data?.result?.deployment_configs?.[e]?.env_vars || {};
+    check(`${e}: both pilot secrets present as secrets`, v.PILOT_ACCESS_CODES?.type === 'secret_text' && v.PILOT_COOKIE_KEY?.type === 'secret_text', Object.keys(v).sort().join(', '));
+  }
+  check('no other Pages setting changed', after.ok && others(after) === keep, after.ok ? 'compared every other variable' : `HTTP ${after.http}`);
+  return checks;
+}
+
 async function disableModel(w) {
   const r = await deleteSecret(w.script, 'ANTHROPIC_API_KEY');
   out(`  SAFETY: ANTHROPIC_API_KEY ${r.ok ? 'deleted' : `could NOT be deleted (HTTP ${r.http})`} on ${w.label}: the model is ${r.ok ? 'switched off there' : 'STILL ON — switch it off by hand'}`);
@@ -215,19 +252,26 @@ async function main() {
   mask(TOKEN); mask(ACCOUNT);
   const pem = readFileSync(new URL('./ACCESS', import.meta.url), 'utf8').match(/-----BEGIN PUBLIC KEY-----[\s\S]+?-----END PUBLIC KEY-----/)?.[0];
   if (!pem) { console.error('ops/ACCESS has no public key'); process.exit(2); }
-  const codes = Array.from({ length: CODE_COUNT }, newCode);
-  codes.forEach(mask);
-  const sealed = publicEncrypt({ key: pem, padding: constants.RSA_PKCS1_OAEP_PADDING, oaepHash: 'sha256' }, Buffer.from(JSON.stringify({ at: new Date().toISOString(), codes }))).toString('base64');
+  const codeSets = { production: Array.from({ length: CODE_COUNT.production }, newCode), preview: Array.from({ length: CODE_COUNT.preview }, newCode) };
+  Object.values(codeSets).flat().forEach(mask);
+  const sealed = publicEncrypt({ key: pem, padding: constants.RSA_PKCS1_OAEP_PADDING, oaepHash: 'sha256' }, Buffer.from(JSON.stringify({ at: new Date().toISOString(), ...codeSets }))).toString('base64');
 
   const results = [];
   let allOk = true;
   for (const w of WORKERS) {
     let checks = [];
-    try { checks = await lockWorker(w, codes, results); } catch (e) { checks.push({ name: 'run', ok: false, detail: String(e?.message || e).slice(0, 120) }); out(`  FAIL  run (${String(e?.message || e).slice(0, 120)})`); }
+    try { checks = await lockWorker(w, codeSets, results); } catch (e) { checks.push({ name: 'run', ok: false, detail: String(e?.message || e).slice(0, 120) }); out(`  FAIL  run (${String(e?.message || e).slice(0, 120)})`); }
     const ok = checks.length > 0 && checks.every((c) => c.ok);
     out(`  => ${w.label}: ${ok ? 'LOCKED AND VERIFIED' : 'NOT VERIFIED'} (${checks.filter((c) => c.ok).length}/${checks.length} checks)`);
     if (!ok && !DRY) { allOk = false; await disableModel(w); }
   }
+  if (allOk || DRY) {
+    let pages = [];
+    try { pages = await setPages(codeSets); } catch (e) { pages.push({ ok: false }); out(`  FAIL  pages (${String(e?.message || e).slice(0, 120)})`); }
+    const ok = pages.length > 0 && pages.every((c) => c.ok);
+    out(`  => Pages: ${ok ? 'PILOT CODES SET AND VERIFIED' : 'NOT VERIFIED'} (${pages.filter((c) => c.ok).length}/${pages.length} checks)`);
+    if (!ok) allOk = false;
+  } else out('\n## Pages project: skipped (a Worker was not verified)');
   out(`\nSEALED_CODES ${sealed}`);
   if (SUMMARY) appendFileSync(SUMMARY, `\`\`\`\n${lines.join('\n')}\n\`\`\`\n`);
   process.exit(allOk ? 0 : 1);

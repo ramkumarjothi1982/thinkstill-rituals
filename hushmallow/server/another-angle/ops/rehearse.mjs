@@ -52,6 +52,7 @@ const worker = createServer(async (req, res) => {
   }
   return send(res, await app.fetch(request, { ...e, PROVIDER: 'mock' }));
 });
+const pages = { deployment_configs: { production: { env_vars: { SUPABASE_URL: { type: 'plain_text', value: 'https://x.supabase.co' } } }, preview: { env_vars: { SUPABASE_URL: { type: 'plain_text', value: 'https://x.supabase.co' } } } } };
 const calls = [];
 const cfApi = createServer(async (req, res) => {
   const chunks = [];
@@ -59,6 +60,14 @@ const cfApi = createServer(async (req, res) => {
   const body = chunks.length ? JSON.parse(Buffer.concat(chunks).toString()) : null;
   calls.push(`${req.method} ${req.url.replace(/\/accounts\/[^/]+/, '/accounts/…')}`);
   if (req.headers.authorization !== 'Bearer rehearsal-cf-token') { res.writeHead(403); return res.end(JSON.stringify({ success: false })); }
+  if (req.url === '/accounts/acct/pages/projects/hushmallow-rehearsal') {
+    if (req.method === 'PATCH') {
+      for (const e of ['production', 'preview']) Object.assign(pages.deployment_configs[e].env_vars, Object.fromEntries(Object.entries(body.deployment_configs?.[e]?.env_vars || {}).map(([k, v]) => [k, v === null ? undefined : { ...v }])));
+    }
+    const view = JSON.parse(JSON.stringify(pages));
+    for (const e of ['production', 'preview']) for (const v of Object.values(view.deployment_configs[e].env_vars)) if (v.type === 'secret_text') v.value = '';
+    res.writeHead(200); return res.end(JSON.stringify({ success: true, result: view }));
+  }
   const m = /^\/accounts\/acct\/workers\/scripts\/([^/]+)\/secrets(?:\/(.+))?$/.exec(req.url);
   if (!m || m[1] !== 'hushmallow-another-angle-rehearsal') { res.writeHead(404); return res.end(JSON.stringify({ success: false })); }
   if (req.method === 'GET') { res.writeHead(200); return res.end(JSON.stringify({ success: true, result: Object.keys(secrets).map((name) => ({ name, type: 'secret_text' })) })); }
@@ -71,8 +80,8 @@ await new Promise((r) => worker.listen(8961, '127.0.0.1', r));
 await new Promise((r) => cfApi.listen(8962, '127.0.0.1', r));
 const child = spawn(process.execPath, [new URL('./access.mjs', import.meta.url).pathname], {
   env: {
-    ...process.env, GITHUB_ACTIONS: '', GITHUB_STEP_SUMMARY: '', CF_TOKEN: 'rehearsal-cf-token', CF_ACCOUNT: 'acct', CF_API: 'http://127.0.0.1:8962', SLEEP_SCALE: '0.002', ACCESS_DRY: '0',
-    ACCESS_WORKERS: JSON.stringify([{ label: 'rehearsal', script: 'hushmallow-another-angle-rehearsal', url: 'http://localhost:8961', origin: 'http://localhost:8000', modelCall: true }]),
+    ...process.env, GITHUB_ACTIONS: '', GITHUB_STEP_SUMMARY: '', CF_TOKEN: 'rehearsal-cf-token', CF_ACCOUNT: 'acct', CF_API: 'http://127.0.0.1:8962', SLEEP_SCALE: '0.002', ACCESS_DRY: '0', ACCESS_PAGES_PROJECT: 'hushmallow-rehearsal',
+    ACCESS_WORKERS: JSON.stringify([{ label: 'rehearsal', set: 'production', script: 'hushmallow-another-angle-rehearsal', url: 'http://localhost:8961', origin: 'http://localhost:8000', modelCall: true }]),
   },
   stdio: ['ignore', 'pipe', 'inherit'],
 });
@@ -86,12 +95,19 @@ const problems = [];
 if (broken) {
   if (code === 0) problems.push('the access script passed against a Worker that ignores invite codes');
   if ('ANTHROPIC_API_KEY' in secrets) problems.push('the model was not switched off after a failed check');
+  if (pages.deployment_configs.production.env_vars.PILOT_ACCESS_CODES) problems.push('the Pages codes were set although a Worker was not verified');
 } else {
   if (code !== 0) problems.push(`the access script exited ${code}`);
   if (!secrets.TESTER_INVITE_CODES || secrets.TESTER_INVITE_CODES.split(',').length !== 10) problems.push('TESTER_INVITE_CODES was not set to 10 codes');
   if (secrets.TOKEN_SIGNING_KEY === 'rehearsal-old-signing-key-0123456789abcdef') problems.push('TOKEN_SIGNING_KEY was not replaced');
   if ('TOKEN_SIGNING_KEY_PREVIOUS' in secrets) problems.push('TOKEN_SIGNING_KEY_PREVIOUS was not deleted');
   if (!('ANTHROPIC_API_KEY' in secrets)) problems.push('the model was switched off although every check passed');
+  const pv = pages.deployment_configs;
+  if (pv.production.env_vars.PILOT_ACCESS_CODES?.value !== secrets.TESTER_INVITE_CODES) problems.push('the Pages production codes differ from the Worker\'s');
+  if (!pv.preview.env_vars.PILOT_ACCESS_CODES?.value || pv.preview.env_vars.PILOT_ACCESS_CODES.value.split(',').length !== 3) problems.push('the Pages preview codes were not set to 3 codes');
+  if (pv.preview.env_vars.PILOT_ACCESS_CODES?.value?.split(',').some((c) => secrets.TESTER_INVITE_CODES.includes(c))) problems.push('a preview code also opens production');
+  if (!pv.production.env_vars.PILOT_COOKIE_KEY?.value || pv.production.env_vars.PILOT_COOKIE_KEY.value === pv.preview.env_vars.PILOT_COOKIE_KEY?.value) problems.push('the cookie keys are missing or shared');
+  if (pv.production.env_vars.SUPABASE_URL?.value !== 'https://x.supabase.co') problems.push('another Pages variable changed');
   for (const c of secrets.TESTER_INVITE_CODES?.split(',') || []) if (log.includes(c)) problems.push('an invite code appears in the log');
   if (log.includes(secrets.TOKEN_SIGNING_KEY)) problems.push('the signing key appears in the log');
 }

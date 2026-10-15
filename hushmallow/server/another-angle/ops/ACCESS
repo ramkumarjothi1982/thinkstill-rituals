@@ -17,3 +17,4 @@ bg37TIW7CESx3wtUrSLQzLcCAwEAAQ==
 # 2026-10-15T13:56:58Z dry run again (rehearsal needs the server packages)
 # 2026-10-15T13:57:50Z dry run (rehearsal ignores the dry-run marker)
 # 2026-10-15T13:59:25Z live run: lock production and staging to invited testers
+# 2026-10-15T14:07:41Z live run 2: production and preview code sets, and the pilot gate secrets on Pages
