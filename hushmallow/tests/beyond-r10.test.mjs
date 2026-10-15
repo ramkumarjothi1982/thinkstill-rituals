@@ -254,10 +254,11 @@ test('r10.11: the main-screen Tell reads the new families too (grief.js through 
 
 // ------------------------------------------------------------------------- what stays put --
 test('r10.12: the safety lexicons are untouched (byte-identical to the base) and the probe count', () => {
-  // (the hash moved since for the lexicon-gaps pass of 14 Oct 2026 and its rounds 3 and 4: tests/lexicon-gaps.test.mjs)
+  // (the hash moved since for the lexicon-gaps pass of 14 Oct 2026 and its rounds 3 and 4: tests/lexicon-gaps.test.mjs; and on
+  // 15 Oct 2026 for the detection fix's one additive care rule, the threat still being made: lexicon-diff LOST 0)
   const app = readFileSync(root + 'src/data/safety-lexicon.js');
   const server = readFileSync(root + 'server/another-angle/src/safety/shared-lexicon.js');
-  assert.match(createHash('sha256').update(app).digest('hex'), /^0ee5266167a2c76c/);
+  assert.match(createHash('sha256').update(app).digest('hex'), /^ac968757f3986423/);
   assert.ok(app.equals(server));
   assert.ok(probes >= 6000, `${probes} probes`);
 });

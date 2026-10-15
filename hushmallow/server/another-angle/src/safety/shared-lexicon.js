@@ -324,6 +324,8 @@ export const HARM_LEXICON = {
       R`\bthreatening (?:messages|texts|calls|emails|me)\b`,
       R`\bdeath threats?\b`,
       R`\b(?:said|says|told me) (?:he|she|they)(?:'d| would| will|'ll) (?:kill|hurt|hit|find) me\b`,
+      // (fix round, 15 Oct 2026: additive) the threat still being made ("he is in the hall shouting that he'll kill me")
+      R`\b(?:saying|shouting|screaming|yelling|swearing|telling me) (?:that )?(?:he|she|they)(?:'d| would| will|'ll| is going to|'s going to| are going to| is gonna|'s gonna) (?:kill|hurt|stab|batter|find) me\b`,
       R`\bblackmail\w*`,
       R`\b(?:going to|gonna|will|threatened to) (?:leak|share|post|send) (?:my )?(?:photos|pictures|nudes|videos)\b`,
     ],
