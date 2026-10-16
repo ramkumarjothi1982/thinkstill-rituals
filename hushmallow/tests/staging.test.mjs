@@ -5,7 +5,8 @@
 // mode) and the owner's provisional prices on the plans page; Settings' version
 // line says "staging". Everywhere else (app.hushmallow.com, the production alias
 // hushmallow.pages.dev, hushmallow.com, the GitHub Pages copy, localhost) nothing
-// changes.
+// changes. The _headers rule that lets a preview reach the staging Worker
+// matches the same hosts and no others.
 // Run with: node --test tests/
 import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -20,6 +21,10 @@ import { resolveEndpoint } from '../src/beyond/endpoint.js';
 import { createBilling, resolveBilling } from '../src/app/billing.js';
 import { createEntitlements } from '../src/app/entitlements.js';
 import { createStore } from '../src/engine/storage.js';
+import { headersFile, PREVIEW_PATTERN } from '../tools/site/auth-config.mjs';
+import { parseHeadersFile, headersFor } from '../tools/site/pages-headers.mjs';
+import { previewRule } from '../tools/site/security-headers.mjs';
+import { PROJECT_URL } from '../src/auth/config.js';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const read = (p) => readFileSync(root + p, 'utf8');
@@ -217,4 +222,42 @@ test('Settings\' version line says "staging" on a preview, and only there', asyn
   // BUILD itself (sent to the server as app_version) is unchanged
   assert.equal(BUILD, '2026-10-13 · Hushfold pilot + optional sign-in');
   await tick();
+});
+
+// ---------------------------------------------------------------- headers --
+test('_headers: a preview\'s CSP names the staging Worker instead of production; app.hushmallow.com and hushmallow.pages.dev keep exactly today\'s policy', () => {
+  const SUPA = new URL(PROJECT_URL).origin;
+  const text = headersFile(SUPA, { version: '0123abcd' });
+  const rules = parseHeadersFile(text);
+  const csp = (host, path = '/') => headersFor(rules, path, { host }).get('content-security-policy').value;
+  const connect = (v) => v.split(',').map((p) => (/connect-src ([^;]+)/.exec(p) || [])[1]);
+  const prodPolicy = csp(null);
+  for (const h of ['app.hushmallow.com', 'hushmallow.pages.dev', 'hushmallow.com', 'a.b.hushmallow.pages.dev', '127.0.0.1:8204']) assert.equal(csp(h), prodPolicy, h);
+  assert.deepEqual(connect(prodPolicy), [`'self' ${SUPA} wss://igbxbfuaoybfzsroxuln.supabase.co ${PROD}`]);
+  for (const h of PREVIEWS) {
+    const v = csp(h);
+    assert.deepEqual(connect(v), [`'self' ${SUPA} wss://igbxbfuaoybfzsroxuln.supabase.co ${STAGING}`], h);
+    // the same policy otherwise, word for word
+    assert.equal(v.replace(STAGING, PROD), prodPolicy, h);
+    // /auth/* keeps its own (stricter) policy on top
+    const auth = csp(h, '/auth/callback/').split(',');
+    assert.equal(auth.length, 2, h);
+    assert.match(auth[1], /frame-ancestors 'none'/);
+    assert.ok(!auth[0].includes(PROD) && auth[0].includes(STAGING));
+  }
+  // the rule: one host placeholder (one DNS label, as Pages matches it), "!" before the new policy, before /auth/*
+  assert.equal(PREVIEW_PATTERN, 'https://:preview.hushmallow.pages.dev/*');
+  const lines = text.split('\n');
+  const at = lines.indexOf(PREVIEW_PATTERN);
+  assert.ok(at > lines.indexOf('/*') && at < lines.indexOf('/auth/*'), 'after the whole-site rule, before /auth/*');
+  assert.equal(lines[at + 1], '  ! Content-Security-Policy');
+  assert.match(lines[at + 2], /^ {2}Content-Security-Policy: default-src 'self'; /);
+  assert.equal(lines.filter((l) => /^ {2}! /.test(l)).length, 1, '"!" only here');
+  // Pages substitutes ":name" placeholders in values: the policy holds none
+  assert.doesNotMatch(lines[at + 2], /:(preview|splat)\b/);
+  assert.throws(() => previewRule({ pattern: 'https://*.hushmallow.pages.dev/*', angle: [STAGING] }), /bad preview pattern/);
+  assert.deepEqual(previewRule({ pattern: PREVIEW_PATTERN, angle: [] }), [], 'no staging Worker: no rule');
+  // the synthetic monitor (tools/ops/monitor.mjs) checks the production domain: it still expects production's policy
+  assert.equal(headersFor(rules, '/').get('content-security-policy').value, prodPolicy);
+  assert.ok(!prodPolicy.includes('staging'));
 });
