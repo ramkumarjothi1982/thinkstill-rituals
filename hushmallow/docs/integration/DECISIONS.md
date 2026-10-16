@@ -143,9 +143,11 @@ Taken after six independent reviews of `fb1bae2` (blind held-out safety, privacy
 | A change that takes away a large part of a plan | Notice first, and a refund of the unused part of the billing period |
 | Liability cap | What the person was charged in the 12 months before the claim, to the extent the law allows |
 | Crisis lines on the pages | 000, Lifeline 13 11 14, Suicide Call Back Service 1300 659 467, 13YARN 13 92 76; elsewhere Find A Helpline, Samaritans 116 123, 988 (the app's own urgent sheet is unchanged) |
-| Payments | Described as Stripe on the web (Stripe billing, Manage subscription to cancel), ahead of that work landing |
+| Payments | Described as Stripe on the web (Stripe billing, Manage subscription to cancel), ahead of that work landing; both pages mark it for the owner to confirm once it is built |
+| Sign-up line | "By creating an account you agree to the Terms and Privacy Policy" links to these drafts, which say they are not in force yet: until approval, the line points at draft terms |
+| Hosting | The policy names Cloudflare (app.hushmallow.com, the Worker) and GitHub, Inc. (the GitHub Pages copy, which the same build publishes); the website hushmallow.com is named as a separate site, its host and any analytics left to the owner |
 
-Placeholders for the owner: legal entity name, ABN, postal address, State or Territory for governing law, the effective dates, confirming the contact address and the minimum age, the email delivery service for account emails, how long Cloudflare and Supabase keep their logs, what Stripe sends us once payments are built, the currency and GST, the refund policy, the price-change notice period, and (with a lawyer) the APP 8 basis for each overseas provider.
+Placeholders for the owner: legal entity name, ABN, postal address, State or Territory for governing law, the effective dates, confirming the contact address and the minimum age, the email delivery service for account emails, how long Cloudflare keeps the Worker's logs, how long Supabase keeps its sign-in security records (they outlive Delete account), whether to keep the GitHub Pages copy (or retire it and take GitHub out of the policy), the website's host and whether it uses analytics or cookies, the reply time for access and complaints (30 days by default) and whether access is free, what Stripe sends us once payments are built, the billing, renewal and Manage subscription wording once web payments are built, the currency and GST, the refund policy, the price-change notice period, and (with a lawyer) the APP 8 basis for each overseas provider and the agreements behind it.
 
 ## Still open for the owner
 
