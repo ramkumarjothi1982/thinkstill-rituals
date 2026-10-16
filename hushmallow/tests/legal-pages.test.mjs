@@ -9,7 +9,9 @@
 //   3. the brand stays lowercase, the plan names are exact, no therapeutic claim;
 //   4. the words follow the app: the owner's approved Anthropic lines and what
 //      an account keeps, verbatim from the modules that show them in the app,
-//      and the Settings labels the pages point to;
+//      and the Settings labels the pages point to; every host (Cloudflare, the
+//      GitHub Pages copy), what Delete account leaves (the sign-in service's
+//      security log) and what the server's technical record holds;
 //   5. tools/build-site.sh publishes them at /legal/ (tools/site/check.mjs
 //      passes, and fails on a page that breaks the rules); _headers gives
 //      /legal/* the strict policy;
@@ -222,6 +224,43 @@ test('the Privacy Policy says what the app does: the approved Anthropic lines an
     assert.ok(src.includes(`'${label}'`), `the app says "${label}"`);
     assert.ok(text.includes(label), `the policy says "${label}"`);
   }
+});
+
+/** One numbered section of a page, from its heading to the next one. */
+function sectionOf(html, id) {
+  const page = noComments(html);
+  const i = page.indexOf(`<h2 id="${id}">`);
+  assert.ok(i >= 0, `#${id}`);
+  const j = page.indexOf('<h2', i + 1);
+  return page.slice(i, j < 0 ? undefined : j);
+}
+
+test('the Privacy Policy names every host and says what Delete account leaves behind', () => {
+  const html = read(PAGES[0]);
+  const sec = (id) => textOf(sectionOf(html, id));
+  // the GitHub Pages copy (tools/build-site.sh publishes the same app there, from hushmallow-pages.yml): hosting, sharing, overseas
+  assert.match(sec('hosting'), /Cloudflare hosts the hushmallow app at app\.hushmallow\.com/);
+  assert.match(sec('hosting'), /A copy of the app is also published on GitHub Pages, at an address ending in github\.io\. GitHub, Inc\., in the United States, hosts that copy/);
+  assert.match(sectionOf(html, 'sharing'), /<dt>GitHub, Inc\.: hosting of the GitHub Pages copy<\/dt>/);
+  assert.match(sec('overseas'), /Stripe and GitHub \(the GitHub Pages copy\) are companies based in the United States/);
+  // the website that embeds the app is its own site, with its own host and any analytics for the owner to name
+  assert.match(sec('hosting'), /Our website, hushmallow\.com, is a separate site\./);
+  // the sign-in service's security log outlives Delete account (account.js says so on the delete screen): §2, §10 and §11 agree
+  assert.ok(read('src/app/scenes/account.js').includes('\'the sign-in service’s own security log (such as when you signed in): we can’t delete it from here\''), 'the app says it');
+  assert.match(sec('account'), /keeps its own security records, such as when you signed in and from which network address, to protect your account\. Deleting your account doesn’t delete these records: they are kept for/);
+  assert.match(sec('retention'), /The sign-in service’s own security records stay after you delete your account, for/);
+  assert.match(sec('rights'), /Delete account\. This deletes your sign-in, your profile, your sync choices and everything kept with your account from our server, and that account’s things on this device\. It doesn’t delete the sign-in service’s own security records \(section 2\)/);
+  // §3 is Another Angle's server only: the sign-in service's records are §2's
+  assert.doesNotMatch(sec('another-angle'), /Supabase|sign-in/);
+  // the server's technical record, as server/another-angle/src/log.js keeps it: the area of life, a length bucket, a coarse safety level
+  const log = readFileSync(resolve(root, 'server/another-angle/src/log.js'), 'utf8');
+  for (const key of ['situation', 'text_len_bucket', 'safety_level']) assert.match(log, new RegExp(`'${key}'`), `log.js keeps ${key}`);
+  assert.match(sec('another-angle'), /the area of life it is about \(such as work or family\)[^.]*; a rough length \(short, medium or long\); and a coarse safety level \(none, concern, care or crisis\)\. It never holds your words/);
+  // an account sends an email address and a name too: Another Angle is the only part that sends thoughts or feelings
+  assert.match(sec('another-angle'), /the only part of hushmallow that sends your thoughts or feelings off your device, and only after you tap Accept/);
+  // the Terms don't point at the client-side plan (the server doesn't check it yet)
+  assert.doesNotMatch(textOf(read(PAGES[1])), /plan the app stores|stores on your device/);
+  assert.match(textOf(read(PAGES[1])), /get round usage limits, access controls or plan checks;/);
 });
 
 test('both pages: not a crisis service, with Australian and international lines; the Terms cover what launch needs', () => {

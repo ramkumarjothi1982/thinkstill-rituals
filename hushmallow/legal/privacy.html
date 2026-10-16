@@ -91,7 +91,7 @@
   <ul>
     <li><strong>Your password</strong> is handled by the sign-in service and stored only in scrambled (hashed) form. We never see it.</li>
     <li><strong>We also keep</strong> when your account was created, and your sync choices with when you made or withdrew them.</li>
-    <li><strong>The sign-in service</strong> keeps its own security records, such as when you signed in and from which network address, to protect your account.</li>
+    <li><strong>The sign-in service</strong> keeps its own security records, such as when you signed in and from which network address, to protect your account. Deleting your account doesn’t delete these records: they are kept for <span class="legal-todo" data-todo="auth-log-retention">[Owner: how long Supabase keeps its sign-in security records on our plan]</span>.</li>
     <li><strong>Account emails</strong> (to confirm your address, reset your password or check it’s you) are sent through <span class="legal-todo" data-todo="email-provider">[Owner: the email delivery service used for account emails, and where it is based]</span>.</li>
     <li><strong>On your device</strong>, the app keeps your sign-in session so you stay signed in, and keeps each account’s things separate from the guest’s and from other accounts’.</li>
     <li><strong>Sync is your choice.</strong> Switching a sync option off deletes what was kept with your account for it.</li>
@@ -99,7 +99,7 @@
   <p>We use this information only to run your account and the sync you choose. If you don’t want to give an email address and password, you can keep using <span class="brand-name">hushmallow</span> as a guest.</p>
 
   <h2 id="another-angle">3. Another Angle</h2>
-  <p>Another Angle is part of <span class="brand-name">hushmallow Beyond</span>. It is the only part of <span class="brand-name">hushmallow</span> that sends what you write off your device, and only after you tap Accept on its consent card. If you tap Not now, nothing is sent and Zuzu’s own angles play on your device. As the card says:</p>
+  <p>Another Angle is part of <span class="brand-name">hushmallow Beyond</span>. It is the only part of <span class="brand-name">hushmallow</span> that sends your thoughts or feelings off your device, and only after you tap Accept on its consent card. If you tap Not now, nothing is sent and Zuzu’s own angles play on your device. As the card says:</p>
   <blockquote><p>Your words go to our secure server, where an AI language model from Anthropic, an outside provider, suggests a perspective.</p></blockquote>
   <h3 id="angle-sent">What’s sent</h3>
   <ul>
@@ -112,7 +112,7 @@
   <p><span class="brand-name">hushmallow</span> stores nothing you write and doesn’t log your words. Our server runs on Cloudflare (<a href="#hosting">section 5</a>) and keeps only:</p>
   <ul>
     <li>daily usage counts per device and per network, filed under one-way scrambled codes (never your network address or device code itself), deleted two days after the day they count;</li>
-    <li>a short technical record of each request, such as whether it worked, how long it took and codes for the feeling, the kind of help and the kind of perspective. It never holds your words, the perspectives you see, your network address or your device code. These records are kept for <span class="legal-todo" data-todo="log-retention">[Owner: how long Cloudflare keeps the server’s logs on our plan, and how long Supabase keeps its sign-in security records]</span>.</li>
+    <li>a short technical record of each request, such as whether it worked and how long it took; codes for the feeling, the kind of help, the area of life it is about (such as work or family) and the kind of perspective; a rough length (short, medium or long); and a coarse safety level (none, concern, care or crisis). It never holds your words, the perspectives you see, your network address or your device code. These records are kept for <span class="legal-todo" data-todo="log-retention">[Owner: how long Cloudflare keeps the server’s logs on our plan]</span>.</li>
   </ul>
   <h3 id="angle-anthropic">Anthropic</h3>
   <p>Anthropic, PBC, based in the United States, receives your words, the feeling and the kind of help you picked and the earlier lines, with a code that changes every day and doesn’t identify you. It prepares the perspective you see.</p>
@@ -131,7 +131,9 @@
   <p>If you subscribe through an app store instead, that store handles the payment under its own terms and privacy policy.</p>
 
   <h2 id="hosting">5. Hosting</h2>
-  <p>Cloudflare hosts the <span class="brand-name">hushmallow</span> app and runs our Another Angle server on its global network. Like any web host, it handles the technical details of each request, such as your IP address, browser type, the page asked for and the time, to deliver the app and protect it from abuse. We don’t use these details to identify you or to build a profile of you.</p>
+  <p>Cloudflare hosts the <span class="brand-name">hushmallow</span> app at app.hushmallow.com and runs our Another Angle server on its global network. Like any web host, it handles the technical details of each request, such as your IP address, browser type, the page asked for and the time, to deliver the app and protect it from abuse. We don’t use these details to identify you or to build a profile of you.</p>
+  <p><strong>The GitHub Pages copy.</strong> A copy of the app is also published on GitHub Pages, at an address ending in github.io. GitHub, Inc., in the United States, hosts that copy: if you open the app there, GitHub handles the same technical details of your visit, and keeps your IP address for security, under its own privacy statement. <span class="legal-todo" data-todo="github-pages">[Owner: keep the GitHub Pages copy, or retire it before launch and take GitHub out of sections 5, 8 and 9]</span></p>
+  <p><strong>Our website.</strong> Our website, hushmallow.com, is a separate site. Where it shows the app, the app runs in its own frame from the app’s own address, as this policy describes. <span class="legal-todo" data-todo="website">[Owner: name the website’s host (such as Framer) and where it is based, and say whether the website uses analytics or cookies; if it does, say so here and in sections 6, 8 and 9]</span></p>
   <p>The app’s fonts and art are served from the same place as the app. Apart from the account service (section 2) and our Another Angle server (section 3), it connects to nothing else: no font services, advertising networks or other third-party sites.</p>
 
   <h2 id="never">6. What we never do</h2>
@@ -152,6 +154,8 @@
     <dd>Your account data (section 2), stored in Sydney, Australia.</dd>
     <dt>Cloudflare, Inc.: hosting and our server</dt>
     <dd>The technical details of each request (section 5). Another Angle requests pass through Cloudflare to our server, which keeps no words.</dd>
+    <dt>GitHub, Inc.: hosting of the GitHub Pages copy</dt>
+    <dd>The technical details of each request, if you open the copy of the app on GitHub Pages (section 5).</dd>
     <dt>Anthropic, PBC: Another Angle (only after you say yes)</dt>
     <dd>Your words, the feeling and the kind of help you picked, earlier lines and a daily code (section 3), in the United States.</dd>
     <dt>Stripe: payments</dt>
@@ -164,7 +168,7 @@
   <h2 id="overseas">9. Information sent overseas</h2>
   <p>Some of our providers are outside Australia or handle information outside it (APP 8):</p>
   <ul>
-    <li><strong>United States:</strong> Anthropic (Another Angle), Cloudflare, Supabase and Stripe are companies based in the United States and may access or handle information there.</li>
+    <li><strong>United States:</strong> Anthropic (Another Angle), Cloudflare, Supabase, Stripe and GitHub (the GitHub Pages copy) are companies based in the United States and may access or handle information there.</li>
     <li><strong>Cloudflare’s global network:</strong> requests are handled in the Cloudflare data centre that serves you, which may be in any country where Cloudflare operates.</li>
     <li><strong>Australia:</strong> account data is stored in Sydney.</li>
   </ul>
@@ -173,7 +177,7 @@
   <h2 id="retention">10. How long we keep it</h2>
   <ul>
     <li><strong>On your device:</strong> until you delete it in Settings or clear this site’s data in your browser.</li>
-    <li><strong>Your account:</strong> until you delete it. What sync keeps goes when you switch that sync off. If you never confirm your email address, we may delete the sign-up after 30 days.</li>
+    <li><strong>Your account:</strong> until you delete it. What sync keeps goes when you switch that sync off. If you never confirm your email address, we may delete the sign-up after 30 days. The sign-in service’s own security records stay after you delete your account, for <span class="legal-todo" data-todo="auth-log-retention">[Owner: how long Supabase keeps its sign-in security records on our plan]</span> (section 2).</li>
     <li><strong>Another Angle:</strong> our server keeps no words; its usage counts go after two days and its technical records as set out in section 3. Anthropic’s copy is usually deleted within 30 days, as set out in section 3.</li>
     <li><strong>Payments:</strong> subscription and payment records for as long as the law requires, such as tax records for five years.</li>
   </ul>
@@ -182,7 +186,7 @@
   <ul>
     <li><strong>Delete what’s on this device:</strong> Settings → Privacy → Delete everything on this phone (signed in, it deletes that account’s things on this device).</li>
     <li><strong>Another Angle:</strong> Settings → Privacy → switch off “Share my words with Another Angle”, or Delete my Another Angle data.</li>
-    <li><strong>Delete your account:</strong> Settings → Privacy → Your account → Delete account. This deletes your sign-in, your profile, your sync choices and everything kept with your account from our server.</li>
+    <li><strong>Delete your account:</strong> Settings → Privacy → Your account → Delete account. This deletes your sign-in, your profile, your sync choices and everything kept with your account from our server, and that account’s things on this device. It doesn’t delete the sign-in service’s own security records (section 2), and it doesn’t touch Another Angle’s data, which isn’t part of your account.</li>
     <li><strong>Sync:</strong> switch each sync option off at any time on your account screen.</li>
     <li><strong>Access and correction:</strong> you can ask for a copy of the personal information we hold about you, or ask us to correct it (APPs 12 and 13), by emailing <a href="mailto:support@hushmallow.com">support@hushmallow.com</a>. You can also change your name and home Mallow yourself on your account screen. We’ll reply within 30 days, there is no charge, and we may need to check it’s you, for example by asking you to write from your account’s email address.</li>
     <li><strong>What’s only on your device</strong> is out of our reach: you can see it and delete it there, and we can’t retrieve or restore it.</li>
