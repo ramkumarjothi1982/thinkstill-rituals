@@ -87,7 +87,8 @@ export function createBeliefHook(host) {
     if (!on() || quiet()) return;
     armed = { kept };
     // (afterTell adds them to the visit's last Tells again: never twice in the risk screener's context)
-    const i = S.recent?.lastIndexOf?.(text) ?? -1;
+    const norm = (t) => String(t ?? '').replace(/\s+/g, ' ').trim();
+    const i = Array.isArray(S.recent) ? S.recent.map(norm).lastIndexOf(norm(text)) : -1;
     if (i >= 0) S.recent.splice(i, 1);
     host.afterTell({ text, emotion: null, intention: null });
   }

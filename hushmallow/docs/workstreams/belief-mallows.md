@@ -130,4 +130,12 @@ An adversarial subagent reviewed the first commit (9328e86). Its verdict: "safe 
 
 Low 13 (per-frame allocation) was measured rather than changed: the stage costs 3.3 ms p50 at 4x throttle.
 
-Re-check after the fixes: RECHECK_PLACEHOLDER
+Re-check after the fixes: **Verdict: nothing Medium or worse remains.**
+
+- Findings 1, 2 and 3 are confirmed fixed, in the browser at 320x568 with the largest text and in the reviewer's simulation.
+- Low 9 (whitespace in the history dedupe) was also fixed afterwards.
+
+Two design notes remain:
+
+- On a small phone at the largest text size, the belief's words fade out while a choice or line overlaps them, and come back once it is answered.
+- The press-on-words-during-room path is right by code, but no probe step exercises it.
