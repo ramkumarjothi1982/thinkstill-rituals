@@ -431,8 +431,8 @@ production's hour-long tokens a page refreshes about once an hour.)
   * `https://app.hushmallow.com/auth/callback`
   * `https://app.hushmallow.com/auth/callback/`
   * `https://hushmallow.pages.dev/auth/callback`
-  * (previews run without sign-in, below: no `*.hushmallow.pages.dev` entry; add
-    `https://*.hushmallow.pages.dev/auth/callback` only if previews ever get the values)
+  * (no `*.hushmallow.pages.dev` entry: previews never use this project. They have their own
+    staging project, hushmallow-staging, with the preview as its Site URL: `docs/STAGING.md`)
 
 **Authentication → Sign In / Providers → Email**
 * Enable email provider: on · Allow new users to sign up: on
@@ -504,9 +504,11 @@ Project **hushmallow**, Git integration from this repository: root directory
 output `dist`, production branch `main` → `https://app.hushmallow.com`,
 previews on `*.hushmallow.pages.dev`.
 
-Environment variables, **Production only** (plain text; both values are public). Previews get
-neither, so they build `{ enabled: false }` (16 Oct 2026 recommendation, `supabase/production/RUNBOOK.md`
-step 10: a preview is unreviewed branch code on a public address, and every email link opens production anyway):
+Environment variables, **Production only** (plain text; both values are public). Previews never get
+these (16 Oct 2026 recommendation, `supabase/production/RUNBOOK.md` step 10: a preview is unreviewed branch
+code on a public address). They get the separate staging project's values instead, or none
+(`docs/STAGING.md`, A5): a build of any branch but `main` (`CF_PAGES_BRANCH`) refuses to publish these and
+builds `{ enabled: false }`, and a preview host accepts only the staging project (`src/auth/config.js`):
 * `SUPABASE_URL` = `https://igbxbfuaoybfzsroxuln.supabase.co`
 * `SUPABASE_PUBLISHABLE_KEY` = `sb_publishable_NSv1Liou2yjKjauX09U5qQ_CxwzDuiw`
 * (recommended) `NODE_VERSION` = `22`
@@ -717,7 +719,7 @@ The account screens open from Settings → Privacy (the top row) or at
 `https://app.hushmallow.com/#account`.
 1. SQL editor: run `0001` … `0009` (already ran `0001`–`0008`? run just `0009`), then `tests/rls_check.sql` → `ALL 35 CHECKS PASSED`.
 2. Dashboard settings above (URL configuration, email provider, templates, sessions, **custom SMTP**).
-3. Cloudflare Pages: the two variables for Production only (none on Preview); deploy. Then `node hushmallow/tools/auth/prod-readiness.mjs --app https://app.hushmallow.com` (the key in `SUPABASE_PUBLISHABLE_KEY`): every line PASS.
+3. Cloudflare Pages: the two variables for Production only (never on Preview: Preview has the staging project's, `docs/STAGING.md`); deploy. Then `node hushmallow/tools/auth/prod-readiness.mjs --app https://app.hushmallow.com` (the key in `SUPABASE_PUBLISHABLE_KEY`): every line PASS.
 4. `curl -sI https://app.hushmallow.com/auth/callback/` → `cache-control: no-store`, `x-frame-options: DENY`, `referrer-policy: no-referrer`; `curl -sI https://app.hushmallow.com/auth/callback` → a redirect to `/auth/callback/` (Pages serves the folder), with the query kept.
 5. In a private window, as a guest: everything works as before; the network panel shows no request to `supabase.co` until you open Settings (the readiness gate's two questions) or `/#account`.
 6. Star a world as a guest. `/#account` → Create an account with your address (and a name). "Check your email" shows your address; "Send it again" counts down.
@@ -731,7 +733,7 @@ The account screens open from Settings → Privacy (the top row) or at
 14. Session end: delete your test user in Authentication → Users while the app is open on your phone; bring the app to the front: one calm line, then guest.
 15. Delete account (type `delete`): Authentication → Users no longer lists it; no rows remain for it; "Your account is deleted…"; the app is a guest again with the guest's things.
 16. Offline (aeroplane mode) on the account card: a calm pill; a switch says it can't reach hushmallow and stays as it was.
-17. (Only if previews were given the two values, which `supabase/production/RUNBOOK.md` advises against; without them a preview shows no sign-in.) On a preview (`*.hushmallow.pages.dev`): sign up; the email's button opens **production's** `https://app.hushmallow.com/auth/callback` (by design, coordinator decision 1: one-time tokens only ever reach the production app, never a preview) and confirms there; then sign in on the preview with the confirmed account. The same for a reset link asked for on a preview: the new password is set on production.
+17. Previews never use this project: a branch build refuses its values and a preview accepts only the staging project hushmallow-staging (`docs/STAGING.md`), whose own Site URL is the preview, so its links open the preview. hushmallow1's links only ever reach the production app (coordinator decision 1: one-time tokens never reach a preview).
 18. Authentication → URL Configuration: the Site URL is exactly `https://app.hushmallow.com` (no trailing slash), so the links in step 7 read `…com/auth/callback?…`, not `…com//auth/callback?…`.
 19. As a guest who has used the app before (favourites, a Memory Garden tool, settings, Another Angle): open the version with sign-in on; everything is exactly where it was. Sign in, answer "Not now", sign out: still exactly where it was.
 20. Two tabs: signed in, open the app in a second tab and leave it in the Memory Garden. In the first tab, Delete account. The second tab says "Your account is deleted…" at once; star a world there (nothing is kept); go back to the Hushfold: it reloads as a guest. In the browser's storage (DevTools → Application → Local Storage) no `hm2:u:<your id>:` key is left. The same with "Sign out and remove my things from this phone".

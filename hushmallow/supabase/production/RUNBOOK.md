@@ -85,8 +85,8 @@ Authentication → **URL Configuration**.
       - `https://app.hushmallow.com/auth/callback/`
       - `https://hushmallow.pages.dev/auth/callback` (the production build's own pages.dev address)
 - [ ] Remove anything else (a `localhost:3000` left from setup, and **never**
-      a wildcard such as `**` or `https://*`). Previews get no entry: they run
-      without sign-in (step 10). Save.
+      a wildcard such as `**` or `https://*`). Previews get no entry: they
+      never use hushmallow1 (step 10). Save.
 
 ## 5. Sign-up and passwords (3 min)
 
@@ -224,9 +224,11 @@ Workers & Pages → **hushmallow** → Settings → **Variables and Secrets**.
       - `SUPABASE_PUBLISHABLE_KEY` = `sb_publishable_NSv1Liou2yjKjauX09U5qQ_CxwzDuiw`
       - `NODE_VERSION` = `22` (recommended)
       Save.
-- [ ] **Preview**: no `SUPABASE_URL` and no `SUPABASE_PUBLISHABLE_KEY`. A
-      request on 13 Oct 2026 (`tools/infra/PAGES_ENV`) asked for them on Production
-      **and** Preview: if they are there, delete both from Preview.
+- [ ] **Preview**: no `SUPABASE_URL` and no `SUPABASE_PUBLISHABLE_KEY` of
+      hushmallow1. A request on 13 Oct 2026 (`tools/infra/PAGES_ENV`) set them on
+      Production **and** Preview: on Preview, replace both with the separate
+      staging project's values (`docs/STAGING.md`, A5), or delete them. (A branch
+      build refuses hushmallow1's values anyway and builds without sign-in.)
 - [ ] Never add `HM_AUTH_MODE` (local test builds only), a secret /
       service_role key or `SUPABASE_ACCESS_TOKEN` (the build refuses to
       publish while a Supabase secret or token is in its environment).
@@ -234,18 +236,17 @@ Workers & Pages → **hushmallow** → Settings → **Variables and Secrets**.
       deployment** (new values only reach a new build). Wait for Success.
 - [ ] Custom domains: `app.hushmallow.com` is **Active**.
 
-**Why previews run without sign-in (recommended).** A preview is built from
+**Why previews never use hushmallow1.** A preview is built from
 any branch, reviewed or not, and published on a public `*.hushmallow.pages.dev`
 address. With the production values it would run unreviewed code against the
 real accounts (Row Level Security still holds, but a preview could still
 sign real people in, write their synced rows or delete their accounts). It
 would not even test sign-in well: every email link opens production, by
-design. The app accepts no other project (`src/auth/config.js`), so the
-choice is production or nothing; without the two values a preview builds
-`{ enabled: false }` and runs exactly as today. Sign-in itself is tested on
-a local Supabase stack (the CI E2E, docs/AUTH.md). If previews with sign-in
-are wanted later, that means a second, staging project and a change to
-`src/auth/config.js`.
+design. So a preview never accepts this project (`src/auth/config.js`): it
+may only use the separate staging project **hushmallow-staging**, with its own
+test accounts (`docs/STAGING.md`), and without its values it builds
+`{ enabled: false }` and runs exactly as today. Sign-in itself is also tested
+on a local Supabase stack (the CI E2E, docs/AUTH.md).
 
 ## 11. Verify on the live app (10 min)
 
