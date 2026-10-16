@@ -132,7 +132,7 @@ Taken after six independent reviews of `fb1bae2` (blind held-out safety, privacy
 
 ## Defaults taken on the owner's behalf (2026-10-16, Privacy Policy and Terms: drafts)
 
-`legal/privacy.html` and `legal/terms.html` (published at `/legal/`) are drafts: one line in `src/ui/legal.css`, `.legal-page { --legal-draft: block; }` under its DRAFT SWITCH comment, shows "Draft — awaiting owner and legal review" (with the draft's date) on both pages. To approve, replace every `[Owner: …]` placeholder (the whole `<span class="legal-todo">`) with the final words, then delete that one line: no page or test needs another edit. `tests/legal-pages.test.mjs` follows the switch: while it is on, approving with a placeholder left is refused; once it is off, any placeholder or `[Owner …]` note left on either page fails the suite (and so the deploy), and nothing outside the notice may say "draft".
+`legal/privacy.html` and `legal/terms.html` (published at `/legal/`) are drafts: one line in `src/ui/legal.css`, `.legal-page { --legal-draft: block; }` under its DRAFT SWITCH comment, shows "Draft — awaiting owner and legal review" (with the draft's date) on both pages. To approve, replace every `[Owner: …]` placeholder (the whole `<span class="legal-todo">`) with the final words, then delete that one line: no page or test needs another edit. `tests/legal-pages.test.mjs` follows the switch: while it is on, approving with a placeholder left is refused; once it is off, any placeholder or `[Owner …]` note left on either page fails the suite (and so the deploy), and nothing outside the notice may say "draft". The hidden notices may stay in the pages or be deleted afterwards: the suite accepts either.
 
 | Topic | Default |
 |---|---|

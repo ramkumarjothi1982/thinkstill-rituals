@@ -5,7 +5,8 @@
 //   2. the draft switch: one line in src/ui/legal.css shows both pages' "Draft —
 //      awaiting owner and legal review"; without it the notices are hidden, and
 //      an approved page may hold no [Owner: …] placeholder. The checks follow
-//      the switch's state, so deleting that line on approval needs no test edit;
+//      the switch's state, so deleting that line on approval needs no test edit
+//      (nor does deleting the hidden notices afterwards);
 //   3. the brand stays lowercase, the plan names are exact, no therapeutic claim;
 //   4. the words follow the app: the owner's approved Anthropic lines and what
 //      an account keeps, verbatim from the modules that show them in the app,
@@ -54,6 +55,16 @@ function approvalProblems(html, draft) {
 }
 /** The page without its draft notice: what an approved page shows. */
 const withoutNotice = (html) => noComments(html).replace(/<aside class="legal-draft"[\s\S]*?<\/aside>/, '');
+/** The notice itself: while a draft, exactly one, before the title; once approved it is hidden, and may be left or deleted. */
+function noticeProblems(html, draft) {
+  const page = noComments(html);
+  const notes = [...page.matchAll(/<aside class="legal-draft" role="note" aria-label="Draft notice"><strong>([^<]+)<\/strong>/g)];
+  const bad = [];
+  if (notes.length > 1 || (draft && !notes.length)) bad.push(`${notes.length} notices`);
+  for (const m of notes) if (m[1] !== `${DRAFT}.`) bad.push(`the notice says "${m[1]}"`);
+  if (notes.length && page.indexOf('class="legal-draft"') > page.indexOf('<h1')) bad.push('the notice comes after the title');
+  return bad;
+}
 
 // ------------------------------------------------------------------ 1 --
 test('legal pages: both exist, en-AU, titled "<name> · hushmallow", one h1, a way back to the app and to each other', () => {
@@ -143,10 +154,7 @@ test('the draft switch: one line in legal.css shows both notices; with it gone, 
     const html = read(p);
     // the pages carry no switch of their own: legal.css is the one place, for both
     assert.doesNotMatch(noComments(html), /data-draft|--legal-draft/, `${p}: no per-page switch`);
-    const notes = [...noComments(html).matchAll(/<aside class="legal-draft" role="note" aria-label="Draft notice"><strong>([^<]+)<\/strong>/g)];
-    assert.equal(notes.length, 1, `${p}: one notice`);
-    assert.equal(notes[0][1], `${DRAFT}.`);
-    assert.ok(noComments(html).indexOf('class="legal-draft"') < noComments(html).indexOf('<h1'), `${p}: the notice comes before the title`);
+    assert.deepEqual(noticeProblems(html, draft), [], `${p}: the notice`);
     // only the notice says "draft": with the switch off, nothing left on the page calls it one
     assert.doesNotMatch(textOf(withoutNotice(html)), /\bdraft\b/i, `${p}: "draft" outside the notice`);
     assert.doesNotMatch(textOf(withoutNotice(html)), /not in force/i, `${p}: "not in force" outside the notice`);
@@ -170,6 +178,16 @@ test('the draft switch: one line in legal.css shows both notices; with it gone, 
   assert.deepEqual(approvalProblems(sample('<span class="legal-todo">Example Pty Ltd</span>'), false), ['a legal-todo placeholder in another form']);
   assert.deepEqual(approvalProblems(sample('Example Pty Ltd'), false), []);
   assert.deepEqual(approvalProblems(sample('<span class="legal-todo" data-todo="entity">[Owner: legal entity name]</span>'), true), []);
+  // the notice check, on a small page: a draft needs its one notice above the title; an approved page may keep the hidden notice or delete it
+  const note = `<aside class="legal-draft" role="note" aria-label="Draft notice"><strong>${DRAFT}.</strong> Not in force yet.</aside>`;
+  const titled = (n) => `<main>${n}<h1 class="legal-title">Terms of Use</h1><p>Text.</p></main>`;
+  assert.deepEqual(noticeProblems(titled(note), true), []);
+  assert.deepEqual(noticeProblems(titled(''), true), ['0 notices'], 'a draft without its notice');
+  assert.deepEqual(noticeProblems(titled(note + note), true), ['2 notices']);
+  assert.deepEqual(noticeProblems(titled(note.replace('Draft —', 'Draft:')), true), ['the notice says "Draft: awaiting owner and legal review."']);
+  assert.deepEqual(noticeProblems('<main><h1 class="legal-title">Terms of Use</h1>' + note + '</main>', true), ['the notice comes after the title']);
+  assert.deepEqual(noticeProblems(titled(note), false), [], 'approved: the hidden notice may stay');
+  assert.deepEqual(noticeProblems(titled(''), false), [], 'approved: or be deleted, with no test edit');
   // terms.html names the governing law's State or Territory (the placeholder until the owner chooses one)
   assert.match(textOf(read(PAGES[1])), /governed by the laws of (?:\[Owner: State or Territory\]|New South Wales|Victoria|Queensland|Western Australia|South Australia|Tasmania|the Australian Capital Territory|the Northern Territory) ?, Australia/);
 });

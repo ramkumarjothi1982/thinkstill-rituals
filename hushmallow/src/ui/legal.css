@@ -14,7 +14,7 @@
    "Draft — awaiting owner and legal review" notice (.legal-draft, above the title).
    Once the owner and a lawyer have approved both pages, replace every placeholder
    (the whole <span class="legal-todo">…</span>) with the final words, then delete
-   this one line. */
+   this one line. The hidden notices may then stay, or be deleted from the pages. */
 .legal-page { --legal-draft: block; }
 
 html { background: var(--ink-0); -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
