@@ -5,6 +5,7 @@
 //       words chip, so it could not be turned past halfway). The stage now keeps clear of the dock at every size.
 //   m2  touch targets under 44 px: .chip, the Settings Volume slider, the Thought Mallow's words tag.
 //   m3  a V3 ritual's first Mallow line covered the play dial (its bubble sat just above the small Mallow in the dock).
+//   m4  the small tappable Mallow in a V3 ritual's dock stuck a few px out of the viewport at every size.
 // Run: node --test hushmallow/tests/qa-mobile-fix.test.mjs
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -12,7 +13,7 @@ import { readFileSync } from 'node:fs';
 
 const read = (p) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
 const fnBody = (src, start, end) => { const a = src.indexOf(start); const b = src.indexOf(end, a + start.length); assert.ok(a >= 0 && b > a, `${start} … ${end}`); return src.slice(a, b); };
-const { stageRect, wantsCompact, STAGE_MIN, STAGE_FLOOR, STAGE_GAP } = await import('../src/v3/stage-fit.js');
+const { stageRect, wantsCompact, keepInside, STAGE_MIN, STAGE_FLOOR, STAGE_GAP } = await import('../src/v3/stage-fit.js');
 
 // what the browser measured on the release candidate (Playwright, HM-0001 Molten Tempo): the title's bottom in full and
 // compacted, and the dock's top (the scene column is 20…W-20 on a phone, 480 wide and centred on a tablet)
@@ -57,7 +58,7 @@ test('M1: the V3 stage never reaches under the dock, at any size or text size (t
 
 test('M1: the host lays the stage out from stage-fit.js, compacting the title first; the title keeps the prompt and the law', () => {
   const host = read('src/v3/host.js');
-  assert.match(host, /import \{ stageRect, wantsCompact \} from '\.\/stage-fit\.js';/);
+  assert.match(host, /import \{ stageRect, wantsCompact(, keepInside)? \} from '\.\/stage-fit\.js';/);
   const lay = fnBody(host, 'function layout() {', 'function placeMallow(');
   assert.doesNotMatch(lay, /Math\.max\(220/, 'no floor that pushes the stage under the dock');
   assert.match(lay, /titleBox\.classList\.remove\('v3-compact'\);\n\s+if \(wantsCompact\(titleBottom\(\), dockTop\)\) titleBox\.classList\.add\('v3-compact'\);/);
@@ -115,4 +116,34 @@ test('m3: a V3 ritual’s Mallow lines keep out of the whole stage (the title ba
   // moved off it and back every few hundred ms)
   assert.match(obs, /add\(el\.classList\.contains\('say-dim'\) \? boxRect\(el\) : visibleRect\(el\), 'title', el\)/);
   assert.match(ui, /function boxRect\(el\) \{\n  const r = el\.getBoundingClientRect\(\);\n  return r\.width >= 1 && r\.height >= 1 \? r : null;\n\}/);
+});
+
+test('m4: the small Mallow in a V3 ritual’s dock stays on screen, inside the safe-area insets', () => {
+  // the layer boxes the browser measured on the release candidate (its canvas is the Mallow's touch target)
+  const cases = [
+    ['320×568', { left: -3, top: 437, right: 112, bottom: 570 }, { left: 0, top: 0, right: 320, bottom: 568 }],
+    ['390×844', { left: 3, top: 687, right: 120, bottom: 852 }, { left: 0, top: 0, right: 390, bottom: 844 }],
+    ['820×1180', { left: 137, top: 1023, right: 288, bottom: 1188 }, { left: 0, top: 0, right: 820, bottom: 1180 }],
+    ['390×844, an iPhone’s home bar (34 px)', { left: 3, top: 653, right: 121, bottom: 817 }, { left: 0, top: 47, right: 390, bottom: 810 }],
+  ];
+  for (const [label, box, area] of cases) {
+    const f = keepInside(box, area);
+    assert.equal(f.k, 1, `${label}: it only moves`);
+    const moved = { left: box.left + f.dx, top: box.top + f.dy, right: box.right + f.dx, bottom: box.bottom + f.dy };
+    assert.ok(moved.left >= area.left - 1e-9 && moved.right <= area.right + 1e-9 && moved.top >= area.top - 1e-9 && moved.bottom <= area.bottom + 1e-9, `${label}: ${JSON.stringify(moved)}`);
+    assert.ok(Math.abs(f.dx) <= 3 && Math.abs(f.dy) <= 8, `${label}: by a few px only (${f.dx}, ${f.dy})`);
+  }
+  // a box already inside stays put; one bigger than the area shrinks about its centre to fit
+  assert.deepEqual(keepInside({ left: 10, top: 10, right: 50, bottom: 50 }, { left: 0, top: 0, right: 100, bottom: 100 }), { dx: 0, dy: 0, k: 1 });
+  const big = keepInside({ left: -50, top: 0, right: 150, bottom: 100 }, { left: 0, top: 0, right: 100, bottom: 200 });
+  assert.equal(big.k, 0.5);
+  assert.equal(big.dx, 0);
+  // the host applies it to the layer as placed, in both places it puts the Mallow, with the insets measured live
+  const host = read('src/v3/host.js');
+  const place = fnBody(host, 'function placeMallow(mode = phaseName) {', 'const resizeFns');
+  assert.match(place, /\} else world\.fitBetween\(r\.top - 8, r\.bottom \+ 2, \{ maxScale: 0\.42, x: \(\(r\.left \+ r\.width \/ 2\) \/ innerWidth\) \* 100 \}\);\n    keepMallowInside\(\);/);
+  assert.match(place, /padding: 'env\(safe-area-inset-top, 0px\) env\(safe-area-inset-right, 0px\) env\(safe-area-inset-bottom, 0px\) env\(safe-area-inset-left, 0px\)'/);
+  assert.match(place, /const fit = keepInside\(\{ left: cx - w \/ 2, top: cy - hh \/ 2, right: cx \+ w \/ 2, bottom: cy \+ hh \/ 2 \},/);
+  assert.match(place, /world\.place\(\{ x: \(\(cx \+ fit\.dx\) \/ innerWidth\) \* 100, y: \(\(cy \+ fit\.dy\) \/ innerHeight\) \* 100, scale: ms \* fit\.k \}\)/);
+  assert.match(fnBody(host, 'function cleanup() {', 'function finish('), /insetProbe\.remove\(\);/);
 });

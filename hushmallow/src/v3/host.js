@@ -25,7 +25,7 @@ import { faceMix } from '../engine/interpret.js';
 import { openSupport } from '../app/scenes/support.js';
 import { brandName } from '../brand.js';
 import { canvasFontPx, fontsReady } from '../ui/type.js';
-import { stageRect, wantsCompact } from './stage-fit.js';
+import { stageRect, wantsCompact, keepInside } from './stage-fit.js';
 
 const { clamp, lerp, smooth, ease, rgba, glow, Particles, Ripples, Trail } = fx;
 
@@ -122,9 +122,26 @@ export async function run(ctx) {
     const r = spot.getBoundingClientRect();
     if (mode === 'end' || !r.width) {
       const top = (titleBox?.getBoundingClientRect().bottom ?? 120) + 4, bottom = dock.getBoundingClientRect().top - 4;
-      world.fitBetween(top, Math.max(top + 80, bottom), { maxScale: 0.66 }); return;
-    }
-    world.fitBetween(r.top - 8, r.bottom + 2, { maxScale: 0.42, x: ((r.left + r.width / 2) / innerWidth) * 100 });
+      world.fitBetween(top, Math.max(top + 80, bottom), { maxScale: 0.66 });
+    } else world.fitBetween(r.top - 8, r.bottom + 2, { maxScale: 0.42, x: ((r.left + r.width / 2) / innerWidth) * 100 });
+    keepMallowInside();
+  }
+  // the Mallow's whole layer (its canvas is what a finger taps) stays on screen, inside the safe-area insets: fitBetween
+  // centres its body in the dock's spot, and the layer's transparent margins stuck out a few px at the left and bottom
+  const insetProbe = h('div', { 'aria-hidden': 'true', style: { position: 'fixed', left: '0', top: '0', width: '0', height: '0', visibility: 'hidden', pointerEvents: 'none',
+    padding: 'env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px)' } });
+  function keepMallowInside() {
+    const layer = document.getElementById('mallow-layer');
+    if (!layer || !layer.offsetWidth) return;
+    if (!insetProbe.isConnected) document.body.append(insetProbe);
+    const ins = getComputedStyle(insetProbe), px = (v) => parseFloat(v) || 0;
+    const v = (k) => parseFloat(layer.style.getPropertyValue(k));
+    const mx = v('--mx'), my = v('--my'), ms = v('--ms');
+    if (!Number.isFinite(mx) || !Number.isFinite(my) || !(ms > 0)) return;
+    const cx = (mx / 100) * innerWidth, cy = (my / 100) * innerHeight, w = layer.offsetWidth * ms, hh = layer.offsetHeight * ms;
+    const fit = keepInside({ left: cx - w / 2, top: cy - hh / 2, right: cx + w / 2, bottom: cy + hh / 2 },
+      { left: px(ins.paddingLeft), top: px(ins.paddingTop), right: innerWidth - px(ins.paddingRight), bottom: innerHeight - px(ins.paddingBottom) });
+    if (Math.abs(fit.dx) > 0.01 || Math.abs(fit.dy) > 0.01 || fit.k < 1) world.place({ x: ((cx + fit.dx) / innerWidth) * 100, y: ((cy + fit.dy) / innerHeight) * 100, scale: ms * fit.k });
   }
   const resizeFns = new Set();
   const onResize = () => layout();
@@ -550,6 +567,7 @@ export async function run(ctx) {
     world.fx.classList.remove('live');
     world.fx.replaceChildren();
     lawChip.remove();
+    insetProbe.remove();
     titleBox?.classList.remove('v3-compact');
     dock.classList.remove('v3-dock', 'v3-ending');
     if (globalThis.__hm3) globalThis.__hm3.phase = 'closed';
