@@ -112,10 +112,10 @@ test('shipped code calls no remote service except Another Angle’s own server',
     if (f.endsWith('/src/beyond/angle-client.js')) s = s.replace(angleFetch, '');
     if (f.endsWith('/src/auth/client.js')) s = s.replace(authFetch, '');
     assert.doesNotMatch(s, /\bfetch\s*\(|XMLHttpRequest|new WebSocket|EventSource\(|sendBeacon/, f);
-    // the only URLs allowed: the SVG namespace, the support-line directory people can open themselves,
-    // (in src/app/config.js only) the configured Another Angle endpoint, and (in src/auth/config.js
-    // only) the sign-in project
-    const urls = (s.match(/https?:\/\/[^'"`\s)]+/g) || []).filter((u) => !/^https?:\/\/(www\.w3\.org\/|findahelpline\.com)/.test(u))
+    // the only URLs allowed: the SVG namespace, the support-line directory and Lifeline's crisis chat
+    // (Australia) that people can open themselves, (in src/app/config.js only) the configured Another
+    // Angle endpoint, and (in src/auth/config.js only) the sign-in project
+    const urls = (s.match(/https?:\/\/[^'"`\s)]+/g) || []).filter((u) => !/^https?:\/\/(www\.w3\.org\/|findahelpline\.com|www\.lifeline\.org\.au\/crisis-chat\/$)/.test(u))
       .filter((u) => !(ANGLE_ENDPOINT && f.endsWith('/src/app/config.js') && u === ANGLE_ENDPOINT))
       .filter((u) => !(f.endsWith('/src/auth/config.js') && u === PROJECT_URL));
     assert.deepEqual(urls, [], f);

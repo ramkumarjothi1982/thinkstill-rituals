@@ -295,6 +295,7 @@ Checked after these changes: replaying runs 1–3, every accepted answer still p
 * Support titles: the shared copy still says "Let's pause the reframe" / "This isn't one to reframe"; until it is reworded, the server sends "Let's pause Another Angle" / "This one needs real support" instead (`src/safety/index.js`), because "reframe" is jargon the gate never lets the model use.
 * The model's own `safety_status` is honoured, so subtle crisis wording the lists miss still gets support. The eval measures that on its own (see above).
 * Harmful experiences are never reframed, and an ordinary reframe is never offered as enough support in an emergency.
+* The helplines in `support.resources` come from the shared copy: the emergency numbers 999 (UK), 911 (US), 112 (EU) and 000 (Australia); Samaritans (UK & Ireland), 988 (US), and Lifeline, the Suicide Call Back Service and 13YARN (Australia); for care, the UK, US and Australian (1800RESPECT) domestic-abuse lines; findahelpline.com for everywhere else. The server does not guess where the person is; the app's support sheet orders its own lines by the phone's region.
 * The word "AI" never appears in what people see: the support copy, the subtitles and the gate all keep to hushmallow's own language.
 
 ## Files

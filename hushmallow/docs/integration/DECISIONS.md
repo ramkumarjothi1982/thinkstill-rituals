@@ -130,8 +130,21 @@ Taken after six independent reviews of `fb1bae2` (blind held-out safety, privacy
 | "Keep sealed predictions" | The Settings row formerly "Keep my saved angles" names what it really keeps (the fallback ritual's sealed predictions, with the words); "Delete my Another Angle data" now removes them too |
 | Copy | The dictation hint says hushmallow keeps the words on the phone and the keyboard's dictation follows the phone's settings; About names the feeling and kind of help Another Angle sends; account copy names "when you last opened the app" and that the sign-in service's own security log is not deleted from here; returning github.io testers see "Test access ended for the pilot." |
 
+## Defaults taken on the owner's behalf (2026-10-16, Australian support)
+
+Australia is the launch market, and an Australian phone used to get no region (the urgent sheet offered 112 and Find A Helpline, never 000 or Lifeline). Each is reversible.
+
+| Topic | Default |
+|---|---|
+| Who counts as Australia | Every `Australia/*` time zone (the old names too: ACT, NSW, Yancowinna, LHI…) and `Antarctica/Macquarie`; an `-AU` language only when the time zone names no place (UTC), as for the other regions. Christmas Island, the Cocos (Keeling) Islands and Norfolk Island are not counted (their lines are on Find A Helpline) |
+| The Australian lines | Emergency 000; Lifeline 13 11 14 (text 0477 13 11 14, chat at lifeline.org.au/crisis-chat); Suicide Call Back Service 1300 659 467; 13YARN 13 92 76; Beyond Blue 1300 22 4636; Kids Helpline 1800 55 1800 (ages 5 to 25); 1800RESPECT 1800 737 732. Listed for everyone; on an Australian phone they come right after the emergency card. The UK, Ireland, US and Canada sheets read as before, with the Australian cards after theirs |
+| The urgent sheet in Australia | "Call 000" then "Call 13 11 14 · Lifeline"; after "Not really" Lifeline then 000 |
+| After abuse, violence or threats in Australia | "Call 1800 737 732 · 1800RESPECT" then "Call 000 · If you’re in danger now" (elsewhere Find A Helpline stays first); the 1800RESPECT and Find A Helpline cards lead |
+| The shared support copy (app and Another Angle server) | The emergency line reads "999 (UK), 911 (US), 112 (EU), 000 (Australia)"; crisis adds Lifeline, the Suicide Call Back Service and 13YARN, someone in danger adds Lifeline, care adds 1800RESPECT. The detection rules are unchanged |
+
 ## Still open for the owner
 
+- **Australian support lines**: sign-off of the numbers and their wording by someone with wellbeing or clinical experience (STATUS §4.2), and whether 1800RESPECT should lead after abuse in Australia.
 - **Tester invite codes** (`TESTER_INVITE_CODES` on the production Worker): the only server-side gate on who reaches the real model.
 - Separate Anthropic API keys for production and for staging/CI, each with its own Console spend limit.
 - Whether a refusal from the provider should count as care (today Zuzu's own angle plays).

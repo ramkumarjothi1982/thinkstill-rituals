@@ -175,9 +175,10 @@ test('r3-words 7: the wish to follow keeps its recall: someone unknown who died,
 
 test('r3-words 8: the safety lexicons are untouched (byte-identical, as approved)', () => {
   // (the hash moved since for the lexicon-gaps pass of 14 Oct 2026 and its rounds 3 and 4: tests/lexicon-gaps.test.mjs; and on
-  // 15 Oct 2026 for the detection fix's one additive care rule, the threat still being made: lexicon-diff LOST 0)
+  // 15 Oct 2026 for the detection fix's one additive care rule, the threat still being made: lexicon-diff LOST 0; and on
+  // 16 Oct 2026 for the Australian lines in HARM_COPY's support copy only, every rule verbatim: lexicon-diff LOST 0, GAINED 0)
   const app = readFileSync(new URL('../src/data/safety-lexicon.js', import.meta.url));
   const server = readFileSync(new URL('../server/another-angle/src/safety/shared-lexicon.js', import.meta.url));
-  assert.match(createHash('sha256').update(app).digest('hex'), /^ac968757f3986423/);
+  assert.match(createHash('sha256').update(app).digest('hex'), /^41c4a5c8a4a98f39/);
   assert.ok(app.equals(server));
 });

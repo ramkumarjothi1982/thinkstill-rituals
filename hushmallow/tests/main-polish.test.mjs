@@ -49,7 +49,7 @@ test('support: abuse, violence and threats put Find A Helpline first and say it 
     const ls = supportLines(c);
     assert.equal(ls[0].id, 'findahelpline', c);
     assert.match(ls[0].how, /domestic-abuse services/);
-    assert.equal(ls.length, 4, 'nothing added, nothing dropped');
+    assert.equal(ls.length, support.SUPPORT_LINES.length, 'nothing added, nothing dropped');
     assert.ok(abuseFirst(c));
   }
   for (const c of [null, 'unsafe', 'harassment', 'discrimination', 'loss', 'self']) assert.equal(supportLines(c)[0].id, 'emergency', String(c));

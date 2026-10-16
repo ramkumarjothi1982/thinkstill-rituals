@@ -4,7 +4,8 @@
 //
 // Only what routing across a reload needs is kept — { level, crisisSpoken, abuseFirst?, noWorld?, noResume?, liftable?, at }
 // — never the words, nothing about them, and (fix round) not the reading's category either: only how the visit routes.
-//   abuseFirst  the support sheet leads with Find A Helpline and the emergency number (what someone did to them)
+//   abuseFirst  the support sheet leads with Find A Helpline (1800RESPECT in Australia) and the emergency number (what
+//               someone did to them)
 //   noWorld     no world is offered at all, not even somewhere calm (a death care, or support first)
 //   noResume    the world they were in is never offered back (a loss told)
 //   liftable    distress alone: the next Tell is asked the check-in, and "I'm okay — let's play" lifts it
