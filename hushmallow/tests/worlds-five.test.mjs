@@ -12,6 +12,9 @@ import { fileURLToPath } from 'node:url';
 
 import { WORLDS, STATUS, FLOW_EMOTIONS, FLOW_INTENTIONS, createRegistry, isPlayable, missingFields } from '../src/hushfold/flow/registry.js';
 import { SKILLS, getSkill, validateSkill } from '../src/hushfold/skills.js';
+import { REALM_HORIZON } from '../src/world/realm.js';
+import { COVE } from '../src/hushfold/flow/worlds/moonmilk-cove-rules.js';
+import { LAGOON } from '../src/hushfold/flow/worlds/raindrop-lagoon-core.js';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const read = (p) => readFileSync(`${root}${p}`, 'utf8');
@@ -33,6 +36,10 @@ test('registry: the five worlds in sequence, every one PLAYABLE (never DEV), wit
   }
   assert.deepEqual(WORLDS.map((w) => w.mallow.id), ['glitzi', 'loomi', 'noomi', 'blubi', 'boppo']);
   assert.deepEqual(WORLDS.map((w) => w.memory.skillId), ['slowing-down', 'a-little-more-room', 'permission-to-rest', 'name-it', 'kinder-voice']);
+  // the entries copied into registry.js keep their realm's horizon (the melts spread from it)
+  for (const w of WORLDS) if (w.realm) assert.equal(w.horizon, REALM_HORIZON[w.realm], `${w.id}: horizon`);
+  assert.equal(byId('moonmilk-cove').horizon, COVE.HORIZON);
+  assert.equal(byId('raindrop-lagoon').horizon, LAGOON.HORIZON);
   // light to import: pure data, no static imports; a world's code loads only when it is about to play
   const src = read('src/hushfold/flow/registry.js');
   assert.doesNotMatch(src, /^\s*import\s/m, 'registry.js imports nothing statically');
