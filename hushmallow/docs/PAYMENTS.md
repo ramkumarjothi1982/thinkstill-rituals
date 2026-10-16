@@ -2,7 +2,7 @@
 
 hushmallow Flow and hushmallow Beyond can be sold on the web (app.hushmallow.com) through Stripe, with Another Angle's server checking the subscription itself. **Everything described here is built and switched off.** Nothing changes for anyone until the owner does the steps below. The App Store app (StoreKit) is separate and keeps working as before; the iOS shell never shows web billing.
 
-There are two switches, and both are off in the repository:
+There are two switches, and both are off in the repository for production. (The staging rehearsal is the one exception: the release branch's Pages preview has billing on, through the staging Worker in Stripe test mode. See `docs/STAGING.md`.)
 
 | Where | Off (today) | On |
 |---|---|---|
@@ -33,7 +33,7 @@ Do all of this in **test mode** first (the toggle at the top of the dashboard), 
    * Give each product two recurring prices in **AUD**: one **monthly** and one **yearly**. That makes four prices in all.
    * Under each price's advanced options, set its **lookup key** to the app's product id: `hushmallow.paid.monthly`, `hushmallow.paid.yearly`, `hushmallow.ultra.monthly` or `hushmallow.ultra.yearly`. The server maps a price to a plan by its id, and falls back to the lookup key, so a price replaced later still maps.
    * Australian consumer prices should be shown tax-inclusive. Set each price's tax behaviour to "inclusive" if you are registered for GST. Stripe Tax is **not** switched on by the code (no `automatic_tax`); decide this with your accountant.
-   * **The amounts are the owner's decision.** No hushmallow price is recorded anywhere.
+   * **The amounts are the owner's decision.** Only the owner's provisional test amounts are recorded, in `BILLING_PRICES` (`src/app/config.js`) for the staging rehearsal (`docs/STAGING.md`). They are not the final prices.
 4. **Copy the four price ids** (`price_…`). They go in the Worker's vars (section 2).
 5. **Webhook endpoint.** Developers → Webhooks → Add endpoint:
    * URL: `https://hushmallow-another-angle.vibyfy-chat.workers.dev/v1/billing/webhook`
@@ -104,7 +104,7 @@ export const BILLING_PRICES = Object.freeze({        // shown under each button,
 ```
 
 * Sign-in must be on in the Pages build: `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` as build variables (`docs/AUTH.md`). Without sign-in the app ignores billing.
-* Prices come only from `BILLING_PRICES`. Stripe Checkout always shows the real amount whatever is set here, so keep the two the same.
+* Prices come only from `BILLING_PRICES`. Stripe Checkout always shows the real amount whatever is set here, so keep the two the same. Today it holds the owner's provisional test values for the staging rehearsal (`docs/STAGING.md`): replace them with the final amounts in the release that switches production on.
 * `TEST_PURCHASE_HOSTS` stays localhost-only.
 * The billing copy never mentions the App Store.
 
@@ -182,7 +182,7 @@ On your own computer, with Stripe **test** keys and the [Stripe CLI](https://doc
    - [ ] Resending an event from the dashboard (or `stripe events resend evt_…`) changes nothing; the log line says `"duplicate":true`.
    - [ ] The harness's log lines (stderr) never contain an email, an account id, a `cus_`/`sub_` id or a token.
 
-A staging rehearsal with the real Worker is also possible: the `--env staging` secrets, a second webhook endpoint for the staging URL, and the preview's origin in `APP_ORIGIN` and `ALLOWED_ORIGINS`. The app only accepts billing endpoints on `ANGLE_ALLOWED_HOSTS`, though, so the local rehearsal above is the simpler path.
+A staging rehearsal with the real Worker and the real model is set up: the release branch's Pages preview (`https://claude-launch-rc.hushmallow.pages.dev`) uses the staging Worker, with billing on in Stripe test mode. It needs the `--env staging` secrets, a second (test) webhook endpoint for the staging URL, and the four test price ids. The steps and the checklist are in `docs/STAGING.md`.
 
 ## What is sent, stored and logged
 
