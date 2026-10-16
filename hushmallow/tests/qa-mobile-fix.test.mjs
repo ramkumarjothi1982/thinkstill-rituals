@@ -5,7 +5,7 @@
 //       words chip, so it could not be turned past halfway). The stage now keeps clear of the dock at every size.
 //   m2  touch targets under 44 px: .chip, the Settings Volume slider, the Thought Mallow's words tag (and, from its
 //       reviews, the classic Another Angle's sort chips and six ghost buttons, the Express screen's "Need support now?"
-//       among them, which kept a 38 or 40 px minimum of their own: every chip in src/ is now checked).
+//       among them, which kept a 38 or 40 px minimum of their own: every chip and button in src/ is now checked).
 //   m3  a V3 ritual's first Mallow line covered the play dial (its bubble sat just above the small Mallow in the dock).
 //   m4  the small tappable Mallow in a V3 ritual's dock stuck a few px out of the viewport at every size.
 //   (and, found by the gesture sweep of all 240 built rituals: world law 19's own hint could not be followed; and, from
@@ -135,11 +135,15 @@ test('M1: the host lays the stage out from stage-fit.js, compacting the title fi
   assert.match(read('src/app/scenes/ritual.js'), /status\.textContent = `\$\{e\}\. \$\{title\}\. \$\{prompt\}`;/, 'the location is still announced');
 });
 
-// Every chip-family tap target (.chip, .hf-chip, .hm-chip …) a source builds, and the heights it is given: an
-// h('button', …) whose class is one, with the consts its style names looked up in the same file (a 38 px minimum kept
-// in SORT_CHIP once slipped past a one-line match), a button given one as its className or class and then a style, and
-// every CSS rule (a .css file, or CSS held in a .js string) that sizes one. → [{ at, what, px }] (what 'chip': one found)
-const CHIP_CLASS = /(?:^|[\s'"`])(?:[a-z0-9]+-)?chip(?=[\s'"`$])/;
+// Every chip- or button-family tap target (.chip, .hf-chip, .hm-chip …; .btn, .btn.ghost, .hm-auth-btn, .icon-btn …) a
+// source builds, and the heights it is given: an h() / el() button or link whose class is one, with the consts its
+// class and style name looked up in the same file (a 38 px minimum kept in SORT_CHIP once slipped past a one-line
+// match; untangle.js's choices take their class from `cls`), a helper's options naming one as `cls` (legalLink's), a
+// button given one as its className or class and then a style, and every CSS rule (a .css file, or CSS held in a .js
+// string) that sizes one. A class that cannot be read here (a parameter, a call) counts when the button is given less
+// than 44 px. → [{ at, what, px, of }] (what 'chip' / 'btn' / 'open': a target found; of: the kind of the one sized)
+const TAP_CLASS = /(?:^|[\s'"`])(?:[a-z0-9]+-)*(chip|btn)(?=[\s'"`$])/;
+const STRINGS = /'(?:\\.|[^'\\])*'|"(?:\\.|[^"\\])*"|`(?:\\.|[^`\\])*`/g;
 const skipString = (src, k) => {
   const q = src[k];
   for (let j = k + 1; j < src.length; j++) {
@@ -164,88 +168,159 @@ function skipBalanced(src, i, stopAt = null) {
   }
   return src.length;
 }
-const pxOf = (re, text) => [...text.matchAll(re)].flatMap((m) => [...m[2].matchAll(/(\d+(?:\.\d+)?)px/g)].map((n) => ({ what: m[1], px: +n[1] })));
+// (a template's ${…} is never read as a height: `${size + 10}px` is no 10 px)
+const pxOf = (re, text) => [...text.replace(/\$\{[^}]*\}/g, '').matchAll(re)].flatMap((m) => [...m[2].matchAll(/(\d+(?:\.\d+)?)px/g)].map((n) => ({ what: m[1], px: +n[1] })));
 const jsHeights = (text) => pxOf(/(?<![\w$-])(minHeight|height)\s*:\s*([^,;}\n]+)/g, text);
 const cssHeights = (text) => pxOf(/(?<![\w-])(min-height|height)\s*:\s*([^;}]+)/g, text);
-function chipHeights(src, file = 'src') {
+function tapHeights(src, file = 'src') {
   const out = [];
   const lineAt = (i) => `${file}:${src.slice(0, i).split('\n').length}`;
   const defs = new Map();
   for (const d of src.matchAll(/(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*/g)) { if (!defs.has(d[1])) defs.set(d[1], []); defs.get(d[1]).push(d.index + d[0].length); }
+  const defText = (name) => defs.get(name).map((a) => src.slice(a, skipBalanced(src, a, ';')));
   // a style's heights (an object, or CSS text) and those of the consts it names as values (spread, or passed to a
   // helper: SORT_CHIP in type('label', SORT_CHIP)); never a helper it calls, an object it reads from, an object key or
   // a template's ${…}
   const resolve = (expr, seen = new Set()) => {
     const found = [...jsHeights(expr), ...cssHeights(expr).filter((x) => x.what === 'min-height')];
-    const bare = expr.replace(/'(?:\\.|[^'\\])*'|"(?:\\.|[^"\\])*"|`(?:\\.|[^`\\])*`/g, "''").replace(/\.\.\./g, ' ');
+    const bare = expr.replace(STRINGS, "''").replace(/\.\.\./g, ' ');
     for (const m of bare.matchAll(/(?<![\w$.])[A-Za-z_$][\w$]*(?![\w$])/g)) {
       const name = m[0], after = bare.slice(m.index + name.length, m.index + name.length + 40);
       if (/^\s*(\(|\??\.(?!\.))/.test(after) || (/^\s*:/.test(after) && /[{,]\s*$/.test(bare.slice(Math.max(0, m.index - 40), m.index)))) continue;
       if (seen.has(name) || !defs.has(name)) continue;
       seen.add(name);
-      for (const a of defs.get(name)) found.push(...resolve(src.slice(a, skipBalanced(src, a, ';')), seen));
+      for (const t of defText(name)) found.push(...resolve(t, seen));
     }
     return found;
   };
-  const chipVars = new Set();
-  for (const m of src.matchAll(/\bh\(\s*(['"])button\1\s*,\s*\{/g)) {
+  // a class expression → { fam: 'chip' | 'btn' | null, open }: a chip- or button-family class in its strings or in
+  // those of the consts it names as values (a ternary's condition is not one); open, part of it cannot be read here
+  const classOf = (expr, seen = new Set()) => {
+    const fams = (expr.match(STRINGS) || []).map((q) => TAP_CLASS.exec(` ${q.slice(1, -1).replace(/\$\{[^}]*\}/g, ' ')} `)?.[1]).filter(Boolean);
+    let open = false;
+    const bare = expr.replace(STRINGS, "''");
+    for (const m of bare.matchAll(/(?<![\w$.])[A-Za-z_$][\w$]*(?:\??\.[A-Za-z_$][\w$]*)*(?![\w$])/g)) {
+      const name = m[0], after = bare.slice(m.index + name.length, m.index + name.length + 40);
+      if (/^\s*(\?(?![.?])|[<>]|[=!]==?|&&)/.test(after) || /!\s*$/.test(bare.slice(0, m.index)) || /^(true|false|null|undefined|typeof)$/.test(name)) continue;
+      if (/\./.test(name) || /^\s*\(/.test(after) || !defs.has(name)) { open = true; continue; }
+      if (seen.has(name)) continue;
+      seen.add(name);
+      for (const t of defText(name)) { const r = classOf(t, seen); if (r.fam) fams.push(r.fam); open ||= r.open; }
+    }
+    return { fam: fams.includes('chip') ? 'chip' : fams[0] || null, open };
+  };
+  const tapVars = new Map();   // a variable holding a target → its kind
+  // (attrs: an object literal; at: where its element is built; v: the variable it is kept in, if any)
+  const element = (attrs, classKey, at, v) => {
+    const key = (k) => { const r = new RegExp(`[{,]\\s*${k}\\s*:\\s*`).exec(attrs); if (!r) return null; const a = r.index + r[0].length; return attrs.slice(a, skipBalanced(attrs, a, ',}')); };
+    const cls = classOf(key(classKey) ?? "''");
+    const style = key('style');
+    const heights = style == null ? [] : resolve(style);
+    if (!cls.fam && !(cls.open && heights.some((x) => x.px < 44))) return;
+    const of = cls.fam || 'open';
+    out.push({ at: lineAt(at), what: of }, ...heights.map((x) => ({ at: lineAt(at), of, ...x })));
+    if (v) tapVars.set(v, of);
+  };
+  for (const m of src.matchAll(/(?<![\w$.])(?:h|el)\(\s*(['"])(?:button|a)\1\s*,\s*\{/g)) {
     const open = m.index + m[0].length - 1;
-    const attrs = src.slice(open, skipBalanced(src, open));
-    const cls = /[{,]\s*class\s*:\s*(['"`])((?:\\.|(?!\1).)*)\1/.exec(attrs);
-    if (!cls || !CHIP_CLASS.test(` ${cls[2]} `)) continue;
-    out.push({ at: lineAt(m.index), what: 'chip' });
-    const st = /[{,]\s*style\s*:\s*/.exec(attrs);
-    if (st) { const a = st.index + st[0].length; out.push(...resolve(attrs.slice(a, skipBalanced(attrs, a, ',}'))).map((x) => ({ at: lineAt(m.index), ...x }))); }
-    const v = /(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*$/.exec(src.slice(Math.max(0, m.index - 80), m.index));
-    if (v) chipVars.add(v[1]);
+    element(src.slice(open, skipBalanced(src, open)), 'class(?:Name)?', m.index, /(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*$/.exec(src.slice(Math.max(0, m.index - 80), m.index))?.[1]);
   }
-  for (const m of src.matchAll(/(?<![\w$.])([A-Za-z_$][\w$]*)\.(?:className\s*=\s*|classList\.add\()(['"`])((?:\\.|(?!\2).)*)\2/g)) {
-    if (CHIP_CLASS.test(` ${m[3]} `)) { chipVars.add(m[1]); out.push({ at: lineAt(m.index), what: 'chip' }); }
+  // a helper's options: the object round a `cls:` key (legalLink('privacy', { cls: 'btn ghost block', style }))
+  for (const m of src.matchAll(/[{,]\s*cls\s*:/g)) {
+    let k = m.index, depth = 0;
+    for (; k >= 0 && k > m.index - 2000; k--) { if (src[k] === '}') depth++; else if (src[k] === '{' && depth-- === 0) break; }
+    if (k >= 0 && src[k] === '{') element(src.slice(k, skipBalanced(src, k)), 'cls', k, null);
   }
-  for (const v of chipVars) {
+  for (const m of src.matchAll(/(?<![\w$.])([A-Za-z_$][\w$]*)\.(?:className\s*=\s*|classList\.add\()/g)) {
+    const a = m.index + m[0].length;
+    const r = classOf(src.slice(a, skipBalanced(src, a, ';\n)')));
+    // (a class that cannot be read counts on a button or link made here)
+    const made = () => new RegExp(`(?:const|let|var)\\s+${m[1].replace(/\$/g, '\\$')}\\s*=\\s*(?:document\\.createElement|h|el)\\(\\s*(['"])(?:button|a)\\1`).test(src);
+    if (r.fam) { tapVars.set(m[1], r.fam); out.push({ at: lineAt(m.index), what: r.fam }); } else if (r.open && !tapVars.has(m[1]) && made()) tapVars.set(m[1], 'open');
+  }
+  for (const [v, of] of tapVars) {
     const e = v.replace(/\$/g, '\\$');
-    for (const m of src.matchAll(new RegExp(`(?<![\\w$.])${e}\\.style\\.(minHeight|height)\\s*=\\s*([^;\\n]+)`, 'g'))) out.push(...pxOf(/(minHeight|height)\s*=\s*([^;\n]+)/g, m[0]).map((x) => ({ at: lineAt(m.index), ...x })));
-    for (const m of src.matchAll(new RegExp(`(?<![\\w$.])${e}\\.style\\.cssText\\s*=\\s*([^;\\n]+)`, 'g'))) out.push(...cssHeights(m[1]).map((x) => ({ at: lineAt(m.index), ...x })));
+    const at = (m, x) => ({ at: lineAt(m.index), of, ...x });
+    for (const m of src.matchAll(new RegExp(`(?<![\\w$.])${e}\\.style\\.(minHeight|height)\\s*=\\s*([^;\\n]+)`, 'g'))) out.push(...pxOf(/(minHeight|height)\s*=\s*([^;\n]+)/g, m[0]).map((x) => at(m, x)));
+    for (const m of src.matchAll(new RegExp(`(?<![\\w$.])${e}\\.style\\.cssText\\s*=\\s*([^;\\n]+)`, 'g'))) out.push(...cssHeights(m[1]).map((x) => at(m, x)));
     for (const m of src.matchAll(new RegExp(`Object\\.assign\\(\\s*${e}\\.style\\s*,\\s*`, 'g'))) {
       const a = m.index + m[0].length;
-      out.push(...resolve(src.slice(a, skipBalanced(src, a, ')'))).map((x) => ({ at: lineAt(m.index), ...x })));
+      out.push(...resolve(src.slice(a, skipBalanced(src, a, ')'))).map((x) => at(m, x)));
     }
   }
-  // CSS: a rule whose selector ends in a chip-family class (not in a pseudo-element of one, nor in what is inside one:
-  // .chip .hue). Found from the class itself, so a long generated file is read once.
-  for (const m of src.matchAll(/\.(?:[a-z0-9]+-)?chip(?![\w-])([^{};]*)\{([^{}]*)\}/g)) {
-    const [own, ...others] = m[1].split(',');
+  // CSS: a rule whose selector ends in a chip- or button-family class (not in a pseudo-element of one, nor in what is
+  // inside one: .chip .hue, .btn svg). Found from the class itself, so a long generated file is read once.
+  const CSS_TAP = /\.(?:[a-z0-9]+-)*(?:chip|btn)(?![\w-])/;
+  for (const m of src.matchAll(/\.(?:[a-z0-9]+-)*(chip|btn)(?![\w-])([^{};]*)\{([^{}]*)\}/g)) {
+    const [own, ...others] = m[2].split(',');
     const key = (sel) => sel.trim().split(/[\s>+~]+/).pop() || '';
-    const sized = (/^[^\s>+~]*\s*$/.test(own) && !own.includes('::')) || others.some((x) => /\.(?:[a-z0-9]+-)?chip(?![\w-])/.test(key(x)) && !key(x).includes('::'));
-    if (sized) out.push(...cssHeights(m[2]).map((x) => ({ at: lineAt(m.index), ...x })));
+    const sized = (/^[^\s>+~]*\s*$/.test(own) && !own.includes('::')) || others.some((x) => CSS_TAP.test(key(x)) && !key(x).includes('::'));
+    if (sized) out.push(...cssHeights(m[3]).map((x) => ({ at: lineAt(m.index), of: m[1], ...x })));
   }
   return out;
 }
 const srcFiles = (dir = new URL('../src/', import.meta.url)) => readdirSync(dir, { withFileTypes: true })
   .flatMap((d) => (d.isDirectory() ? srcFiles(new URL(`${d.name}/`, dir)) : [new URL(d.name, dir)]));
 
-test('m2: the chip scan finds a 38 px minimum kept in a style const, a className chip given a height, and CSS', () => {
-  const at = (src) => chipHeights(src).filter((x) => x.px != null).map((x) => `${x.what} ${x.px}`);
-  // the classic Another Angle's sort chips, as they were
+test('m2: the tap-target scan finds a small minimum on a chip or a button: in a style const, a class held in a variable, a className, CSS', () => {
+  const at = (src) => tapHeights(src).filter((x) => x.px != null).map((x) => `${x.what} ${x.px}`);
+  // must catch: the classic Another Angle's sort chips, as they were
   assert.deepEqual(at("const SORT_CHIP = { minHeight: '38px', fontWeight: '700', padding: '0 12px' };\nconst b = h('button', { class: 'chip', 'data-short': 'Happened', style: type('label', SORT_CHIP), onclick: () => drop(p, 'fact') }, '← Happened');"), ['minHeight 38']);
   assert.deepEqual(at("const base = compact ? { minHeight: '40px' }\n  : { minHeight: '44px' };\nh('button', { class: `hf-chip${on ? ' primary' : ''}`, style: { ...base, borderStyle: 'dashed' } }, 'x');"), ['minHeight 40', 'minHeight 44']);
   assert.deepEqual(at("const b = document.createElement('button'); b.className = 'hfl-chip'; b.style.minHeight = '36px';"), ['minHeight 36']);
   assert.deepEqual(at('.hm-chip { min-height: 40px; line-height: 1.2 }\n.chip .hue { width: 8px; height: 8px; }\n.tm-tag::before { height: 48px; }\n@media (max-height: 600px) { .chips .chip { height: 42px; } }'), ['min-height 40', 'height 42']);
-  // not a chip: the row of them, another control, or a chip's own label or line height
-  assert.deepEqual(at("h('div', { class: 'chips', style: { minHeight: '20px' } }); h('button', { class: 'btn ghost', style: { minHeight: '40px' } }); h('button', { class: 'chip', style: { lineHeight: '1.15' } });"), []);
+  // the button family as well: the Express screen's support button as it was, a style const on a ghost button, el()
+  // and .hm-auth-btn, a link drawn as a button, a helper's options (legalLink's cls / style), and CSS
+  assert.deepEqual(at("h('button', { class: 'btn ghost', style: { minHeight: '40px' }, onclick: () => openSupport(app) }, 'Need support now?')"), ['minHeight 40']);
+  assert.deepEqual(at("const ROW = { minHeight: '38px', whiteSpace: 'nowrap' };\nconst skip = h('button', { class: 'btn ghost', style: { ...ROW, padding: '0 10px' } }, 'Skip');"), ['minHeight 38']);
+  assert.deepEqual(at("const go = el('button', { class: 'hm-auth-btn small', type: 'submit', style: { height: '36px' } }, 'Go');"), ['height 36']);
+  assert.deepEqual(at("h('a', { class: 'btn block', href: 'tel:999', style: { minHeight: '40px' } }, 'Call 999')"), ['minHeight 40']);
+  assert.deepEqual(at("legalLink('privacy', { cls: 'btn ghost block', style: { textDecoration: 'none', minHeight: '40px' } })"), ['minHeight 40']);
+  assert.deepEqual(at('.btn.ghost { color: var(--text-2); min-height: 40px; }\n.v3-row .btn { min-height: 46px; padding: 0 14px; }\n@media (max-height: 700px) { .v3-row .btn, .btn.icon-only { min-height: 42px; } }\n.btn svg { width: 20px; height: 20px; }\n.row-btns { min-height: 20px; }'), ['min-height 40', 'min-height 46', 'min-height 42']);
+  // a class held in a variable: untangle.js's "tiny next step" choices, given 36 px instead of their 44, a class built
+  // from another const, and a className from one
+  assert.deepEqual(at("const compact = H < 720;\nconst cls = compact ? 'chip' : 'choice';\nfor (const [id, text, note] of STEPS) {\n  const b = h('button', { class: cls, 'aria-pressed': 'false', style: compact ? { minHeight: '36px' } : {} }, text);\n}"), ['minHeight 36']);
+  assert.deepEqual(at("const base = 'chip';\nconst cls = on ? `${base} on` : base;\nh('button', { class: cls, style: { minHeight: '40px' } }, 'x');"), ['minHeight 40']);
+  assert.deepEqual(at("const k = small ? 'hf-chip small' : 'hf-chip';\nconst b = document.createElement('button'); b.className = k; b.style.height = '40px';"), ['height 40']);
+  // and a class that cannot be read here (a parameter) counts when the button is given less than 44 px, as its class
+  // or as the className of a button made here
+  const open = (src) => tapHeights(src).filter((x) => x.px != null).map((x) => `${x.of} ${x.what} ${x.px}`);
+  assert.deepEqual(open("function pill(cls) { return h('button', { class: cls, style: { minHeight: '30px' } }, 'x'); }"), ['open minHeight 30']);
+  assert.deepEqual(open("function pill(k) { const b = document.createElement('button'); b.className = k; b.style.minHeight = '32px'; return b; }"), ['open minHeight 32']);
+  // must not count: the row of chips, a div drawn like a button (no target), a chip's line height, another control (its
+  // own class), a variable class that is neither (its condition is not read as a class), a template's offset, a class
+  // that cannot be read given 44 px or more, and one on a div
+  assert.deepEqual(at("h('div', { class: 'chips', style: { minHeight: '20px' } }); h('div', { class: 'btn block invite-included', style: { minHeight: '30px' } }); h('button', { class: 'chip', style: { lineHeight: '1.15' } });"), []);
+  assert.deepEqual(at("h('button', { class: 'emo-row', style: { minHeight: '30px' } });\nconst cls = compact ? 'row' : 'choice';\nh('button', { class: cls, style: compact ? { minHeight: '36px' } : {} });"), []);
+  assert.deepEqual(at("const size = compact() ? 56 : 64;\nh('button', { class: 'icon-btn', style: { width: `${size + 10}px`, height: `${size + 10}px` } }, svg);\nfunction pill(cls) { return h('button', { class: cls, style: { minHeight: '48px' } }); }"), []);
+  assert.deepEqual(at("function dot(k) { const d = document.createElement('div'); d.className = k; d.style.height = '8px'; return d; }"), []);
 });
 
-test('m2: chips, the Settings Volume slider and the Thought Mallow’s words tag are at least 44 px to a finger', () => {
+test('m2: chips, buttons, the Settings Volume slider and the Thought Mallow’s words tag are at least 44 px to a finger', () => {
   const css = read('src/ui/app.css');
   assert.match(css, /^\.chip \{ flex: 0 0 auto; min-height: 44px;/m);
-  // no chip anywhere in the app is given less, inline or in CSS: every .js and .css file under src/ (the check used to
-  // read five files, and the classic Another Angle's 38 px sort chips went unseen)
+  assert.match(css, /^\.btn \{[^}]*min-height: 52px;/m);
+  assert.match(css, /^\.btn\.ghost \{[^}]*min-height: 44px;/m);
+  // no chip or button anywhere in the app is given less, inline or in CSS: every .js and .css file under src/ (the
+  // check used to read five files, and then chips only: the classic Another Angle's 38 px sort chips, and then six
+  // ghost buttons kept at 38 or 40 px, the Express screen's "Need support now?" among them, went unseen)
   const files = srcFiles().filter((u) => /\.(js|css)$/.test(u.pathname));
   assert.ok(files.filter((u) => u.pathname.endsWith('.js')).length >= 200, `${files.length} files`);
-  const found = files.flatMap((u) => chipHeights(readFileSync(u, 'utf8'), u.pathname.slice(u.pathname.indexOf('/src/') + 1)));
+  const rel = (u) => u.pathname.slice(u.pathname.indexOf('/src/') + 1);
+  const found = files.flatMap((u) => tapHeights(readFileSync(u, 'utf8'), rel(u)));
   assert.ok(found.filter((x) => x.what === 'chip').length >= 40, 'the chips themselves were found');
+  assert.ok(found.filter((x) => x.what === 'btn').length >= 150, 'and the buttons');
   assert.ok(found.some((x) => x.at.startsWith('src/ultra/another-angle.js') && x.what === 'chip'), 'the classic Another Angle’s chips are in the scan');
+  assert.ok(found.some((x) => x.at.startsWith('src/app/scenes/express.js') && x.what === 'btn'), 'the Express screen’s buttons are in the scan');
+  // (untangle.js's "tiny next step" choices take their class from a variable, `cls`: read, with their 44 px)
+  const step = fnBody(read('src/rituals/untangle.js'), "const cls = compact ? 'chip' : 'choice';", 'b.onclick');
+  assert.match(step, /h\('button', \{ class: cls, [^\n]*style: compact \? \{ minHeight: '44px' \} : \{\} \}/);
+  assert.ok(found.some((x) => x.at.startsWith('src/rituals/untangle.js') && x.of === 'chip' && x.px === 44), 'the variable class is read');
   assert.deepEqual(found.filter((x) => x.px != null && x.px < 44).map((x) => `${x.at}: ${x.what} ${x.px}px`), []);
+  // and it would see either of them come back: the choices at 36 px, the support button at 40
+  const small = (p, a, b) => { const t = read(p); assert.equal(t.split(a).length, 2, a); return tapHeights(t.replace(a, b), p).filter((x) => x.px < 44).map((x) => `${x.of} ${x.what} ${x.px}`); };
+  assert.deepEqual(small('src/rituals/untangle.js', "class: cls, 'aria-pressed': 'false', style: compact ? { minHeight: '44px' }", "class: cls, 'aria-pressed': 'false', style: compact ? { minHeight: '36px' }"), ['chip minHeight 36']);
+  assert.deepEqual(small('src/app/scenes/express.js', "class: 'btn ghost', onclick: () => openSupport(app)", "class: 'btn ghost', style: { minHeight: '40px' }, onclick: () => openSupport(app)"), ['btn minHeight 40']);
   // the slider: 44 px tall inside its row's own padding (the row keeps its height: 14 px padding either side)
   assert.match(css, /\.setting \.range \{ height: 44px; margin-block: -6px; \}/);
   assert.match(css, /\.setting \{ display: flex; align-items: center; gap: 12px; padding: 14px 0;/);
