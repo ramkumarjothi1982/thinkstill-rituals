@@ -8,11 +8,19 @@
 //
 // PROVIDER=anthropic with ANTHROPIC_API_KEY set uses the real model instead
 // (costs money; see README). Nothing here is deployed.
+//
+// Web subscriptions rehearsal (docs/PAYMENTS.md "Test-mode rehearsal"): with
+// Stripe TEST keys and the other billing values in the environment
+// (STRIPE_SECRET_KEY=sk_test_…, STRIPE_WEBHOOK_SECRET from `stripe listen`,
+// STRIPE_PRICE_*, SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, APP_ORIGIN,
+// ENTITLEMENT_MODE=billing) --serve also answers /v1/billing/*, keeping the
+// subscriptions in memory until it stops.
 
 import { createServer } from 'node:http';
 import { readFileSync } from 'node:fs';
 import { createApp } from '../src/app.js';
 import { memoryLedgerNamespace } from '../src/limits/ledger.js';
+import { memoryBillingNamespace } from '../src/billing/store.js';
 import { PROMPT_VERSION } from '../src/prompt.js';
 
 const SYSTEM_PROMPT = readFileSync(new URL(`../prompts/${PROMPT_VERSION}.md`, import.meta.url), 'utf8');
@@ -35,6 +43,12 @@ const env = {
   DAILY_SPEND_CAP_USD: process.env.DAILY_SPEND_CAP_USD || '1',
   LEDGER: memoryLedgerNamespace(),
 };
+// the billing values, only when given (a live sk_live_ key is refused here: rehearsals use test mode)
+const BILLING_VARS = ['STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET', 'STRIPE_PRICE_PAID_MONTHLY', 'STRIPE_PRICE_PAID_YEARLY', 'STRIPE_PRICE_ULTRA_MONTHLY',
+  'STRIPE_PRICE_ULTRA_YEARLY', 'SUPABASE_URL', 'SUPABASE_PUBLISHABLE_KEY', 'APP_ORIGIN', 'ENTITLEMENT_MODE', 'TESTER_INVITE_CODES'];
+if (/^(?:sk|rk)_live_/.test(process.env.STRIPE_SECRET_KEY || '')) { console.error('The harness only takes Stripe test keys (sk_test_…).'); process.exit(1); }
+for (const k of BILLING_VARS) if (process.env[k]) /** @type {Record<string, any>} */ (env)[k] = process.env[k];
+if (process.env.STRIPE_SECRET_KEY) /** @type {Record<string, any>} */ (env).BILLING = memoryBillingNamespace();
 
 const app = createApp({ systemPrompt: SYSTEM_PROMPT, log: (line) => process.stderr.write(`${line}\n`) });
 
