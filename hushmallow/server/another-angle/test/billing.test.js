@@ -5,14 +5,17 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { makeEnv, req, angleReq, clock, allowAll, denyAll, ORIGIN, CLOCK_START, SYSTEM_PROMPT } from './helpers.js';
 import { createApp } from '../src/app.js';
 import { createMockProvider } from '../src/providers/mock.js';
 import { verifyWebhookSignature, signWebhookPayload, formEncode, SIGNATURE_TOLERANCE_SEC } from '../src/billing/stripe.js';
 import { memoryBillingNamespace, billingClient, summarise, supersedes, effectiveTier, planForPrice, PERIOD_GRACE_MS, EVENT_KEEP_MS, Billing } from '../src/billing/store.js';
 import { createAccountVerifier } from '../src/billing/account.js';
-import { readConfig } from '../src/config.js';
+import { readConfig, SUPABASE_PROJECT_URL, STAGING_SUPABASE_PROJECT_URL } from '../src/config.js';
 import { fromB64url } from '../src/auth/tokens.js';
 import worker from '../src/index.js';
 
@@ -659,6 +662,19 @@ const PRICE_VARS = ['STRIPE_PRICE_PAID_MONTHLY', 'STRIPE_PRICE_PAID_YEARLY', 'ST
 const PLACEHOLDERS = Object.fromEntries(PRICE_VARS.map((k) => [k, 'price_TODO_owner']));
 const REAL_PRICES = { STRIPE_PRICE_PAID_MONTHLY: PRICES.paidMonthly, STRIPE_PRICE_PAID_YEARLY: PRICES.paidYearly, STRIPE_PRICE_ULTRA_MONTHLY: PRICES.ultraMonthly, STRIPE_PRICE_ULTRA_YEARLY: PRICES.ultraYearly };
 
+/** A made-up staging project (20-character ref) for the cases "once the owner has created hushmallow-staging". */
+const STAGING_SUPABASE = 'https://hmstagingtest0000000.supabase.co';
+const STAGING_LINE = "const STAGING_SUPABASE_PROJECT_URL = '';";
+/** A copy of src/config.js with only STAGING_SUPABASE_PROJECT_URL filled in (the one line the owner's values change). */
+async function withStagingProject(url) {
+  const src = readFileSync(new URL('../src/config.js', import.meta.url), 'utf8');
+  assert.equal(src.split(STAGING_LINE).length, 2, 'the placeholder line is there exactly once');
+  const dir = mkdtempSync(join(tmpdir(), 'hm-angle-staging-'));
+  const file = join(dir, 'config.js');
+  writeFileSync(file, src.replace(STAGING_LINE, `const STAGING_SUPABASE_PROJECT_URL = '${url}';`));
+  try { return await import(pathToFileURL(file).href); } finally { rmSync(dir, { recursive: true, force: true }); }
+}
+
 /** The KEY = "value" lines of one wrangler.toml table (comments skipped). */
 function tomlVars(toml, table) {
   const out = {};
@@ -673,14 +689,14 @@ function tomlVars(toml, table) {
   return out;
 }
 
-test('wrangler.toml [env.staging]: billing+testing for staging only, the preview origin, the public billing vars and four placeholder prices', () => {
+test('wrangler.toml [env.staging]: billing+testing for staging only, the preview origin, its own placeholder sign-in project and four placeholder prices', async () => {
   const toml = readFileSync(new URL('../wrangler.toml', import.meta.url), 'utf8');
   const prod = tomlVars(toml, 'vars'), dev = tomlVars(toml, 'env.dev.vars'), staging = tomlVars(toml, 'env.staging.vars');
   // production and dev exactly as before
   assert.equal(prod.ENTITLEMENT_MODE, 'testing');
   assert.equal(dev.ENTITLEMENT_MODE, 'testing');
   assert.equal(prod.ALLOWED_ORIGINS, 'https://app.hushmallow.com,https://hushmallow.pages.dev,https://ramkumarjothi1982.github.io');
-  for (const k of [...PRICE_VARS, 'SUPABASE_URL', 'SUPABASE_PUBLISHABLE_KEY', 'APP_ORIGIN']) {
+  for (const k of [...PRICE_VARS, 'SUPABASE_URL', 'SUPABASE_PUBLISHABLE_KEY', 'APP_ORIGIN', 'ACCOUNTS_STAGE']) {
     assert.equal(prod[k], undefined, `production: no ${k}`);
     assert.equal(dev[k], undefined, `dev: no ${k}`);
   }
@@ -688,28 +704,130 @@ test('wrangler.toml [env.staging]: billing+testing for staging only, the preview
   assert.equal(staging.ENTITLEMENT_MODE, 'billing+testing');
   assert.deepEqual(staging.ALLOWED_ORIGINS.split(','), ['https://ramkumarjothi1982.github.io', 'https://claude-upbeat-pasteur-b0aqg1.hushmallow.pages.dev', PREVIEW, 'http://localhost:8000', 'http://127.0.0.1:8000']);
   assert.equal(staging.APP_ORIGIN, PREVIEW, 'Checkout returns to the preview');
-  assert.equal(staging.SUPABASE_URL, SUPABASE);
-  assert.match(staging.SUPABASE_PUBLISHABLE_KEY, /^sb_publishable_[A-Za-z0-9_-]{16,128}$/);
+  // its own sign-in project, hushmallow-staging, never production's: placeholders until the owner creates it
+  assert.equal(staging.ACCOUNTS_STAGE, 'staging');
+  assert.equal(staging.SUPABASE_URL, 'https://STAGING_TODO.supabase.co');
+  assert.equal(staging.SUPABASE_PUBLISHABLE_KEY, 'sb_publishable_TODO');
+  assert.doesNotMatch(toml.split(/^\[env\.staging\]$/m)[1], /igbxbfuaoybfzsroxuln|sb_publishable_NSv1/, 'nothing of production\'s project in [env.staging]');
   for (const k of PRICE_VARS) assert.equal(staging[k], 'price_TODO_owner', `${k}: a marked placeholder`);
   // secrets are never vars; the rest of staging is as it was (the real model, a $3 cap, https, browsers only)
   for (const k of ['STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET', 'ANTHROPIC_API_KEY', 'TOKEN_SIGNING_KEY', 'TESTER_INVITE_CODES']) assert.equal(staging[k], undefined, k);
   assert.deepEqual([staging.PROVIDER, staging.DAILY_SPEND_CAP_USD, staging.REQUIRE_HTTPS, staging.ALLOW_NO_ORIGIN], ['anthropic', '3', 'true', 'false']);
-  // as the staging Worker reads it once the owner's TEST secrets are set: still off while the prices are placeholders
+  // as the staging Worker reads it once the owner's TEST secrets are set: still off while the prices and the accounts are placeholders
   const cfg = readConfig({ ...staging, STRIPE_SECRET_KEY: SK, STRIPE_WEBHOOK_SECRET: WHSEC });
   assert.equal(cfg.entitlementMode, 'billing+testing');
   assert.equal(cfg.billing.appOrigin, PREVIEW);
-  assert.equal(cfg.billing.supabaseUrl, SUPABASE);
-  assert.equal(cfg.billing.supabaseKey, staging.SUPABASE_PUBLISHABLE_KEY);
+  assert.equal(cfg.billing.accountsStage, 'staging');
+  assert.equal(cfg.billing.accountsPlaceholder, true);
+  assert.equal(cfg.billing.supabaseUrl, '');
+  assert.equal(cfg.billing.supabaseKey, '');
   assert.deepEqual(cfg.billing.prices, { paid: { monthly: '', yearly: '' }, ultra: { monthly: '', yearly: '' } });
   assert.equal(cfg.billing.placeholderPrices, 4);
   assert.equal(cfg.billing.configured, false);
-  // …and on, once the four test price ids are pasted in
-  const on = readConfig({ ...staging, ...REAL_PRICES, STRIPE_SECRET_KEY: SK, STRIPE_WEBHOOK_SECRET: WHSEC }).billing;
+  // …still off with the four test price ids alone: the accounts are placeholders
+  assert.equal(readConfig({ ...staging, ...REAL_PRICES, STRIPE_SECRET_KEY: SK, STRIPE_WEBHOOK_SECRET: WHSEC }).billing.configured, false);
+  // …and on, once the staging project exists too (its URL in src/config.js and in [env.staging.vars], and its key)
+  const { readConfig: readWithStaging } = await withStagingProject(STAGING_SUPABASE);
+  const on = readWithStaging({ ...staging, ...REAL_PRICES, SUPABASE_URL: STAGING_SUPABASE, SUPABASE_PUBLISHABLE_KEY: PK, STRIPE_SECRET_KEY: SK, STRIPE_WEBHOOK_SECRET: WHSEC }).billing;
   assert.equal(on.configured, true);
+  assert.equal(on.supabaseUrl, STAGING_SUPABASE);
   assert.equal(on.placeholderPrices, 0);
+  assert.equal(on.accountsPlaceholder, false);
   // production's [vars] never turn billing on
   assert.equal(readConfig(prod).billing.configured, false);
   assert.equal(readConfig(prod).entitlementMode, 'testing');
+});
+
+test('the staging Worker\'s sign-in project: placeholders mean "accounts not configured" (503 accounts_not_configured), and nothing is asked', async () => {
+  const ACCOUNTS = { ACCOUNTS_STAGE: 'staging', SUPABASE_URL: 'https://STAGING_TODO.supabase.co', SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_TODO' };
+  // the staging Worker today: everything else real (Stripe test keys, the four prices), the accounts placeholders
+  const s = setup({ env: billingEnv({ ...ACCOUNTS, ENTITLEMENT_MODE: 'billing+testing', TESTER_INVITE_CODES: 'MALLOW-ONE' }) });
+  const c = readConfig(s.env).billing;
+  assert.deepEqual([c.configured, c.accountsPlaceholder, c.accountsStage, c.supabaseUrl, c.supabaseKey], [false, true, 'staging', '', '']);
+  for (const [path, o] of [['/v1/billing/checkout', { body: { plan: 'ultra', period: 'monthly' } }], ['/v1/billing/status', {}], ['/v1/billing/portal', { body: {} }]]) {
+    const res = await s.app.fetch(billingReq(path, o), s.env);
+    assert.equal(res.status, 503, path);
+    const e = (await res.json()).error;
+    assert.equal(e.code, 'accounts_not_configured', path);
+    assert.equal(e.message, 'Web subscriptions are not set up on this server: accounts are not configured (its sign-in project, SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY, is still a placeholder).', path);
+  }
+  // Stripe's events wait (503: Stripe retries) until the accounts are real
+  const w = await deliver(s.app, s.env, event('customer.subscription.updated', subscription(), s.now));
+  assert.equal(w.status, 503);
+  assert.equal((await w.json()).error.code, 'accounts_not_configured');
+  // Another Angle: an account cannot get a billing session; a tester's code still opens a testing one
+  const session = (body, token) => s.app.fetch(req('/v1/session', { body, headers: token ? { authorization: `Bearer ${token}` } : {} }), s.env);
+  const acct = await session({ device_id: 'device-aaaaaaaaaaaaaaaa' }, TOKEN);
+  assert.equal(acct.status, 503);
+  assert.equal((await acct.json()).error.code, 'accounts_not_configured');
+  assert.equal((await (await session({ invite: 'MALLOW-ONE', device_id: 'device-aaaaaaaaaaaaaaaa' }, TOKEN)).json()).source, 'testing');
+  // /v1/health says so (never a value)
+  assert.deepEqual((await (await s.app.fetch(req('/v1/health'), s.env)).json()).billing, { configured: false, webhook: true, accounts_configured: false });
+  // no outbound call at all: neither Stripe nor any sign-in project
+  assert.equal(s.up.calls.length, 0);
+  assert.ok(s.logs.some((l) => JSON.parse(l).err === 'accounts_not_configured'), 'the log line says why');
+  assertClean(s.logs);
+  // with the price placeholders too (wrangler.toml [env.staging] as it is): the accounts are named first
+  const both = setup({ env: billingEnv({ ...ACCOUNTS, ...PLACEHOLDERS }) });
+  assert.equal((await (await both.app.fetch(billingReq('/v1/billing/status'), both.env)).json()).error.code, 'accounts_not_configured');
+  assert.deepEqual((await (await both.app.fetch(req('/v1/health'), both.env)).json()).billing, { configured: false, webhook: true, placeholder_prices: 4, accounts_configured: false });
+  assert.equal(both.up.calls.length, 0);
+  // each placeholder alone is enough, on any Worker
+  for (const over of [{ SUPABASE_URL: 'https://STAGING_TODO.supabase.co' }, { SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_TODO' }, { SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_TODO_owner_staging_key' }, { ACCOUNTS_STAGE: 'staging' }]) {
+    const b = readConfig(billingEnv(over)).billing;
+    assert.deepEqual([b.configured, b.accountsPlaceholder, b.supabaseUrl, b.supabaseKey], [false, true, '', ''], JSON.stringify(over));
+  }
+  // a staging Worker with production's project: refused (it has no staging project yet, and never production's)
+  const cross = readConfig(billingEnv({ ACCOUNTS_STAGE: 'staging', SUPABASE_URL: SUPABASE })).billing;
+  assert.deepEqual([cross.configured, cross.supabaseUrl, cross.accountsPlaceholder], [false, '', true]);
+  // not a placeholder: a lower-case "todo" can be part of a real ref or key; an unknown stage has no project
+  assert.equal(readConfig(billingEnv({ SUPABASE_URL: 'https://abctodoabcdefghijklm.supabase.co' })).billing.accountsPlaceholder, false);
+  assert.equal(readConfig(billingEnv({ SUPABASE_PUBLISHABLE_KEY: `sb_publishable_x_TODO_${'c'.repeat(16)}` })).billing.accountsPlaceholder, false);
+  const unknown = readConfig(billingEnv({ ACCOUNTS_STAGE: 'prod' })).billing;
+  assert.deepEqual([unknown.configured, unknown.supabaseUrl, unknown.accountsPlaceholder], [false, '', false]);
+  // production exactly as before: hushmallow1 is its only project, and an unset project gives the general answer
+  assert.equal(SUPABASE_PROJECT_URL, SUPABASE);
+  assert.equal(readConfig(billingEnv()).billing.configured, true);
+  assert.equal(readConfig(billingEnv({ ACCOUNTS_STAGE: 'production' })).billing.configured, true);
+  assert.equal(readConfig(billingEnv()).billing.accountsStage, 'production');
+  const off = setup({ env: billingEnv({ SUPABASE_URL: '' }) });
+  const r = await (await off.app.fetch(billingReq('/v1/billing/status'), off.env)).json();
+  assert.deepEqual([r.error.code, r.error.message], ['billing_not_configured', 'Web subscriptions are not set up on this server.']);
+  assert.deepEqual((await (await off.app.fetch(req('/v1/health'), off.env)).json()).billing, { configured: false, webhook: true });
+});
+
+test('once hushmallow-staging exists: the staging Worker accepts only its project, production only hushmallow1; the server and the app name the same project', async () => {
+  // today: no staging project anywhere (the app's STAGING_PROJECT_REF, this server's constant, [env.staging]'s placeholder)
+  assert.equal(STAGING_SUPABASE_PROJECT_URL, '');
+  const appConfig = readFileSync(new URL('../../../src/auth/config.js', import.meta.url), 'utf8');
+  const ref = /^export const STAGING_PROJECT_REF = '([a-z0-9]*)';$/m.exec(appConfig)?.[1];
+  assert.equal(typeof ref, 'string', 'the app has STAGING_PROJECT_REF');
+  assert.equal(STAGING_SUPABASE_PROJECT_URL, ref ? `https://${ref}.supabase.co` : '', 'the server and the app name the same staging project');
+  const toml = tomlVars(readFileSync(new URL('../wrangler.toml', import.meta.url), 'utf8'), 'env.staging.vars');
+  if (STAGING_SUPABASE_PROJECT_URL) assert.equal(toml.SUPABASE_URL, STAGING_SUPABASE_PROJECT_URL);
+  else assert.match(toml.SUPABASE_URL, /TODO/, '[env.staging] keeps its placeholder until then');
+  // with the staging project's URL filled in (a copy of src/config.js)
+  const { readConfig: read } = await withStagingProject(STAGING_SUPABASE);
+  const staging = read(billingEnv({ ACCOUNTS_STAGE: 'staging', SUPABASE_URL: STAGING_SUPABASE })).billing;
+  assert.deepEqual([staging.configured, staging.supabaseUrl, staging.accountsPlaceholder], [true, STAGING_SUPABASE, false]);
+  assert.equal(read(billingEnv({ ACCOUNTS_STAGE: 'staging', SUPABASE_URL: `${STAGING_SUPABASE}/` })).billing.supabaseUrl, STAGING_SUPABASE);
+  assert.equal(read(billingEnv({ ACCOUNTS_STAGE: 'staging', SUPABASE_URL: SUPABASE })).billing.configured, false, 'the staging Worker never takes production\'s project');
+  assert.equal(read(billingEnv({ SUPABASE_URL: STAGING_SUPABASE })).billing.configured, false, 'production never takes the staging project');
+  assert.equal(read(billingEnv()).billing.supabaseUrl, SUPABASE, 'production as before');
+  assert.equal(read(billingEnv({ ACCOUNTS_STAGE: 'staging', SUPABASE_URL: STAGING_SUPABASE, SUPABASE_PUBLISHABLE_KEY: `sb_secret_${'c'.repeat(24)}` })).billing.configured, false, 'never a secret key');
+  // a request to the staging Worker asks only the staging project
+  const asked = [];
+  const STAGING_TOKEN = jwt(UID, { iss: `${STAGING_SUPABASE}/auth/v1` });
+  const fetchStaging = async (url) => {
+    const u = new URL(String(url));
+    asked.push(u.origin);
+    if (u.origin !== STAGING_SUPABASE) throw new TypeError('unexpected host');
+    return new Response(JSON.stringify({ id: UID, email: 'ana@example.com' }), { status: 200, headers: { 'content-type': 'application/json' } });
+  };
+  const v = createAccountVerifier({ url: staging.supabaseUrl, key: staging.supabaseKey, fetch: fetchStaging, now: () => CLOCK_START });
+  assert.deepEqual(await v(STAGING_TOKEN), { ok: true, uid: UID });
+  assert.deepEqual(await v(TOKEN), { ok: false, status: 401, code: 'account_required' }, 'a production token is refused unasked (another issuer)');
+  assert.deepEqual(asked, [STAGING_SUPABASE]);
 });
 
 test('placeholder price ids (price_TODO…) count as unset: billing answers "not configured" and says why; Stripe is never called', async () => {

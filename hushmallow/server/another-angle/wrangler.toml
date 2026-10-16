@@ -202,7 +202,11 @@ enabled = false
 # ENTITLEMENT_MODE "billing+testing" (a test hushmallow Beyond subscription,
 # or one of TESTER_INVITE_CODES, opens Another Angle). Its secrets are the
 # staging Worker's own, set with `--env staging`: STRIPE_SECRET_KEY (sk_test_…
-# only) and STRIPE_WEBHOOK_SECRET (the staging webhook endpoint's whsec_…).
+# only) and STRIPE_WEBHOOK_SECRET (the staging webhook endpoint's whsec_…);
+# the deploy sets ANTHROPIC_API_KEY and TESTER_INVITE_CODES from the STAGING
+# repository secrets (ANTHROPIC_API_KEY_STAGING, TESTER_INVITE_CODES_STAGING),
+# never production's. Its accounts are those of its own sign-in project,
+# hushmallow-staging (ACCOUNTS_STAGE below), never production's hushmallow1.
 [env.staging]
 name = "hushmallow-another-angle-staging"
 workers_dev = true
@@ -229,9 +233,15 @@ APPLE_BUNDLE_ID = ""
 APPLE_PRODUCT_IDS = "hushmallow.ultra.monthly,hushmallow.ultra.yearly"
 APPLE_ENVIRONMENTS = "Sandbox"
 # Web subscriptions, Stripe TEST mode (docs/STAGING.md). None of these is secret.
-# The sign-in project and its publishable key: the same public values as the Pages build.
-SUPABASE_URL = "https://igbxbfuaoybfzsroxuln.supabase.co"
-SUPABASE_PUBLISHABLE_KEY = "sb_publishable_NSv1Liou2yjKjauX09U5qQ_CxwzDuiw"
+# The sign-in project: the staging Worker's OWN, hushmallow-staging (the same public values as the
+# Pages Preview build), never production's hushmallow1 (src/config.js accepts only the project of
+# ACCOUNTS_STAGE). PLACEHOLDERS until the owner creates hushmallow-staging and pastes its Project URL
+# and publishable key: a TODO value counts as unset, the sign-in project is never asked, and every
+# billing route answers 503 accounts_not_configured (/v1/health: "accounts_configured": false).
+# Another Angle still works for testers with an invite code meanwhile.
+ACCOUNTS_STAGE = "staging"
+SUPABASE_URL = "https://STAGING_TODO.supabase.co"
+SUPABASE_PUBLISHABLE_KEY = "sb_publishable_TODO"
 # Where Stripe sends people back: the release branch's preview (one of ALLOWED_ORIGINS).
 APP_ORIGIN = "https://claude-launch-rc.hushmallow.pages.dev"
 # PLACEHOLDERS until the owner pastes the four TEST price ids (price_…) from

@@ -1,7 +1,9 @@
 // Web subscriptions for hushmallow Flow and hushmallow Beyond, through
 // Stripe. Off until configured (src/config.js readBilling, docs/PAYMENTS.md):
-// every route answers 503 billing_not_configured until then, and nothing
-// else on the server changes.
+// every route answers 503 billing_not_configured until then (503
+// accounts_not_configured while the sign-in project is a placeholder, as on
+// the staging Worker before its own project exists: docs/STAGING.md), and
+// nothing else on the server changes.
 //
 //   POST /v1/billing/checkout  { plan: 'paid'|'ultra', period: 'monthly'|'yearly' } with the account's
 //                              Supabase access token (Authorization: Bearer) → { url } (Stripe Checkout,
@@ -54,18 +56,27 @@ export function createBilling({ logger, now, fetch: fetchImpl = (input, init) =>
   /** Billing is on: configured, and the Durable Object is bound (never an in-memory stand-in in production). @param {Record<string, any>} env @param {Config} cfg */
   const ready = (env, cfg) => cfg.billing.configured && !!env.BILLING;
   /**
-   * Why billing is off (never a value): 'placeholder_prices' when no price id is real and one is still a
-   * placeholder such as price_TODO_owner (staging before the owner's test ids, docs/STAGING.md), else 'not_configured'.
+   * Why billing is off (never a value): 'accounts_not_configured' while the sign-in project is a placeholder
+   * (the staging Worker before its own project exists, docs/STAGING.md); 'placeholder_prices' when no price id is
+   * real and one is still a placeholder such as price_TODO_owner (staging before the owner's test ids); else
+   * 'not_configured'.
    * @param {Config} cfg
    */
   const offReason = (cfg) => {
+    if (cfg.billing.accountsPlaceholder) return 'accounts_not_configured';
     const p = cfg.billing.prices;
     return cfg.billing.placeholderPrices > 0 && ![p.paid, p.ultra].some((x) => !!(x.monthly || x.yearly)) ? 'placeholder_prices' : 'not_configured';
   };
+  /** The 503's code for offReason(). @param {Config} cfg */
+  const offCode = (cfg) => (offReason(cfg) === 'accounts_not_configured' ? 'accounts_not_configured' : 'billing_not_configured');
   /** The 503's message for offReason(). @param {Config} cfg */
-  const offMessage = (cfg) => (offReason(cfg) === 'placeholder_prices'
-    ? 'Web subscriptions are not set up on this server: its Stripe price ids are still placeholders (price_TODO…).'
-    : 'Web subscriptions are not set up on this server.');
+  const offMessage = (cfg) => {
+    const r = offReason(cfg);
+    if (r === 'accounts_not_configured') return 'Web subscriptions are not set up on this server: accounts are not configured (its sign-in project, SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY, is still a placeholder).';
+    return r === 'placeholder_prices'
+      ? 'Web subscriptions are not set up on this server: its Stripe price ids are still placeholders (price_TODO…).'
+      : 'Web subscriptions are not set up on this server.';
+  };
   /** @param {Config} cfg */
   const stripeFor = (cfg) => createStripe({ secretKey: cfg.billing.secretKey, apiVersion: cfg.billing.apiVersion, fetch: fetchImpl });
   /** @param {Config} cfg */
@@ -89,7 +100,7 @@ export function createBilling({ logger, now, fetch: fetchImpl = (input, init) =>
    * @returns {Promise<{ uid: string } | Response>}
    */
   async function signedIn(route, request, env, cfg, cors, t0) {
-    if (!ready(env, cfg)) { log(route, t0, { status: 'off', http: 503, err: offReason(cfg) }); return error(503, 'billing_not_configured', offMessage(cfg), cors); }
+    if (!ready(env, cfg)) { log(route, t0, { status: 'off', http: 503, err: offReason(cfg) }); return error(503, offCode(cfg), offMessage(cfg), cors); }
     if (!(await allow(env.BILLING_IP_LIMITER, limiter, await ipKey(request, cfg)))) {
       log(route, t0, { status: 'rate_limited', http: 429 });
       return error(429, 'rate_limited', 'Too many requests. Try again in a minute.', { ...cors, 'retry-after': '60' });
@@ -194,7 +205,7 @@ export function createBilling({ logger, now, fetch: fetchImpl = (input, init) =>
     if (!event || typeof event !== 'object' || typeof event.id !== 'string' || !/^evt_[A-Za-z0-9]{1,250}$/.test(event.id) || typeof event.type !== 'string') return error(400, 'invalid_event', 'Not a Stripe event.');
     const type = event.type.slice(0, 48);
     if (!EVENTS.includes(type)) { log('webhook', t0, { status: 'ignored', http: 200, stripe_event: type }); return json(200, { received: true }); }
-    if (!ready(env, cfg)) { log('webhook', t0, { status: 'off', http: 503, stripe_event: type, err: offReason(cfg) }); return error(503, 'billing_not_configured', offMessage(cfg)); }
+    if (!ready(env, cfg)) { log('webhook', t0, { status: 'off', http: 503, stripe_event: type, err: offReason(cfg) }); return error(503, offCode(cfg), offMessage(cfg)); }
     const r = await apply(event, env, cfg);
     log('webhook', t0, { status: r.outcome, http: r.http, stripe_event: type, tier: r.tier, sub_status: r.subStatus, duplicate: r.duplicate });
     return r.http === 200 ? json(200, { received: true, ...(r.duplicate ? { duplicate: true } : {}) }) : error(r.http, 'retry_later', 'Could not record the event just now.');
@@ -249,7 +260,7 @@ export function createBilling({ logger, now, fetch: fetchImpl = (input, init) =>
    * @returns {Promise<{ ok: true, uid: string, until: number } | { ok: false, status: number, code: string, message: string }>}
    */
   async function beyondAccess(env, cfg, token) {
-    if (!ready(env, cfg)) return { ok: false, status: 503, code: 'billing_not_configured', message: offMessage(cfg) };
+    if (!ready(env, cfg)) return { ok: false, status: 503, code: offCode(cfg), message: offMessage(cfg) };
     const a = await account(token, cfg);
     if (!a.ok) return { ok: false, status: a.status, code: a.code, message: a.code === 'account_required' ? 'Sign in to a hushmallow account first.' : 'The account could not be checked just now.' };
     const rec = await storeFor(env).get(a.uid);
