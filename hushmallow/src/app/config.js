@@ -44,12 +44,20 @@ export const ANGLE_ALLOWED_HOSTS = ['hushmallow-another-angle.vibyfy-chat.worker
 export const BILLING_PROVIDER = '';
 export const BILLING_ENDPOINT = '';
 /**
- * The price each plan shows under its button, exactly as set in Stripe (for
- * example 'A$9.99'), by product id. Empty: no price is shown.
+ * The price each plan shows under its button, exactly as set in Stripe, by
+ * product id (Australian dollars; the amount a person pays, GST included if it
+ * applies). Empty: no price is shown. Shown only where billing is on (today
+ * only a branch preview, below; production too once the owner switches
+ * BILLING_PROVIDER on), never on its own.
+ *
+ * PROVISIONAL TEST VALUES from the owner for the staging rehearsal
+ * (docs/STAGING.md): NOT the final commercial prices. Before launch, set the
+ * owner's final amounts here and in Stripe (live mode) together: Stripe
+ * Checkout always charges what Stripe holds, whatever this says.
  */
 export const BILLING_PRICES = Object.freeze({
-  'hushmallow.paid.monthly': '', 'hushmallow.paid.yearly': '',
-  'hushmallow.ultra.monthly': '', 'hushmallow.ultra.yearly': '',
+  'hushmallow.paid.monthly': 'A$9.99', 'hushmallow.paid.yearly': 'A$99.99',
+  'hushmallow.ultra.monthly': 'A$19.99', 'hushmallow.ultra.yearly': 'A$199.99',
 });
 
 // Staging (the owner-approved rehearsal, docs/STAGING.md). A BRANCH PREVIEW

@@ -56,13 +56,15 @@ function setup({ signedIn = true, server = billingServer(), prices } = {}) {
 const clockAt = (t = NOW) => { const c = () => c.t; c.t = t; return c; };
 
 // ------------------------------------------------------------------ off --
-test('off by default: the shipped config switches nothing on, and createBilling() is null', () => {
+test('off by default: the shipped config switches nothing on (outside a branch preview: tests/staging.test.mjs), and createBilling() is null', () => {
   assert.equal(BILLING_PROVIDER, '');
   assert.equal(BILLING_ENDPOINT, '');
-  assert.deepEqual(Object.values(BILLING_PRICES), ['', '', '', '']);
+  // the owner's provisional test prices (docs/STAGING.md), shown only where billing is on
+  assert.deepEqual(Object.values(BILLING_PRICES), ['A$9.99', 'A$99.99', 'A$19.99', 'A$199.99']);
   assert.deepEqual(Object.keys(BILLING_PRICES), ['hushmallow.paid.monthly', 'hushmallow.paid.yearly', 'hushmallow.ultra.monthly', 'hushmallow.ultra.yearly']);
   assert.equal(resolveBilling(), null);
   assert.equal(resolveBilling({ loc: { hostname: 'app.hushmallow.com', search: '' } }), null);
+  assert.equal(resolveBilling({ loc: { hostname: 'app.hushmallow.com', protocol: 'https:', search: '' } }), null);
   assert.equal(resolveBilling({ loc: { hostname: 'localhost', protocol: 'http:', search: '' }, session: null }), null, 'localhost without ?billingDev');
   assert.equal(createBilling({ auth: () => authHandle(), signIn: true }), null);
   // configured but the build has no sign-in: still off (a web plan belongs to an account)
@@ -189,7 +191,8 @@ test('status and portal: the server\'s answer, read strictly; the portal opens o
 });
 
 test('prices come from configuration only; none set, none shown', () => {
-  assert.deepEqual(setup().billing.prices(), {}, 'the shipped BILLING_PRICES are empty');
+  assert.deepEqual(setup({ prices: {} }).billing.prices(), {}, 'none set: none shown');
+  assert.deepEqual(setup().billing.prices(), { ...BILLING_PRICES }, 'the shipped BILLING_PRICES: the provisional test values');
   const s = setup({ prices: { 'hushmallow.paid.monthly': ' A$9.99 ', 'hushmallow.ultra.yearly': 'A$149.99', 'hushmallow.paid.yearly': '', 'something.else': 'A$1' } });
   assert.deepEqual(s.billing.prices(), { 'hushmallow.paid.monthly': 'A$9.99', 'hushmallow.ultra.yearly': 'A$149.99' });
   const ent = createEntitlements({ store: memStore(), billing: s.billing });

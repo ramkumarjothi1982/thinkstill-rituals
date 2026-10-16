@@ -2,9 +2,10 @@
 // (https, exactly one DNS label + ".hushmallow.pages.dev", e.g. the release
 // branch claude/launch-rc → claude-launch-rc.hushmallow.pages.dev) talks to the
 // STAGING Worker for Another Angle and billing, with billing ON (Stripe TEST
-// mode); Settings' version line says "staging". Everywhere else
-// (app.hushmallow.com, the production alias hushmallow.pages.dev, hushmallow.com,
-// the GitHub Pages copy, localhost) nothing changes.
+// mode) and the owner's provisional prices on the plans page; Settings' version
+// line says "staging". Everywhere else (app.hushmallow.com, the production alias
+// hushmallow.pages.dev, hushmallow.com, the GitHub Pages copy, localhost) nothing
+// changes.
 // Run with: node --test tests/
 import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -12,7 +13,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 import {
-  ANGLE_ENDPOINT, ANGLE_ALLOWED_HOSTS, BILLING_PROVIDER, BILLING_ENDPOINT, BUILD,
+  ANGLE_ENDPOINT, ANGLE_ALLOWED_HOSTS, BILLING_PROVIDER, BILLING_ENDPOINT, BILLING_PRICES, BUILD,
   STAGING_ANGLE_ENDPOINT, STAGING_ALLOWED_HOSTS, PREVIEW_HOST_SUFFIX, isPreviewHost, deploySettings,
 } from '../src/app/config.js';
 import { resolveEndpoint } from '../src/beyond/endpoint.js';
@@ -29,6 +30,7 @@ const loc = (hostname, { protocol = 'https:', search = '', port = '' } = {}) => 
 /** Hosts that keep production's settings exactly (the customers' hosts, the GitHub Pages copy, this machine). */
 const PRODUCTION_HOSTS = ['app.hushmallow.com', 'hushmallow.pages.dev', 'hushmallow.com', 'www.hushmallow.com', 'ramkumarjothi1982.github.io'];
 const PREVIEWS = [PREVIEW, 'claude-upbeat-pasteur-b0aqg1.hushmallow.pages.dev', '3f9c2a1b.hushmallow.pages.dev', 'main.hushmallow.pages.dev'];
+const PRICES = { 'hushmallow.paid.monthly': 'A$9.99', 'hushmallow.paid.yearly': 'A$99.99', 'hushmallow.ultra.monthly': 'A$19.99', 'hushmallow.ultra.yearly': 'A$199.99' };
 
 // ------------------------------------------------------------- the hosts --
 test('isPreviewHost: https, no port, exactly one DNS label in front of ".hushmallow.pages.dev"; nothing else', () => {
@@ -113,6 +115,26 @@ test('billing: on (Stripe, the staging Worker) on a preview only; off on product
   assert.match(read('src/app/main.js'), /const billing = createBilling\(\{ auth: \(\) => app\.auth, signIn: !!AUTH\.config\.enabled && !AUTH\.forwarding \}\);/);
 });
 
+// ----------------------------------------------------------------- prices --
+test('prices: ONE config object (BILLING_PRICES) with the owner\'s provisional AUD test values, marked not final; shown only where billing is on', () => {
+  assert.deepEqual({ ...BILLING_PRICES }, PRICES);
+  assert.ok(Object.isFrozen(BILLING_PRICES));
+  const cfg = read('src/app/config.js');
+  assert.match(cfg, /PROVISIONAL TEST VALUES[\s\S]{0,80}NOT the final commercial prices/);
+  // nowhere else: no amount in the code that shows or sells a plan
+  for (const f of ['src/app/scenes/plans.js', 'src/app/billing.js', 'src/app/scenes/settings.js', 'src/app/entitlements.js', 'src/app/main.js']) assert.doesNotMatch(read(f), /A\$\d/, f);
+  // where billing is on (a preview), the plans page's prices are exactly these; where it is off there are none
+  const auth = { enabled: true, status: () => 'guest', load: async () => ({ accessToken: async () => null }) };
+  const billing = createBilling({ auth: () => auth, signIn: true, config: resolveBilling({ loc: loc(PREVIEW), session: null }) });
+  assert.deepEqual(billing.prices(), PRICES);
+  const ent = createEntitlements({ store: createStore({ backend: 'memory' }), billing });
+  assert.deepEqual(ent.prices(), PRICES);
+  const off = createEntitlements({ store: createStore({ backend: 'memory' }), billing: createBilling({ auth: () => auth, signIn: true, config: resolveBilling({ loc: loc('app.hushmallow.com'), session: null }) }) });
+  assert.equal(off.prices, undefined, 'production: no web prices while billing is off there');
+  // the plans page reads ent.prices() and nothing else
+  assert.match(read('src/app/scenes/plans.js'), /Promise\.resolve\(typeof ent\.prices === 'function' \? ent\.prices\(\) : null\)/);
+});
+
 // ------------------------------------------------------- the rendered pages --
 class FakeEl {
   constructor(tag) {
@@ -157,6 +179,25 @@ function installDom(hostname) {
   globalThis.requestAnimationFrame ||= (fn) => setTimeout(fn, 0);
 }
 const world = { dim() {}, showMallow() {}, place() {}, setStage() {}, react() {}, fitBetween() {}, setMallow: async () => {}, mallowId: 'boppo' };
+
+test('the plans page on a preview shows the provisional prices under each plan, monthly and yearly', async () => {
+  installDom(PREVIEW);
+  const auth = { enabled: true, status: () => 'signed-in', load: async () => ({ accessToken: async () => 'tok.en.sig' }) };
+  const billing = createBilling({ auth: () => auth, signIn: true, fetchImpl: async () => { throw new TypeError('offline'); } });
+  assert.equal(billing.endpoint, STAGING, 'from the page\'s own location');
+  const ent = createEntitlements({ store: createStore({ backend: 'memory' }), billing });
+  const { default: plans } = await import('../src/app/scenes/plans.js');
+  const app = { ent, world, state: {}, haptic() {}, audio: { ui() {} }, go() {}, back() {} };
+  const view = plans(app, {});
+  await view.enter().catch(() => {});
+  await tick();
+  const priceLines = () => all(view.el).filter((n) => n.attrs?.class === 'invite-price').map((n) => [n.textContent, n.hidden]);
+  assert.deepEqual(priceLines(), [['A$9.99 a month', false], ['A$19.99 a month', false]], 'Flow, then Beyond');
+  const yearly = all(view.el).find((n) => n.tagName === 'BUTTON' && text(n) === 'Yearly');
+  yearly.listeners.click[0]({ currentTarget: yearly });
+  assert.deepEqual(priceLines(), [['A$99.99 a year', false], ['A$199.99 a year', false]]);
+  view.leave();
+});
 
 test('Settings\' version line says "staging" on a preview, and only there', async () => {
   const { default: settings } = await import('../src/app/scenes/settings.js');
