@@ -33,21 +33,21 @@ psql_as supabase_admin -d postgres -c "create database hm_bundle template hm own
 # what-if: a project whose postgres role lacks BYPASSRLS (Supabase's has it)
 [ "${SHIM_NO_BYPASS:-}" = 1 ] && psql_as supabase_admin -d hm -c "alter role postgres nobypassrls" >/dev/null
 migrate() { for f in "$here"/supabase/migrations/0*.sql; do psql_as postgres -d hm -f - < "$f" >/dev/null || { echo "FAILED: $(basename "$f")" >&2; exit 1; }; done; }
-echo "1/5 migrations (fresh)"; migrate
-echo "2/5 migrations (again: idempotent)"; migrate
-echo "3/5 rls_check.sql"
+echo "1/6 migrations (fresh)"; migrate
+echo "2/6 migrations (again: idempotent)"; migrate
+echo "3/6 rls_check.sql"
 out="$(psql_as postgres -d hm -A -t -f - < "$here/supabase/tests/rls_check.sql")"
 echo "$out" | sed 's/^/    /'
 echo "$out" | grep -q '^ALL [0-9]* CHECKS PASSED' || { echo "rls_check failed" >&2; exit 1; }
 left="$(psql_as postgres -d hm -A -t -c "select (select count(*) from auth.users) + (select count(*) from public.profiles) + (select count(*) from public.sync_consents)")"
 [ "$left" = 0 ] || { echo "rls_check left $left rows behind" >&2; exit 1; }
 echo "    nothing left behind (auth.users + profiles + consents = 0)"
-echo "4/5 rollback"; psql_as postgres -d hm -f - < "$here/supabase/rollback/rollback_all.sql" >/dev/null
+echo "4/6 rollback"; psql_as postgres -d hm -f - < "$here/supabase/rollback/rollback_all.sql" >/dev/null
 kept="$(psql_as postgres -d hm -A -t -c "select count(*) from pg_trigger where tgname = 'on_auth_user_created'")"
 [ "$kept" = 0 ] && echo "    sign-up trigger dropped" || echo "    sign-up trigger kept as a no-op (this role may not drop triggers on auth.users)"
 gone="$(psql_as postgres -d hm -A -t -c "select count(*) from pg_tables where schemaname in ('public','hm_private')")"
 [ "$gone" = 0 ] || { echo "rollback left $gone tables" >&2; exit 1; }
-echo "5/5 migrations after rollback"; migrate
+echo "5/6 migrations after rollback"; migrate
 psql_as postgres -d hm -A -t -f - < "$here/supabase/tests/rls_check.sql" | tail -1 | sed 's/^/    /'
 echo "6/6 production bundle (supabase/production/), each file as one query string like the SQL editor"
 node "$here/tools/auth/bundle-sql.mjs" --check | sed 's/^/    /'
