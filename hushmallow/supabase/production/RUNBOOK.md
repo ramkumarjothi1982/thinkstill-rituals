@@ -227,8 +227,9 @@ Workers & Pages → **hushmallow** → Settings → **Variables and Secrets**.
 - [ ] **Preview**: no `SUPABASE_URL` and no `SUPABASE_PUBLISHABLE_KEY`. A
       request on 13 Oct 2026 (`tools/infra/PAGES_ENV`) asked for them on Production
       **and** Preview: if they are there, delete both from Preview.
-- [ ] Never add `HM_AUTH_MODE`, a secret / service_role key or
-      `SUPABASE_ACCESS_TOKEN`: the build refuses to publish with one present.
+- [ ] Never add `HM_AUTH_MODE` (local test builds only), a secret /
+      service_role key or `SUPABASE_ACCESS_TOKEN` (the build refuses to
+      publish while a Supabase secret or token is in its environment).
 - [ ] Deployments → the latest **Production** deployment → ⋯ → **Retry
       deployment** (new values only reach a new build). Wait for Success.
 - [ ] Custom domains: `app.hushmallow.com` is **Active**.
@@ -304,9 +305,9 @@ too: `supabase/README.md`, "Rollback".
 
 ## Known gaps (not fixed by this runbook)
 
-* **Safari (not a Home Screen app) clears a site's storage after about seven
-  days without a visit**, which signs the person out and also clears a
-  guest's things. Adding hushmallow to the Home Screen avoids it.
+* **Safari (not a Home Screen app) clears a site's storage after seven days
+  of Safari use without a visit**, which signs the person out and also
+  clears a guest's things. Adding hushmallow to the Home Screen avoids it.
 * The **Framer embed** (`hushmallow.com`) runs the app in a cross-site frame
   with its own partitioned storage: a sign-in there is separate from
   `app.hushmallow.com`. Offer sign-in in the app itself.
