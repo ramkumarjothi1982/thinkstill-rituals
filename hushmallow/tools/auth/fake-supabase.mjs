@@ -76,8 +76,10 @@ export function renderTemplate(kind, vars) {
 export function createFakeSupabase({ siteUrl = 'http://localhost:8202', redirectAllow = null, log = false } = {}) {
   const secret = randomBytes(32);
   // (noSchema: the project's tables were never created — every table answers 404 PGRST205, as PostgREST does;
-  //  emailOff: email sign-in switched off in Auth — GET /settings says external.email false. src/auth/readiness.js)
-  const cfg = { autoconfirm: false, securePasswordChange: true, recentLoginMs: 86_400_000, failRefresh: false, refreshDown: false, accessTtl: 3600, rateLimitMs: 60_000, down: false, singleToken: false, reuseIntervalMs: 10_000, restDelayMs: 0, restDelayTables: null, noSchema: false, emailOff: false };
+  //  emailOff: email sign-in switched off in Auth — GET /settings says external.email false. src/auth/readiness.js;
+  //  schemas: the Data API's exposed schemas — another Accept-Profile / Content-Profile answers 406 PGRST106, as
+  //  PostgREST does; disableSignup, anonymousUsers: GET /settings only. tools/auth/prod-readiness.mjs)
+  const cfg = { autoconfirm: false, securePasswordChange: true, recentLoginMs: 86_400_000, failRefresh: false, refreshDown: false, accessTtl: 3600, rateLimitMs: 60_000, down: false, singleToken: false, reuseIntervalMs: 10_000, restDelayMs: 0, restDelayTables: null, noSchema: false, emailOff: false, schemas: ['public', 'graphql_public'], disableSignup: false, anonymousUsers: false };
   let users, sessions, refresh, tokens, codes, outbox, rows, lastSend, pending = 0;
   function reset() {
     users = new Map();      // id → user
@@ -315,7 +317,7 @@ export function createFakeSupabase({ siteUrl = 'http://localhost:8202', redirect
     const byEmail = (e) => [...users.values()].find((u) => u.email === e);
     const flowOf = () => (b.code_challenge ? { challenge: b.code_challenge, method: String(b.code_challenge_method || 's256').toLowerCase() } : null);
 
-    if (path === '/settings' && req.method === 'GET') return send(200, { external: { email: !cfg.emailOff, phone: false, google: false }, disable_signup: false, mailer_autoconfirm: cfg.autoconfirm, phone_autoconfirm: false, sms_provider: '' });
+    if (path === '/settings' && req.method === 'GET') return send(200, { external: { anonymous_users: cfg.anonymousUsers, email: !cfg.emailOff, phone: false, google: false }, disable_signup: cfg.disableSignup, mailer_autoconfirm: cfg.autoconfirm, phone_autoconfirm: false, sms_provider: '' });
 
     if (path === '/signup' && req.method === 'POST') {
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return gerr(400, 'email_address_invalid', 'Email address is invalid');
@@ -470,6 +472,8 @@ export function createFakeSupabase({ siteUrl = 'http://localhost:8202', redirect
     const role = claims?.role === 'authenticated' && claims.exp >= sec() ? 'authenticated' : 'anon';
     if (tok && verifyJwt(tok) && claims.exp < sec()) return send(401, { code: 'PGRST303', message: 'JWT expired', details: null, hint: null });
     const uid = role === 'authenticated' ? claims.sub : null;
+    const profile = String(req.headers[req.method === 'GET' || req.method === 'HEAD' ? 'accept-profile' : 'content-profile'] || '');
+    if (profile && !cfg.schemas.includes(profile)) return perr(406, 'PGRST106', `The schema must be one of the following: ${cfg.schemas.join(', ')}`);
     if (name === 'rpc/delete_my_account') {
       if (req.method !== 'POST') return perr(405, 'PGRST117', 'Unsupported HTTP method');
       if (!uid) return perr(401, '42501', 'permission denied for function delete_my_account');
