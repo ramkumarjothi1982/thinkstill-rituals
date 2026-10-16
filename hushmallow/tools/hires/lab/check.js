@@ -18,7 +18,6 @@
 //        the art); __jumps.zuzuSpin07 adds the arbitrary phase 0.7 (what a
 //        rig that keeps spinning at rest shows the moment it leaves rest).
 //        node tools/hires/lab/run.cjs json 'mode=jump&kind=new' (and kind=old)
-//   check.html?mode=mouths&id=loomi[&kind=new]   mouth states + talking frames
 //   check.html?mode=live&id=glitzi&kind=new&sizes=110,220,380&presets=...  live rigs (run.cjs page)
 // Results: window.__ready = true, then __out (PNG data URL) and/or numbers.
 // MALLOWS / SPRITES come from the loader: the registry the (patched) rig reads
@@ -246,31 +245,6 @@ async function live() {
   await new Promise((res) => setTimeout(res, +(Q.get('wait') || 2500)));
 }
 
-// mouth states and talking frames (the Loomi sweep, loomi-sweep.cjs): every
-// mouth parameter at its extremes on rest / happy / concerned, and a talking
-// cycle (mouthOpen 0 -> .6 -> 0) on rest and on the concerned stage, whose
-// smile must never turn up (window.__mouths.concernedSmileMax)
-async function mouths() {
-  const kind = Q.get('kind') || 'new';
-  const rig = make(id, kind, holder(), { pristine: false, skinSize: SK, reducedMotion: true });
-  await rig.loaded;
-  freeze(rig, 1.234, 0);
-  const cells = [];
-  const bases = { rest: { ...rig.base }, happy: presetState(rig, 'happy', 1), concerned: presetState(rig, 'stage:concerned', 1) };
-  const tweaks = [['', {}], ['open .5', { mouthOpen: 0.5 }], ['open 1.15', { mouthOpen: 1.15 }], ['round', { mouthRound: 1, mouthOpen: 0.9 }],
-    ['frown', { mouthSmile: -1, mouthOpen: 0 }], ['frown open', { mouthSmile: -1, mouthOpen: 0.6 }], ['pout', { mouthPout: 0.8 }],
-    ['skew', { mouthSkew: 0.7 }], ['wave', { mouthWave: 0.8 }], ['tongue', { tongue: 1, mouthOpen: 0.5 }], ['wide', { mouthWidth: 1.4 }]];
-  for (const [bn, b] of Object.entries(bases)) for (const [tn, t] of tweaks) {
-    if (bn === 'concerned' && tn) continue;                      // the concerned stage keeps its own mouth (below)
-    cells.push([`${bn} ${tn}`.trim(), snap({ skin: renderAt(rig, { ...b, ...t }, { pristine: false, restMix: 0 }) })]);
-  }
-  for (const [bn, b] of [['rest', bases.rest], ['concerned', bases.concerned]]) {
-    for (const o of [0, 0.2, 0.4, 0.6, 0.4, 0.2]) cells.push([`talk ${bn} ${o}`, snap({ skin: renderAt(rig, { ...b, mouthOpen: Math.max(b.mouthOpen, o) }, { pristine: false, restMix: 0 }) })]);
-  }
-  window.__out = sheet(cells, +(Q.get('cw') || 260), +(Q.get('cols') || 6)).toDataURL('image/png');
-  window.__info = { concernedSmileMax: bases.concerned.mouthSmile, concernedOpen: bases.concerned.mouthOpen, n: cells.length };
-}
-
 async function jump() {
   const kind = Q.get('kind') || 'new';
   const out = {};
@@ -288,5 +262,5 @@ async function jump() {
   RIG = await loadRig();
   ({ MALLOWS, SPRITES, MALLOW_IDS } = RIG.registry);
   H = await import(tableUrl);
-  await ({ skins, pair, spin, overflow, jump, live, mouths })[mode]();
+  await ({ skins, pair, spin, overflow, jump, live })[mode]();
 })().catch((e) => { window.__err = String(e && e.stack || e); }).finally(() => { window.__ready = true; });
