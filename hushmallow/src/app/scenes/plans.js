@@ -14,7 +14,7 @@
 import { h, iconBtn, toast } from '../ui.js';
 import { PLANS } from '../entitlements.js';
 import { BRAND, brandName } from '../../brand.js';
-import { brandMark, logoImg, fitLabel } from '../../ui/type.js';
+import { brandMark, logoImg, fitWhole } from '../../ui/type.js';
 import { openSupport } from './support.js';
 import { plansBeyondNote } from '../privacy.js';
 import { legalLinks } from '../legal.js';
@@ -33,6 +33,9 @@ export function periodNote({ native = false, web = false, period = 'monthly' } =
   if (web) return `${yearly ? 'Billed once a year' : 'Billed monthly'}. Cancel any\u00a0time in\u00a0Settings.`;
   return `Test\u00a0purchase\u00a0· ${yearly ? 'yearly' : 'monthly'}\u00a0· nothing\u00a0is\u00a0charged`;
 }
+/** How a plan's button keeps its whole label on a narrow phone or at a large text size, in order (app.css): tighter
+ *  padding and tracking; then two lines, broken before the plan's name; then the name may wrap too. */
+export const BUY_FIT = ['is-tight', 'is-wrap', 'is-wrap-name'];
 /** Web subscriptions: the foot of the page (never the App Store's name: this is the web). */
 export const WEB_NOTE = 'You’ll sign in first, so your plan stays with your account. Payment is on a secure checkout page, and you can cancel any time in Settings.';
 /** Web subscriptions: said on the account screen when a guest steps into a plan, or restores one. */
@@ -98,11 +101,12 @@ export default function plans(app, params = {}) {
     const price = h('p', { class: 'invite-price', hidden: true });
     const note = h('p', { class: 'invite-period', 'aria-live': 'polite' }, noteText());
     notes.push([p, price, note]);
-    const label = h('span', { class: 'invite-buy-label' }, `Step into ${p.name}`);
-    const btn = h('button', { class: `btn block fit-one invite-buy ${p.id === 'ultra' ? 'ultra' : 'primary'}`, onclick: () => buy(p.id, btn) }, label);
+    // "Step into hushmallow Flow": the plan's whole name, always (never "Step into Flow"). Each part stays in one
+    // piece; where the line is too narrow the button tightens, then breaks it before the name (fitWhole, app.css)
+    const label = h('span', { class: 'invite-buy-label' }, h('span', { class: 'nb' }, 'Step into'), ' ', h('span', { class: 'nb' }, p.name));
+    const btn = h('button', { class: `btn block invite-buy ${p.id === 'ultra' ? 'ultra' : 'primary'}`, onclick: () => buy(p.id, btn) }, label);
     buttons.push(btn);
-    // one line: "Step into Beyond" when the full name would wrap
-    fits.push(() => fitLabel(btn, `Step into ${p.name.slice(brandName.length).trim()}`, { target: label }));
+    fits.push(() => fitWhole(btn, BUY_FIT));
     return h('div', { class: 'invite-cta' }, btn, price, note);
   }
 
@@ -256,6 +260,8 @@ export default function plans(app, params = {}) {
     });
   }
 
+  const refit = () => fits.forEach((f) => f());
+
   // "Meet Another Angle" names Zuzu: Zuzu is the one on screen
   const prevMallow = world.mallowId;
   const swapMallow = focus === 'ultra' && !everything && prevMallow && prevMallow !== 'zuzu';
@@ -269,8 +275,9 @@ export default function plans(app, params = {}) {
       if (swapMallow) await world.setMallow('zuzu').catch(() => {});
       world.setStage('curious');
       fit();
-      requestAnimationFrame(() => fits.forEach((f) => f()));
-      setTimeout(() => { if (!gone) fits.forEach((f) => f()); }, 700);   // after the web fonts swap in
+      requestAnimationFrame(refit);
+      setTimeout(() => { if (!gone) refit(); }, 700);   // after the web fonts swap in
+      globalThis.addEventListener?.('resize', refit);   // (a phone turned: the roomiest fit again)
       // localised prices from the App Store, if the native shell offers them (or the web's configured ones)
       Promise.resolve(typeof ent.prices === 'function' ? ent.prices() : null)
         .then((v) => { if (v && typeof v === 'object' && !gone) { prices = v; drawNotes(); } }, () => {});
@@ -278,6 +285,7 @@ export default function plans(app, params = {}) {
     },
     leave() {
       gone = true; clearTimeout(homeTimer);
+      globalThis.removeEventListener?.('resize', refit);
       if (ent.isWeb) globalThis.removeEventListener?.('pageshow', onPageShow);
       if (mallowAway) world.showMallow?.(true);
       if (swapMallow && world.mallowId === 'zuzu') world.setMallow(prevMallow, { entrance: false }).catch(() => {});

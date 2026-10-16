@@ -175,3 +175,19 @@ export function fitLabel(btn, ...shorter) {
     target.textContent = t;
   }
 }
+
+/** Keep a button's words whole (for words that must never be shortened, such as a plan's name): while they
+ *  overflow, add the next of `steps` (classes, each on top of the last: say tighter padding and tracking, then a
+ *  second line). Re-runnable: it starts again from none, so more room (or the web fonts) gets the roomiest step
+ *  that fits. Returns the last step it added, or null. */
+export function fitWhole(btn, steps) {
+  if (!btn) return null;
+  btn.classList.remove(...steps);
+  let at = null;
+  for (const c of steps) {
+    if (!(btn.scrollWidth > btn.clientWidth)) return at;
+    btn.classList.add(c);
+    at = c;
+  }
+  return at;
+}

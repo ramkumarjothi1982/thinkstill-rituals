@@ -88,7 +88,7 @@ a { color: var(--accent); }
 .chips.scroll::-webkit-scrollbar { display: none; }
 /* inside a card the row bleeds only to the card's own edge (never past its border) */
 .card .chips.scroll { margin: 0 -14px; padding: 2px 14px; scroll-padding-inline: 14px; }
-.chip { flex: 0 0 auto; min-height: 40px; padding: 0 15px; border-radius: var(--r-pill); border: 1px solid var(--line-strong); background: var(--glass);
+.chip { flex: 0 0 auto; min-height: 44px; padding: 0 15px; border-radius: var(--r-pill); border: 1px solid var(--line-strong); background: var(--glass);
   backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); font: var(--type-control); letter-spacing: var(--type-control-ls); color: var(--text-1); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
 .chip[aria-pressed="true"] { background: var(--accent); color: var(--text-on-accent); border-color: transparent; }
 .chip .hue { width: 8px; height: 8px; border-radius: 50%; }
@@ -100,6 +100,9 @@ input.search, input.text { width: 100%; min-height: 48px; border-radius: 14px; b
   color: var(--text-1); font: var(--type-input); letter-spacing: var(--type-input-ls); padding: 0 14px; outline: none; }
 input.search:focus, input.text:focus { border-color: var(--accent); }
 .range { width: 100%; accent-color: var(--accent); height: 32px; }
+/* a slider in a Settings row (Volume): the track stays as drawn; the finger's target is 44 px tall, reaching into the
+   row's own padding (the negative margins), so the row keeps its height */
+.setting .range { height: 44px; margin-block: -6px; }
 
 /* ----------------------------------------------------------- cards -- */
 .card { border-radius: var(--r-lg); border: 1px solid var(--line); background: var(--glass-strong); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
@@ -308,6 +311,15 @@ input.search:focus, input.text:focus { border-color: var(--accent); }
 .invite-period { margin: 0; text-align: center; font: var(--type-caption); letter-spacing: var(--type-caption-ls); color: var(--text-3); text-wrap: balance; }
 .invite-price { margin: 0; text-align: center; font: var(--type-label); letter-spacing: var(--type-label-ls); font-weight: 700; color: var(--text-1); }
 .invite-price[hidden] { display: none; }
+/* "Step into hushmallow Flow" / "Step into hushmallow Beyond": the plan's whole name, always (the owner's rule: never
+   "Step into Beyond"). One line where it fits; on a narrow phone or at a large text size fitWhole() (plans.js BUY_FIT)
+   first tightens the padding and tracking, then breaks the line before the name ("Step into / hushmallow Beyond"),
+   and only if the name alone is wider than the button lets the name wrap too. The type size never steps down. */
+.invite-buy { white-space: nowrap; overflow: hidden; }
+.invite-buy .nb { white-space: nowrap; }
+.invite-buy.is-tight { padding-inline: 12px; letter-spacing: -0.01em; }
+.invite-buy.is-wrap { white-space: normal; text-wrap: balance; line-height: 1.2; padding-block: 8px; }
+.invite-buy.is-wrap-name .nb { white-space: normal; }
 /* a purchase in flight: the tapped invitation shows a soft ring, the others rest */
 .invite-buy.is-busy { opacity: 1; }
 .invite-buy.is-busy .invite-buy-label::after { content: ''; display: inline-block; width: 15px; height: 15px; margin-left: 10px; vertical-align: -2px; border-radius: 50%;
@@ -448,6 +460,11 @@ input.search:focus, input.text:focus { border-color: var(--accent); }
 .v3-law-chip { margin: 8px auto 0; display: inline-block; max-width: min(94%, 40ch); padding: 5px 12px; border-radius: 999px; background: rgba(12,8,34,.55);
   border: 1px solid rgba(255,255,255,.12); font: var(--type-caption); letter-spacing: var(--type-caption-ls); font-weight: 600; line-height: 1.3; color: rgba(247,243,255,.92); text-shadow: none; }
 .v3-law-chip:empty { display: none; }
+/* a short stage (a small phone at a large text size: src/v3/stage-fit.js): the title's location line steps out so the
+   play area keeps its room above the dock; the prompt and the world law stay (the location is still announced) */
+.move-title.v3-compact { margin-top: 2px; }
+.move-title.v3-compact .eyebrow { display: none; }
+.move-title.v3-compact .v3-law-chip { margin-top: 5px; }
 .v3-law-chip b { color: var(--accent); font-weight: 800; }
 .dock.v3-ending { grid-template-columns: minmax(0, 1fr); }
 .v3-end { text-align: left; padding: 16px 18px; }
