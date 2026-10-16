@@ -8,7 +8,8 @@
 //   m4  the small tappable Mallow in a V3 ritual's dock stuck a few px out of the viewport at every size (and, found in
 //       review: kept inside by its whole layer, on a phone on its side its body was pushed out of its spot).
 //   (and, found by the gesture sweep of all 240 built rituals: world law 19's own hint could not be followed; found in
-//   review: a second finger on its anchor could stop tap-to-set for good, or take over another finger's trace.)
+//   review: a second finger on its anchor could stop tap-to-set for good, or take over another finger's trace, and a
+//   finger only resting on the anchor kept every trace begun there from counting.)
 // Run: node --test hushmallow/tests/qa-mobile-fix.test.mjs
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -221,14 +222,18 @@ test('law 19 (Anchor and Explore): its own hints, followed with one finger, fini
   assert.equal(tap.progress, 1);
 });
 
-test('law 19 (Anchor and Explore) with two fingers: a second finger on the anchor never stops tap-to-set or another finger’s trace', async (tt) => {
+test('law 19 (Anchor and Explore) with several fingers: every finger but the anchor’s explores, so none stops another’s trace or tap-to-set', async (tt) => {
   const { createLaw } = await import('../src/v3/laws.js');
+  const { rgba } = await import('../src/v3/fx.js');
   let t = 0;
   const L = () => ({ stage: { x: 12, y: 245, w: 296, h: 201, cx: 160, cy: 345.5, s: 0.72 }, now: () => t, sound() {}, haptic() {}, react() {}, setPrompt() {},
     words: { token: 'my words' }, pal: { glow: '#ffffff' }, photos: { n: 0 }, particles: { emit() {} } });
+  // where that stage puts the three lights
+  const WAY = [{ x: 154.08, y: 309.32 }, { x: 225.12, y: 349.52 }, { x: 254.72, y: 301.28 }];
   const fresh = () => { t = 0; const law = createLaw(19, L()); return [law, law.hint().tap]; };
   const steps = (from, to, k) => ({ x: from.x + ((to.x - from.x) * k) / 12, y: from.y + ((to.y - from.y) * k) / 12 });
   const swipe = (law, h, id) => { law.down({ ...h.from, id }); for (let i = 1; i <= 12; i++) law.move({ ...steps(h.from, h.to, i), id }); law.up({ ...h.to, id }); };
+  const setByTap = (law, a, id = 1) => { law.down({ ...a, id }); law.up({ ...a, id }); assert.equal(law.progress, 0.25, 'a tap sets the anchor'); };
   /** One finger after that, doing only what the hints show (as the ghost does): does it finish? */
   const followHints = (law, id0 = 100) => {
     for (let n = 0; n < 10; n++) {
@@ -239,41 +244,49 @@ test('law 19 (Anchor and Explore) with two fingers: a second finger on the ancho
     t = 5;
     return law.done;
   };
-  await tt.test('a) the anchor not set: two fingers land on it together, the second shifts a pixel, both lift: a tap, it is set', () => {
+  await tt.test('(1) a finger resting on the set or held anchor never stops a trace begun on the anchor from counting', () => {
+    // (“hold the anchor with one finger while another traces”: the resting finger was taken for the one tracing, so
+    // every later trace begun on the anchor counted for nothing, 0.25 for good while it rested)
+    for (const how of ['set by a tap', 'held by a finger']) {
+      const [law, a] = fresh();
+      if (how === 'set by a tap') setByTap(law, a); else law.down({ ...a, id: 1 });
+      law.down({ ...a, id: 2 }); law.move({ x: a.x + 1, y: a.y, id: 2 });   // finger 2 comes to rest on the anchor (a pixel's jitter)
+      swipe(law, law.hint(), 3);                                            // finger 3 starts on the anchor, as the hint shows
+      assert.equal(law.progress, 0.5, `${how}: finger 3 reached the first light`);
+      law.move({ x: a.x, y: a.y + 1, id: 2 });
+      swipe(law, law.hint(), 4);
+      assert.equal(law.progress, 0.75, `${how}: and on from it`);
+      swipe(law, law.hint(), 5);
+      t = 5;
+      assert.equal(law.done, true, `${how}: finished with finger 2 still resting`);
+    }
+  });
+  await tt.test('(2) the anchor not set: two fingers land on it together, the second shifts a pixel, both lift: a tap, it is set', () => {
     // (the second took up a trace that was never cleared, so no tap could set the anchor again: stuck at 0)
-    const [law, a] = fresh();
-    law.down({ ...a, id: 1 }); law.down({ ...a, id: 2 }); law.move({ x: a.x + 1, y: a.y + 1, id: 2 }); law.up({ ...a, id: 2 }); law.up({ ...a, id: 1 });
-    assert.equal(law.progress, 0.25, 'a two-finger tap sets the anchor');
-    assert.ok(law.hint().from, 'the hint moves on to the first trace');
-    assert.equal(followHints(law), true, 'and the hints finish it');
+    for (const lastUp of [1, 2]) {
+      const [law, a] = fresh();
+      law.down({ ...a, id: 1 }); law.down({ ...a, id: 2 }); law.move({ x: a.x + 2, y: a.y + 1, id: 2 });
+      law.up({ ...a, id: 3 - lastUp }); law.up({ ...a, id: lastUp });
+      assert.equal(law.progress, 0.25, `a two-finger tap sets the anchor (finger ${lastUp} up last)`);
+      assert.ok(law.hint().from, 'the hint moves on to the first trace');
+      assert.equal(followHints(law), true, 'and one finger following the hints finishes it');
+    }
   });
-  await tt.test('a) held while another finger traced, then lifted first: the anchor is let go (as before), and a tap sets it again', () => {
+  await tt.test('(3) the anchor set: finger B is tracing when finger A comes to rest on the anchor; B’s trace still counts', () => {
+    // (A used to take the trace over)
     const [law, a] = fresh();
-    law.down({ ...a, id: 1 });
-    const to = law.hint().to, from = { x: a.x + 60, y: a.y };
-    law.down({ ...from, id: 2 }); for (let i = 1; i <= 12; i++) law.move({ ...steps(from, to, i), id: 2 });
-    assert.equal(law.progress, 0.5, 'held, and the first light reached');
-    law.up({ ...a, id: 1 }); law.up({ ...to, id: 2 });
-    assert.equal(law.progress, 0.25, 'the anchor let go');
-    assert.ok(law.hint().tap, 'tap the anchor');
-    assert.equal(followHints(law), true, 'a tap sets it again, and the hints finish it');
-  });
-  await tt.test('b) the anchor set: finger B is tracing when finger A comes to rest on the anchor; B’s trace still counts', () => {
-    // (“hold the anchor with one finger while another traces”: A used to take the trace over)
-    const [law, a] = fresh();
-    law.down({ ...a, id: 1 }); law.up({ ...a, id: 1 });
-    const to = law.hint().to, from = { x: a.x + 50, y: a.y };
+    setByTap(law, a);
+    const from = { x: a.x + 50, y: a.y };
     law.down({ ...from, id: 2 });
-    for (let i = 1; i <= 12; i++) { if (i === 3) law.down({ ...a, id: 3 }); law.move({ ...steps(from, to, i), id: 2 }); }
+    for (let i = 1; i <= 12; i++) { if (i === 3) law.down({ ...a, id: 3 }); if (i > 3) law.move({ x: a.x + (i % 2), y: a.y, id: 3 }); law.move({ ...steps(from, WAY[0], i), id: 2 }); }
     assert.equal(law.progress, 0.5, 'B reached the first light');
-    law.up({ ...to, id: 2 });
-    // A still resting on the anchor, another finger traces on from the first light; then the hints finish it
+    law.up({ ...WAY[0], id: 2 });
     swipe(law, law.hint(), 4);
-    assert.equal(law.progress, 0.75);
+    assert.equal(law.progress, 0.75, 'A still resting, another finger traces on from the first light');
     law.up({ ...a, id: 3 });
     assert.equal(followHints(law), true);
   });
-  await tt.test('the anchor held by finger 1: finger 2 lands on the anchor and traces out from it, then on from each light', () => {
+  await tt.test('(4) the anchor held by finger 1: finger 2 lands on the anchor and traces out from it, then on from each light', () => {
     const [law, a] = fresh();
     law.down({ ...a, id: 1 });
     assert.equal(law.progress, 0.25, 'held');
@@ -285,17 +298,93 @@ test('law 19 (Anchor and Explore) with two fingers: a second finger on the ancho
     t = 5;
     assert.equal(law.done, true);
   });
-  await tt.test('a mouse (one pointer, id 1, for every press): click the anchor, then drag out from it to each light', () => {
+  await tt.test('(5) one finger doing only what the ghost hints show finishes it', () => {
+    const [law] = fresh();
+    assert.equal(followHints(law, 1), true);
+    assert.equal(law.hint(), null);
+  });
+  await tt.test('(6) a mouse (one pointer, id 1, for every press): click the anchor, then drag out from it to each light', () => {
     const [law, a] = fresh();
-    law.down({ ...a, id: 1 }); law.up({ ...a, id: 1 });
+    setByTap(law, a, 1);
     for (let k = 0; k < 3; k++) swipe(law, law.hint(), 1);
     t = 5;
     assert.equal(law.done, true);
   });
-  await tt.test('a drag begun on the anchor before it was ever set only sets it (no light)', () => {
+  await tt.test('(7) Tap instead sets the anchor, then each press lights the next light', () => {
+    const [law] = fresh();
+    for (let i = 0; i < 4; i++) law.assist();
+    assert.equal(law.progress, 1);
+    t = 5;
+    assert.equal(law.done, true);
+  });
+  await tt.test('(8) a light is reached only by a move over it, in order: never by a finger set down on it', () => {
     const [law, a] = fresh();
-    swipe(law, { from: a, to: { x: 154.08, y: 309.32 } }, 1);   // to the first light
-    assert.equal(law.progress, 0.25);
-    assert.ok(law.hint().from, 'set: the first trace is next');
+    setByTap(law, a);
+    WAY.forEach((q, k) => { law.down({ ...q, id: 10 + k }); law.up({ ...q, id: 10 + k }); });
+    assert.equal(law.progress, 0.25, 'the anchor set: set down and lifted on each light, none reached');
+    law.down({ ...WAY[1], id: 20 }); law.move({ x: WAY[1].x + 1, y: WAY[1].y, id: 20 }); law.up({ ...WAY[1], id: 20 });
+    assert.equal(law.progress, 0.25, 'a move on the second light does not reach it before the first');
+    const [hold, b] = fresh();
+    hold.down({ ...b, id: 1 });
+    WAY.forEach((q, k) => { hold.down({ ...q, id: 10 + k }); hold.up({ ...q, id: 10 + k }); });
+    assert.equal(hold.progress, 0.25, 'the anchor held: set down and lifted on each light, none reached');
+    // and a drag begun on the anchor before it was ever set only sets it
+    const [drag, c] = fresh();
+    swipe(drag, { from: c, to: WAY[0] }, 1);
+    assert.equal(drag.progress, 0.25);
+    assert.ok(drag.hint().from, 'set: the first trace is next');
+  });
+  await tt.test('(9) every finger down explores: another finger set down elsewhere never stops a trace from counting', () => {
+    // (only the finger down last traced: a thumb resting at the side of the stage took the trace over)
+    for (const how of ['set by a tap', 'held by a finger']) {
+      const [law, a] = fresh();
+      if (how === 'set by a tap') setByTap(law, a); else law.down({ ...a, id: 1 });
+      law.down({ ...a, id: 2 });
+      for (let i = 1; i <= 12; i++) { if (i === 4) law.down({ x: 30, y: 430, id: 3 }); law.move({ ...steps(a, WAY[0], i), id: 2 }); }
+      assert.equal(law.progress, 0.5, `${how}: finger 2 reached the first light, finger 3 resting at the side`);
+      law.move({ x: 31, y: 430, id: 3 });
+      law.up({ ...WAY[0], id: 2 });
+      swipe(law, law.hint(), 4); swipe(law, law.hint(), 5);
+      t = 5;
+      assert.equal(law.done, true, `${how}: finished with finger 3 still down`);
+    }
+  });
+  await tt.test('(10) each finger draws its own line: no line joins one finger’s trace to another’s', () => {
+    // (one trail for every finger: a new trace was drawn joined on to where the last one ended)
+    const noop = new Proxy(function () {}, { get: () => noop, apply: () => noop, set: () => true });
+    const segs = []; let path = [], at = [0, 0];
+    const g = new Proxy({
+      createRadialGradient: () => ({ addColorStop() {} }), createLinearGradient: () => ({ addColorStop() {} }), measureText: (s) => ({ width: String(s).length * 8 }),
+      beginPath() { path = []; }, moveTo(x, y) { at = [x, y]; }, lineTo(x, y) { path.push(Math.hypot(x - at[0], y - at[1])); at = [x, y]; },
+      stroke() { if (this.strokeStyle === rgba('#bfefff', 0.45)) segs.push(...path); },
+    }, { get: (o, k) => (k in o ? o[k] : () => {}), set: (o, k, v) => { o[k] = v; return true; } });
+    const had = Object.getOwnPropertyDescriptor(globalThis, 'OffscreenCanvas');
+    globalThis.OffscreenCanvas = class { getContext() { return noop; } };
+    try {
+      const [law, a] = fresh();
+      setByTap(law, a);
+      swipe(law, law.hint(), 2);                                           // to the first light, and lifted there
+      const from = { x: WAY[0].x, y: WAY[0].y + 50 };
+      swipe(law, { from, to: WAY[1] }, 3);                                 // a new trace, begun 50 px from where that one ended
+      law.down({ ...a, id: 4 });                                           // a finger resting on the anchor while another traces
+      law.down({ ...WAY[1], id: 5 });
+      for (let i = 1; i <= 12; i++) { law.move({ x: a.x + (i % 2), y: a.y, id: 4 }); law.move({ ...steps(WAY[1], WAY[2], i), id: 5 }); }
+      assert.equal(law.progress, 1);
+      law.frame(g, 0, 1 / 60);
+      assert.ok(segs.length >= 30, `the traces are drawn (${segs.length} lines)`);
+      const long = segs.filter((d) => d > 12);
+      assert.deepEqual(long.map((d) => Math.round(d)), [], 'every line drawn is one finger’s step (a step here is 8 px at most)');
+    } finally { if (had) Object.defineProperty(globalThis, 'OffscreenCanvas', had); else delete globalThis.OffscreenCanvas; }
+  });
+  await tt.test('held while another finger traced, then lifted first: the anchor is let go (as before), and a tap sets it again', () => {
+    const [law, a] = fresh();
+    law.down({ ...a, id: 1 });
+    const from = { x: a.x + 60, y: a.y };
+    law.down({ ...from, id: 2 }); for (let i = 1; i <= 12; i++) law.move({ ...steps(from, WAY[0], i), id: 2 });
+    assert.equal(law.progress, 0.5, 'held, and the first light reached');
+    law.up({ ...a, id: 1 }); law.up({ ...WAY[0], id: 2 });
+    assert.equal(law.progress, 0.25, 'the anchor let go');
+    assert.ok(law.hint().tap, 'tap the anchor');
+    assert.equal(followHints(law), true, 'a tap sets it again, and the hints finish it');
   });
 });
