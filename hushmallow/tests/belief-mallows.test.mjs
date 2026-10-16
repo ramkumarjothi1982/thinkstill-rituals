@@ -290,6 +290,19 @@ test('not kept unless chosen: "Finish" says it is not kept anywhere and stores n
   assert.deepEqual(calls.at(-1), ['finish']);
 }));
 
+test('Beyond ending while the belief question is up: still a belief (never an angle, nothing sent), ended quietly', () => withDev(async () => {
+  const { host, calls, S } = fakeHost();
+  S.text = 'Everybody judges me';
+  const b = createBeliefHook(host);
+  b.inviteOptions()[0].onPick(); b.tell();
+  host.app.ent.has = () => false;          // the plan refreshed to Flow while the question was up
+  assert.equal(b.active(), true, 'startAngle hands it to the belief, never to the angle path');
+  await b.play();
+  assert.ok(!calls.some((c) => c[0] === 'setMech' || c[0] === 'choose' || c[0] === 'startAngle'));
+  assert.equal(S.phase, 'invite');
+  assert.equal(host.app.store.m.size, 0);
+}));
+
 test('crisis or care seen mid-flow ends it at once (nothing kept, nothing more asked)', () => withDev(async () => {
   const { host, calls, S } = fakeHost({ answers: ['charm', (s) => { s.crisis = true; s.seq++; return 'understand'; }, 'safe', 'keep'] });
   S.text = 'Everybody judges me';
