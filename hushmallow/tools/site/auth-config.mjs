@@ -83,7 +83,7 @@ export function buildPublicConfig(env, { stamp = '', version } = {}) {
   if (!v.ok) errors.push(v.error);
   if (errors.length) return { ok: false, errors };
   const summary = v.enabled
-    ? `sign-in on: ${v.url} (${v.mode}${stage === 'staging' && !v.local ? `, the staging project ${STAGING_PROJECT_NAME}` : ''}), key ${keyLabel(v.key)} [${classifyKey(v.key)}]`
+    ? `sign-in on: ${v.url} (${stage === 'staging' && !v.local ? `the staging project ${STAGING_PROJECT_NAME}${v.mode === 'production' ? '' : `, ${v.mode}`}` : v.mode}), key ${keyLabel(v.key)} [${classifyKey(v.key)}]`
     : warning ? 'sign-in off (production values refused on a branch build): publishing { enabled: false }'
       : 'sign-in off (no SUPABASE_URL / SUPABASE_PUBLISHABLE_KEY): publishing { enabled: false }';
   return { ok: true, source: publicConfigModule(v, { stamp }), summary, enabled: !!v.enabled, stage, ...(warning ? { warning } : {}), headers: headersFile(v.enabled ? new URL(v.url).origin : null, { production: !v.enabled || !v.local, version }) };
