@@ -78,7 +78,7 @@ Serve the repo root (`python3 -m http.server 8000`), then:
   rect between the approved art and the drawn rest face on one frozen frame
   (t 1.234, no blink, reduced motion, skin 600), Zuzu's spirals at the
   painted phase (spinAngle 0; `zuzuSpin07` adds phase 0.7). 12 Oct, r2:
-  `node tools/hires/lab/run.cjs json 'mode=jump&kind=new'` (and `'mode=jump&kind=old&hires=0'`; Loomi re-run 15 Oct with its arched brows):
+  `node tools/hires/lab/run.cjs json 'mode=jump&kind=new'` (and `kind=old`):
 
   | | glitzi | zuzu (0.7) | boppo | pipzi | blubi | loomi | noomi |
   |---|---|---|---|---|---|---|---|
@@ -92,7 +92,7 @@ Serve the repo root (`python3 -m http.server 8000`), then:
   browser until then.
 
 Examples: `node tools/hires/lab/run.cjs json 'mode=overflow&kind=new'`,
-`node tools/hires/lab/run.cjs shot 'mode=pair&id=glitzi&presets=rest,excited&hires=0' /tmp/p.png`.
+`node tools/hires/lab/run.cjs shot 'mode=pair&id=glitzi&presets=rest,excited' /tmp/p.png`.
 
 ## Notes
 

@@ -349,7 +349,7 @@ head = '''// High-res Mallow rigs: a patch table over registry.js (workstream W7
 // The cyan file without brows is Loomi (owner-approved, workstream
 // hires-loomi): no brows at rest, as drawn; arched brows (build_table.py
 // LOOMI_BROWS) appear only when an expression raises browAlpha, as on Noomi.
-// Sweeps: hushmallow/docs/workstreams/hires-loomi.md.
+// Sweeps: docs/workstreams/hires-loomi.md.
 //
 // Integration (after the patch is merged): in registry.js, once, at the end:
 //   import { applyHires } from './hires.js';  applyHires(MALLOWS, SPRITES);
