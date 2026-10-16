@@ -4,8 +4,24 @@
 
 const DEFAULT_ORIGINS = 'https://ramkumarjothi1982.github.io';
 const APPLE_ROOT_CA_G3_SHA256 = '63343ABFB89A6A03EBB57E9B3F5FA7BE7C4F5C756F3017B3A8C488C3653E9179';
-/** hushmallow1 (Sydney): the one sign-in project whose accounts can subscribe (hushmallow/src/auth/config.js PROJECT_URL). */
+/** hushmallow1 (Sydney): production's sign-in project, the one whose accounts can subscribe (hushmallow/src/auth/config.js PROJECT_URL). */
 const SUPABASE_PROJECT_URL = 'https://igbxbfuaoybfzsroxuln.supabase.co';
+/**
+ * hushmallow-staging (Sydney): the STAGING Worker's own sign-in project (ACCOUNTS_STAGE = "staging" in
+ * wrangler.toml [env.staging]; hushmallow/src/auth/config.js STAGING_PROJECT_REF, docs/STAGING.md), so the
+ * staging Worker never accepts a production account and production never a staging one.
+ * PLACEHOLDER: '' means "no staging project yet": the staging Worker's accounts are not configured.
+ * Once the owner has created it, its Project URL goes here and into [env.staging.vars] SUPABASE_URL, together.
+ */
+const STAGING_SUPABASE_PROJECT_URL = '';
+/**
+ * Placeholder sign-in values, such as SUPABASE_URL "https://STAGING_TODO.supabase.co" and SUPABASE_PUBLISHABLE_KEY
+ * "sb_publishable_TODO" (wrangler.toml [env.staging], until the owner creates the staging project). They count as
+ * unset and say "accounts not configured": the sign-in project is never asked. Upper-case TODO only (a real project
+ * ref is lower case), and the key only right after its prefix.
+ */
+const ACCOUNTS_URL_PLACEHOLDER = /TODO/;
+const ACCOUNTS_KEY_PLACEHOLDER = /^sb_publishable_TODO(?:_|$)/;
 /** ENTITLEMENT_MODE values; anything else reads as 'testing', as before. */
 const MODES = ['testing', 'storekit', 'both', 'billing', 'billing+testing'];
 /**
@@ -51,9 +67,10 @@ function appOriginOf(v, allowed) {
 /**
  * Web subscriptions (src/billing/, docs/PAYMENTS.md). Every value is checked for its
  * shape; one that does not fit counts as unset, and so does a placeholder price id
- * (PRICE_PLACEHOLDER). `configured` needs the Stripe key, the sign-in project,
- * APP_ORIGIN and at least one real price; the webhook also needs its own secret.
- * No value here is ever logged or returned (placeholderPrices is only a count).
+ * (PRICE_PLACEHOLDER) or sign-in value (ACCOUNTS_*_PLACEHOLDER). `configured` needs the Stripe key,
+ * this stage's sign-in project, APP_ORIGIN and at least one real price; the webhook also needs its own
+ * secret. No value here is ever logged or returned (placeholderPrices is only a count, accountsPlaceholder
+ * only a flag).
  * @param {Record<string, any>} env @param {string[]} allowedOrigins
  */
 function readBilling(env, allowedOrigins) {
@@ -65,15 +82,21 @@ function readBilling(env, allowedOrigins) {
     paid: { monthly: price(env.STRIPE_PRICE_PAID_MONTHLY), yearly: price(env.STRIPE_PRICE_PAID_YEARLY) },
     ultra: { monthly: price(env.STRIPE_PRICE_ULTRA_MONTHLY), yearly: price(env.STRIPE_PRICE_ULTRA_YEARLY) },
   };
-  // only hushmallow1, and only its publishable key (a secret key never belongs in a var)
-  const supabaseUrl = str(env.SUPABASE_URL).replace(/\/+$/, '') === SUPABASE_PROJECT_URL ? SUPABASE_PROJECT_URL : '';
-  const supabaseKey = /^sb_publishable_[A-Za-z0-9_-]{16,128}$/.test(str(env.SUPABASE_PUBLISHABLE_KEY)) ? str(env.SUPABASE_PUBLISHABLE_KEY) : '';
+  // the sign-in project of this Worker's stage (ACCOUNTS_STAGE): production's hushmallow1 (the default, as before) or,
+  // on the staging Worker, hushmallow-staging; never the other one. Only its publishable key (a secret key never
+  // belongs in a var). A placeholder (or a staging Worker with no staging project yet) is "accounts not configured".
+  const accountsStage = str(env.ACCOUNTS_STAGE) || 'production';
+  const project = accountsStage === 'production' ? SUPABASE_PROJECT_URL : accountsStage === 'staging' ? STAGING_SUPABASE_PROJECT_URL : '';
+  const accountsPlaceholder = ACCOUNTS_URL_PLACEHOLDER.test(str(env.SUPABASE_URL)) || ACCOUNTS_KEY_PLACEHOLDER.test(str(env.SUPABASE_PUBLISHABLE_KEY))
+    || (accountsStage === 'staging' && !STAGING_SUPABASE_PROJECT_URL);
+  const supabaseUrl = !accountsPlaceholder && project && str(env.SUPABASE_URL).replace(/\/+$/, '') === project ? project : '';
+  const supabaseKey = !accountsPlaceholder && /^sb_publishable_[A-Za-z0-9_-]{16,128}$/.test(str(env.SUPABASE_PUBLISHABLE_KEY)) ? str(env.SUPABASE_PUBLISHABLE_KEY) : '';
   const appOrigin = appOriginOf(str(env.APP_ORIGIN), allowedOrigins);
   const anyPrice = [prices.paid, prices.ultra].some((p) => !!(p.monthly || p.yearly));
   // how many price vars still hold a placeholder (never their values): /v1/health and the 503 say so
   const placeholderPrices = PRICE_VARS.filter((k) => PRICE_PLACEHOLDER.test(str(env[k]))).length;
   return {
-    secretKey, webhookSecret, prices, supabaseUrl, supabaseKey, appOrigin, placeholderPrices,
+    secretKey, webhookSecret, prices, supabaseUrl, supabaseKey, appOrigin, placeholderPrices, accountsStage, accountsPlaceholder,
     // optional: pins the Stripe API version of the server's own requests (the webhook's comes from its endpoint)
     apiVersion: /^\d{4}-\d{2}-\d{2}(?:\.[a-z]+)?$/.test(str(env.STRIPE_API_VERSION)) ? str(env.STRIPE_API_VERSION) : '',
     tokenTtlMs: int(env.BILLING_TOKEN_TTL_HOURS, 24, 1, 168) * 3600000,
@@ -126,4 +149,4 @@ export function readConfig(env) {
   };
 }
 
-export { APPLE_ROOT_CA_G3_SHA256, SUPABASE_PROJECT_URL };
+export { APPLE_ROOT_CA_G3_SHA256, SUPABASE_PROJECT_URL, STAGING_SUPABASE_PROJECT_URL };

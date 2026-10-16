@@ -15,13 +15,23 @@
 // ES module holding only the two public values. With neither set it writes
 // { enabled: false } and the app runs exactly as without accounts.
 //
+// Which project a build may publish (buildStage, docs/STAGING.md): Cloudflare
+// Pages sets CF_PAGES_BRANCH. A build of any branch other than main (a branch
+// preview) may only publish the STAGING project hushmallow-staging; a build of
+// main, and every build outside Pages (no CF_PAGES_BRANCH: GitHub Pages, CI,
+// this machine), only production's hushmallow1, exactly as before. A branch
+// build that is given production's values never publishes them: it writes
+// { enabled: false } and says why (a warning in the log), so a preview never
+// signs in to production, whatever its variables say.
+//
 // Fails the build loudly (exit 1) on a malformed value, a project other than
-// hushmallow1, a secret / service_role key, or a Supabase secret anywhere in
-// the build environment. Never prints a key (only its first characters).
+// the stage's own (staging's values on main included), a secret /
+// service_role key, or a Supabase secret anywhere in the build environment.
+// Never prints a key (only its first characters).
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { validatePublicConfig, publicConfigModule, keyLabel, classifyKey } from '../../src/auth/config.js';
+import { validatePublicConfig, publicConfigModule, keyLabel, classifyKey, PROJECT_NAME, STAGING_PROJECT_NAME } from '../../src/auth/config.js';
 import { ANGLE_ENDPOINT, ANGLE_ALLOWED_HOSTS, STAGING_ANGLE_ENDPOINT, STAGING_ALLOWED_HOSTS, PREVIEW_HOST_SUFFIX } from '../../src/app/config.js';
 import { headersText, inlineSources, readPages, readSrcTree } from './security-headers.mjs';
 
@@ -41,17 +51,42 @@ export function envProblems(env) {
   return out;
 }
 
+/** The Pages production branch: its builds serve app.hushmallow.com and hushmallow.pages.dev. */
+export const PRODUCTION_BRANCH = 'main';
+
+/**
+ * Which project this build may publish: 'staging' for a Cloudflare Pages build of any branch but
+ * PRODUCTION_BRANCH (CF_PAGES_BRANCH set and not main), 'production' otherwise (main, and every build
+ * without CF_PAGES_BRANCH, as before). Pure, for tests.
+ */
+export function buildStage(env) {
+  const b = typeof env.CF_PAGES_BRANCH === 'string' ? env.CF_PAGES_BRANCH.trim() : '';
+  return b && b !== PRODUCTION_BRANCH ? 'staging' : 'production';
+}
+
 /** { ok, source, summary } | { ok: false, errors } for a given environment (pure, for tests). */
 export function buildPublicConfig(env, { stamp = '', version } = {}) {
   const errors = envProblems(env);
   const mode = env.HM_AUTH_MODE ? String(env.HM_AUTH_MODE) : 'production';
-  const v = validatePublicConfig({ url: env.SUPABASE_URL ?? '', key: env.SUPABASE_PUBLISHABLE_KEY ?? '', mode });
+  const stage = buildStage(env);
+  const url = env.SUPABASE_URL ?? '', key = env.SUPABASE_PUBLISHABLE_KEY ?? '';
+  let v = validatePublicConfig({ url, key, mode, stage });
+  // a branch build given production's values (the Preview variables not changed yet): never published, sign-in off.
+  // Only values production itself would accept: a secret, a malformed value or a Supabase secret in the
+  // environment still fails the build, as before.
+  let warning = '';
+  const asProduction = !v.ok && stage === 'staging' ? validatePublicConfig({ url, key, mode }) : null;
+  if (asProduction?.ok && asProduction.enabled && !asProduction.local) {
+    warning = `SUPABASE_URL is the production project ${PROJECT_NAME}, and this is a build of branch "${String(env.CF_PAGES_BRANCH).trim().slice(0, 80)}" (a branch preview): a preview may only use the staging project ${STAGING_PROJECT_NAME}. Not published: this build has no sign-in. Give the Preview environment the staging project's values (docs/STAGING.md).`;
+    v = { ok: true, enabled: false };
+  }
   if (!v.ok) errors.push(v.error);
   if (errors.length) return { ok: false, errors };
   const summary = v.enabled
-    ? `sign-in on: ${v.url} (${v.mode}), key ${keyLabel(v.key)} [${classifyKey(v.key)}]`
-    : 'sign-in off (no SUPABASE_URL / SUPABASE_PUBLISHABLE_KEY): publishing { enabled: false }';
-  return { ok: true, source: publicConfigModule(v, { stamp }), summary, enabled: !!v.enabled, headers: headersFile(v.enabled ? new URL(v.url).origin : null, { production: !v.enabled || !v.local, version }) };
+    ? `sign-in on: ${v.url} (${stage === 'staging' && !v.local ? `the staging project ${STAGING_PROJECT_NAME}${v.mode === 'production' ? '' : `, ${v.mode}`}` : v.mode}), key ${keyLabel(v.key)} [${classifyKey(v.key)}]`
+    : warning ? 'sign-in off (production values refused on a branch build): publishing { enabled: false }'
+      : 'sign-in off (no SUPABASE_URL / SUPABASE_PUBLISHABLE_KEY): publishing { enabled: false }';
+  return { ok: true, source: publicConfigModule(v, { stamp }), summary, enabled: !!v.enabled, stage, ...(warning ? { warning } : {}), headers: headersFile(v.enabled ? new URL(v.url).origin : null, { production: !v.enabled || !v.local, version }) };
 }
 
 /** The Another Angle origin(s) the app may call: ANGLE_ENDPOINT when it is https on an allowed host (as src/beyond/endpoint.js decides). */
@@ -123,5 +158,6 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   mkdirSync(dirname(outFile), { recursive: true });
   writeFileSync(outFile, r.source);
   if (headersOut) writeFileSync(headersOut, r.headers);
+  if (r.warning) console.error(`auth config: WARNING: ${r.warning}`);
   console.log(`auth config: ${r.summary}`);
 }
