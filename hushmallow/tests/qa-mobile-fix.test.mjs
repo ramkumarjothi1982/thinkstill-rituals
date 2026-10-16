@@ -10,7 +10,8 @@
 //   m3  a V3 ritual's first Mallow line covered the play dial (its bubble sat just above the small Mallow in the dock).
 //   m4  the small tappable Mallow in a V3 ritual's dock stuck a few px out of the viewport at every size.
 //   (and, found by the gesture sweep of all 240 built rituals: world law 19's own hint could not be followed; and, from
-//   the review of m6: Plans left while Zuzu was still coming in kept its window listeners for good.)
+//   the review of m6: Plans left while Zuzu was still coming in kept its window listeners for good; and, from the second
+//   review of m2: at 320×568 the Express screen's top bar, "Need support now?" in it, scrolled away with the card.)
 // Run: node --test hushmallow/tests/qa-mobile-fix.test.mjs
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -501,6 +502,48 @@ test('m2: the Express screen’s “Need support now?” and “Browse every fee
     assert.equal(picked.parentNode.children.indexOf(picked), picked.parentNode.children.indexOf(browse) + 1);
     // 40 px and a 6 px gap before: the card is no taller
     assert.ok(ghostBox(browse).room + px(picked.style.marginTop) <= 40 + 6, `browse ${ghostBox(browse).room} + ${picked.style.marginTop}`);
+  } finally {
+    if (ric) Object.defineProperty(globalThis, 'requestIdleCallback', ric); else delete globalThis.requestIdleCallback;
+    win.restore();
+  }
+});
+
+// (review of round 2, also seen) at 320×568 the Express card is taller than the screen (Playwright: 126 px to scroll,
+// 336 with words typed; 275 and 490 at text size Largest), and the top bar holding "Need support now?" scrolled away
+// with it: scrolled to "Meet a Mallow", no way to support was in reach (nothing on screen, nothing fixed, and the system
+// back lands on the Hushfold, which shows none either). Only the space and the card below the bar scroll now.
+test('m2: the Express screen’s “Need support now?” stays in reach while the card scrolls (the top bar is not in the scroller)', async () => {
+  const win = fakeWindow({ W: 320, H: 568 });
+  const ric = Object.getOwnPropertyDescriptor(globalThis, 'requestIdleCallback');
+  globalThis.requestIdleCallback = () => 0;
+  try {
+    const { default: express } = await import('../src/app/scenes/express.js');
+    const world = { mallowId: 'noomi', dim() {}, setStage() {}, setEmotion() {}, showMallow() {}, place() {} };
+    const app = { world, state: {}, back() {}, go() {}, haptic() {}, audio: { ui() {} }, prefs: { get() {} } };
+    const { el } = express(app);
+    const scrolls = (n) => /^(auto|scroll)$/.test(n.style.overflowY || n.style.overflow || '');
+    const support = button(el, /^Need support now\?$/);
+    const topbar = support.parentNode;
+    assert.ok(classes(topbar).includes('topbar'));
+    // nothing from the button to the scene scrolls
+    for (let n = support; n; n = n.parentNode) assert.ok(!scrolls(n), `${n.attrs.class || n.tagName} scrolls, and the support button with it`);
+    // the card does, in a scroller of its own below the bar that takes the rest of the screen and gives up its height
+    const card = allEls(el).find((n) => classes(n).includes('express-card'));
+    let sc = card.parentNode;
+    while (sc && !scrolls(sc)) sc = sc.parentNode;
+    assert.ok(sc, 'the card scrolls');
+    assert.deepEqual(el.children, [topbar, sc], 'the bar, then the scroller');
+    assert.deepEqual([el.style.display, el.style.flexDirection, el.style.height], ['flex', 'column', '100%']);
+    assert.deepEqual([sc.style.display, sc.style.flexDirection, sc.style.flex, sc.style.minHeight], ['flex', 'column', '1 1 auto', '0']);
+    // with the space above the card in it, first: where the card fits, it lays out where it did
+    assert.deepEqual(sc.children.map((n) => classes(n)[0]), ['spacer', 'card']);
+    assert.equal(sc.children[0].style.minHeight, '22dvh');
+    // (and the stylesheets give neither the screen nor the bar a scroller or a position of their own)
+    const css = ['tokens', 'type', 'app', 'hushfold'].map((f) => read(`src/ui/${f}.css`)).join('\n');
+    for (const m of css.matchAll(/([^{}]*\.(?:express|topbar)\b[^{}]*)\{([^{}]*)\}/g)) {
+      const own = m[1].split(',').some((s) => /\.(express|topbar)(?:[.:][\w-]+)*\s*$/.test(s.trim()) && !/\.(plans-topbar|express-scroll)/.test(s));
+      if (own) assert.doesNotMatch(m[2], /overflow|position\s*:\s*(fixed|absolute|sticky)/, `${m[1].trim()}`);
+    }
   } finally {
     if (ric) Object.defineProperty(globalThis, 'requestIdleCallback', ric); else delete globalThis.requestIdleCallback;
     win.restore();
