@@ -27,7 +27,7 @@ if [ "${SKIP_FIT:-0}" != 1 ]; then
 fi
 # the Mallows that passed the studio check (D13): keep in step with the report
 python3 tools/hires/build_table.py tools/hires/data tools/hires/data/old-registry.json \
-  src/mallows/hires.js ${VERIFIED:-glitzi zuzu boppo blubi noomi loomi}
+  src/mallows/hires.js ${VERIFIED:-glitzi zuzu boppo pipzi blubi noomi}
 # the res support still fits today's rig.js / mallow-touch.js / registry.js / expressions.js
 node tools/hires/refresh-patch.mjs --check
 node --test tests/hires.test.mjs

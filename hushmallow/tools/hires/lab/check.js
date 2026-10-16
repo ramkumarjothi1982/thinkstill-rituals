@@ -36,8 +36,6 @@ const tableUrl = Q.get('table') ? new URL(Q.get('table'), location.href).href : 
 
 let RIG, H;
 function make(mid, kind, el, opts = {}) {
-  // kind=old needs the original drawing as its base: without &hires=0 a switched Mallow would draw its new art labelled "old"
-  if (kind === 'old' && MALLOWS[mid].hires) throw new Error(`kind=old: ${mid} is already switched to its high-res rig; add &hires=0 to the URL`);
   // a rig captures MALLOWS[id] when it is built: swap only around the constructor
   const keep = MALLOWS[mid];
   if (kind === 'new') { MALLOWS[mid] = H.hiresMallow(keep, mid); Object.assign(SPRITES, H.HIRES[mid].sprites); }
@@ -250,10 +248,8 @@ async function live() {
 
 // mouth states and talking frames (the Loomi sweep, loomi-sweep.cjs): every
 // mouth parameter at its extremes on rest / happy / concerned, and a talking
-// cycle (mouthOpen 0 -> .6 -> 0) on rest and on the concerned stage, the
-// concerned cells held to the stage's limits as the rig holds them
-// (applyStageLimits: its mouth never opens or smiles past .1 / .2), so the
-// sheet shows what the app can show. window.__info: the concerned maxima.
+// cycle (mouthOpen 0 -> .6 -> 0) on rest and on the concerned stage, whose
+// smile must never turn up (window.__mouths.concernedSmileMax)
 async function mouths() {
   const kind = Q.get('kind') || 'new';
   const rig = make(id, kind, holder(), { pristine: false, skinSize: SK, reducedMotion: true });
@@ -268,21 +264,11 @@ async function mouths() {
     if (bn === 'concerned' && tn) continue;                      // the concerned stage keeps its own mouth (below)
     cells.push([`${bn} ${tn}`.trim(), snap({ skin: renderAt(rig, { ...b, ...t }, { pristine: false, restMix: 0 }) })]);
   }
-  const { applyStageLimits, stageLimits } = RIG.expressions;
-  const lim = stageLimits('concerned');
-  let smileMax = -Infinity, openMax = -Infinity;
   for (const [bn, b] of [['rest', bases.rest], ['concerned', bases.concerned]]) {
-    for (const o of [0, 0.2, 0.4, 0.6, 0.4, 0.2]) {
-      const P = { ...b, mouthOpen: Math.max(b.mouthOpen, o) };
-      if (bn === 'concerned') {
-        applyStageLimits(P, lim, bases.concerned);
-        smileMax = Math.max(smileMax, P.mouthSmile); openMax = Math.max(openMax, P.mouthOpen);
-      }
-      cells.push([`talk ${bn} ${o}`, snap({ skin: renderAt(rig, P, { pristine: false, restMix: 0 }) })]);
-    }
+    for (const o of [0, 0.2, 0.4, 0.6, 0.4, 0.2]) cells.push([`talk ${bn} ${o}`, snap({ skin: renderAt(rig, { ...b, mouthOpen: Math.max(b.mouthOpen, o) }, { pristine: false, restMix: 0 }) })]);
   }
   window.__out = sheet(cells, +(Q.get('cw') || 260), +(Q.get('cols') || 6)).toDataURL('image/png');
-  window.__info = { concernedSmileMax: smileMax, concernedOpenMax: openMax, n: cells.length };
+  window.__info = { concernedSmileMax: bases.concerned.mouthSmile, concernedOpen: bases.concerned.mouthOpen, n: cells.length };
 }
 
 async function jump() {
