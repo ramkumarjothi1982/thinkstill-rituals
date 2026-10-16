@@ -185,6 +185,7 @@ test('Settings footer: the version caption never breaks at the hyphen of "sign-i
   // BUILD itself is unchanged (sent as app_version by Another Angle's client, pinned in sheets-history)
   assert.equal(BUILD, '2026-10-13 · Hushfold pilot + optional sign-in');
   const settings = read('src/app/scenes/settings.js');
-  assert.match(settings, /\.\.\.keepHyphenated\(`Version \$\{BUILD\}\$\{RUNNING \? ` · \$\{RUNNING\}` : ''\}`\)/);
+  assert.match(settings, /\.\.\.keepHyphenated\(`Version \$\{BUILD\}\$\{stageLabel\}\$\{RUNNING \? ` · \$\{RUNNING\}` : ''\}`\)/);
+  assert.match(settings, /const stageLabel = deploySettings\(\)\.stage === 'staging' \? ' · staging' : '';/, 'only a branch preview says "staging" (tests/staging.test.mjs)');
   assert.match(settings, /'data-version': '', style: type\('caption', \{[^}]*textWrap: 'balance' \}\)/);
 });

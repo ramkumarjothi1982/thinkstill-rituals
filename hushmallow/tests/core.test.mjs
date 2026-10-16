@@ -85,19 +85,22 @@ test('shipped code calls no remote service except Another Angle’s own server',
   assert.equal(angleSrc.split(angleFetch).length, 2, 'one fetch site in angle-client.js');
   assert.match(angleSrc, /const url = `\$\{endpoint\}\$\{path\}`;/);
   assert.match(angleSrc, /if \(!endpoint \|\| !Object\.values\(PATHS\)\.includes\(path\)\)/);
-  const { ANGLE_ENDPOINT, ANGLE_ALLOWED_HOSTS } = await import('../src/app/config.js');
+  const { ANGLE_ENDPOINT, ANGLE_ALLOWED_HOSTS, STAGING_ANGLE_ENDPOINT } = await import('../src/app/config.js');
   if (ANGLE_ENDPOINT) {
     const u = new URL(ANGLE_ENDPOINT);
     assert.equal(u.protocol, 'https:', 'ANGLE_ENDPOINT is https');
     assert.ok(ANGLE_ALLOWED_HOSTS.includes(u.hostname), 'ANGLE_ENDPOINT host is allow-listed');
   }
-  // the Worker's address appears once, in src/app/config.js (the endpoint and its allowed host): no staging
-  // or other workers.dev address anywhere in src, comments included
+  // the Worker's address appears once, in src/app/config.js (the endpoint and its allowed host), and so does the
+  // staging Worker's, for the branch previews only (STAGING_ANGLE_ENDPOINT and STAGING_ALLOWED_HOSTS, docs/STAGING.md):
+  // no other workers.dev address anywhere in src, comments included
   const workers = [];
+  const configLines = readFileSync(`${root}src/app/config.js`, 'utf8').split('\n');
   for (const f of walk(`${root}src`)) readFileSync(f, 'utf8').split('\n').forEach((l, i) => { if (/workers\.dev/i.test(l)) workers.push(`${f.slice(root.length)}:${i + 1}`); });
   assert.ok(workers.every((w) => w.startsWith('src/app/config.js:')), workers.join(', '));
-  assert.ok(workers.length <= 2, workers.join(', '));
-  if (ANGLE_ENDPOINT) assert.equal(workers.length, 2, workers.join(', '));
+  assert.ok(workers.every((w) => /^export const (ANGLE_ENDPOINT|ANGLE_ALLOWED_HOSTS|STAGING_ANGLE_ENDPOINT|STAGING_ALLOWED_HOSTS) = /.test(configLines[Number(w.split(':')[1]) - 1])), workers.join(', '));
+  assert.ok(workers.length <= 4, workers.join(', '));
+  if (ANGLE_ENDPOINT) assert.equal(workers.length, 4, workers.join(', '));
   // …and the optional sign-in (src/auth/client.js): one fetch handed to the vendored supabase-js,
   // which refuses every URL outside the one project (src/auth/config.js PROJECT_URL, or localhost in dev)
   const authFetch = 'const netFetch = (url, init) => globalThis.fetch(url, init);';
@@ -122,9 +125,10 @@ test('shipped code calls no remote service except Another Angle’s own server',
     assert.doesNotMatch(s, /\bfetch\s*\(|XMLHttpRequest|new WebSocket|EventSource\(|sendBeacon/, f);
     // the only URLs allowed: the SVG namespace, the support-line directory and Lifeline's crisis chat
     // (Australia) that people can open themselves, (in src/app/config.js only) the configured Another
-    // Angle endpoint, and (in src/auth/config.js only) the sign-in project
+    // Angle endpoint and the branch previews' staging one, and (in src/auth/config.js only) the sign-in project
     const urls = (s.match(/https?:\/\/[^'"`\s)]+/g) || []).filter((u) => !/^https?:\/\/(www\.w3\.org\/|findahelpline\.com|www\.lifeline\.org\.au\/crisis-chat\/$)/.test(u))
       .filter((u) => !(ANGLE_ENDPOINT && f.endsWith('/src/app/config.js') && u === ANGLE_ENDPOINT))
+      .filter((u) => !(f.endsWith('/src/app/config.js') && u === STAGING_ANGLE_ENDPOINT))
       .filter((u) => !(f.endsWith('/src/auth/config.js') && u === PROJECT_URL));
     assert.deepEqual(urls, [], f);
   }

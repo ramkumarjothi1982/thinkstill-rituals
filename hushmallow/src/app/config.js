@@ -40,6 +40,7 @@ export const ANGLE_ALLOWED_HOSTS = ['hushmallow-another-angle.vibyfy-chat.worker
 // BILLING_ENDPOINT = ANGLE_ENDPOINT (it must be one of ANGLE_ALLOWED_HOSTS).
 // The build needs sign-in too: a web plan belongs to an account. The App Store
 // app never uses it. Development: ?billingDev=<port> on localhost (src/app/billing.js).
+// These two are production's switch; a branch preview has its own (Staging, below).
 export const BILLING_PROVIDER = '';
 export const BILLING_ENDPOINT = '';
 /**
@@ -50,6 +51,51 @@ export const BILLING_PRICES = Object.freeze({
   'hushmallow.paid.monthly': '', 'hushmallow.paid.yearly': '',
   'hushmallow.ultra.monthly': '', 'hushmallow.ultra.yearly': '',
 });
+
+// Staging (the owner-approved rehearsal, docs/STAGING.md). A BRANCH PREVIEW
+// of the Cloudflare Pages project (https, no port, exactly one DNS label in
+// front of ".hushmallow.pages.dev": a branch alias such as claude-launch-rc
+// for the branch claude/launch-rc, or a deployment's own hash) talks to the
+// STAGING Worker for Another Angle and for billing, and has billing ON there
+// (Stripe TEST mode: the staging Worker holds test keys only). Everywhere
+// else nothing changes: the production alias hushmallow.pages.dev,
+// app.hushmallow.com, the GitHub Pages copy and localhost keep exactly the
+// production settings above. A preview never reaches the production Worker
+// and production never reaches staging: each only on its own allow-list
+// (src/beyond/endpoint.js, src/app/billing.js).
+export const PREVIEW_HOST_SUFFIX = '.hushmallow.pages.dev';
+export const STAGING_ANGLE_ENDPOINT = 'https://hushmallow-another-angle-staging.vibyfy-chat.workers.dev';
+/** The only hosts a preview's endpoints may point at (https, no path tricks): the staging Worker. */
+export const STAGING_ALLOWED_HOSTS = ['hushmallow-another-angle-staging.vibyfy-chat.workers.dev'];
+
+/** One DNS label, as Pages writes them: lowercase letters, digits and inner hyphens, at most 63. */
+const PREVIEW_LABEL = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
+
+/** Whether this page is a branch preview of the Pages project: https, no port, one label + PREVIEW_HOST_SUFFIX. */
+export function isPreviewHost(loc = globalThis.location) {
+  if (!loc || typeof loc.hostname !== 'string' || loc.protocol !== 'https:' || (loc.port || '') !== '') return false;
+  const host = loc.hostname;
+  if (host.length <= PREVIEW_HOST_SUFFIX.length || !host.endsWith(PREVIEW_HOST_SUFFIX)) return false;
+  return PREVIEW_LABEL.test(host.slice(0, -PREVIEW_HOST_SUFFIX.length));
+}
+
+const PRODUCTION = Object.freeze({
+  stage: 'production', angleEndpoint: ANGLE_ENDPOINT, angleAllowedHosts: ANGLE_ALLOWED_HOSTS,
+  billingProvider: BILLING_PROVIDER, billingEndpoint: BILLING_ENDPOINT,
+});
+const STAGING = Object.freeze({
+  stage: 'staging', angleEndpoint: STAGING_ANGLE_ENDPOINT, angleAllowedHosts: STAGING_ALLOWED_HOSTS,
+  billingProvider: 'stripe', billingEndpoint: STAGING_ANGLE_ENDPOINT,
+});
+
+/**
+ * What this page talks to: { stage, angleEndpoint, angleAllowedHosts, billingProvider, billingEndpoint }.
+ * The staging settings on a branch preview (isPreviewHost), the production ones everywhere else
+ * (and in Node, with no location).
+ */
+export function deploySettings(loc = globalThis.location) {
+  return isPreviewHost(loc) ? STAGING : PRODUCTION;
+}
 
 /** Shown at the bottom of Settings so a tester can tell which version has loaded. */
 export const BUILD = '2026-10-13 · Hushfold pilot + optional sign-in';

@@ -1,7 +1,8 @@
 // Web subscriptions: the client for our own server's billing routes
 // (server/another-angle /v1/billing/*), which talk to Stripe. Off unless
 // src/app/config.js switches them on (BILLING_PROVIDER 'stripe',
-// BILLING_ENDPOINT our Worker) AND this build has sign-in: a web plan belongs
+// BILLING_ENDPOINT our Worker; on a branch preview of the Pages project its
+// staging settings do: deploySettings) AND this build has sign-in: a web plan belongs
 // to an account, so it follows the person to any device they sign in on.
 // With it off, createBilling() is null and nothing here ever runs.
 //
@@ -27,7 +28,7 @@
 // Only Stripe's own pages are ever opened (STRIPE_PAGES: checkout.stripe.com,
 // billing.stripe.com), whatever an answer says.
 
-import { BILLING_PROVIDER, BILLING_ENDPOINT, BILLING_PRICES, ANGLE_ALLOWED_HOSTS } from './config.js';
+import { BILLING_PRICES, deploySettings } from './config.js';
 import { PLANS } from './entitlements.js';
 
 export const PATHS = Object.freeze({ checkout: '/v1/billing/checkout', status: '/v1/billing/status', portal: '/v1/billing/portal' });
@@ -49,11 +50,13 @@ function safeSession() { try { return globalThis.sessionStorage || null; } catch
 
 /**
  * Where billing goes, or null (off). Production: BILLING_PROVIDER 'stripe' and BILLING_ENDPOINT,
- * https, on a host listed in ANGLE_ALLOWED_HOSTS, an origin and a path only. Development only:
+ * https, on a host listed in ANGLE_ALLOWED_HOSTS, an origin and a path only. A branch preview of the
+ * Pages project (src/app/config.js isPreviewHost): on, to STAGING_ANGLE_ENDPOINT on STAGING_ALLOWED_HOSTS,
+ * by the same rules (deploySettings). Development only:
  * on localhost, `?billingDev=<port>` points at a local server on this machine for the rest of the tab
  * (kept in sessionStorage, so the way back from Stripe still has it; `?billingDev=off` clears it).
  */
-export function resolveBilling({ provider = BILLING_PROVIDER, endpoint = BILLING_ENDPOINT, allowedHosts = ANGLE_ALLOWED_HOSTS, loc = globalThis.location, session = safeSession() } = {}) {
+export function resolveBilling({ provider, endpoint, allowedHosts, loc = globalThis.location, session = safeSession() } = {}) {
   try {
     if (loc && DEV_HOSTS.includes(loc.hostname)) {
       const q = new URLSearchParams(loc.search || '').get('billingDev');
@@ -63,6 +66,11 @@ export function resolveBilling({ provider = BILLING_PROVIDER, endpoint = BILLING
       if (port && /^\d{2,5}$/.test(port)) return { provider: 'stripe', endpoint: `${loc.protocol === 'https:' ? 'https:' : 'http:'}//${loc.hostname}:${port}` };
     }
   } catch { /* no dev override */ }
+  // this page's own switch, Worker and allow-list, unless a caller names them
+  const here = deploySettings(loc);
+  if (provider === undefined) provider = here.billingProvider;
+  if (endpoint === undefined) endpoint = here.billingEndpoint;
+  if (allowedHosts === undefined) allowedHosts = here.angleAllowedHosts;
   if (provider !== 'stripe' || !endpoint || typeof endpoint !== 'string') return null;
   let u;
   try { u = new URL(endpoint); } catch { return null; }
