@@ -37,18 +37,31 @@ export function stageRect({ left, width, titleBottom, dockTop, barBottom = 0, ga
   return { x, y, w, h, cx: x + w / 2, cy: y + h / 2, s };
 }
 
+/** How far the Mallow's layer may move its body to bring its own margins on screen, as a share of the body's size. */
+export const MALLOW_NUDGE = 1 / 6;
+
 /**
- * Keeps a box (the small Mallow's layer as placed in the dock: left/top/right/bottom, viewport px) inside an area (the
- * viewport less its safe-area insets): the shift that brings it in, and a scale factor (≤ 1, about its centre) only
- * when it is bigger than the area. The layer's canvas is the Mallow's touch target, so all of it stays on screen.
+ * The small Mallow as fitBetween placed it (its body centred in the dock's spot): the scale (≤ 1, about the body's
+ * centre, only if the body is bigger than the area) and then the shift that keep its visible body inside the area (the
+ * viewport less its safe-area insets). The layer round the body (its canvas, mostly transparent) comes inside too, but
+ * only by a nudge (MALLOW_NUDGE of the body's size): on a phone on its side the layer is far wider than the body, and
+ * bringing all of it in pushed the body out of its spot, behind the words chip and Tap instead.
+ * layer, body: boxes as placed (left/top/right/bottom, viewport px). Returns { dx, dy, k }.
  */
-export function keepInside(box, area) {
-  const bw = box.right - box.left, bh = box.bottom - box.top;
+export function keepBodyInside(layer, body, area, { nudge = MALLOW_NUDGE } = {}) {
+  const bw = body.right - body.left, bh = body.bottom - body.top;
   const k = Math.min(1, (area.right - area.left) / bw, (area.bottom - area.top) / bh);
-  const cx = (box.left + box.right) / 2, cy = (box.top + box.bottom) / 2;
-  const w = bw * k, hgt = bh * k;
-  let l = cx - w / 2, t = cy - hgt / 2;
-  if (l < area.left) l = area.left; else if (l + w > area.right) l = area.right - w;
-  if (t < area.top) t = area.top; else if (t + hgt > area.bottom) t = area.bottom - hgt;
-  return { dx: l + w / 2 - cx, dy: t + hgt / 2 - cy, k };
+  const cx = (body.left + body.right) / 2, cy = (body.top + body.bottom) / 2;
+  const at = (b) => ({ left: cx + (b.left - cx) * k, top: cy + (b.top - cy) * k, right: cx + (b.right - cx) * k, bottom: cy + (b.bottom - cy) * k });
+  const B = at(body), L = at(layer);
+  // per axis: the shift that brings the layer in, at most a nudge, and always one that keeps the body in
+  const axis = (lo, hi, bLo, bHi, a0, a1, cap) => {
+    const want = lo < a0 ? a0 - lo : hi > a1 ? a1 - hi : 0;
+    return Math.min(a1 - bHi, Math.max(a0 - bLo, Math.max(-cap, Math.min(cap, want))));
+  };
+  return {
+    dx: axis(L.left, L.right, B.left, B.right, area.left, area.right, nudge * bw * k),
+    dy: axis(L.top, L.bottom, B.top, B.bottom, area.top, area.bottom, nudge * bh * k),
+    k,
+  };
 }

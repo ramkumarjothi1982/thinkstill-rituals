@@ -25,7 +25,7 @@ import { faceMix } from '../engine/interpret.js';
 import { openSupport } from '../app/scenes/support.js';
 import { brandName } from '../brand.js';
 import { canvasFontPx, fontsReady } from '../ui/type.js';
-import { stageRect, wantsCompact, keepInside } from './stage-fit.js';
+import { stageRect, wantsCompact, keepBodyInside } from './stage-fit.js';
 
 const { clamp, lerp, smooth, ease, rgba, glow, Particles, Ripples, Trail } = fx;
 
@@ -134,8 +134,9 @@ export async function run(ctx) {
     } else world.fitBetween(r.top - 8, r.bottom + 2, { maxScale: 0.42, x: ((r.left + r.width / 2) / innerWidth) * 100 });
     keepMallowInside();
   }
-  // the Mallow's whole layer (its canvas is what a finger taps) stays on screen, inside the safe-area insets: fitBetween
-  // centres its body in the dock's spot, and the layer's transparent margins stuck out a few px at the left and bottom
+  // the Mallow's body stays on screen, inside the safe-area insets, and over the dock's spot fitBetween centred it in;
+  // its layer (the canvas round it, mostly transparent) comes inside too, as long as that takes only a nudge
+  // (stage-fit.js keepBodyInside: on a phone on its side the layer is far wider than the body)
   const insetProbe = h('div', { 'aria-hidden': 'true', style: { position: 'fixed', left: '0', top: '0', width: '0', height: '0', visibility: 'hidden', pointerEvents: 'none',
     padding: 'env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px)' } });
   function keepMallowInside() {
@@ -147,9 +148,16 @@ export async function run(ctx) {
     const mx = v('--mx'), my = v('--my'), ms = v('--ms');
     if (!Number.isFinite(mx) || !Number.isFinite(my) || !(ms > 0)) return;
     const cx = (mx / 100) * innerWidth, cy = (my / 100) * innerHeight, w = layer.offsetWidth * ms, hh = layer.offsetHeight * ms;
-    const fit = keepInside({ left: cx - w / 2, top: cy - hh / 2, right: cx + w / 2, bottom: cy + hh / 2 },
-      { left: px(ins.paddingLeft), top: px(ins.paddingTop), right: innerWidth - px(ins.paddingRight), bottom: innerHeight - px(ins.paddingBottom) });
-    if (Math.abs(fit.dx) > 0.01 || Math.abs(fit.dy) > 0.01 || fit.k < 1) world.place({ x: ((cx + fit.dx) / innerWidth) * 100, y: ((cy + fit.dy) / innerHeight) * 100, scale: ms * fit.k });
+    const box = { left: cx - w / 2, top: cy - hh / 2, right: cx + w / 2, bottom: cy + hh / 2 };
+    // the body where the rig frames it in the layer as placed (not mid-move, not mid-hop); no framing: the whole layer
+    const f = world.bodyFrame?.() || { left: 0, top: 0, right: 1, bottom: 1 };
+    const body = { left: box.left + f.left * w, top: box.top + f.top * hh, right: box.left + f.right * w, bottom: box.top + f.bottom * hh };
+    const fit = keepBodyInside(box, body, { left: px(ins.paddingLeft), top: px(ins.paddingTop), right: innerWidth - px(ins.paddingRight), bottom: innerHeight - px(ins.paddingBottom) });
+    if (Math.abs(fit.dx) > 0.01 || Math.abs(fit.dy) > 0.01 || fit.k < 1) {
+      // scaled about the body's centre, then moved (place() scales the layer about its own centre)
+      const bx = (body.left + body.right) / 2, by = (body.top + body.bottom) / 2;
+      world.place({ x: ((bx + fit.dx + (cx - bx) * fit.k) / innerWidth) * 100, y: ((by + fit.dy + (cy - by) * fit.k) / innerHeight) * 100, scale: ms * fit.k });
+    }
   }
   const resizeFns = new Set();
   const onResize = () => layout();

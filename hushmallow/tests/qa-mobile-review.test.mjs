@@ -4,6 +4,8 @@
 //      or Leave, over the next scene: it could replace the landing check-in's own line.
 //   2. the first stage after begin() (the one the engine is made with) read the dock's top before the title compacted:
 //      on a phone on its side it ran under the dock until the ResizeObserver laid it out again a frame later.
+//   3. the small Mallow in the dock was kept inside the safe area by its whole layer (mostly transparent): on a phone
+//      on its side that pushed its body 35-82 px out of its spot, behind the words chip and Tap instead.
 // Run: node --test hushmallow/tests/qa-mobile-review.test.mjs
 import { test, mock } from 'node:test';
 import assert from 'node:assert/strict';
@@ -141,6 +143,50 @@ test('2: the stage the engine is made with (the first, in begin()) already keeps
     const st2 = globalThis.__hm3.stage;
     if (dom.title.classList.contains('v3-compact') !== compact) bad.push(`${row[0]}: the title flipped`);
     if (st2.y !== st.y || st2.h !== st.h) bad.push(`${row[0]}: laid out again, the stage moved (${st.y}+${st.h} → ${st2.y}+${st2.h})`);
+  }
+  assert.deepEqual(bad, []);
+});
+
+// the dock as the browser lays it out (Playwright, HM-0001): the spot, where the words chip and Tap instead begin, the
+// Mallow layer's own size, and where the rig frames Glitzi's body in it (shares of the layer)
+const DOCKS = [
+  // [label, W, H, insets [t, r, b, l], spot { left, top, width, height }, controls' left, layer { w, h }, body frame]
+  ['320×568', 320, 568, [0, 0, 0, 0], [20, 474, 70, 78], 100, [275, 318], [0.1724, 0.3393, 0.8276, 0.88]],
+  ['390×844', 390, 844, [0, 0, 0, 0], [20, 732, 84, 96], 114, [335, 470], [0.1724, 0.4344, 0.8276, 0.88]],
+  ['390×844, an iPhone’s notch and home bar', 390, 844, [47, 0, 34, 0], [20, 698, 84, 96], 114, [335, 470], [0.1724, 0.4344, 0.8276, 0.88]],
+  ['820×1180', 820, 1180, [0, 0, 0, 0], [170, 1068, 84, 96], 264, [430, 470], [0.1724, 0.308, 0.8276, 0.88]],
+  ['667×375', 667, 375, [0, 0, 0, 0], [20, 281, 70, 78], 100, [430, 210], [0.325, 0.1962, 0.675, 0.88]],
+  ['667×375, a notch at the side', 667, 375, [0, 47, 21, 47], [20, 260, 70, 78], 100, [430, 210], [0.325, 0.1962, 0.675, 0.88]],
+  ['568×320', 568, 320, [0, 0, 0, 0], [20, 226, 70, 78], 100, [430, 179], [0.3509, 0.1962, 0.6491, 0.88]],
+  ['568×320, a notch at the side', 568, 320, [0, 47, 21, 47], [20, 205, 70, 78], 100, [430, 179], [0.3509, 0.1962, 0.6491, 0.88]],
+];
+
+test('3: the host keeps the small Mallow’s body on screen and over its spot, on a phone on its side too', async (t) => {
+  t.after(() => { current?.ac.abort(); mock.timers.reset(); });
+  const { hostWorld } = await import('./helpers/v3-host-dom.mjs');
+  const bad = [];
+  for (const [label, W, H, [it, ir, ib, il], [sl, stp, sw, sh], controls, [lw, lh], [fl, ft, fr, fb]] of DOCKS) {
+    current?.ac.abort(); mock.timers.reset();
+    mock.timers.enable({ apis: ['setTimeout', 'setInterval', 'Date'], now: 1_000_000 });
+    const dom = installHostDom({ W, H, insets: { top: it, right: ir, bottom: ib, left: il }, layer: { w: lw, h: lh },
+      rects: { title: { left: 20, top: 60, width: W - 40, height: 100 }, dock: { left: 20, top: stp - 18, width: W - 40, height: 96 }, spot: { left: sl, top: stp, width: sw, height: sh } } });
+    const world = await hostWorld(dom, { bodyFrame: { left: fl, top: ft, right: fr, bottom: fb } });
+    current = await startHost(dom, 'HM-0001', { world });
+    current.frames(2);
+    // where the Mallow is now: its layer from the vars place() set, its body where the rig frames it in the layer
+    const v = (k) => parseFloat(dom.layer.style.getPropertyValue(k));
+    const cx = (v('--mx') / 100) * W, cy = (v('--my') / 100) * H, w = lw * v('--ms'), hh = lh * v('--ms');
+    const L = { left: cx - w / 2, top: cy - hh / 2 };
+    const b = { left: L.left + fl * w, top: L.top + ft * hh, right: L.left + fr * w, bottom: L.top + fb * hh };
+    const bx = (b.left + b.right) / 2, by = (b.top + b.bottom) / 2;
+    const area = { left: il, top: it, right: W - ir, bottom: H - ib };
+    const r1 = (x) => Math.round(x * 10) / 10;
+    if (b.left < area.left - 0.01 || b.right > area.right + 0.01 || b.top < area.top - 0.01 || b.bottom > area.bottom + 0.01) bad.push(`${label}: the body is off screen or in the insets (${r1(b.left)}…${r1(b.right)} × ${r1(b.top)}…${r1(b.bottom)})`);
+    if (bx < sl || bx > sl + sw || by < stp || by > stp + sh) bad.push(`${label}: the body's centre (${r1(bx)}, ${r1(by)}) is ${r1(Math.max(sl - bx, bx - sl - sw, 0))} px off its spot`);
+    if (!il && b.right > controls + 0.01) bad.push(`${label}: the body runs ${r1(b.right - controls)} px behind the words chip and Tap instead`);
+    // in portrait (a layer not much wider than the body) all of the layer stays on screen too, as before
+    const portrait = fr - fl > 0.5;
+    if (portrait && (L.left < area.left - 0.01 || L.left + w > area.right + 0.01 || L.top < area.top - 0.01 || L.top + hh > area.bottom + 0.01)) bad.push(`${label}: the layer sticks out`);
   }
   assert.deepEqual(bad, []);
 });
