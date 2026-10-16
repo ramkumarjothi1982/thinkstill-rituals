@@ -257,7 +257,7 @@ export function createBilling({ logger, now, fetch: fetchImpl = (input, init) =>
     return { ok: true, uid: a.uid, until: accessUntil(rec, now(), cfg.billing.tokenTtlMs) };
   }
 
-  return { ready, offReason, checkout, status, portal, webhook, beyondAccess };
+  return { ready, checkout, status, portal, webhook, beyondAccess };
 }
 
 /** An https URL from Stripe's answer, or null. @param {unknown} v */

@@ -126,4 +126,4 @@ export function readConfig(env) {
   };
 }
 
-export { APPLE_ROOT_CA_G3_SHA256, SUPABASE_PROJECT_URL, PRICE_PLACEHOLDER };
+export { APPLE_ROOT_CA_G3_SHA256, SUPABASE_PROJECT_URL };
