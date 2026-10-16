@@ -4,8 +4,8 @@
 //   M1  320×568 at text size Largest: a V3 ritual's play area ran under the ritual dock (Molten Tempo's rim under the
 //       words chip, so it could not be turned past halfway). The stage now keeps clear of the dock at every size.
 //   m2  touch targets under 44 px: .chip, the Settings Volume slider, the Thought Mallow's words tag (and, from its
-//       review, the classic Another Angle's sort chips, which kept a 38 px minimum of their own: every chip in src/
-//       is now checked).
+//       reviews, the classic Another Angle's sort chips and six ghost buttons, the Express screen's "Need support now?"
+//       among them, which kept a 38 or 40 px minimum of their own: every chip in src/ is now checked).
 //   m3  a V3 ritual's first Mallow line covered the play dial (its bubble sat just above the small Mallow in the dock).
 //   m4  the small tappable Mallow in a V3 ritual's dock stuck a few px out of the viewport at every size.
 //   (and, found by the gesture sweep of all 240 built rituals: world law 19's own hint could not be followed; and, from
@@ -53,7 +53,7 @@ const until = async (fn, what, ms = 8000) => {
 };
 /** Puts a FakeEl document (and the window globals a scene reads) in place; → { body, restore }. */
 function fakeWindow({ W = 320, H = 568 } = {}) {
-  const keys = ['document', 'innerWidth', 'innerHeight', 'requestAnimationFrame', 'addEventListener', 'removeEventListener'];
+  const keys = ['document', 'innerWidth', 'innerHeight', 'requestAnimationFrame', 'cancelAnimationFrame', 'addEventListener', 'removeEventListener'];
   const prev = Object.fromEntries(keys.map((k) => [k, Object.getOwnPropertyDescriptor(globalThis, k)]));
   const body = new FakeEl('body');
   const listeners = [];
@@ -65,7 +65,7 @@ function fakeWindow({ W = 320, H = 568 } = {}) {
       getElementById: () => null, head: new FakeEl('head'), body, documentElement: new FakeEl('html'),
     },
     innerWidth: W, innerHeight: H,
-    requestAnimationFrame: (fn) => setTimeout(fn, 0),
+    requestAnimationFrame: (fn) => setTimeout(fn, 0), cancelAnimationFrame: (id) => clearTimeout(id),
     // the window's own listeners, kept so a test can see what a scene left behind
     addEventListener: (type, fn) => listeners.push([type, fn]),
     removeEventListener: (type, fn) => { const i = listeners.findIndex(([t, f]) => t === type && f === fn); if (i >= 0) listeners.splice(i, 1); },
@@ -293,6 +293,101 @@ test('m2: the classic Another Angle’s “← Happened” / “Brain added →�
     ac.abort();
     await running?.catch(() => {});
     await new Promise((r) => setTimeout(r, 600));   // the step's own timers (its 520 ms relayout) still find the window
+    win.restore();
+  }
+});
+
+// (review of m2, again) the same inline minimum was kept on .btn.ghost buttons, over the class's own 44 px: the Express
+// screen's "Need support now?" and "Browse every feeling A–Z →" (40 px), and the classic Another Angle's "+ Add what
+// happened" (40), "Scan it all for me", "Doesn’t apply · skip" and "+ My own" (38). Build them and measure; each
+// compact row also takes the room it took, so the card and the docks lay out as before.
+const ghostMin = () => +/^\.btn\.ghost \{[^}]*min-height: (\d+)px/m.exec(read('src/ui/app.css'))[1];
+const px = (v) => parseFloat(v) || 0;
+const marginY = (st) => { const m = String(st.margin || '').trim().split(/\s+/); return [px(st.marginTop ?? m[0]), px(st.marginBottom ?? m[2] ?? m[0])]; };
+/** n's minimum height (inline, else the .btn.ghost's), as a finger meets it, and the room it takes with its margins. */
+function ghostBox(n) {
+  assert.deepEqual(classes(n).slice(0, 2), ['btn', 'ghost'], `“${textOf(n)}”: ${n.attrs.class}`);
+  const min = n.style.minHeight ? px(n.style.minHeight) : ghostMin();
+  const [t, b] = marginY(n.style);
+  assert.ok(min >= 44, `“${textOf(n)}”: min-height ${n.style.minHeight || `${ghostMin()}px (.btn.ghost)`}`);
+  assert.ok(!n.style.height || px(n.style.height) >= 44, `“${textOf(n)}”: height ${n.style.height}`);
+  return { min, room: min + t + b };
+}
+const button = (root, re) => allEls(root).find((n) => n.tagName === 'BUTTON' && re.test(textOf(n)));
+
+test('m2: the Express screen’s “Need support now?” and “Browse every feeling A–Z →” are at least 44 px to a finger', async () => {
+  const win = fakeWindow({ W: 320, H: 568 });
+  // (the screen warms the Mallow cards when the page is idle: never, here)
+  const ric = Object.getOwnPropertyDescriptor(globalThis, 'requestIdleCallback');
+  globalThis.requestIdleCallback = () => 0;
+  try {
+    const { default: express } = await import('../src/app/scenes/express.js');
+    const world = { mallowId: 'noomi', dim() {}, setStage() {}, setEmotion() {}, showMallow() {}, place() {} };
+    const app = { world, state: {}, back() {}, go() {}, haptic() {}, audio: { ui() {} }, prefs: { get() {} } };
+    const { el } = express(app);
+    const support = button(el, /^Need support now\?$/);
+    assert.ok(support && support.parentNode && classes(support.parentNode).includes('topbar'), 'in the top bar');
+    // the top bar is 44 px already (its back button): a 44 px support button moves nothing
+    assert.match(read('src/ui/app.css'), /^\.topbar \{[^}]*min-height: 44px;/m);
+    assert.ok(ghostBox(support).room <= 44);
+    const browse = button(el, /^Browse every feeling A–Z →$/);
+    const picked = allEls(el).find((n) => n.attrs['aria-label'] === 'Feelings you picked').parentNode;
+    assert.equal(picked.parentNode, browse.parentNode, 'the picked feelings follow the browse button');
+    assert.equal(picked.parentNode.children.indexOf(picked), picked.parentNode.children.indexOf(browse) + 1);
+    // 40 px and a 6 px gap before: the card is no taller
+    assert.ok(ghostBox(browse).room + px(picked.style.marginTop) <= 40 + 6, `browse ${ghostBox(browse).room} + ${picked.style.marginTop}`);
+  } finally {
+    if (ric) Object.defineProperty(globalThis, 'requestIdleCallback', ric); else delete globalThis.requestIdleCallback;
+    win.restore();
+  }
+});
+
+test('m2: the classic Another Angle’s ghost buttons (Fact or fiction, X-ray, Orbit) are at least 44 px to a finger', async () => {
+  const win = fakeWindow({ W: 320, H: 568 });
+  const gcs = Object.getOwnPropertyDescriptor(globalThis, 'getComputedStyle');
+  globalThis.getComputedStyle = () => ({ getPropertyValue: () => '' });
+  const ac = new AbortController();
+  let running = null;
+  try {
+    const [angle, frameworks, engine] = await Promise.all([import('../src/ultra/another-angle.js'), import('../src/ultra/frameworks.js'), import('../src/ultra/reframe-engine.js')]);
+    const dock = new FakeEl('div');
+    const world = { realm: null, fx: new FakeEl('div'), layer: { offsetHeight: 470 }, showMallow() {}, setEmotion() {}, place() {}, setStage() {}, fitBetween() {}, react() {} };
+    const ctx = { world, dock, signal: ac.signal, audio: { fx() {}, ui() {} }, haptic() {}, setMove() {}, say() {}, toast() {}, reducedMotion: true,
+      input: { text: 'My manager criticised my report in front of everyone. I think I am terrible at my job and everyone knows it.' } };
+    running = angle.run(ctx, { frameworks, engine });
+    const find = (re) => until(() => { const b = button(dock, re); return b && (b.onclick || b.listeners.click) ? b : null; }, `${re}`, 5000);
+    const press = async (re) => { const b = await find(re); if (b.onclick) b.onclick(); else b.listeners.click.forEach((f) => f()); };
+    await press(/plot twist/);
+    await press(/^That’s it$/);
+    // 1. Fact or fiction: "+ Add what happened" above "Split it", in the 40 px row it had
+    const addFact = await find(/^\+ Add what happened$/);
+    assert.ok(ghostBox(addFact).room <= 40, `“+ Add what happened” takes ${ghostBox(addFact).room} px`);
+    // (sorted: the first piece happened, the rest the brain added)
+    const pieces = await until(() => { const p = allEls(win.body).filter((n) => classes(n).includes('piece')); return p.length ? p : null; }, 'the pieces', 5000);
+    pieces.forEach((p, i) => allEls(p).find((n) => n.tagName === 'BUTTON' && (i ? /^Brain added/ : /Happened$/).test(textOf(n))).listeners.click.forEach((f) => f()));
+    await press(/^(Split it|Carry on)$/);
+    // 2. X-ray: "Scan it all for me", in the scroller above the step's button; the scroller gives the 6 px back
+    const scanAll = await find(/^Scan it all for me$/);
+    const cards = scanAll.parentNode.parentNode;
+    assert.equal(cards.style.overflowY, 'auto');
+    assert.equal(dock.children[0], cards);
+    const [ct, cb] = marginY(cards.style);
+    assert.ok(ghostBox(scanAll).room + ct + cb <= 38, `the scroller takes ${ghostBox(scanAll).room + ct + cb} px`);
+    await press(/carry on/i);
+    // 3. Orbit: "Doesn’t apply · skip" and "+ My own", one row above "That’s enough evidence"
+    const own = await find(/^\+ My own$/);
+    const skip = button(dock, /^(Skip|Doesn’t apply · skip)$/);
+    assert.equal(skip.parentNode, own.parentNode);
+    const done = button(dock, /^That’s enough evidence$/);
+    assert.equal(dock.children.indexOf(done), dock.children.indexOf(own.parentNode) + 1);
+    await until(() => dock.children[0].children.length, 'the first evidence card');   // (the step is set up: an abort ends it)
+    // 38 px and an 8 px margin before: the dock, and so the orbit's band, are as tall as before
+    for (const b of [skip, own]) assert.ok(ghostBox(b).room + px(done.style.marginTop) <= 38 + 8, `“${textOf(b)}”: ${ghostBox(b).room} + ${done.style.marginTop}`);
+  } finally {
+    ac.abort();
+    await running?.catch(() => {});
+    await new Promise((r) => setTimeout(r, 600));   // the steps' own timers still find the window
+    if (gcs) Object.defineProperty(globalThis, 'getComputedStyle', gcs); else delete globalThis.getComputedStyle;
     win.restore();
   }
 });

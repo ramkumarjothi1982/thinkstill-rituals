@@ -251,7 +251,8 @@ export async function run(ctx, { frameworks: F, engine: E }) {
     realm()?.pulse?.('ripple', { x: innerWidth * P.x / 100, y: P.cy() });
     refreshSplit();
   }
-  const addFact = h('button', { class: 'btn ghost', style: { minHeight: '40px' } }, '+ Add what happened');
+  // (44 px to a finger, in the 40 px row it had: the dock, and so the pieces and portals, lay out as before)
+  const addFact = h('button', { class: 'btn ghost', style: { margin: '-2px 0' } }, '+ Add what happened');
   const splitDone = h('button', { class: 'btn ultra block', disabled: true }, 'Split it');
   dock.replaceChildren(h('div', { style: { display: 'flex', justifyContent: 'center' } }, addFact), splitDone);
   addFact.onclick = () => {
@@ -310,11 +311,12 @@ export async function run(ctx, { frameworks: F, engine: E }) {
     border: '3px solid rgba(57,240,255,.9)', boxShadow: '0 0 30px rgba(57,240,255,.55), inset 0 0 30px rgba(57,240,255,.25)', background: 'radial-gradient(circle, rgba(57,240,255,.12), rgba(196,20,230,.08))',
     pointerEvents: 'auto', touchAction: 'none', cursor: 'grab', backdropFilter: 'saturate(1.6) brightness(1.15)' } });
   stageEl.append(lens);
-  const cards = h('div', { style: { display: 'grid', gap: '8px', maxHeight: '34dvh', overflowY: 'auto' } });
+  // (the scroller gives back what its 44 px "Scan it all for me" adds, outside itself: nothing inside it is clipped)
+  const cards = h('div', { style: { display: 'grid', gap: '8px', maxHeight: '34dvh', overflowY: 'auto', margin: '-3px 0' } });
   const xrDone = h('button', { class: 'btn ultra block' }, found.length ? 'Keep scanning, or carry on' : 'Carry on');
   dock.replaceChildren(cards, xrDone);
   const lit = new Set();
-  const scanAll = h('button', { class: 'btn ghost', style: { minHeight: '38px' }, onclick: () => spans.forEach((s) => light(s)) }, 'Scan it all for me');
+  const scanAll = h('button', { class: 'btn ghost', onclick: () => spans.forEach((s) => light(s)) }, 'Scan it all for me');
   cards.append(h('div', { style: { display: 'flex', justifyContent: 'center' } }, scanAll));
   function light(span) {
     const id = span.dataset.p;
@@ -370,9 +372,10 @@ export async function run(ctx, { frameworks: F, engine: E }) {
   const mkB = (label, bucket, col) => h('button', { class: 'btn', style: type('label', { minHeight: '48px', fontWeight: '700', padding: '0 8px', borderColor: col }), onclick: () => place(bucket) }, label);
   btns.append(mkB('Fits the worry', 'supports', '#ff5be9'), mkB('Doesn’t fit', 'against', '#39f0ff'), mkB('Still unknown', 'missing', '#ffd98a'));
   const narrow = innerWidth < 380 || parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--type-scale')) > 1.12;
-  const skip = h('button', { class: 'btn ghost', style: { minHeight: '38px', whiteSpace: 'nowrap', padding: '0 10px' }, onclick: () => nextCard(), 'aria-label': 'Doesn’t apply: skip this card' }, narrow ? 'Skip' : 'Doesn’t apply · skip');
-  const own = h('button', { class: 'btn ghost', style: { minHeight: '38px', whiteSpace: 'nowrap', padding: '0 10px' }, onclick: () => addOwn() }, '+ My own');
-  const orbitDone = h('button', { class: 'btn ultra block', style: { marginTop: '8px' } }, 'That’s enough evidence');
+  const skip = h('button', { class: 'btn ghost', style: { whiteSpace: 'nowrap', padding: '0 10px' }, onclick: () => nextCard(), 'aria-label': 'Doesn’t apply: skip this card' }, narrow ? 'Skip' : 'Doesn’t apply · skip');
+  const own = h('button', { class: 'btn ghost', style: { whiteSpace: 'nowrap', padding: '0 10px' }, onclick: () => addOwn() }, '+ My own');
+  // (the 44 px skip row takes 6 px of the margin above the step's button: the dock, and so the orbit's band, are as before)
+  const orbitDone = h('button', { class: 'btn ultra block', style: { marginTop: '2px' } }, 'That’s enough evidence');
   dock.replaceChildren(cardEl, btns, h('div', { style: { display: 'flex', justifyContent: 'space-between', gap: '8px' } }, skip, own), orbitDone);
   // the orbit and Zuzu sit in the open band between the prompt and the
   // cards, so no ring is ever drawn through the words

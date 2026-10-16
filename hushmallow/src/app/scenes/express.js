@@ -46,7 +46,7 @@ export default function express(app, params = {}) {
 
   const el = h('div', { class: 'express', style: { display: 'flex', flexDirection: 'column', height: '100%', overflowY: 'auto' } },
     h('div', { class: 'topbar' }, iconBtn('back', 'Back', () => app.back()), h('div', { class: 'grow' }),
-      h('button', { class: 'btn ghost', style: { minHeight: '40px' }, onclick: () => openSupport(app) }, 'Need support now?')),
+      h('button', { class: 'btn ghost', onclick: () => openSupport(app) }, 'Need support now?')),
     h('div', { class: 'spacer', style: { minHeight: '22dvh' } }),
     h('div', { class: 'card express-card', style: { padding: '16px' } },
       h('h1', { class: 'title express-q', style: { marginBottom: '12px' } }, 'What’s happening in your head?'),
@@ -55,8 +55,9 @@ export default function express(app, params = {}) {
       h('p', { class: 'muted tip', style: { margin: '6px 2px 0' } }, ...withBrand('Tip: tap the mic on your keyboard to talk instead. hushmallow keeps your words on this phone. Your keyboard’s dictation follows your phone’s settings.')),
       tray.el,
       ack, sugg,
-      h('button', { class: 'btn ghost', style: { padding: '0 4px', minHeight: '40px' }, onclick: () => openExplorer() }, 'Browse every feeling A–Z →'),
-      h('div', { style: { marginTop: '6px' } }, chosen),
+      // (44 px to a finger, as every ghost button; the gap below gives the 4 px back, so the card is no taller)
+      h('button', { class: 'btn ghost', style: { padding: '0 4px' }, onclick: () => openExplorer() }, 'Browse every feeling A–Z →'),
+      h('div', { style: { marginTop: '2px' } }, chosen),
       h('div', { style: { display: 'flex', alignItems: 'center', gap: '10px', marginTop: '10px' } },
         h('span', { style: type('label', { fontWeight: '700', flex: '0 0 auto' }) }, 'How big?'), level, levelLabel),
       h('div', { style: { marginTop: '12px' } }, go)));
