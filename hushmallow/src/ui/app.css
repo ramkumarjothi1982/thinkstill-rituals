@@ -175,10 +175,13 @@ input.search:focus, input.text:focus { border-color: var(--accent); }
 /* (what scrolls on below fades out above the foot rather than being cut mid-line under it; scrolled to the end, the body's
    own 20 px of room is all the fade reaches) */
 .sheet .sheet-body { -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 22px), transparent); mask-image: linear-gradient(to bottom, #000 calc(100% - 22px), transparent); }
-/* the support sheet's first actions (urgent: the calls; after abuse: Find A Helpline and the emergency number): whole,
-   one under the other, ahead of the rest */
+/* the support sheet's first actions (urgent: the calls; after abuse: Find A Helpline, or 1800RESPECT in Australia, and the
+   emergency number): whole, one under the other, ahead of the rest */
 .support-calls { display: flex; flex-direction: column; gap: 8px; }
 .support-calls .support-call { text-decoration: none; padding-block: 8px; text-wrap: balance; }
+/* a card's other ways in (Lifeline's text and chat): under its call, side by side, wrapping on a narrow phone or at large text */
+.support-more { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.support-more .btn { text-decoration: none; padding-block: 8px; text-wrap: balance; }
 .sheet.full { top: calc(var(--safe-top) + 10px); max-height: none; }
 /* (fix round) a sheet takes the keyboard focus to its heading (never to its ✕): the heading is a place to start reading from,
    not a control, so it draws no ring; the sheet itself likewise */
