@@ -23,6 +23,7 @@ import { countWord } from '../src/v3/tray.js';
 import { createPrefs } from '../src/app/prefs.js';
 import { getEmotion } from '../src/data/emotions.js';
 import { MALLOW_IDS } from '../src/mallows/registry.js';
+import { cpuPerCall, within, readings } from './helpers/cost.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const read = (p) => readFileSync(`${root}${p}`, 'utf8');
@@ -182,11 +183,13 @@ test('safety verification (12 Oct): the lexicon still compiles without lookbehin
     assert.doesNotThrow(() => new RegExp(src, 'i'), src);
     assert.doesNotMatch(src, /\(\?<[=!]/, `no lookbehind: ${src}`);
   }
-  // a long run-on message is still quick (no runaway backtracking)
+  // a long run-on message is still quick (no runaway backtracking): once warm (on its own this test's first call also
+  // compiles the whole lexicon, and read 150-285 ms that way), the CPU time of five runs, per run (tests/helpers/cost.mjs:
+  // another test file's turn on the core never counts), read again at most twice if it misses
   const long = 'i dont know i just feel like everything is too much and i cant and '.repeat(30);
-  const t0 = performance.now();
   checkText(long);
-  assert.ok(performance.now() - t0 < 150, 'checkText on 2,000 characters stays fast');
+  const r = within(150, () => cpuPerCall(() => checkText(long), 5));
+  assert.ok(r.ok, `checkText on 2,000 characters stays fast: ${readings(r.seen)} ms of CPU per run (5 runs a reading)`);
 });
 
 test('hushfold safety verification (12 Oct): a crisis or care level seen earlier in the visit holds when other words are sent', () => {
