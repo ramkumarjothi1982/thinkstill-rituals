@@ -6,9 +6,16 @@
    Reading comes first: one column of about 68 characters, body text 17 px,
    nothing below 13 px, 44 px targets for the navigation, focus rings from
    tokens.css, and plain black-on-white when printed.
-   The draft notice shows only while <html> carries data-draft: one attribute
-   per page. Removing it hides the notice, and tests/legal-pages.test.mjs then
-   refuses any [Owner: …] placeholder left on that page. */
+   The draft notice on both pages is shown by the DRAFT SWITCH below: one line
+   for both. Deleting it hides the notices, and tests/legal-pages.test.mjs then
+   refuses any [Owner: …] placeholder left on either page. */
+
+/* DRAFT SWITCH, for both pages. While the next line is here, each page shows its
+   "Draft — awaiting owner and legal review" notice (.legal-draft, above the title).
+   Once the owner and a lawyer have approved both pages, replace every placeholder
+   (the whole <span class="legal-todo">…</span>) with the final words, then delete
+   this one line. */
+.legal-page { --legal-draft: block; }
 
 html { background: var(--ink-0); -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 @media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
@@ -57,12 +64,11 @@ html { background: var(--ink-0); -webkit-text-size-adjust: 100%; text-size-adjus
 .legal a:hover, .legal-foot a:hover { text-decoration-thickness: 2px; }
 .brand-name { white-space: nowrap; }
 
-/* the draft notice (html[data-draft]) and the owner's placeholders */
-.legal-draft { display: none; }
-html[data-draft] .legal-draft { display: block; margin: 12px 0 0; padding: 12px 14px; border-radius: var(--r-md);
+/* the draft notice (hidden unless the DRAFT SWITCH above is on) and the owner's placeholders */
+.legal-draft { display: var(--legal-draft, none); margin: 12px 0 0; padding: 12px 14px; border-radius: var(--r-md);
   border: 1px solid rgba(255, 217, 138, .7); background: rgba(255, 217, 138, .12); color: var(--text-1);
   font: var(--type-label); letter-spacing: var(--type-label-ls); }
-html[data-draft] .legal-draft strong { color: var(--accent); }
+.legal-draft strong { color: var(--accent); }
 .legal-todo { padding: 0 4px; border-radius: 6px; border: 1px dashed rgba(255, 217, 138, .7); background: rgba(255, 217, 138, .1);
   color: var(--accent); font-weight: 650; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
 
@@ -91,7 +97,7 @@ html[data-draft] .legal-draft strong { color: var(--accent); }
   .legal-skip, .legal-switch, .legal-toc, .legal-foot nav { display: none; }
   .legal p, .legal li, .legal dd, .legal dt, .legal strong, .legal b, .legal-meta, .legal-lead, .legal-foot { color: #000; }
   .legal a, .legal-foot a { color: #000; }
-  .legal-summary, .legal-crisis, html[data-draft] .legal-draft, .legal blockquote { background: none; border-color: #000; color: #000; }
-  .legal-crisis h2, .legal-summary h2, html[data-draft] .legal-draft strong, .legal-todo { color: #000; }
+  .legal-summary, .legal-crisis, .legal-draft, .legal blockquote { background: none; border-color: #000; color: #000; }
+  .legal-crisis h2, .legal-summary h2, .legal-draft strong, .legal-todo { color: #000; }
   .legal-home img { filter: invert(1); }
 }

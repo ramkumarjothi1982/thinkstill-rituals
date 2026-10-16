@@ -1,8 +1,8 @@
 <!doctype html>
-<!-- DRAFT SWITCH: data-draft on <html> shows the "Draft — awaiting owner and legal review" notice. Once the owner and a lawyer have
-     approved this page, delete data-draft (one attribute) and fill every [Owner: …] placeholder: tests/legal-pages.test.mjs refuses
-     an approved page that still holds one. Do the same in terms.html. -->
-<html lang="en-AU" data-draft>
+<!-- DRAFT SWITCH: the "Draft — awaiting owner and legal review" notice below is shown by one line in src/ui/legal.css, for this page
+     and terms.html together. Once both are approved, replace every [Owner: …] placeholder and delete that line (see its comment):
+     tests/legal-pages.test.mjs refuses an approved page that still holds a placeholder. -->
+<html lang="en-AU">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -31,10 +31,10 @@
 </header>
 
 <main class="legal" id="legal-main" tabindex="-1">
-  <aside class="legal-draft" role="note" aria-label="Draft notice"><strong>Draft — awaiting owner and legal review.</strong> This policy is not in force yet. Text in [square brackets] is for the owner to complete.</aside>
+  <aside class="legal-draft" role="note" aria-label="Draft notice"><strong>Draft — awaiting owner and legal review.</strong> This policy (draft of 16 October 2026) is not in force yet. Text in [square brackets] is for the owner to complete.</aside>
 
   <h1 class="legal-title">Privacy Policy</h1>
-  <p class="legal-meta">Last updated: <span class="legal-todo" data-todo="effective-date">[Owner: the date this policy takes effect]</span> · Draft of 16 October 2026</p>
+  <p class="legal-meta">Last updated: <span class="legal-todo" data-todo="effective-date">[Owner: the date this policy takes effect]</span></p>
 
   <p class="legal-lead"><span class="brand-name">hushmallow</span> is built so that what you feel stays yours. Most of what you do in it never leaves your device. This policy explains, in plain words, what the app keeps, what leaves your device and when, who helps us run it, and what you can do about it.</p>
   <p><span class="brand-name">hushmallow</span> is provided by <span class="legal-todo" data-todo="entity">[Owner: legal entity name]</span> (ABN <span class="legal-todo" data-todo="abn">[Owner: ABN]</span>), called “we” or “us” here. We handle personal information in line with the Australian Privacy Principles (APPs) in the <cite>Privacy Act 1988</cite> (Cth). This policy covers the <span class="brand-name">hushmallow</span> web app, our Another Angle server and the subscriptions <span class="brand-name">hushmallow Flow</span> and <span class="brand-name">hushmallow Beyond</span>.</p>

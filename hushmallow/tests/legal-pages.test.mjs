@@ -2,9 +2,10 @@
 //   1. both pages exist, are plain and load nothing from another site (no
 //      script, no inline style or handler, a strict Content-Security-Policy,
 //      every file they load relative and shipped), and their links resolve;
-//   2. the draft switch: data-draft on <html> shows "Draft — awaiting owner and
-//      legal review"; without it the notice is hidden, and an approved page may
-//      hold no [Owner: …] placeholder;
+//   2. the draft switch: one line in src/ui/legal.css shows both pages' "Draft —
+//      awaiting owner and legal review"; without it the notices are hidden, and
+//      an approved page may hold no [Owner: …] placeholder. The checks follow
+//      the switch's state, so deleting that line on approval needs no test edit;
 //   3. the brand stays lowercase, the plan names are exact, no therapeutic claim;
 //   4. the words follow the app: the owner's approved Anthropic lines and what
 //      an account keeps, verbatim from the modules that show them in the app,
@@ -36,12 +37,21 @@ const textOf = (html) => noComments(html).replace(/<head>[\s\S]*?<\/head>/, ' ')
 const urls = (html) => [...noComments(html).matchAll(/<([a-z][a-z0-9]*)\b([^>]*)>/gi)]
   .flatMap((m) => [...m[2].matchAll(/\s(href|src|srcset|poster|data|action|formaction)="([^"]*)"/gi)].map((a) => [m[1].toLowerCase(), a[1].toLowerCase(), a[2]]));
 const ids = (html) => new Set([...noComments(html).matchAll(/\sid="([^"]+)"/g)].map((m) => m[1]));
-const isDraft = (html) => /<html\b[^>]*\sdata-draft[\s>=]/.test(html);
-/** What stops a page being published as approved: with data-draft gone, every [Owner: …] placeholder must be filled. */
-function approvalProblems(html) {
-  if (isDraft(html)) return [];
-  return [...noComments(html).matchAll(/<span class="legal-todo" data-todo="([^"]+)">([^<]*)<\/span>/g)].map((m) => `${m[1]}: ${m[2]}`);
+/** The DRAFT SWITCH in src/ui/legal.css: the one line that shows both pages' draft notice. */
+const SWITCH = /^\.legal-page \{ --legal-draft: block; \}\n/m;
+const isDraft = (css) => SWITCH.test(css.replace(/\/\*[\s\S]*?\*\//g, ''));
+const TODO = /<span class="legal-todo" data-todo="([^"]+)">([^<]*)<\/span>/g;
+/** What stops a page being published as approved: with the switch off, every [Owner: …] placeholder must be replaced. */
+function approvalProblems(html, draft) {
+  if (draft) return [];
+  const page = noComments(html);
+  const left = [...page.matchAll(TODO)].map((m) => `${m[1]}: ${m[2]}`);
+  if (/class="[^"]*\blegal-todo\b/.test(page.replace(TODO, ''))) left.push('a legal-todo placeholder in another form');
+  if (/\[Owner\b/.test(textOf(page.replace(TODO, '')))) left.push('an [Owner …] note outside a placeholder');
+  return left;
 }
+/** The page without its draft notice: what an approved page shows. */
+const withoutNotice = (html) => noComments(html).replace(/<aside class="legal-draft"[\s\S]*?<\/aside>/, '');
 
 // ------------------------------------------------------------------ 1 --
 test('legal pages: both exist, en-AU, titled "<name> · hushmallow", one h1, a way back to the app and to each other', () => {
@@ -120,34 +130,46 @@ test('legal pages: every link resolves (the app, the other page, ids on the page
 });
 
 // ------------------------------------------------------------------ 2 --
-test('the draft switch: data-draft on <html> shows the notice; without it the notice hides and no placeholder may remain', () => {
+test('the draft switch: one line in legal.css shows both notices; with it gone, no page may keep a placeholder or call itself a draft', () => {
   const css = read('src/ui/legal.css');
-  assert.match(css, /^\.legal-draft \{ display: none; \}$/m, 'hidden unless the page is a draft');
-  assert.match(css, /^html\[data-draft\] \.legal-draft \{ display: block;/m, 'shown while <html data-draft>');
+  const draft = isDraft(css);
+  // the notice is hidden unless the switch sets the variable, and nothing else in the stylesheet shows it
+  assert.match(css, /^\.legal-draft \{ display: var\(--legal-draft, none\);/m, 'hidden unless the switch is on');
+  assert.deepEqual(css.replace(/\/\*[\s\S]*?\*\//g, '').match(/--legal-draft:[^;]*;/g) || [], draft ? ['--legal-draft: block;'] : [], 'the switch is the only line that sets it');
+  assert.doesNotMatch(css.replace(/\/\*[\s\S]*?\*\//g, ''), /\.legal-draft[^{]*\{[^}]*display:(?! var\(--legal-draft, none\))/, 'no other rule shows or hides the notice');
   for (const p of PAGES) {
     const html = read(p);
-    // today both pages are drafts (remove data-draft once the owner and a lawyer approve)
-    assert.equal(isDraft(html), true, `${p}: still a draft`);
+    // the pages carry no switch of their own: legal.css is the one place, for both
+    assert.doesNotMatch(noComments(html), /data-draft|--legal-draft/, `${p}: no per-page switch`);
     const notes = [...noComments(html).matchAll(/<aside class="legal-draft" role="note" aria-label="Draft notice"><strong>([^<]+)<\/strong>/g)];
     assert.equal(notes.length, 1, `${p}: one notice`);
     assert.equal(notes[0][1], `${DRAFT}.`);
     assert.ok(noComments(html).indexOf('class="legal-draft"') < noComments(html).indexOf('<h1'), `${p}: the notice comes before the title`);
-    // one attribute is the whole switch: <html lang="en-AU" data-draft> → <html lang="en-AU">
-    const approved = html.replace(/<html lang="en-AU" data-draft>/, '<html lang="en-AU">');
-    assert.notEqual(approved, html, `${p}: the switch is the one attribute on <html>`);
-    assert.equal(isDraft(approved), false);
-    assert.deepEqual(approvalProblems(html), [], 'a draft may hold placeholders');
-    const left = approvalProblems(approved);
-    assert.ok(left.length >= 5, `${p}: approving it now is refused while placeholders remain (${left.length})`);
-    for (const key of ['entity', 'abn', 'address', 'contact-email', 'age', 'effective-date']) assert.ok(left.some((l) => l.startsWith(`${key}:`)), `${p}: ${key}`);
-    // filled in, it passes
-    const filled = approved.replace(/<span class="legal-todo" data-todo="[^"]+">[^<]*<\/span>/g, 'Example Pty Ltd');
-    assert.deepEqual(approvalProblems(filled), []);
+    // only the notice says "draft": with the switch off, nothing left on the page calls it one
+    assert.doesNotMatch(textOf(withoutNotice(html)), /\bdraft\b/i, `${p}: "draft" outside the notice`);
+    assert.doesNotMatch(textOf(withoutNotice(html)), /not in force/i, `${p}: "not in force" outside the notice`);
+    if (draft) {
+      // while a draft: deleting the one line turns the switch off, and approving with a placeholder left is refused
+      assert.equal(isDraft(css.replace(SWITCH, '')), false, 'deleting the line turns the switch off');
+      assert.deepEqual(approvalProblems(html, true), [], 'a draft may hold placeholders');
+      const placeholders = [...noComments(html).matchAll(TODO)].length;
+      assert.equal(approvalProblems(html, false).length, placeholders, `${p}: each placeholder left blocks approval`);
+      // every placeholder replaced with the final words, it passes
+      const filled = html.replace(TODO, 'Example Pty Ltd');
+      assert.deepEqual(approvalProblems(filled, false), []);
+    }
+    // the guard on the pages as they are: once the switch is off, an approved page keeps no placeholder
+    assert.deepEqual(approvalProblems(html, draft), [], `${p}: approved with a placeholder left`);
   }
-  // the guard itself: a page that has left draft keeps no placeholder (an empty list today, as both are drafts)
-  for (const p of PAGES) assert.deepEqual(approvalProblems(read(p)), [], `${p}: approved with a placeholder left`);
-  // terms.html also names the governing-law state; both pages name the same entity placeholder
-  assert.match(read(PAGES[1]), /data-todo="governing-law">\[Owner: State or Territory\]/);
+  // the guard itself, on a small page: a placeholder, a bare [Owner …] note or a leftover legal-todo class are each refused
+  const sample = (x) => `<main><p>Provided by ${x}.</p></main>`;
+  assert.deepEqual(approvalProblems(sample('<span class="legal-todo" data-todo="entity">[Owner: legal entity name]</span>'), false), ['entity: [Owner: legal entity name]']);
+  assert.deepEqual(approvalProblems(sample('[Owner: legal entity name]'), false), ['an [Owner …] note outside a placeholder']);
+  assert.deepEqual(approvalProblems(sample('<span class="legal-todo">Example Pty Ltd</span>'), false), ['a legal-todo placeholder in another form']);
+  assert.deepEqual(approvalProblems(sample('Example Pty Ltd'), false), []);
+  assert.deepEqual(approvalProblems(sample('<span class="legal-todo" data-todo="entity">[Owner: legal entity name]</span>'), true), []);
+  // terms.html names the governing law's State or Territory (the placeholder until the owner chooses one)
+  assert.match(textOf(read(PAGES[1])), /governed by the laws of (?:\[Owner: State or Territory\]|New South Wales|Victoria|Queensland|Western Australia|South Australia|Tasmania|the Australian Capital Territory|the Northern Territory) ?, Australia/);
 });
 
 // ------------------------------------------------------------------ 3 --
