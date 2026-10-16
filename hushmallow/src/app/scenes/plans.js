@@ -273,6 +273,9 @@ export default function plans(app, params = {}) {
       world.showMallow?.(true);
       world.place({ x: 50, y: 14, scale: 0.42 });
       if (swapMallow) await world.setMallow('zuzu').catch(() => {});
+      // left while Zuzu came in: leave() has already run, so nothing more is set up (no listener outlives the page,
+      // and the next scene's Mallow is not moved)
+      if (gone) return;
       world.setStage('curious');
       fit();
       requestAnimationFrame(refit);

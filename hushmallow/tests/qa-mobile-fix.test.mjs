@@ -8,7 +8,8 @@
 //       is now checked).
 //   m3  a V3 ritual's first Mallow line covered the play dial (its bubble sat just above the small Mallow in the dock).
 //   m4  the small tappable Mallow in a V3 ritual's dock stuck a few px out of the viewport at every size.
-//   (and, found by the gesture sweep of all 240 built rituals: world law 19's own hint could not be followed.)
+//   (and, found by the gesture sweep of all 240 built rituals: world law 19's own hint could not be followed; and, from
+//   the review of m6: Plans left while Zuzu was still coming in kept its window listeners for good.)
 // Run: node --test hushmallow/tests/qa-mobile-fix.test.mjs
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -388,4 +389,52 @@ test('law 19 (Anchor and Explore): its own hints, followed with one finger, fini
   const tap = createLaw(19, L());
   for (let i = 0; i < 4; i++) tap.assist();
   assert.equal(tap.progress, 1);
+});
+
+// (review of m6) "Meet Another Angle" brings Zuzu in before the rest of Plans' enter() runs. Left in that moment,
+// leave() ran first (its removeEventListener found nothing yet) and enter() went on to add the resize and pageshow
+// listeners for good: every later resize re-fitted the gone page's buttons and kept the page alive.
+test('m6: Plans left while Zuzu is still coming in leaves no window listener behind, and the Mallow is left alone', async () => {
+  const win = fakeWindow({ W: 320, H: 568 });
+  try {
+    const { default: plans } = await import('../src/app/scenes/plans.js');
+    const page = () => {
+      const calls = [];
+      let arrive = null;
+      const world = { mallowId: 'boppo', dim() {}, showMallow() {}, react() {},
+        place: (p) => calls.push(['place', p]), setStage: (s) => calls.push(['setStage', s]), fitBetween: () => calls.push(['fitBetween']),
+        setMallow: (id) => { calls.push(['setMallow', id]); world.mallowId = id; return id === 'zuzu' ? new Promise((r) => { arrive = r; }) : Promise.resolve(); } };
+      const ent = { tier: () => 'none', has: () => false, canPurchase: true, isNative: false, isWeb: true, testEnded: false, webSignedIn: () => false, prices: () => null };
+      const app = { ent, world, state: {}, haptic() {}, audio: { ui() {} }, go() {}, back() {} };
+      return { view: plans(app, { focus: 'ultra' }), calls, arrive: () => arrive() };
+    };
+    const types = () => win.listeners.map(([t]) => t).sort();
+    const settle = () => new Promise((r) => setTimeout(r, 20));
+    // an ordinary visit: once Zuzu is in, the page sets up as before (the stage, both listeners) and leaving
+    // takes the listeners away and brings the first Mallow back
+    const a = page();
+    const entering = a.view.enter();
+    await settle();
+    assert.deepEqual(types(), [], 'nothing until Zuzu is in');
+    a.arrive();
+    await entering;
+    await settle();
+    assert.deepEqual(types(), ['pageshow', 'resize']);
+    assert.ok(a.calls.some(([k, v]) => k === 'setStage' && v === 'curious'));
+    a.view.leave();
+    assert.deepEqual(types(), []);
+    assert.deepEqual(a.calls.filter(([k]) => k === 'setMallow').map(([, id]) => id), ['zuzu', 'boppo']);
+    // left while Zuzu is still coming in: leave() runs first and enter() stops there
+    const b = page();
+    const early = b.view.enter();
+    await settle();
+    b.view.leave();
+    const before = b.calls.length;
+    b.arrive();
+    await early;
+    await settle();
+    assert.deepEqual(types(), [], 'no resize or pageshow listener outlives the page');
+    assert.deepEqual(b.calls.slice(before), [], 'nor does it set the stage or move the next scene’s Mallow');
+    assert.deepEqual(b.calls.filter(([k]) => k === 'setMallow').map(([, id]) => id), ['zuzu', 'boppo'], 'the first Mallow still comes back');
+  } finally { win.restore(); }
 });
