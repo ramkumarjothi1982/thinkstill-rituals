@@ -308,6 +308,15 @@ input.search:focus, input.text:focus { border-color: var(--accent); }
 .invite-period { margin: 0; text-align: center; font: var(--type-caption); letter-spacing: var(--type-caption-ls); color: var(--text-3); text-wrap: balance; }
 .invite-price { margin: 0; text-align: center; font: var(--type-label); letter-spacing: var(--type-label-ls); font-weight: 700; color: var(--text-1); }
 .invite-price[hidden] { display: none; }
+/* "Step into hushmallow Flow" / "Step into hushmallow Beyond": the plan's whole name, always (the owner's rule: never
+   "Step into Beyond"). One line where it fits; on a narrow phone or at a large text size fitWhole() (plans.js BUY_FIT)
+   first tightens the padding and tracking, then breaks the line before the name ("Step into / hushmallow Beyond"),
+   and only if the name alone is wider than the button lets the name wrap too. The type size never steps down. */
+.invite-buy { white-space: nowrap; overflow: hidden; }
+.invite-buy .nb { white-space: nowrap; }
+.invite-buy.is-tight { padding-inline: 12px; letter-spacing: -0.01em; }
+.invite-buy.is-wrap { white-space: normal; text-wrap: balance; line-height: 1.2; padding-block: 8px; }
+.invite-buy.is-wrap-name .nb { white-space: normal; }
 /* a purchase in flight: the tapped invitation shows a soft ring, the others rest */
 .invite-buy.is-busy { opacity: 1; }
 .invite-buy.is-busy .invite-buy-label::after { content: ''; display: inline-block; width: 15px; height: 15px; margin-left: 10px; vertical-align: -2px; border-radius: 50%;
