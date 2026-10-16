@@ -4,6 +4,7 @@
 //   POST /v1/session  entitlement check → signed session token
 //   POST /v1/angle    one Another Angle scene (or support, or a fallback signal)
 //   POST /v1/feedback which of the four feedback buttons was pressed (metadata only)
+//   /v1/billing/*     web subscriptions through Stripe (src/billing/routes.js), off until configured
 //
 // Order of checks on /v1/angle: HTTPS → CORS allowlist → body size/type →
 // safety pre-check on the text (crisis/care get support straight away: no
@@ -26,6 +27,7 @@ import { createLogger, lengthBucket } from './log.js';
 import { costMicros, worstCaseMicros } from './cost.js';
 import { createAnthropicProvider } from './providers/anthropic.js';
 import { createMockProvider } from './providers/mock.js';
+import { createBilling, bearerOf, PATHS as BILLING } from './billing/routes.js';
 
 /** The unauthenticated safety pre-check reads at most this many characters of the text (src/validate.js TEXT_MAX is 600). */
 export const EARLY_CHECK_CHARS = 2000;
@@ -41,7 +43,8 @@ export const EARLY_CHECK_CHARS = 2000;
  *   provider?: Provider | ((cfg: import('./config.js').Config) => Provider),
  *   now?: () => number,
  *   log?: (line: string) => void,
- * }} options
+ *   fetch?: typeof fetch,
+ * }} options (fetch: the billing routes' calls to Stripe and the sign-in project; tests pass a fake)
  */
 export function createApp(options) {
   const now = options.now || Date.now;
@@ -54,6 +57,7 @@ export function createApp(options) {
   const fallbackAngleLimiter = memoryRateLimiter({ limit: 6, periodMs: 60000, now });
   const fallbackSessionLimiter = memoryRateLimiter({ limit: 3, periodMs: 60000, now });
   const fallbackFeedbackLimiter = memoryRateLimiter({ limit: 20, periodMs: 60000, now });
+  const billing = createBilling({ logger, now, ...(options.fetch ? { fetch: options.fetch } : {}), ipKey: (request, cfg) => ipKey(request, cfg) });
 
   /** @param {Record<string, any>} env */
   const configFor = (env) => {
@@ -93,6 +97,8 @@ export function createApp(options) {
     const url = new URL(request.url);
     const local = url.hostname === 'localhost' || url.hostname === '127.0.0.1';
     if (cfg.requireHttps && url.protocol !== 'https:' && !local) return error(403, 'https_required', 'Use HTTPS.');
+    // Stripe's webhook comes from Stripe, not a browser: no Origin and no CORS; its signature is the check
+    if (url.pathname === BILLING.webhook) return billing.webhook(request, env, cfg);
 
     const cors = corsHeaders(request, cfg);
     if (!cors) return error(403, 'origin_not_allowed', 'This origin may not call the Another Angle server.');
@@ -104,14 +110,20 @@ export function createApp(options) {
         ok: true, service: 'another-angle', prompt_version: PROMPT_VERSION, schema_version: SCHEMA_VERSION,
         provider: cfg.provider, entitlement_mode: cfg.entitlementMode,
         // a testing session needs one of TESTER_INVITE_CODES (src/auth/entitlement.js); only whether, never a code
-        invite_required: cfg.entitlementMode !== 'storekit' && cfg.inviteCodes.length > 0,
+        // (billing alone takes no invite code)
+        invite_required: cfg.entitlementMode !== 'storekit' && cfg.entitlementMode !== 'billing' && cfg.inviteCodes.length > 0,
         configured: { signing_key: cfg.signingKeys.length > 0, provider_key: cfg.provider === 'mock' || cfg.apiKey.length > 0 },
+        // web subscriptions (src/billing/): only whether they are set up, never a key or a price
+        billing: { configured: billing.ready(env, cfg), webhook: cfg.billing.webhookSecret.length > 0 },
       }, cors);
     }
     if (route === 'POST /v1/session') return session(request, env, cfg, cors);
     if (route === 'POST /v1/angle') return angle(request, env, cfg, cors, ctx);
     if (route === 'POST /v1/feedback') return feedback(request, env, cfg, cors);
-    if (['/v1/health', '/v1/session', '/v1/angle', '/v1/feedback'].includes(url.pathname)) return error(405, 'method_not_allowed', 'Method not allowed.', { ...cors, allow: url.pathname === '/v1/health' ? 'GET, OPTIONS' : 'POST, OPTIONS' });
+    if (route === `POST ${BILLING.checkout}`) return billing.checkout(request, env, cfg, cors);
+    if (route === `GET ${BILLING.status}`) return billing.status(request, env, cfg, cors);
+    if (route === `POST ${BILLING.portal}`) return billing.portal(request, env, cfg, cors);
+    if (['/v1/health', '/v1/session', '/v1/angle', '/v1/feedback', BILLING.checkout, BILLING.status, BILLING.portal].includes(url.pathname)) return error(405, 'method_not_allowed', 'Method not allowed.', { ...cors, allow: ['/v1/health', BILLING.status].includes(url.pathname) ? 'GET, OPTIONS' : 'POST, OPTIONS' });
     return error(404, 'not_found', 'Not found.', cors);
   }
 
@@ -152,7 +164,11 @@ export function createApp(options) {
     const v = validateSessionRequest(body.value);
     if (!v.ok) return error(400, v.code, v.message, cors, { field: v.field });
 
-    const ent = await checkEntitlement(v.value, cfg, now());
+    // billing modes: the signed-in account's Supabase token (Authorization) and its Beyond subscription; other modes never read it
+    const billed = cfg.entitlementMode === 'billing' || cfg.entitlementMode === 'billing+testing';
+    const ent = billed
+      ? await checkEntitlement(v.value, cfg, now(), { accountToken: bearerOf(request), beyond: (t) => billing.beyondAccess(env, cfg, t) })
+      : await checkEntitlement(v.value, cfg, now());
     if (!ent.ok) {
       logger.event({ evt: 'session', status: 'denied', http: ent.status, err: ent.code });
       return error(ent.status, ent.code, ent.message, cors);

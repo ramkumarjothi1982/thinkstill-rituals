@@ -1,5 +1,8 @@
 // SETTINGS — reading, the Hushfold, feel, privacy, plan, about. Everything
-// lives on this device. Builds with optional sign-in (src/auth/) add one
+// lives on this device. With web subscriptions on (src/app/billing.js) and the
+// account signed in, Plan also has "Manage subscription": Stripe's customer
+// portal, where cancelling is as easy as subscribing was, and a line on when
+// the plan renews or ends. Builds with optional sign-in (src/auth/) add one
 // account row at the top of Privacy; "Delete everything on this phone" then
 // says whose things it deletes (this account's, or the guest's when accounts
 // also live on this phone). About's first sentence (what is written in advance)
@@ -47,6 +50,10 @@ export default function settings(app) {
   vol.addEventListener('change', () => prefs.set('volume', Number(vol.value)));
 
   const tierName = ent.tier() === 'none' ? 'No plan yet' : PLANS[ent.tier()].name + (ent.source() === 'test' ? ' (test)' : '');
+  // web subscriptions: when the plan renews or ends, and a card that needs a look (the billing server's last answer)
+  const webPlan = ent.isWeb ? ent.webPlan?.() : null;
+  const planNote = webPlan ? webPlanNote(webPlan, ent.tier()) : null;
+  const manageable = !!webPlan && ent.webSignedIn() && (webPlan.manageable || ent.tier() !== 'none');
   const section = (title) => h('h2', { class: 'eyebrow', style: { marginTop: '22px', marginBottom: '2px' } }, title);
   const sample = h('p', { style: type('subtitle', { margin: '12px 0 2px', color: 'var(--text-1)', textAlign: 'center', textWrap: 'balance' }) }, 'Something bothering you? Want to tell me?');
   // Another Angle (W8): share-my-words switch, the notice, Tester code and "Delete my Another Angle data", only
@@ -104,8 +111,9 @@ export default function settings(app) {
       h('button', { class: 'btn block', style: { marginTop: '12px', textWrap: 'balance' }, 'data-act': 'delete-local', onclick: () => confirmClear() }, deleteLabel),
 
       section('Plan'),
-      h('div', { class: 'setting' }, rowLabel(tierName), h('button', { class: 'btn', style: { minHeight: '44px' }, onclick: () => app.go('plans') }, 'View plans')),
+      h('div', { class: 'setting' }, rowLabel(tierName, planNote), h('button', { class: 'btn', style: { minHeight: '44px' }, onclick: () => app.go('plans') }, 'View plans')),
       ent.source() === 'test' ? h('button', { class: 'btn ghost block', onclick: () => { ent.cancelTest(); toast('Test plan removed'); app.go('home'); } }, 'Remove test plan') : null,
+      manageable ? h('button', { class: 'btn ghost block', 'data-act': 'manage-subscription', onclick: (e) => manageSubscription(e.currentTarget) }, 'Manage subscription') : null,
 
       section('About'),
       // what is written in advance and what leaves this phone: the same source as the Plans page (src/app/privacy.js),
@@ -119,6 +127,19 @@ export default function settings(app) {
         ? h('div', { style: { display: 'grid', gap: '4px', marginTop: '6px' } },
           h('a', { class: 'btn ghost block', href: './studio.html', style: { textDecoration: 'none' } }, 'Mallow Emotion Studio'),
           h('button', { class: 'btn ghost block', onclick: () => app.go('classic') }, 'Classic home (QA)')) : null));
+
+  /** Stripe's customer portal: cancel, change plan, update the card, see receipts (the page leaves on success). */
+  async function manageSubscription(btn) {
+    if (btn.disabled) return;
+    btn.disabled = true;
+    let r = null;
+    try { r = await ent.manage(); } catch { r = null; }
+    // leaving for the portal; Back from there can restore this page as it was, so the button wakes again
+    if (r?.redirecting) { setTimeout(() => { btn.disabled = false; }, 4000); return; }
+    btn.disabled = false;
+    if (r?.needsAccount) { app.go('account', { view: 'signin' }); return; }
+    toast(r?.none ? 'There’s no subscription on this account yet.' : 'That didn’t open just now. Try again in a moment.', 3200);
+  }
 
   function confirmClear() {
     const body = signedIn ? 'This removes this account’s favourites, history, sealed predictions, kept Belief Mallows, Memory Garden, saved worlds and settings from this phone. What you chose to keep with your account stays with it, and other people’s things on this phone aren’t touched. Your subscription isn’t affected.'
@@ -139,4 +160,13 @@ export default function settings(app) {
 
   // the card fills the screen, so the Mallow rests out of sight (not half-hidden behind its corner)
   return { el, title: 'Settings', enter() { world.dim(true); world.showMallow(false); world.setStage('resting'); }, leave() { world.showMallow(true); } };
+}
+
+/** "Renews on 12 November 2026", "Ends on 12 November 2026. Nothing more is charged." or a card that needs a look. */
+export function webPlanNote({ status, periodEnd, cancelAtPeriodEnd } = {}, tier = 'none') {
+  if (tier === 'none') return null;
+  if (status === 'past_due') return 'Your last payment didn’t go through. You can update your card in Manage subscription.';
+  const when = Number.isFinite(periodEnd) ? new Date(periodEnd).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : null;
+  if (!when) return null;
+  return cancelAtPeriodEnd ? `Ends on ${when}. Nothing more is charged.` : `Renews on ${when}`;
 }

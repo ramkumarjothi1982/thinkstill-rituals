@@ -48,7 +48,7 @@ export async function keyedHash(secret, value, bytes = 16) {
 }
 
 /**
- * @typedef {{ v: 1, aud: string, sub: string, ent: 'beyond', src: 'testing' | 'storekit', iat: number, exp: number }} TokenPayload
+ * @typedef {{ v: 1, aud: string, sub: string, ent: 'beyond', src: 'testing' | 'storekit' | 'billing', iat: number, exp: number }} TokenPayload
  */
 
 /**

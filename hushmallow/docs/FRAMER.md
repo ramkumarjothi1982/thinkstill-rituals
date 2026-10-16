@@ -49,12 +49,10 @@ web yet, and nothing paid can be opened.
 - **To preview the paid experience** on a private address (for example a
   Netlify preview URL that only you know), add that hostname to
   `TEST_PURCHASE_HOSTS`. Never add the domain your customers use.
-- **To sell on the web**, hushmallow needs a web payment provider (for
-  example Stripe Checkout) plus a small server that confirms each payment
-  and tells the app which plan is active. That needs your payment account
-  and isn't built yet. The app is ready for it: `src/app/entitlements.js`
-  already takes a store "provider", the same way the App Store build uses
-  StoreKit.
+- **To sell on the web**: Stripe Checkout through the Another Angle
+  Worker, which confirms each subscription from Stripe's signed events, is
+  built and switched off. Your Stripe account, the switch and a test-mode
+  rehearsal are in [`docs/PAYMENTS.md`](PAYMENTS.md).
 
 Client-side checks alone can always be bypassed by a determined person, so
 any paid web launch should confirm the plan on a server.

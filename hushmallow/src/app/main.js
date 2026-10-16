@@ -7,6 +7,7 @@
 import { authBoot, createAuthHandle, NOTICE_TEXT, noticeText } from '../auth/boot.js';
 import { createPrefs } from './prefs.js';
 import { createEntitlements } from './entitlements.js';
+import { createBilling, takeReturn, welcomeBack } from './billing.js';
 import { createRecommender } from '../engine/recommend.js';
 import { createWorld } from './world.js';
 import { RITUALS } from '../data/rituals.js';
@@ -22,7 +23,10 @@ import { docTitle } from '../brand.js';
 const AUTH = authBoot();
 const store = AUTH.store;
 const prefs = createPrefs(store);
-const ent = createEntitlements({ store });
+// Web subscriptions (src/app/billing.js): null unless src/app/config.js switches them on and this build has
+// sign-in; then the plans page sells through Stripe and a plan is the billing server's answer for the account
+const billing = createBilling({ auth: () => app.auth, signIn: !!AUTH.config.enabled && !AUTH.forwarding });
+const ent = createEntitlements({ store, billing });
 
 // sound + haptics engines load lazily; silent stubs until then
 const silent = { play() {}, ui() {}, fx() {}, hold() { return { update() {}, stop() {} }; }, ambience() {}, setAmbienceMood() {}, stopAmbience() {}, unlock() {}, setEnabled() {}, setVolume() {} };
@@ -46,6 +50,7 @@ const app = {
   world: null,
   scenes: {},
   auth: null,
+  billing,
 };
 
 const sceneEl = document.getElementById('scene');
@@ -217,7 +222,11 @@ const SCENES = {
 };
 
 async function boot() {
+  // back from Stripe (?billing=…): out of the address before anything else reads or keeps it
+  const billingBack = billing ? takeReturn() : null;
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') checkVersion(); });
+  // a web plan is checked again whenever the app comes back to the foreground (at most once a minute)
+  if (billing) document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') ent.refresh().catch(() => {}); });
   // a page left open for hours still hears about a new deploy (only while it is on screen)
   setInterval(() => { if (document.visibilityState === 'visible') checkVersion(); }, 10 * 60 * 1000);
   app.world = createWorld({ prefs, audio: audioProxy, haptic: (k) => app.haptic(k) });
@@ -249,6 +258,7 @@ async function boot() {
   stack.push({ name: 'home', params: {} });
   await app.go('home', { intro: !prefs.get('seenIntro') }, { replace: true });
   if (app.auth.enabled) afterAuthBoot();
+  if (billingBack) welcomeBack(app, billingBack).catch(() => {});
 }
 
 /** Sign-in on: the notice from before a reload, a deep link to the account, and the session check. */

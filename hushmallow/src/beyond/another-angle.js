@@ -92,7 +92,8 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
   // QA on the development host only: ?angleTimeout=<ms> shortens the wait (timeout tests)
   const devTimeout = DEV() ? Number(new URLSearchParams(location.search).get('angleTimeout')) || 0 : 0;
   const devBudget = devTimeout > 0 ? devTimeout + 500 : 0;
-  const client = endpoint ? createAngleClient({ store, endpoint, ...(devTimeout > 0 ? { timeouts: { ...TIMEOUTS, angle: devTimeout } } : {}) }) : null;
+  // web subscriptions on (src/app/billing.js): the session also carries the account's token, for the server's own Beyond check
+  const client = endpoint ? createAngleClient({ store, endpoint, ...(devTimeout > 0 ? { timeouts: { ...TIMEOUTS, angle: devTimeout } } : {}), ...(app.billing ? { accountToken: () => app.billing.accountToken() } : {}) }) : null;
   const serverMode = () => !!client && consentState(store) === 'yes';
 
   const S = {

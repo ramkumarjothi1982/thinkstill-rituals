@@ -6,7 +6,7 @@
 // loadUltra() (hushmallow Beyond), and the experience calls it only after
 // the person has said yes on the consent screen.
 //
-//   createAngleClient({ store, endpoint?, fetchImpl?, timeouts? }) →
+//   createAngleClient({ store, endpoint?, fetchImpl?, timeouts?, accountToken? }) →
 //     { available, endpoint, angle({text, emotion, intention, previous}) → Promise<Result>,
 //       feedback(rating, scene) → Promise<boolean>, deviceId(), forgetSession() }
 //   Result: { status: 'ok'|'crisis'|'care'|'unclear'|'fallback'|'error', scene?, keepSupportClose, reason?, hint?, category? }
@@ -16,6 +16,10 @@
 // locale, request_id }; POST /v1/feedback { rating, reasoning_pattern,
 // interaction_type, mallow_character, prompt_version }. Never photos, never
 // an account, never anything else (the server rejects unknown fields too).
+// The one exception, only with web subscriptions on (src/app/billing.js passes
+// accountToken): /v1/session also carries the signed-in account's access
+// token (Authorization: Bearer), so the server can check its hushmallow Beyond
+// subscription itself; never with the words.
 // Nothing here ever logs the person's words: only status codes and reasons.
 //
 // Never safe by default: a non-200, a network error, a timeout or an answer
@@ -83,7 +87,7 @@ const EMOTION_ID = /^[a-z][a-z-]{1,39}$/;
 const INTENTION_ID = /^[a-z][a-z_-]{1,39}$/;
 const ok200 = (r) => r && r.http === 200 && r.data && typeof r.data === 'object';
 
-export function createAngleClient({ store, endpoint = resolveEndpoint(), fetchImpl = netFetch, timeouts = TIMEOUTS, random, now = () => Date.now(), platform = null } = {}) {
+export function createAngleClient({ store, endpoint = resolveEndpoint(), fetchImpl = netFetch, timeouts = TIMEOUTS, random, now = () => Date.now(), platform = null, accountToken = null } = {}) {
   let session = null;   // { token, exp }
   let sessionReason = null;
   try { const s = store?.get(STORE_KEYS.session, null); if (s && typeof s.token === 'string' && s.exp > now() + 60000 && s.endpoint === endpoint) session = s; } catch { /* none */ }
@@ -156,7 +160,10 @@ export function createAngleClient({ store, endpoint = resolveEndpoint(), fetchIm
     const body = { device_id: deviceId(), platform: platform || (globalThis.webkit?.messageHandlers?.hushStore || globalThis.HushNative ? 'ios' : 'web'), app_version: appVersion() };
     const invite = storedInvite();
     if (invite) body.invite = invite;
-    const r = await post(PATHS.session, body, { timeout: timeouts.session });
+    // web subscriptions on: the account's token, for the server's own subscription check (session only)
+    let account = null;
+    if (typeof accountToken === 'function') { try { account = await accountToken(); } catch { account = null; } }
+    const r = await post(PATHS.session, body, { token: typeof account === 'string' && account ? account : null, timeout: timeouts.session });
     if (ok200(r) && r.data.status === 'ok' && typeof r.data.token === 'string') {
       const exp = Date.parse(r.data.expires_at);
       session = { token: r.data.token, exp: Number.isFinite(exp) ? exp : now() + 3600000, endpoint };

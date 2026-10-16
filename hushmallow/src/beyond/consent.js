@@ -51,6 +51,8 @@ export const PROVIDER_SAFETY_HOLD = 'If its automatic safety checks flag a messa
 export const PROVIDER_USE = 'Anthropic uses your words only to prepare your perspective, to keep its service safe, and where the law requires. It isn’t sent your account or photos, but it sees anything you type, names included.';
 /** The owner's approved wording (DECISIONS.md line 4), on the delete-data sheet. */
 export const PROVIDER_DELETE = 'Anthropic’s copy is usually deleted within 30 days (kept longer only if flagged or the law requires it). We can’t delete it sooner from here.';
+/** Web subscriptions on (src/app/billing.js): what the session start also sends, in place of "Never your name or account." */
+export const ACCOUNT_CHECK = ' With a web subscription it also sends a sign-in token for your account, so our server can check your plan. Never your name or email.';
 export const RETENTION_PLACEHOLDER = '[Owner to confirm before launch: how long Anthropic keeps what it receives, from privacy.claude.com.]';
 
 export function consentState(store) {
@@ -113,7 +115,10 @@ function noticeBody(app, { compact = false, therapy = false } = {}) {
       'Your words go to our secure server, where an AI language model from Anthropic, an outside provider, suggests a perspective.'),
     h('ul', { class: 'bx-points' },
       h('li', {}, h('b', {}, 'What’s sent. '), 'Only your words, the feeling and the kind of help you pick, and (for another angle) the lines you’ve seen and what kind they were. Each angle request also carries the app’s language and a one-off random code, and every angle and feedback request carries this phone’s session code. A feedback tap sends which button, which Mallow and what kind of angle it was (and its version), never your words. Never your photos.'),
-      h('li', {}, h('b', {}, 'What’s kept. '), h('span', { class: 'brand-name' }, 'hushmallow'), ' stores nothing you write and doesn’t log your words. To start, the app sends a random code for this phone, its version and device type (and any invite code) to keep the daily allowance fair. Never your name or account.'),
+      // (web subscriptions on, src/app/billing.js: the session also carries the account's sign-in token, so the server
+      // can check the plan itself; said here, and the rest of the line is unchanged)
+      h('li', {}, h('b', {}, 'What’s kept. '), h('span', { class: 'brand-name' }, 'hushmallow'), ' stores nothing you write and doesn’t log your words. To start, the app sends a random code for this phone, its version and device type (and any invite code) to keep the daily allowance fair.',
+        app?.billing ? ACCOUNT_CHECK : ' Never your name or account.'),
       h('li', {}, h('b', {}, 'Anthropic. '), 'The provider receives your words to prepare the perspective. ', retention, ` ${PROVIDER_SAFETY_HOLD}`),
       h('li', {}, h('b', {}, 'Anthropic’s use. '), PROVIDER_USE),
       therapy ? notTherapy(app, 'li') : null),

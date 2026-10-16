@@ -67,6 +67,19 @@ export function preflight(cors) {
  * @returns {Promise<{ ok: true, value: unknown } | { ok: false, status: number, code: string, message: string }>}
  */
 export async function readJson(request, maxBytes) {
+  const text = await readText(request, maxBytes);
+  if (!text.ok) return text;
+  try { return { ok: true, value: JSON.parse(text.value) }; } catch { return { ok: false, status: 400, code: 'invalid_json', message: 'Body is not valid JSON.' }; }
+}
+
+/**
+ * Read a JSON-typed body of at most maxBytes as UTF-8 text, exactly as sent
+ * (the Stripe webhook's signature is over these bytes), without buffering more than that.
+ * @param {Request} request
+ * @param {number} maxBytes
+ * @returns {Promise<{ ok: true, value: string } | { ok: false, status: number, code: string, message: string }>}
+ */
+export async function readText(request, maxBytes) {
   const type = request.headers.get('content-type') || '';
   if (!/^application\/json\b/i.test(type)) return { ok: false, status: 415, code: 'unsupported_media_type', message: 'Send Content-Type: application/json.' };
   const declared = Number(request.headers.get('content-length') || '0');
@@ -88,9 +101,7 @@ export async function readJson(request, maxBytes) {
   const bytes = new Uint8Array(size);
   let off = 0;
   for (const c of chunks) { bytes.set(c, off); off += c.byteLength; }
-  let text;
-  try { text = new TextDecoder('utf-8', { fatal: true, ignoreBOM: false }).decode(bytes); } catch { return { ok: false, status: 400, code: 'invalid_json', message: 'Body is not valid UTF-8.' }; }
-  try { return { ok: true, value: JSON.parse(text) }; } catch { return { ok: false, status: 400, code: 'invalid_json', message: 'Body is not valid JSON.' }; }
+  try { return { ok: true, value: new TextDecoder('utf-8', { fatal: true, ignoreBOM: false }).decode(bytes) }; } catch { return { ok: false, status: 400, code: 'invalid_json', message: 'Body is not valid UTF-8.' }; }
 }
 
 /** Next UTC midnight (when daily counters reset). @param {number} now */

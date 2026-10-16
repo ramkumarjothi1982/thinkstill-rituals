@@ -140,8 +140,9 @@ simulated personalities) and the Possibility Machine.
 1. **Payments.** App Store: Apple Developer account, the four products
    (`hushmallow.paid.monthly/yearly`, `hushmallow.ultra.monthly/yearly`), and
    a native wrapper implementing the `hushStore` bridge with StoreKit 2. Web:
-   a payment provider (e.g. Stripe) and a small server that confirms the plan.
-   Until one exists, the public web build can't sell or unlock plans.
+   Stripe through the Worker is built and switched off; the owner's setup is
+   in `docs/PAYMENTS.md`. Until it is switched on, the public web build can't
+   sell or unlock plans.
 2. **Editorial and safety review.** Every ritual is `review.status: 'draft'`.
    A person should sign off the copy, ideally including someone with
    wellbeing or clinical-content experience for the safety lines and the
