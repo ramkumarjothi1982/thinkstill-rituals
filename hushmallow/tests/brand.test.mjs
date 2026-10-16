@@ -8,7 +8,8 @@
 //    Paid / Ultra / Premium. The tier ids 'paid' / 'ultra' and every StoreKit
 //    product id stay exactly as they are.
 //  * The word "AI" never appears in the experience (consent / privacy
-//    screens may describe automated processing accurately).
+//    screens and the legal pages, legal/*.html, may describe automated
+//    processing accurately).
 //  * Type floor: nothing below 12px anywhere (13px for reading text, 12px
 //    for decorative badges); inputs ≥16px; Fredoka is retired.
 import { test } from 'node:test';
@@ -43,6 +44,7 @@ const PENDING_OTHERS = new Map([]);
 
 const SOURCES = [
   'index.html', 'manifest.webmanifest',
+  ...walk('legal', ['.html']),
   ...walk('framer', ['.tsx']),
   ...walk('src', ['.js', '.css']),
 ].filter((p) => !DEV_ONLY.some((re) => re.test(p)));
@@ -173,7 +175,7 @@ function wordingProblems(paths) {
         : code.split('\n').map((text, i) => ({ text, line: i + 1 }));
     for (const { text, line } of texts) {
       if (PLAN_WORDS.test(text)) bad.push(`${p}:${line}: plan word in "${text.slice(0, 90)}"`);
-      if (AI_WORD.test(text) && !/consent|privacy/i.test(p)) bad.push(`${p}:${line}: "AI" in "${text.slice(0, 90)}"`);
+      if (AI_WORD.test(text) && !/consent|privacy|^legal\//i.test(p)) bad.push(`${p}:${line}: "AI" in "${text.slice(0, 90)}"`);
     }
   }
   return bad;
