@@ -185,7 +185,8 @@ test('checker --app: the live build\'s public values and the headers sign-in rel
       'PASS  app: version t1 has sign-in on, for this project and this key',
       'PASS  app: /auth/callback/ is never cached, never framed, sends no referrer, and its CSP reaches the project',
       "PASS  app: /auth/callback (the email links' address) opens the callback page with the link's query",
-      'PASS  app: the root page sets no CSP that could block sign-in',
+      // the site-wide headers (prod-security) give the root page an enforced CSP; it must name the project
+      "PASS  app: the root page's CSP lets the app reach the project",
     ]);
     assert.ok(seen.filter((s) => s.url.startsWith(app)).every((s) => s.method === 'GET' && !s.headers.apikey), 'the site is asked without the key');
     // a build without the two values (as every preview, and production before step 10)
