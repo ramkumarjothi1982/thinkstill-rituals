@@ -125,7 +125,10 @@ export function createBeliefHook(host) {
   async function play() {
     const kept = armed?.kept || null;
     armed = null;
-    if (!on() || quiet() || S.left) return;
+    if (quiet() || S.left) return;
+    // (Beyond ended while the question was up, e.g. a plan refreshed from the store: the words were told on the promise that
+    // they stay on this phone, so they never fall through to an angle; Zuzu stays here quietly, nothing sent)
+    if (!on()) { S.phase = 'invite'; current = null; host.careFace(); host.dockShow({ tell: true, finish: true }); return; }
     const seq = ++S.seq;
     const mine = ++playing;
     const alive = () => !left && !S.left && seq === S.seq && mine === playing && !quiet();
@@ -331,7 +334,9 @@ export function createBeliefHook(host) {
     /** The question before a Belief Mallow, in its own words (null: Another Angle's). */
     question(kind) { return armed && on() ? beliefQuestion(kind) : null; },
     /** The words that reached startAngle are a belief: play it instead of an angle (nothing sent). */
-    active() { return !!armed && on() && !quiet(); },
+    // (armed is decided when the Tell opened, in Beyond: it stays a belief even if the plan changes before the question is answered,
+    // so these words can never reach Another Angle's server path; play() then ends quietly if Beyond is gone)
+    active() { return !!armed && !left && !quiet(); },
     play,
     leave() {
       left = true; pending = null; armed = null; current = null; stage = null; playing++;

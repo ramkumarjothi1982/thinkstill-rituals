@@ -6,8 +6,8 @@
 // LIBRARY_KEYS and the settings), and removed by:
 //   * "Delete it from this phone" (the Belief Mallow's own end choice: forgetBelief),
 //   * Settings → "Delete everything on this phone" (app.store.clearAll()),
-//   * Settings → Another Angle → "Delete my Another Angle data" (consent.js deleteAngleData, once BELIEF_KEYS.kept is
-//     listed in its ANGLE_EXTRA_KEYS: docs/workstreams/belief-mallows.md has the one-line change).
+//   * Settings → Another Angle → "Delete my Another Angle data" (consent.js deleteAngleData: BELIEF_KEYS.kept is listed in
+//     its ANGLE_EXTRA_KEYS, and hasAngleData counts it).
 // What is kept: the words as typed, the prop they picked and how far it was explored / given room / understood, and the
 // day it was kept (no time of day). At most MAX_KEPT. Every record is validated on read; anything malformed is dropped.
 

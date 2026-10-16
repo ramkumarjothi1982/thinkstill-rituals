@@ -1,8 +1,8 @@
 // Belief Mallows — whether they are on: hushmallow Beyond ('ultra') AND switched on in this build.
 //
-// LIVE_FEATURES.beliefMallows (src/app/entitlements.js) is the switch: false until the release that ships them (the plans
-// line "Belief Mallow investigation…" follows the same flag). For review before then, the development host only
-// (localhost / 127.0.0.1) may switch them on for one page load with ?beliefMallows=1; the published site never can.
+// LIVE_FEATURES.beliefMallows (src/app/entitlements.js) is the switch: on since the integration of 16 Oct 2026 (the plans
+// line "Belief Mallow investigation…" follows the same flag). Were it switched off again, the development host only
+// (localhost / 127.0.0.1) could still switch them on for one page load with ?beliefMallows=1; the published site never can.
 // Beyond is required either way (Another Angle itself only loads through loadUltra(), which enforces it; checked here too).
 
 import { LIVE_FEATURES } from '../../app/entitlements.js';
