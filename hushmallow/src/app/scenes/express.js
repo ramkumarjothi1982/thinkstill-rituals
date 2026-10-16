@@ -44,22 +44,27 @@ export default function express(app, params = {}) {
   const tray = photoTray();
   warmMallowCards();             // ready in case no photos are added
 
-  const el = h('div', { class: 'express', style: { display: 'flex', flexDirection: 'column', height: '100%', overflowY: 'auto' } },
+  // (the top bar is not in the scroller: on a short phone, or at a large text size, the card is taller than the screen,
+  // and "Need support now?" stays in reach while it scrolls; only the space and the card below the bar scroll, so
+  // nothing passes under it, and where the card fits it lays out as it always did)
+  const el = h('div', { class: 'express', style: { display: 'flex', flexDirection: 'column', height: '100%' } },
     h('div', { class: 'topbar' }, iconBtn('back', 'Back', () => app.back()), h('div', { class: 'grow' }),
-      h('button', { class: 'btn ghost', style: { minHeight: '40px' }, onclick: () => openSupport(app) }, 'Need support now?')),
-    h('div', { class: 'spacer', style: { minHeight: '22dvh' } }),
-    h('div', { class: 'card express-card', style: { padding: '16px' } },
-      h('h1', { class: 'title express-q', style: { marginBottom: '12px' } }, 'What’s happening in your head?'),
-      ta,
-      // (dictation is the keyboard's: where it listens follows the phone's own settings, so only what this app does is promised)
-      h('p', { class: 'muted tip', style: { margin: '6px 2px 0' } }, ...withBrand('Tip: tap the mic on your keyboard to talk instead. hushmallow keeps your words on this phone. Your keyboard’s dictation follows your phone’s settings.')),
-      tray.el,
-      ack, sugg,
-      h('button', { class: 'btn ghost', style: { padding: '0 4px', minHeight: '40px' }, onclick: () => openExplorer() }, 'Browse every feeling A–Z →'),
-      h('div', { style: { marginTop: '6px' } }, chosen),
-      h('div', { style: { display: 'flex', alignItems: 'center', gap: '10px', marginTop: '10px' } },
-        h('span', { style: type('label', { fontWeight: '700', flex: '0 0 auto' }) }, 'How big?'), level, levelLabel),
-      h('div', { style: { marginTop: '12px' } }, go)));
+      h('button', { class: 'btn ghost', onclick: () => openSupport(app) }, 'Need support now?')),
+    h('div', { class: 'express-scroll', style: { display: 'flex', flexDirection: 'column', flex: '1 1 auto', minHeight: '0', overflowY: 'auto' } },
+      h('div', { class: 'spacer', style: { minHeight: '22dvh' } }),
+      h('div', { class: 'card express-card', style: { padding: '16px' } },
+        h('h1', { class: 'title express-q', style: { marginBottom: '12px' } }, 'What’s happening in your head?'),
+        ta,
+        // (dictation is the keyboard's: where it listens follows the phone's own settings, so only what this app does is promised)
+        h('p', { class: 'muted tip', style: { margin: '6px 2px 0' } }, ...withBrand('Tip: tap the mic on your keyboard to talk instead. hushmallow keeps your words on this phone. Your keyboard’s dictation follows your phone’s settings.')),
+        tray.el,
+        ack, sugg,
+        // (44 px to a finger, as every ghost button; the gap below gives the 4 px back, so the card is no taller)
+        h('button', { class: 'btn ghost', style: { padding: '0 4px' }, onclick: () => openExplorer() }, 'Browse every feeling A–Z →'),
+        h('div', { style: { marginTop: '2px' } }, chosen),
+        h('div', { style: { display: 'flex', alignItems: 'center', gap: '10px', marginTop: '10px' } },
+          h('span', { style: type('label', { fontWeight: '700', flex: '0 0 auto' }) }, 'How big?'), level, levelLabel),
+        h('div', { style: { marginTop: '12px' } }, go))));
 
   let t = 0;
   ta.addEventListener('input', () => { clearTimeout(t); t = setTimeout(read, 260); });
