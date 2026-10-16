@@ -362,6 +362,12 @@ test('web billing copy: no App Store, no price written in, no plan word, no "ser
   assert.match(webPlanNote({ status: 'past_due', periodEnd: end }, 'ultra'), /^Your last payment didn’t go through\./);
   assert.equal(webPlanNote({ status: 'canceled', periodEnd: end }, 'none'), null);
   assert.equal(webPlanNote({ status: 'active', periodEnd: null }, 'ultra'), null);
+  // deleting the account never cancels a web subscription, and the delete screen says so (only with billing on)
+  const acct = read('src/app/scenes/account.js');
+  assert.match(acct, /list\(app\.billing \? NOT_TOUCHED\.map\(\(l\) => \(l\.startsWith\('your plan:'\) \? WEB_PLAN_NOT_TOUCHED : l\)\) : NOT_TOUCHED\)/);
+  assert.match(acct, /'your plan: it belongs to this phone’s app store account',/, 'the line it replaces, unchanged when billing is off');
+  const { WEB_PLAN_NOT_TOUCHED } = await import('../src/app/scenes/account.js');
+  assert.equal(WEB_PLAN_NOT_TOUCHED, 'a web subscription, if you have one: deleting your account doesn’t cancel it, so cancel it first in Settings → Manage subscription');
 });
 
 // ------------------------------------------------------- the plans page --

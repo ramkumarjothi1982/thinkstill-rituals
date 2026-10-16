@@ -141,6 +141,8 @@ const NOT_TOUCHED = [
   'Another Angle: it isn’t part of your account. Settings → Privacy can delete its data.',
   'the sign-in service’s own security log (such as when you signed in): we can’t delete it from here',
 ];
+/** Web subscriptions on (src/app/billing.js): the plan line instead, since a web plan is the account's and Stripe keeps billing it. */
+export const WEB_PLAN_NOT_TOUCHED = 'a web subscription, if you have one: deleting your account doesn’t cancel it, so cancel it first in Settings → Manage subscription';
 
 export default function account(app, params = {}) {
   const cssReady = ensureCss();
@@ -824,7 +826,7 @@ export default function account(app, params = {}) {
         h('div', { class: 'hm-account-facts' },
           h('h2', { class: 'hm-account-eyebrow' }, 'Deleted from our server, now'), list(DELETED_ON_SERVER),
           h('h2', { class: 'hm-account-eyebrow' }, 'Deleted from this phone'), list(DELETED_HERE),
-          h('h2', { class: 'hm-account-eyebrow' }, 'Not touched'), list(NOT_TOUCHED)),
+          h('h2', { class: 'hm-account-eyebrow' }, 'Not touched'), list(app.billing ? NOT_TOUCHED.map((l) => (l.startsWith('your plan:') ? WEB_PLAN_NOT_TOUCHED : l)) : NOT_TOUCHED)),
         f.form,
       ],
       mood: 'concerned',

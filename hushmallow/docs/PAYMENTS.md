@@ -208,7 +208,7 @@ A staging rehearsal with the real Worker is also possible: the `--env staging` s
 
 * **Flow is enforced only in the browser.** hushmallow Flow's rituals and worlds run entirely on the phone. A determined person can edit the stored entitlement (or the code) and unlock Flow, and Beyond's on-phone parts, without paying. Stripe and the server cannot stop that; only moving content behind a server could. **Beyond's server cost is enforced:** in `billing` mode, Another Angle's model is reached only with a session the server issued after checking an active Beyond subscription.
 * A cancelled or refunded subscription keeps a session it already has until that token expires (at most 24 hours). The app's own copy of the plan lapses at the next check, or after the 3-day offline grace.
-* **Deleting a hushmallow account does not cancel its Stripe subscription,** and the `Billing` record for that account id stays. The delete screen does not yet say "cancel your subscription first". This is an open item to fix before launch.
+* **Deleting a hushmallow account does not cancel its Stripe subscription.** With billing on, the delete screen's "Not touched" list says so ("…deleting your account doesn't cancel it, so cancel it first in Settings → Manage subscription"). The `Billing` record for that account id also stays: the Worker is not told about deletions. Removing it, or cancelling for the person, is an open item.
 * One subscription per account. Changes (Flow ↔ Beyond, monthly ↔ yearly) happen in the portal, so "switch plans" must be on there.
 * After signing in, the app reloads into the account screen. The person goes back to the plans page themselves, and their choice is not remembered.
 * A person who subscribes on the web and later uses the App Store app is not recognised there: StoreKit and Stripe are separate.
@@ -221,4 +221,4 @@ A staging rehearsal with the real Worker is also possible: the `--env staging` s
 * **Cancellation and plan changes:** cancel at period end or at once; proration on plan changes.
 * **Tax:** GST and Stripe Tax.
 * **Legal documents:** a privacy policy and terms for the main app, naming Stripe as payment processor. Australian consumer law covers renewals, cancellation and refunds. None of these documents exists yet.
-* **Account deletion:** the delete screen should say to cancel first (the open item above).
+* **Account deletion:** whether deleting an account should also cancel its subscription and remove its `Billing` record (the open item above).
