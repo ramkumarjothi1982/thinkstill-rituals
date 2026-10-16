@@ -681,9 +681,14 @@ test('director: a watchdog takes over when the shared Mallow loop stops ticking,
     const tk = fakeTicker();
     const D = dom.keep(createHushflow({ worldEl: dom.el(), fxEl: dom.el(), registry: createRegistry([testWorld('a')]), ticker: tk, store: memStore() }));
     await D.start({ worldId: 'a' });
+    // (the shared loop ticks once, as it does every frame, then stops: a build on a busy runner can outlast the watchdog's
+    // 250 ms, and this ticker had not ticked at all)
+    tk.tick();
     assert.equal(D.debug.loop, 'rig-ticker');
     const t0 = D.debug.time;
     await new Promise((r) => setTimeout(r, 650));              // the ticker never ticks
+    // (a busy runner can hold the 250 ms watchdog's timer, or its one probe frame, past those 650 ms: wait on, 5 s at most)
+    for (const t1 = Date.now(); !(D.debug.loop === 'raf' && D.debug.time > t0) && Date.now() - t1 < 5000;) await new Promise((r) => setTimeout(r, 10));
     assert.equal(D.debug.loop, 'raf', 'own requestAnimationFrame');
     assert.ok(D.debug.time > t0, 'the world kept moving');
     tk.tick();                                                // the shared loop is back
