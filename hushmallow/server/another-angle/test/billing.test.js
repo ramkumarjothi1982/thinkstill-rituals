@@ -183,20 +183,107 @@ test('config: billing is off by default; every value is checked for its shape', 
   assert.equal(readConfig({ ENTITLEMENT_MODE: 'stripe' }).entitlementMode, 'testing', 'an unknown mode reads as testing, as before');
 });
 
-test('wrangler.toml: the mode stays "testing" everywhere; the Billing class arrives in migration v2; no billing value is committed', () => {
-  const toml = readFileSync(new URL('../wrangler.toml', import.meta.url), 'utf8');
+// The wrangler.toml guards follow the configuration (as the app's ANGLE_ENDPOINT tests do): billing off (today), each
+// table keeps a mode from before billing; switched on as docs/PAYMENTS.md sections 2 and 4 say, each value must have its
+// shape. So the switch-on commit needs no change to any test, and a half-done one cannot deploy.
+const BILLING_VARS = ['SUPABASE_URL', 'SUPABASE_PUBLISHABLE_KEY', 'APP_ORIGIN', 'STRIPE_PRICE_PAID_MONTHLY', 'STRIPE_PRICE_PAID_YEARLY', 'STRIPE_PRICE_ULTRA_MONTHLY', 'STRIPE_PRICE_ULTRA_YEARLY', 'BILLING_TOKEN_TTL_HOURS', 'STRIPE_API_VERSION'];
+const PRICE_VARS = { STRIPE_PRICE_PAID_MONTHLY: ['paid', 'monthly'], STRIPE_PRICE_PAID_YEARLY: ['paid', 'yearly'], STRIPE_PRICE_ULTRA_MONTHLY: ['ultra', 'monthly'], STRIPE_PRICE_ULTRA_YEARLY: ['ultra', 'yearly'] };
+const WRANGLER = readFileSync(new URL('../wrangler.toml', import.meta.url), 'utf8');
+const PAYMENTS_MD = readFileSync(new URL('../../../docs/PAYMENTS.md', import.meta.url), 'utf8');
+
+/** wrangler.toml's three [vars] tables (production, dev, staging) as { NAME: value }; comments left out. */
+function varsTables(toml) {
+  const names = { vars: 'production', 'env.dev.vars': 'dev', 'env.staging.vars': 'staging' };
+  const out = {};
+  let cur = null;
+  for (const line of toml.split('\n')) {
+    const head = /^\s*\[\[?([^\]]+)\]\]?\s*(?:#.*)?$/.exec(line);
+    if (head) { cur = names[head[1].trim()] || null; if (cur) out[cur] = {}; continue; }
+    const kv = /^\s*([A-Z][A-Z0-9_]*)\s*=\s*"([^"]*)"\s*(?:#.*)?$/.exec(line);
+    if (cur && kv) out[cur][kv[1]] = kv[2];
+  }
+  return out;
+}
+
+/** Every wrangler.toml guard, for the file as committed or as the owner will edit it. Throws on the first problem. */
+function checkWrangler(toml) {
   const live = toml.split('\n').filter((l) => !/^\s*#/.test(l)).join('\n');
-  assert.equal((live.match(/^ENTITLEMENT_MODE = "testing"$/gm) || []).length, 3, 'production, dev and staging');
-  assert.doesNotMatch(live, /ENTITLEMENT_MODE = "(?!testing")/);
+  const tables = varsTables(toml);
+  assert.deepEqual(Object.keys(tables), ['production', 'dev', 'staging']);
+  for (const [name, vars] of Object.entries(tables)) {
+    for (const k of ['STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET']) assert.ok(!(k in vars), `${name}: ${k} is a secret (wrangler secret put), never a var`);
+    const mode = vars.ENTITLEMENT_MODE;
+    if (!BILLING_VARS.some((k) => k in vars)) {
+      // billing off: a mode from before billing existed ("testing" as committed), never one that needs billing
+      assert.ok(['testing', 'storekit', 'both'].includes(mode), `${name}: ENTITLEMENT_MODE "${mode}" without the billing vars`);
+      continue;
+    }
+    // switched on: complete, and every value has its shape (readConfig counts a misshapen one as unset), with
+    // stand-ins for the two secrets, which never live here
+    const b = readConfig({ ...vars, STRIPE_SECRET_KEY: SK, STRIPE_WEBHOOK_SECRET: WHSEC }).billing;
+    assert.equal(b.configured, true, `${name}: the billing vars are complete, each with its shape`);
+    assert.equal(b.supabaseUrl, String(vars.SUPABASE_URL).replace(/\/+$/, ''), `${name}: SUPABASE_URL is hushmallow1`);
+    assert.equal(b.supabaseKey, vars.SUPABASE_PUBLISHABLE_KEY, `${name}: SUPABASE_PUBLISHABLE_KEY is a publishable key`);
+    assert.equal(b.appOrigin, vars.APP_ORIGIN, `${name}: APP_ORIGIN is an origin in this table's ALLOWED_ORIGINS`);
+    for (const [k, [plan, period]] of Object.entries(PRICE_VARS)) if (k in vars) assert.equal(b.prices[plan][period], vars[k], `${name}: ${k} is a price_ id`);
+    if ('BILLING_TOKEN_TTL_HOURS' in vars) assert.equal(b.tokenTtlMs, Number(vars.BILLING_TOKEN_TTL_HOURS) * 3600000, `${name}: BILLING_TOKEN_TTL_HOURS`);
+    if ('STRIPE_API_VERSION' in vars) assert.equal(b.apiVersion, vars.STRIPE_API_VERSION, `${name}: STRIPE_API_VERSION`);
+    assert.ok(['testing', 'storekit', 'both', 'billing', 'billing+testing'].includes(mode), `${name}: ENTITLEMENT_MODE "${mode}"`);
+  }
   assert.match(live, /\[\[migrations\]\]\ntag = "v1"\nnew_sqlite_classes = \["Ledger"\]\n\n\[\[migrations\]\]\ntag = "v2"\nnew_sqlite_classes = \["Billing"\]/);
   assert.match(live, /\[\[env\.staging\.migrations\]\]\ntag = "v2"\nnew_sqlite_classes = \["Billing"\]/);
   assert.equal((live.match(/name = "BILLING"\nclass_name = "Billing"/g) || []).length, 3);
   assert.equal((live.match(/name = "BILLING_IP_LIMITER"/g) || []).length, 3);
-  for (const k of ['STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET', 'STRIPE_PRICE_', 'SUPABASE_URL', 'SUPABASE_PUBLISHABLE_KEY', 'APP_ORIGIN', 'BILLING_TOKEN_TTL_HOURS', 'STRIPE_API_VERSION']) {
-    assert.doesNotMatch(live, new RegExp(`^${k}\\w* =`, 'm'), `${k} is documented, not set`);
-    assert.match(toml, new RegExp(k), `${k} is documented`);
+  for (const k of [...BILLING_VARS, 'STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET']) assert.match(toml, new RegExp(k), `${k} is documented`);
+  // a secret never, anywhere (comments included); the public values only as their own var's value
+  assert.doesNotMatch(toml, /(?:sk|rk)_(?:live|test)_[A-Za-z0-9]|whsec_[A-Za-z0-9]|sb_secret_[A-Za-z0-9]/, 'no secret');
+  const rest = toml.split('\n').filter((l) => !/^\s*(?:SUPABASE_URL|SUPABASE_PUBLISHABLE_KEY|STRIPE_PRICE_[A-Z_]+)\s*=/.test(l)).join('\n');
+  assert.doesNotMatch(rest, /price_[A-Za-z0-9]|sb_publishable_[A-Za-z0-9]|supabase\.co/, 'a billing value only as its own var');
+}
+
+/** wrangler.toml as docs/PAYMENTS.md tells the owner to edit it: section 2's vars in production's [vars], then section 4's mode. */
+function switchedOn(mode = 'billing+testing') {
+  const block = /Then add the vars to `\[vars\]`[\s\S]*?```\n([\s\S]*?)```/.exec(PAYMENTS_MD)?.[1];
+  assert.ok(block, 'PAYMENTS.md section 2 has the vars block');
+  let n = 0;
+  // the owner's own values, stood in for with ones of the same shape
+  const lines = block.replace(/sb_publishable_…/g, `sb_publishable_${'k'.repeat(24)}`).replace(/price_…/g, () => `price_Rehearsal${++n}`);
+  assert.equal(n, 4, 'the four price ids');
+  const at = WRANGLER.indexOf('APPLE_ENVIRONMENTS = "Production"\n') + 'APPLE_ENVIRONMENTS = "Production"\n'.length;
+  assert.ok(at > 100);
+  const doc = /\| `billing\+testing` \|/.test(PAYMENTS_MD) && /set `ENTITLEMENT_MODE = "billing\+testing"`/.test(PAYMENTS_MD);
+  assert.ok(doc, 'PAYMENTS.md section 4 names the mode');
+  const toml = `${WRANGLER.slice(0, at)}${lines}${WRANGLER.slice(at)}`.replace('ENTITLEMENT_MODE = "testing"', `ENTITLEMENT_MODE = "${mode}"`);
+  assert.deepEqual(Object.values(varsTables(toml).production).filter((v) => v.includes('…')), [], 'no placeholder left in a value');
+  return toml;
+}
+
+test('wrangler.toml as committed: billing off, every mode as before, the Billing class in migration v2, no billing value', () => {
+  checkWrangler(WRANGLER);
+  const tables = varsTables(WRANGLER);
+  for (const [name, vars] of Object.entries(tables)) {
+    assert.deepEqual(BILLING_VARS.filter((k) => k in vars), [], `${name}: billing is documented, not set`);
+    assert.equal(vars.ENTITLEMENT_MODE, 'testing', `${name}: unchanged until the owner switches`);
   }
-  assert.doesNotMatch(toml, /(?:sk|rk)_(?:live|test)_[A-Za-z0-9]|whsec_[A-Za-z0-9]|price_[A-Za-z0-9]|sb_publishable_[A-Za-z0-9]|supabase\.co/, 'no real value');
+  assert.equal(tables.production.ALLOWED_ORIGINS, 'https://app.hushmallow.com,https://hushmallow.pages.dev,https://ramkumarjothi1982.github.io');
+});
+
+test('wrangler.toml switched on exactly as docs/PAYMENTS.md says passes the same guards; a half-done or wrong switch does not', () => {
+  for (const mode of ['billing+testing', 'billing', 'testing']) checkWrangler(switchedOn(mode));
+  const on = varsTables(switchedOn()).production;
+  assert.equal(readConfig({ ...on, STRIPE_SECRET_KEY: SK, STRIPE_WEBHOOK_SECRET: WHSEC }).entitlementMode, 'billing+testing');
+  assert.equal(on.APP_ORIGIN, APP);
+  // a billing mode without the vars (every session refused): never
+  assert.throws(() => checkWrangler(WRANGLER.replace('ENTITLEMENT_MODE = "testing"', 'ENTITLEMENT_MODE = "billing"')), /without the billing vars/);
+  // half the vars, another sign-in project, an origin the server does not allow, a price that is not a price id
+  assert.throws(() => checkWrangler(switchedOn().replace(/^STRIPE_PRICE_[A-Z_]+ = .*\n/gm, '')), /complete, each with its shape/);
+  assert.throws(() => checkWrangler(switchedOn().replace('igbxbfuaoybfzsroxuln', 'abcdefghijklmnopqrst')), /complete, each with its shape|hushmallow1/);
+  assert.throws(() => checkWrangler(switchedOn().replace('APP_ORIGIN = "https://app.hushmallow.com"', 'APP_ORIGIN = "https://hushmallow.com"')), /complete, each with its shape|APP_ORIGIN/);
+  assert.throws(() => checkWrangler(switchedOn().replace('price_Rehearsal2', 'prod_Rehearsal2')), /price_ id/);
+  // the secrets never as vars, nor anywhere in the file; a public value only on its own line
+  assert.throws(() => checkWrangler(switchedOn().replace('APP_ORIGIN =', `STRIPE_SECRET_KEY = "${SK}"\nAPP_ORIGIN =`)), /never a var/);
+  assert.throws(() => checkWrangler(`${switchedOn()}\n# whsec_${'q'.repeat(24)}\n`), /no secret/);
+  assert.throws(() => checkWrangler(`${WRANGLER}\n# price_Stray1 was the old one\n`), /only as its own var/);
 });
 
 // -------------------------------------------------------------- not set up --
