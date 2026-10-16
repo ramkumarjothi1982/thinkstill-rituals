@@ -15,7 +15,7 @@
 // names or emails.
 //
 // The state machine (supersedes): for the same subscription, a newer answer
-// (as_of: when the server read it from Stripe) replaces an older one and an
+// (as_of: when the server asked Stripe for it) replaces an older one and an
 // older one is ignored; another subscription of the same account replaces
 // the record only when it gives access and the current one does not, or
 // gives more (a higher plan), so a late event about an old, cancelled

@@ -540,6 +540,37 @@ test('webhook: out of order, other subscriptions, unknown events, unsigned or re
   assertClean([...s.logs, ...flow.logs]);
 });
 
+test('webhook: two deliveries racing for one subscription; the later read wins, whichever answer comes back first', async () => {
+  const up = upstream();
+  const answer = up.fetch;
+  let gets = 0, release, reached;
+  const held = new Promise((r) => { release = r; });
+  const asked = new Promise((r) => { reached = r; });
+  // the first delivery's read of Stripe is answered slowly (its state taken when asked)
+  up.fetch = async (u, i) => {
+    const res = await answer(u, i);
+    if (/\/v1\/subscriptions\//.test(String(u)) && ++gets === 1) { reached(); await held; }
+    return res;
+  };
+  const s = setup({ up });
+  up.subs.set('sub_Test123', subscription({ status: 'incomplete' }));
+  const first = deliver(s.app, s.env, event('customer.subscription.created', subscription({ status: 'incomplete' }), s.now), { at: s.now() });
+  await asked;
+  // meanwhile Stripe takes the payment, and the next delivery reads and records that
+  s.now.advance(1000);
+  up.subs.set('sub_Test123', subscription());
+  assert.equal((await deliver(s.app, s.env, event('customer.subscription.updated', subscription(), s.now), { at: s.now() })).status, 200);
+  assert.equal((await status(s)).status, 'active');
+  // the first, older answer arrives last: it never overwrites the newer one
+  s.now.advance(1000);
+  release();
+  assert.equal((await first).status, 200);
+  const st = await status(s);
+  assert.deepEqual([st.status, st.tier], ['active', 'ultra']);
+  assert.ok(s.logs.some((l) => JSON.parse(l).status === 'stale'), 'recorded as stale');
+  assertClean(s.logs);
+});
+
 // ----------------------------------------------------- the Durable Object --
 test('Billing Durable Object: the state machine, one apply per event, old events forgotten, customer links', async () => {
   const t = clock();

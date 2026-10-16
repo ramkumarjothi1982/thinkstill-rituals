@@ -207,10 +207,12 @@ export function createBilling({ logger, now, fetch: fetchImpl = (input, init) =>
       uid = uidOf(obj.metadata?.user_id);
     }
     if (!subId || !/^sub_/.test(subId)) return { http: 200, outcome: 'no_subscription' };
+    // as of when Stripe was asked, not when it answered: of two deliveries racing for the same subscription, the one
+    // that asked later read the later state, whichever answer comes back first
+    let asOf = now();
     const got = await stripeFor(cfg).retrieveSubscription(subId);
     /** @type {any} */
     let sub;
-    let asOf = now();
     if (got.ok) sub = got.data;
     else if (got.status === 404 && event.type.startsWith('customer.subscription.')) { sub = obj; asOf = Number(event.created) * 1000 || 0; }
     else if (got.status === 404) return { http: 200, outcome: 'no_subscription' };
