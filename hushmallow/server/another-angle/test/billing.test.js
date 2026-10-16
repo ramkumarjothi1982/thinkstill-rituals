@@ -645,3 +645,71 @@ test('the Worker entry exports the Billing class and serves the billing routes',
   const mod = await import('../src/index.js');
   assert.equal(typeof mod.Billing, 'function');
 });
+
+// ----------------------------------------------------------------- staging --
+// The staging rehearsal (docs/STAGING.md): [env.staging] alone has billing on, in Stripe TEST mode, for the
+// release branch's preview; its four price ids are placeholders until the owner pastes the real test ids.
+const PREVIEW = 'https://claude-launch-rc.hushmallow.pages.dev';
+const PRICE_VARS = ['STRIPE_PRICE_PAID_MONTHLY', 'STRIPE_PRICE_PAID_YEARLY', 'STRIPE_PRICE_ULTRA_MONTHLY', 'STRIPE_PRICE_ULTRA_YEARLY'];
+const PLACEHOLDERS = Object.fromEntries(PRICE_VARS.map((k) => [k, 'price_TODO_owner']));
+const REAL_PRICES = { STRIPE_PRICE_PAID_MONTHLY: PRICES.paidMonthly, STRIPE_PRICE_PAID_YEARLY: PRICES.paidYearly, STRIPE_PRICE_ULTRA_MONTHLY: PRICES.ultraMonthly, STRIPE_PRICE_ULTRA_YEARLY: PRICES.ultraYearly };
+
+/** The KEY = "value" lines of one wrangler.toml table (comments skipped). */
+function tomlVars(toml, table) {
+  const out = {};
+  let inside = false;
+  for (const line of toml.split('\n')) {
+    const t = line.trim();
+    if (t.startsWith('[')) { inside = t === `[${table}]`; continue; }
+    if (!inside || !t || t.startsWith('#')) continue;
+    const m = /^([A-Z][A-Z0-9_]*) = "(.*)"$/.exec(t);
+    if (m) out[m[1]] = m[2];
+  }
+  return out;
+}
+
+test('placeholder price ids (price_TODO…) count as unset: billing answers "not configured" and says why; Stripe is never called', async () => {
+  for (const v of ['price_TODO_owner', 'price_TODO', 'price_TODOowner', 'price_todo1234', '', '  ']) {
+    assert.equal(readConfig(billingEnv({ STRIPE_PRICE_PAID_MONTHLY: v })).billing.prices.paid.monthly, '', JSON.stringify(v));
+  }
+  assert.equal(readConfig(billingEnv({ STRIPE_PRICE_PAID_MONTHLY: 'price_Todd1234' })).billing.prices.paid.monthly, 'price_Todd1234', 'only the placeholder word');
+  assert.equal(readConfig(billingEnv()).billing.placeholderPrices, 0);
+  // staging before the owner's ids: everything else set, all four prices placeholders
+  const s = setup({ env: billingEnv({ ...PLACEHOLDERS, ENTITLEMENT_MODE: 'billing+testing', TESTER_INVITE_CODES: 'MALLOW-ONE' }) });
+  assert.equal(readConfig(s.env).billing.configured, false);
+  for (const [path, o] of [['/v1/billing/checkout', { body: { plan: 'ultra', period: 'monthly' } }], ['/v1/billing/status', {}], ['/v1/billing/portal', { body: {} }]]) {
+    const res = await s.app.fetch(billingReq(path, o), s.env);
+    assert.equal(res.status, 503, path);
+    const e = (await res.json()).error;
+    assert.equal(e.code, 'billing_not_configured', path);
+    assert.match(e.message, /Stripe price ids are still placeholders \(price_TODO…\)/, path);
+  }
+  const h = await (await s.app.fetch(req('/v1/health'), s.env)).json();
+  assert.deepEqual(h.billing, { configured: false, webhook: true, placeholder_prices: 4 });
+  // Stripe's events wait (503: Stripe retries) until the ids are real
+  assert.equal((await deliver(s.app, s.env, event('customer.subscription.updated', subscription(), s.now))).status, 503);
+  // Another Angle: an account cannot get a billing session; a tester's code still opens a testing one
+  const session = (body, token) => s.app.fetch(req('/v1/session', { body, headers: token ? { authorization: `Bearer ${token}` } : {} }), s.env);
+  const acct = await session({ device_id: 'device-aaaaaaaaaaaaaaaa' }, TOKEN);
+  assert.equal(acct.status, 503);
+  assert.equal((await acct.json()).error.code, 'billing_not_configured');
+  assert.equal((await (await session({ invite: 'MALLOW-ONE', device_id: 'device-aaaaaaaaaaaaaaaa' }, TOKEN)).json()).source, 'testing');
+  assert.equal(s.up.calls.length, 0, 'neither Stripe nor the sign-in project is asked');
+  assert.ok(s.logs.some((l) => JSON.parse(l).err === 'placeholder_prices'), 'the log line says why');
+  assertClean(s.logs);
+  // one placeholder among real ids: only that plan is not on sale
+  const m = setup({ env: billingEnv({ STRIPE_PRICE_ULTRA_YEARLY: 'price_TODO_owner' }) });
+  assert.equal(readConfig(m.env).billing.configured, true);
+  assert.deepEqual((await (await m.app.fetch(req('/v1/health'), m.env)).json()).billing, { configured: true, webhook: true, placeholder_prices: 1 });
+  const y = await m.app.fetch(billingReq('/v1/billing/checkout', { body: { plan: 'ultra', period: 'yearly' } }), m.env);
+  assert.equal(y.status, 503);
+  assert.equal((await y.json()).error.code, 'price_not_configured');
+  assert.equal(m.up.stripe().length, 0, 'a placeholder is never sent to Stripe');
+  const mo = await m.app.fetch(billingReq('/v1/billing/checkout', { body: { plan: 'ultra', period: 'monthly' } }), m.env);
+  assert.equal(mo.status, 200);
+  assert.equal(m.up.stripe()[0].form.get('line_items[0][price]'), PRICES.ultraMonthly);
+  // nothing set at all: the general message, no word of placeholders
+  const off = setup({ env: makeEnv({ PROVIDER: 'mock' }) });
+  const r = await off.app.fetch(billingReq('/v1/billing/status'), off.env);
+  assert.equal((await r.json()).error.message, 'Web subscriptions are not set up on this server.');
+});
