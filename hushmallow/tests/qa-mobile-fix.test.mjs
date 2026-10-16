@@ -5,7 +5,8 @@
 //       words chip, so it could not be turned past halfway). The stage now keeps clear of the dock at every size.
 //   m2  touch targets under 44 px: .chip, the Settings Volume slider, the Thought Mallow's words tag (and, from its
 //       reviews, the classic Another Angle's sort chips and six ghost buttons, the Express screen's "Need support now?"
-//       among them, which kept a 38 or 40 px minimum of their own: every chip and button in src/ is now checked).
+//       among them, which kept a 38 or 40 px minimum of their own: every chip and button in src/ is now checked; and
+//       the Meet-a-Mallow card's photo button, 40 px on a short screen through its other class, .photo-add-inline).
 //   m3  a V3 ritual's first Mallow line covered the play dial (its bubble sat just above the small Mallow in the dock).
 //   m4  the small tappable Mallow in a V3 ritual's dock stuck a few px out of the viewport at every size.
 //   (and, found by the gesture sweep of all 240 built rituals: world law 19's own hint could not be followed; and, from
@@ -464,6 +465,77 @@ test('m2: the classic Another Angle’s ghost buttons (Fact or fiction, X-ray, O
     await new Promise((r) => setTimeout(r, 600));   // the steps' own timers still find the window
     if (gcs) Object.defineProperty(globalThis, 'getComputedStyle', gcs); else delete globalThis.getComputedStyle;
     win.restore();
+  }
+});
+
+// (review of round 2) and the Meet-a-Mallow card's photo button, a .btn.ghost given 40 px through its other class: on a
+// short screen `.enc-card .photo-add-inline { min-height: 40px }` (app.css, max-height: 640px) came after the
+// .btn.ghost's 44. The page's stylesheets, read as the browser reads them for one element: every rule whose selector is
+// a run of tags, classes and ids matching it and its ancestors (a state, :hover or :not(…), is not read), at the top
+// level or in an @media whose width, height and orientation conditions hold; !important, then the most specific, then
+// the last, wins. → the value of prop (margin-top from a margin as well)
+function cascade(css, prop, { W, H }, chain) {
+  const text = css.replace(/\/\*[\s\S]*?\*\//g, ' ');
+  const holds = (q) => q.split(',').some((part) => {
+    const fs = [...part.matchAll(/\(\s*([\w-]+)\s*:\s*([^)]+)\)/g)];
+    const ok = { 'min-width': (v) => W >= v, 'max-width': (v) => W <= v, 'min-height': (v) => H >= v, 'max-height': (v) => H <= v };
+    return fs.length > 0 && !/\bnot\b/.test(part) && fs.every(([, f, v]) => (f === 'orientation' ? v.trim() === (W > H ? 'landscape' : 'portrait') : !!ok[f]?.(parseFloat(v))));
+  });
+  const rules = [];
+  const walk = (s, live) => {
+    for (let i = 0; ;) {
+      const open = s.indexOf('{', i);
+      if (open < 0) return;
+      let j = open + 1;
+      for (let d = 1; j < s.length && d; j++) d += s[j] === '{' ? 1 : s[j] === '}' ? -1 : 0;
+      const prelude = s.slice(i, open).split(';').pop().trim(), body = s.slice(open + 1, j - 1);
+      if (prelude.startsWith('@media')) walk(body, live && holds(prelude));
+      else if (live && !prelude.startsWith('@')) rules.push({ prelude, body });
+      i = j;
+    }
+  };
+  walk(text, true);
+  const one = (c, n) => { const m = /^([a-z][\w-]*|\*)?((?:[.#][\w-]+)*)$/i.exec(c); return !!m && (!m[1] || m[1] === '*' || m[1] === n.tag) && (m[2].match(/[.#][\w-]+/g) || []).every((x) => (x[0] === '#' ? n.id === x.slice(1) : n.classes.includes(x.slice(1)))); };
+  const matches = (sel) => {
+    if (/[+~]/.test(sel)) return false;
+    const parts = sel.split(/\s*>\s*|\s+/).filter(Boolean);
+    if (!one(parts.pop(), chain[0])) return false;
+    let k = 1;
+    for (const p of parts.reverse()) { while (k < chain.length && !one(p, chain[k])) k++; if (k++ >= chain.length) return false; }
+    return true;
+  };
+  const weight = (sel) => (sel.match(/#[\w-]+/g) || []).length * 1e4 + (sel.match(/\.[\w-]+/g) || []).length * 100 + (sel.match(/(^|[\s>])[a-z]/gi) || []).length;
+  let best = null;
+  rules.forEach(({ prelude, body }, order) => {
+    for (const sel of prelude.split(',').map((x) => x.trim()).filter(matches)) {
+      for (const d of body.split(';')) {
+        const [p, ...v] = d.split(':'), name = p.trim();
+        if (name !== prop && !(prop === 'margin-top' && name === 'margin')) continue;
+        const raw = v.join(':').trim(), important = /!important$/.test(raw), value = raw.replace(/\s*!important$/, '');
+        const w = [important ? 1 : 0, weight(sel), order];
+        if (!best || w[0] > best.w[0] || (w[0] === best.w[0] && (w[1] > best.w[1] || (w[1] === best.w[1] && w[2] >= best.w[2])))) best = { w, value: name === 'margin' ? value.split(/\s+/)[0] : value, sel };
+      }
+    }
+  });
+  return best;
+}
+
+test('m2: the Meet-a-Mallow card’s photo button is at least 44 px to a finger on a short screen too, and the card is no taller', () => {
+  // the button: a .btn.ghost.block with its own class, in the card, on the scene
+  assert.match(read('src/app/scenes/encounter.js'), /return h\('button', \{ class: 'btn ghost block photo-add-inline', onclick: \(\) => picker\.click\(\) \},/);
+  assert.match(read('src/app/scenes/encounter.js'), /const card = h\('div', \{ class: 'card enc-card' \}\);/);
+  const css = ['tokens', 'type', 'app', 'hushfold'].map((f) => read(`src/ui/${f}.css`)).join('\n');
+  assert.ok(/<link rel="stylesheet" href="src\/ui\/tokens\.css">\s*<link rel="stylesheet" href="src\/ui\/type\.css">\s*<link rel="stylesheet" href="src\/ui\/app\.css">\s*<link rel="stylesheet" href="src\/ui\/hushfold\.css">/.test(read('index.html')), 'in this order');
+  const chain = [{ tag: 'button', classes: ['btn', 'ghost', 'block', 'photo-add-inline'] }, { tag: 'div', classes: ['card', 'enc-card'] }, { tag: 'div', classes: [] },
+    { tag: 'div', id: 'scene', classes: [] }, { tag: 'body', classes: [] }, { tag: 'html', classes: [] }];
+  // (the cascade reads the .btn.ghost's own 44 px where nothing else sizes it, and the card's other buttons' 46)
+  assert.equal(cascade(css, 'min-height', { W: 390, H: 844 }, chain).sel, '.btn.ghost');
+  assert.equal(cascade(css, 'min-height', { W: 320, H: 568 }, [{ tag: 'button', classes: ['btn', 'ghost', 'block'] }, ...chain.slice(1)]).value, '46px');
+  for (const [size, W, H, room] of [['320×568', 320, 568, 40 + 6], ['667×375 (landscape)', 667, 375, 40 + 6], ['390×844', 390, 844, 44 + 10], ['1280×800', 1280, 800, 44 + 10]]) {
+    const min = cascade(css, 'min-height', { W, H }, chain), top = cascade(css, 'margin-top', { W, H }, chain);
+    assert.ok(parseFloat(min.value) >= 44, `${size}: min-height ${min.value} (${min.sel})`);
+    // the room it takes is the room it took (40 px and a 6 px margin on a short screen): the card is no taller
+    assert.ok(parseFloat(min.value) + parseFloat(top.value) <= room, `${size}: ${min.value} + ${top.value} (${top.sel})`);
   }
 });
 

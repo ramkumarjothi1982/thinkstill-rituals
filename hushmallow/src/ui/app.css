@@ -426,7 +426,8 @@ input.search:focus, input.text:focus { border-color: var(--accent); }
   .enc-card .reasons span:nth-child(n+3):not(.photo-chip) { display: none; }
   .enc-card .btn { min-height: 46px; }
   .enc-card .reasons { margin-top: 8px; }
-  .enc-card .photo-add-inline { min-height: 40px; margin-top: 6px; font: var(--type-label); font-weight: 700; }
+  /* the photo button is 44 px to a finger, as every .btn.ghost; its margin gives back the 4 px, so the card is no taller */
+  .enc-card .photo-add-inline { min-height: 44px; margin-top: 2px; font: var(--type-label); font-weight: 700; }
   .ultra-card { padding: 10px 14px; gap: 12px; }
   .ultra-card .spiral { width: 38px; height: 38px; }
   .ultra-card .t { font-size: calc(17px * var(--type-scale)); margin-top: 5px; }
