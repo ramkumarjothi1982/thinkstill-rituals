@@ -141,10 +141,26 @@ test('M1: the host lays the stage out from stage-fit.js, compacting the title fi
 // class and style name looked up in the same file (a 38 px minimum kept in SORT_CHIP once slipped past a one-line
 // match; untangle.js's choices take their class from `cls`), a helper's options naming one as `cls` (legalLink's), a
 // button given one as its className or class and then a style, and every CSS rule (a .css file, or CSS held in a .js
-// string) that sizes one. A class that cannot be read here (a parameter, a call) counts when the button is given less
-// than 44 px. → [{ at, what, px, of }] (what 'chip' / 'btn' / 'open': a target found; of: the kind of the one sized)
+// string) that sizes one: by its own class, or by another class a target is built with (a co-class: the Meet-a-Mallow
+// card's photo button, .btn.ghost.block.photo-add-inline, was 40 px on a short screen by `.enc-card .photo-add-inline`).
+// A class that cannot be read here (a parameter, a call) counts when the button is given less than 44 px.
+// → [{ at, what, px, of, via }] (what 'chip' / 'btn' / 'open': a target found; of: the kind of the one sized; via: the
+// co-class a rule sized it by). known: the class names on the app's elements (tapClasses), else this source's own
 const TAP_CLASS = /(?:^|[\s'"`])(?:[a-z0-9]+-)*(chip|btn)(?=[\s'"`$])/;
+const FAMILY = /^(?:[a-z0-9]+-)*(chip|btn)$/;
 const STRINGS = /'(?:\\.|[^'\\])*'|"(?:\\.|[^"\\])*"|`(?:\\.|[^`\\])*`/g;
+// the class names a class expression's strings spell: a template's own text and the strings in its ${…}
+const classNames = (expr) => (expr.match(STRINGS) || []).flatMap((q) => [
+  ...q.slice(1, -1).replace(/\$\{[^}]*\}/g, ' ').split(/\s+/).filter((c) => /^-?[A-Za-z_][\w-]*$/.test(c)),
+  ...(q[0] === '`' ? [...q.matchAll(/\$\{([^}]*)\}/g)].flatMap((m) => classNames(m[1])) : [])]);
+// a CSS prelude split at its depth-0 separators (not inside :not(…), :nth-child(n+3) or [ ]), and its depth-0 text
+const splitTop = (s, sep) => {
+  const out = [''];
+  let d = 0;
+  for (const ch of s) { if ('(['.includes(ch)) d++; else if (')]'.includes(ch)) d--; if (!d && sep.test(ch)) out.push(''); else out[out.length - 1] += ch; }
+  return out.map((x) => x.trim()).filter(Boolean);
+};
+const topText = (s) => { let d = 0, o = ''; for (const ch of s) { if ('(['.includes(ch)) d++; else if (')]'.includes(ch)) d--; else if (!d) o += ch; } return o; };
 const skipString = (src, k) => {
   const q = src[k];
   for (let j = k + 1; j < src.length; j++) {
@@ -170,11 +186,13 @@ function skipBalanced(src, i, stopAt = null) {
   return src.length;
 }
 // (a template's ${…} is never read as a height: `${size + 10}px` is no 10 px)
-const pxOf = (re, text) => [...text.replace(/\$\{[^}]*\}/g, '').matchAll(re)].flatMap((m) => [...m[2].matchAll(/(\d+(?:\.\d+)?)px/g)].map((n) => ({ what: m[1], px: +n[1] })));
+// (and a rem or an em is read at 16 px)
+const pxOf = (re, text) => [...text.replace(/\$\{[^}]*\}/g, '').matchAll(re)].flatMap((m) => [...m[2].matchAll(/(\d+(?:\.\d+)?)(px|r?em)(?![\w-])/g)].map((n) => ({ what: m[1], px: n[2] === 'px' ? +n[1] : +n[1] * 16 })));
 const jsHeights = (text) => pxOf(/(?<![\w$-])(minHeight|height)\s*:\s*([^,;}\n]+)/g, text);
-const cssHeights = (text) => pxOf(/(?<![\w-])(min-height|height)\s*:\s*([^;}]+)/g, text);
-function tapHeights(src, file = 'src') {
+const cssHeights = (text) => pxOf(/(?<![\w-])(min-height|height|max-height|(?:min-|max-)?block-size)\s*:\s*([^;}]+)/g, text);
+function scanTaps(src, file = 'src', known = null) {
   const out = [];
+  const targets = [], others = [];   // the class names of each target made here, and of every other element
   const lineAt = (i) => `${file}:${src.slice(0, i).split('\n').length}`;
   const defs = new Map();
   for (const d of src.matchAll(/(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*/g)) { if (!defs.has(d[1])) defs.set(d[1], []); defs.get(d[1]).push(d.index + d[0].length); }
@@ -194,10 +212,12 @@ function tapHeights(src, file = 'src') {
     }
     return found;
   };
-  // a class expression → { fam: 'chip' | 'btn' | null, open }: a chip- or button-family class in its strings or in
-  // those of the consts it names as values (a ternary's condition is not one); open, part of it cannot be read here
+  // a class expression → { fam: 'chip' | 'btn' | null, open, names }: a chip- or button-family class in its strings or
+  // in those of the consts it names as values (a ternary's condition is not one); open, part of it cannot be read
+  // here; names, every class name in them
   const classOf = (expr, seen = new Set()) => {
     const fams = (expr.match(STRINGS) || []).map((q) => TAP_CLASS.exec(` ${q.slice(1, -1).replace(/\$\{[^}]*\}/g, ' ')} `)?.[1]).filter(Boolean);
+    const names = new Set(classNames(expr));
     let open = false;
     const bare = expr.replace(STRINGS, "''");
     for (const m of bare.matchAll(/(?<![\w$.])[A-Za-z_$][\w$]*(?:\??\.[A-Za-z_$][\w$]*)*(?![\w$])/g)) {
@@ -206,25 +226,32 @@ function tapHeights(src, file = 'src') {
       if (/\./.test(name) || /^\s*\(/.test(after) || !defs.has(name)) { open = true; continue; }
       if (seen.has(name)) continue;
       seen.add(name);
-      for (const t of defText(name)) { const r = classOf(t, seen); if (r.fam) fams.push(r.fam); open ||= r.open; }
+      for (const t of defText(name)) { const r = classOf(t, seen); if (r.fam) fams.push(r.fam); open ||= r.open; r.names.forEach((c) => names.add(c)); }
     }
-    return { fam: fams.includes('chip') ? 'chip' : fams[0] || null, open };
+    return { fam: fams.includes('chip') ? 'chip' : fams[0] || null, open, names };
   };
   const tapVars = new Map();   // a variable holding a target → its kind
+  const varNames = new Map();  // … → the class names it is built with (more join from its classList)
+  const keyOf = (attrs, k) => { const r = new RegExp(`[{,]\\s*${k}\\s*:\\s*`).exec(attrs); if (!r) return null; const a = r.index + r[0].length; return attrs.slice(a, skipBalanced(attrs, a, ',}')); };
   // (attrs: an object literal; at: where its element is built; v: the variable it is kept in, if any)
   const element = (attrs, classKey, at, v) => {
-    const key = (k) => { const r = new RegExp(`[{,]\\s*${k}\\s*:\\s*`).exec(attrs); if (!r) return null; const a = r.index + r[0].length; return attrs.slice(a, skipBalanced(attrs, a, ',}')); };
-    const cls = classOf(key(classKey) ?? "''");
-    const style = key('style');
+    const cls = classOf(keyOf(attrs, classKey) ?? "''");
+    (cls.fam ? targets : others).push(cls.names);
+    const style = keyOf(attrs, 'style');
     const heights = style == null ? [] : resolve(style);
     if (!cls.fam && !(cls.open && heights.some((x) => x.px < 44))) return;
     const of = cls.fam || 'open';
     out.push({ at: lineAt(at), what: of }, ...heights.map((x) => ({ at: lineAt(at), of, ...x })));
-    if (v) tapVars.set(v, of);
+    if (v) { tapVars.set(v, of); if (cls.fam) varNames.set(v, cls.names); }
   };
   for (const m of src.matchAll(/(?<![\w$.])(?:h|el)\(\s*(['"])(?:button|a)\1\s*,\s*\{/g)) {
     const open = m.index + m[0].length - 1;
     element(src.slice(open, skipBalanced(src, open)), 'class(?:Name)?', m.index, /(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*$/.exec(src.slice(Math.max(0, m.index - 80), m.index))?.[1]);
+  }
+  // (every other element's class names: a class seen only on one of those sizes no target)
+  for (const m of src.matchAll(/(?<![\w$.])(?:h|el)\(\s*(['"])(?!(?:button|a)\1)[\w-]+\1\s*,\s*\{/g)) {
+    const open = m.index + m[0].length - 1;
+    others.push(classOf(keyOf(src.slice(open, skipBalanced(src, open)), 'class(?:Name)?') ?? "''").names);
   }
   // a helper's options: the object round a `cls:` key (legalLink('privacy', { cls: 'btn ghost block', style }))
   for (const m of src.matchAll(/[{,]\s*cls\s*:/g)) {
@@ -237,7 +264,18 @@ function tapHeights(src, file = 'src') {
     const r = classOf(src.slice(a, skipBalanced(src, a, ';\n)')));
     // (a class that cannot be read counts on a button or link made here)
     const made = () => new RegExp(`(?:const|let|var)\\s+${m[1].replace(/\$/g, '\\$')}\\s*=\\s*(?:document\\.createElement|h|el)\\(\\s*(['"])(?:button|a)\\1`).test(src);
-    if (r.fam) { tapVars.set(m[1], r.fam); out.push({ at: lineAt(m.index), what: r.fam }); } else if (r.open && !tapVars.has(m[1]) && made()) tapVars.set(m[1], 'open');
+    if (r.fam) {
+      tapVars.set(m[1], r.fam); out.push({ at: lineAt(m.index), what: r.fam });
+      if (varNames.has(m[1])) r.names.forEach((c) => varNames.get(m[1]).add(c)); else { varNames.set(m[1], r.names); targets.push(r.names); }
+    } else if (r.open && !tapVars.has(m[1]) && made()) tapVars.set(m[1], 'open');
+    else if (!tapVars.has(m[1])) others.push(r.names);
+  }
+  // (a class a target is given later: b.classList.add('on'), .toggle('picked', on))
+  for (const [v, names] of varNames) {
+    for (const m of src.matchAll(new RegExp(`(?<![\\w$.])${v.replace(/\$/g, '\\$')}\\.classList\\.(add|toggle)\\(`, 'g'))) {
+      const a = m.index + m[0].length;
+      classNames(src.slice(a, skipBalanced(src, a, m[1] === 'add' ? ')' : ',)'))).forEach((c) => names.add(c));
+    }
   }
   for (const [v, of] of tapVars) {
     const e = v.replace(/\$/g, '\\$');
@@ -258,8 +296,37 @@ function tapHeights(src, file = 'src') {
     const sized = (/^[^\s>+~]*\s*$/.test(own) && !own.includes('::')) || others.some((x) => CSS_TAP.test(key(x)) && !key(x).includes('::'));
     if (sized) out.push(...cssHeights(m[3]).map((x) => ({ at: lineAt(m.index), of: m[1], ...x })));
   }
-  return out;
+  // CSS: a rule for a co-class, a class a target is built with that is not of a family (those are read just above),
+  // under 44 px (`@media (max-height: 640px) { .enc-card .photo-add-inline { min-height: 40px } }` once sized the
+  // Meet-a-Mallow card's photo button). Its selector's last part names one: not inside a :not(…), not a pseudo-element
+  // of it, not what is inside it, and not only classes seen together on an element that is no target
+  // (.photo-add-inline.photo-full: the photo tray's "7 photos added" line)
+  const { targets: on, others: off } = known ?? { targets, others };
+  const co = new Set(on.flatMap((s) => [...s].filter((c) => !FAMILY.test(c))));
+  for (const m of src.matchAll(/\{([^{}]*)\}/g)) {
+    const heights = cssHeights(m[1]);
+    if (!heights.some((x) => x.px < 44)) continue;
+    // (the selectors: back to the brace before, after the last statement, comments left out, an open one too)
+    const prelude = src.slice(Math.max(src.lastIndexOf('{', m.index - 1), src.lastIndexOf('}', m.index - 1)) + 1, m.index);
+    for (const sel of splitTop(prelude.replace(/\/\*[\s\S]*?(?:\*\/|$)|\/\/[^\n]*/g, ' ').split(';').pop(), /,/)) {
+      const key = splitTop(sel, /[\s>+~]/).pop();
+      if (key.includes('::')) continue;
+      const names = [...topText(key).matchAll(/\.(-?[A-Za-z_][\w-]*)/g)].map((x) => x[1]);
+      const via = names.filter((c) => co.has(c));
+      if (!via.length || names.some((c) => FAMILY.test(c))) continue;
+      const all = on.filter((s) => names.every((c) => s.has(c)));
+      if (!all.length && off.some((s) => names.every((c) => s.has(c)))) continue;
+      const of = (all.length ? all : on.filter((s) => via.some((c) => s.has(c)))).some((s) => [...s].some((c) => FAMILY.exec(c)?.[1] === 'btn')) ? 'btn' : 'chip';
+      out.push(...heights.map((x) => ({ at: lineAt(m.index), of, via: via.join('.'), ...x })));
+      break;
+    }
+  }
+  return { found: out, classes: { targets, others } };
 }
+// the heights given to the chip- and button-family targets in a source (with known, the class names on the whole
+// app's elements: tapClasses of each source, merged)
+const tapHeights = (src, file = 'src', known = null) => scanTaps(src, file, known).found;
+const tapClasses = (src) => scanTaps(src).classes;
 const srcFiles = (dir = new URL('../src/', import.meta.url)) => readdirSync(dir, { withFileTypes: true })
   .flatMap((d) => (d.isDirectory() ? srcFiles(new URL(`${d.name}/`, dir)) : [new URL(d.name, dir)]));
 
@@ -295,6 +362,22 @@ test('m2: the tap-target scan finds a small minimum on a chip or a button: in a 
   assert.deepEqual(at("h('button', { class: 'emo-row', style: { minHeight: '30px' } });\nconst cls = compact ? 'row' : 'choice';\nh('button', { class: cls, style: compact ? { minHeight: '36px' } : {} });"), []);
   assert.deepEqual(at("const size = compact() ? 56 : 64;\nh('button', { class: 'icon-btn', style: { width: `${size + 10}px`, height: `${size + 10}px` } }, svg);\nfunction pill(cls) { return h('button', { class: cls, style: { minHeight: '48px' } }); }"), []);
   assert.deepEqual(at("function dot(k) { const d = document.createElement('div'); d.className = k; d.style.height = '8px'; return d; }"), []);
+  // a rule for another class a target is built with (a co-class). Must catch: the Meet-a-Mallow card's photo button as
+  // it was (a .btn.ghost given 40 px by its .photo-add-inline on a short screen, beside the card's 46 px .btn rule), and
+  // in a media query, a chip's co-classes from a const, a template, its classList and a :not(…) key, in rem, block-size
+  // and max-height
+  const via = (src) => tapHeights(src).filter((x) => x.via).map((x) => `${x.of} .${x.via} ${x.what} ${x.px}`);
+  const photo = "return h('button', { class: 'btn ghost block photo-add-inline', onclick: () => picker.click() }, icon('camera'), 'Add up to seven of your photos (optional)');\n";
+  assert.deepEqual(via(`${photo}@media (max-height: 640px) {\n  .enc-card .btn { min-height: 46px; }\n  .enc-card .photo-add-inline { min-height: 40px; margin-top: 6px; font: var(--type-label); font-weight: 700; }\n}`), ['btn .photo-add-inline min-height 40']);
+  assert.deepEqual(via("const PILL = 'chip mood-pill';\nconst b = h('button', { class: on ? `${PILL} is-on` : PILL }, 'Calm');\nb.classList.add('picked');\n" +
+    '@media (max-width: 360px) and (max-height: 700px) { .row .mood-pill:not(.wide) { block-size: 2.25rem; } .is-on { max-height: 40px; } .picked:hover { height: 38px; } }'),
+  ['chip .mood-pill block-size 36', 'chip .is-on max-height 40', 'chip .picked height 38']);
+  // must not count: what is inside it, its pseudo-element, it only beside a class seen with it on no target (the full
+  // tray's status line), classes never on a target (a div drawn like a button, a span), it inside a :not(…), 44 px,
+  // the media query's own max-height, a comment naming it, and a rule commented out
+  assert.deepEqual(at(`${photo}h('div', { class: 'photo-add-inline photo-full', role: 'status' }, '7 photos added');\nh('div', { class: 'btn block invite-included' }, 'Included');\nh('span', { class: 'photo-note' }, 'Kept on this device');\n` +
+    '@media (max-height: 640px) {\n  .photo-add-inline svg { height: 20px; }\n  .photo-add-inline::before { height: 8px; }\n  .enc-card .photo-add-inline.photo-full { min-height: 30px; }\n  .photo-full, .photo-note, .invite-included { min-height: 30px; }\n' +
+    '  .reasons span:not(.photo-add-inline) { height: 20px; }\n  .photo-add-inline { min-height: 44px; max-height: none; }\n}\n/* .photo-add-inline, as it was */ .reasons { min-height: 20px; }\n/* .photo-add-inline { min-height: 40px } */'), []);
 });
 
 test('m2: chips, buttons, the Settings Volume slider and the Thought Mallow’s words tag are at least 44 px to a finger', () => {
@@ -304,11 +387,16 @@ test('m2: chips, buttons, the Settings Volume slider and the Thought Mallow’s 
   assert.match(css, /^\.btn\.ghost \{[^}]*min-height: 44px;/m);
   // no chip or button anywhere in the app is given less, inline or in CSS: every .js and .css file under src/ (the
   // check used to read five files, and then chips only: the classic Another Angle's 38 px sort chips, and then six
-  // ghost buttons kept at 38 or 40 px, the Express screen's "Need support now?" among them, went unseen)
-  const files = srcFiles().filter((u) => /\.(js|css)$/.test(u.pathname));
-  assert.ok(files.filter((u) => u.pathname.endsWith('.js')).length >= 200, `${files.length} files`);
+  // ghost buttons kept at 38 or 40 px, the Express screen's "Need support now?" among them, and then a ghost button
+  // sized through its other class, the Meet-a-Mallow card's photo button, went unseen)
+  const files = srcFiles().filter((u) => /\.(js|css)$/.test(u.pathname)).map((u) => [u, readFileSync(u, 'utf8')]);
+  assert.ok(files.filter(([u]) => u.pathname.endsWith('.js')).length >= 200, `${files.length} files`);
   const rel = (u) => u.pathname.slice(u.pathname.indexOf('/src/') + 1);
-  const found = files.flatMap((u) => tapHeights(readFileSync(u, 'utf8'), rel(u)));
+  // (a rule in one file sizes a class built in another: the class names of every element in src/ first)
+  const known = { targets: [], others: [] };
+  for (const [, t] of files) { const c = tapClasses(t); known.targets.push(...c.targets); known.others.push(...c.others); }
+  assert.ok(known.targets.some((s) => ['btn', 'ghost', 'block', 'photo-add-inline'].every((c) => s.has(c))), 'the photo button’s classes are read');
+  const found = files.flatMap(([u, t]) => tapHeights(t, rel(u), known));
   assert.ok(found.filter((x) => x.what === 'chip').length >= 40, 'the chips themselves were found');
   assert.ok(found.filter((x) => x.what === 'btn').length >= 150, 'and the buttons');
   assert.ok(found.some((x) => x.at.startsWith('src/ultra/another-angle.js') && x.what === 'chip'), 'the classic Another Angle’s chips are in the scan');
@@ -317,11 +405,12 @@ test('m2: chips, buttons, the Settings Volume slider and the Thought Mallow’s 
   const step = fnBody(read('src/rituals/untangle.js'), "const cls = compact ? 'chip' : 'choice';", 'b.onclick');
   assert.match(step, /h\('button', \{ class: cls, [^\n]*style: compact \? \{ minHeight: '44px' \} : \{\} \}/);
   assert.ok(found.some((x) => x.at.startsWith('src/rituals/untangle.js') && x.of === 'chip' && x.px === 44), 'the variable class is read');
-  assert.deepEqual(found.filter((x) => x.px != null && x.px < 44).map((x) => `${x.at}: ${x.what} ${x.px}px`), []);
-  // and it would see either of them come back: the choices at 36 px, the support button at 40
-  const small = (p, a, b) => { const t = read(p); assert.equal(t.split(a).length, 2, a); return tapHeights(t.replace(a, b), p).filter((x) => x.px < 44).map((x) => `${x.of} ${x.what} ${x.px}`); };
+  assert.deepEqual(found.filter((x) => x.px != null && x.px < 44).map((x) => `${x.at}: ${x.what} ${x.px}px${x.via ? ` (.${x.via})` : ''}`), []);
+  // and it would see any of them come back: the choices at 36 px, the support button at 40, the photo button at 40
+  const small = (p, a, b) => { const t = read(p); assert.equal(t.split(a).length, 2, a); return tapHeights(t.replace(a, b), p, known).filter((x) => x.px < 44).map((x) => `${x.of} ${x.what} ${x.px}`); };
   assert.deepEqual(small('src/rituals/untangle.js', "class: cls, 'aria-pressed': 'false', style: compact ? { minHeight: '44px' }", "class: cls, 'aria-pressed': 'false', style: compact ? { minHeight: '36px' }"), ['chip minHeight 36']);
   assert.deepEqual(small('src/app/scenes/express.js', "class: 'btn ghost', onclick: () => openSupport(app)", "class: 'btn ghost', style: { minHeight: '40px' }, onclick: () => openSupport(app)"), ['btn minHeight 40']);
+  assert.deepEqual(small('src/ui/app.css', '.enc-card .photo-add-inline { min-height: 44px;', '.enc-card .photo-add-inline { min-height: 40px;'), ['btn min-height 40']);
   // the slider: 44 px tall inside its row's own padding (the row keeps its height: 14 px padding either side)
   assert.match(css, /\.setting \.range \{ height: 44px; margin-block: -6px; \}/);
   assert.match(css, /\.setting \{ display: flex; align-items: center; gap: 12px; padding: 14px 0;/);
