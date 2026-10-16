@@ -4,7 +4,8 @@
 // <headers-out> (the site's _headers, Cloudflare Pages) gets the whole site's
 // security headers (tools/site/security-headers.mjs): an enforced Content-
 // Security-Policy whose connect-src is this site, the one configured project
-// and the Another Angle Worker (src/app/config.js), HSTS, nosniff, a referrer
+// and the Another Angle Worker (src/app/config.js; on the branch previews of the
+// Pages project only, the staging Worker instead: PREVIEW_PATTERN), HSTS, nosniff, a referrer
 // policy, a Permissions-Policy and COOP; the rules for /auth/*: never cached,
 // no referrer, never framed; and the cache rules of the versioned layout.
 //
@@ -21,7 +22,7 @@ import { writeFileSync, mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { validatePublicConfig, publicConfigModule, keyLabel, classifyKey } from '../../src/auth/config.js';
-import { ANGLE_ENDPOINT, ANGLE_ALLOWED_HOSTS } from '../../src/app/config.js';
+import { ANGLE_ENDPOINT, ANGLE_ALLOWED_HOSTS, STAGING_ANGLE_ENDPOINT, STAGING_ALLOWED_HOSTS, PREVIEW_HOST_SUFFIX } from '../../src/app/config.js';
 import { headersText, inlineSources, readPages, readSrcTree } from './security-headers.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
@@ -62,6 +63,13 @@ export function angleOrigins(endpoint = ANGLE_ENDPOINT, hosts = ANGLE_ALLOWED_HO
 }
 
 /**
+ * The branch previews of the Pages project (src/app/config.js isPreviewHost: one DNS label in front of
+ * PREVIEW_HOST_SUFFIX), as a Pages host pattern: a host placeholder matches exactly one label, so neither
+ * the production alias hushmallow.pages.dev nor app.hushmallow.com is matched.
+ */
+export const PREVIEW_PATTERN = `https://:preview${PREVIEW_HOST_SUFFIX}/*`;
+
+/**
  * The /auth/* rule, unchanged since sign-in shipped (docs/AUTH.md "/auth/callback"):
  * the sign-in callback is never cached, framed or leaked by a referrer, and may
  * only talk to this site and the project. It is added to the whole-site rule
@@ -84,7 +92,8 @@ export function authRule(origin) {
 
 /**
  * Cloudflare Pages _headers for the whole site; /auth/* (the sign-in callback)
- * is never cached, framed or leaked by a referrer. `origin` is the published
+ * is never cached, framed or leaked by a referrer; a branch preview's CSP names
+ * the staging Worker instead of the production one. `origin` is the published
  * Supabase project origin (or null: sign-in off). `production` false for a
  * dev / ci build (a localhost stack over http: no upgrade-insecure-requests).
  */
@@ -97,6 +106,8 @@ export function headersFile(origin, { production = true, version, root = ROOT } 
     srcTree: readSrcTree(resolve(root, 'src')),
     version,
     authRule: authRule(origin),
+    // staging (docs/STAGING.md): previews talk to the staging Worker only, as src/app/config.js deploySettings decides
+    preview: { pattern: PREVIEW_PATTERN, angle: angleOrigins(STAGING_ANGLE_ENDPOINT, STAGING_ALLOWED_HOSTS) },
   });
 }
 

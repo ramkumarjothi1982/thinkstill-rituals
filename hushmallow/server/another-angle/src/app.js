@@ -113,8 +113,9 @@ export function createApp(options) {
         // (billing alone takes no invite code)
         invite_required: cfg.entitlementMode !== 'storekit' && cfg.entitlementMode !== 'billing' && cfg.inviteCodes.length > 0,
         configured: { signing_key: cfg.signingKeys.length > 0, provider_key: cfg.provider === 'mock' || cfg.apiKey.length > 0 },
-        // web subscriptions (src/billing/): only whether they are set up, never a key or a price
-        billing: { configured: billing.ready(env, cfg), webhook: cfg.billing.webhookSecret.length > 0 },
+        // web subscriptions (src/billing/): only whether they are set up, never a key or a price (and, while any
+        // price id is still a placeholder such as price_TODO_owner, how many: docs/STAGING.md)
+        billing: { configured: billing.ready(env, cfg), webhook: cfg.billing.webhookSecret.length > 0, ...(cfg.billing.placeholderPrices ? { placeholder_prices: cfg.billing.placeholderPrices } : {}) },
       }, cors);
     }
     if (route === 'POST /v1/session') return session(request, env, cfg, cors);

@@ -772,9 +772,11 @@ test('G1: the endpoint is the production Worker on its own allow-listed host (no
   const hits = [];
   const walk = (d) => { for (const n of readdirSync(root + d)) { const p = `${d}/${n}`; if (statSync(root + p).isDirectory()) walk(p); else if (/\.(js|mjs|html|css|json)$/.test(n)) read(p).split('\n').forEach((l, i) => { if (/workers\.dev/.test(l)) hits.push(`${p}:${i + 1}`); }); } };
   walk('src');
-  assert.equal(hits.length, 2, hits.join(', '));
+  // + the staging Worker's endpoint and host, for the branch previews only (docs/STAGING.md, tests/staging.test.mjs)
+  assert.equal(hits.length, 4, hits.join(', '));
   assert.ok(hits.every((h) => h.startsWith('src/app/config.js:')), hits.join(', '));
-  assert.doesNotMatch(read('src/app/config.js'), /staging/);
+  assert.ok(!ANGLE_ENDPOINT.includes('staging') && !ANGLE_ALLOWED_HOSTS.some((h) => h.includes('staging')), 'production names no staging Worker');
+  assert.equal(resolveEndpoint({ loc: { hostname: 'app.hushmallow.com', protocol: 'https:', search: '' } }), ANGLE_ENDPOINT);
 });
 
 test('G1: Settings shows the Another Angle rows with the server on only for Beyond, or wherever its data is still kept', () => {

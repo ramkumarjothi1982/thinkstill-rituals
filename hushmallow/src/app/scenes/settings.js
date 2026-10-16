@@ -11,7 +11,7 @@
 import { h, iconBtn, openSheet, toast } from '../ui.js';
 import { PLANS } from '../entitlements.js';
 import { openSupport } from './support.js';
-import { BUILD } from '../config.js';
+import { BUILD, deploySettings } from '../config.js';
 import { RUNNING } from '../update.js';
 import { type, withBrand, keepHyphenated } from '../../ui/type.js';
 import { aboutIntro, aboutPrivacy } from '../privacy.js';
@@ -23,6 +23,7 @@ const SPEEDS = [[0.75, '0.75×'], [1, '1×'], [1.25, '1.25×'], [1.5, '1.5×']];
 
 export default function settings(app) {
   const { prefs, ent, world, rec } = app;
+  const stageLabel = deploySettings().stage === 'staging' ? ' · staging' : '';
   const note = (text) => h('small', { style: type('caption', { display: 'block', color: 'var(--text-3)', marginTop: '2px' }) }, text);
   const rowLabel = (label, sub) => h('div', { class: 'grow', style: type('row') }, label, sub ? note(sub) : null);
   const sw = (key, label, sub, after) => {
@@ -120,8 +121,9 @@ export default function settings(app) {
       // so the first sentence and the privacy lines switch together when Another Angle goes live
       aboutPara,
       h('button', { class: 'btn ghost block', onclick: () => openSupport(app) }, 'Support lines'),
-      // the version, exactly as BUILD says it (the server sees the same string), never broken at a hyphen ("sign-" / "in")
-      h('p', { 'data-version': '', style: type('caption', { color: 'var(--text-3)', textAlign: 'center', margin: '8px 0 0', textWrap: 'balance' }) }, ...keepHyphenated(`Version ${BUILD}${RUNNING ? ` · ${RUNNING}` : ''}`)),
+      // the version, exactly as BUILD says it (the server sees the same string), never broken at a hyphen ("sign-" / "in");
+      // "· staging" on a branch preview (src/app/config.js deploySettings), so a tester can tell it from production
+      h('p', { 'data-version': '', style: type('caption', { color: 'var(--text-3)', textAlign: 'center', margin: '8px 0 0', textWrap: 'balance' }) }, ...keepHyphenated(`Version ${BUILD}${stageLabel}${RUNNING ? ` · ${RUNNING}` : ''}`)),
       // developer tools: not part of the published site
       ['localhost', '127.0.0.1'].includes(location.hostname)
         ? h('div', { style: { display: 'grid', gap: '4px', marginTop: '6px' } },

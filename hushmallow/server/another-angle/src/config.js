@@ -8,6 +8,13 @@ const APPLE_ROOT_CA_G3_SHA256 = '63343ABFB89A6A03EBB57E9B3F5FA7BE7C4F5C756F3017B
 const SUPABASE_PROJECT_URL = 'https://igbxbfuaoybfzsroxuln.supabase.co';
 /** ENTITLEMENT_MODE values; anything else reads as 'testing', as before. */
 const MODES = ['testing', 'storekit', 'both', 'billing', 'billing+testing'];
+/**
+ * An obviously unset Stripe price id: a placeholder such as "price_TODO_owner" (wrangler.toml [env.staging],
+ * docs/STAGING.md, until the owner pastes the real test ids). It counts as unset, like an empty value, so it is
+ * never sent to Stripe; with no real price at all, billing is "not configured" and says why.
+ */
+const PRICE_PLACEHOLDER = /^price_todo/i;
+const PRICE_VARS = ['STRIPE_PRICE_PAID_MONTHLY', 'STRIPE_PRICE_PAID_YEARLY', 'STRIPE_PRICE_ULTRA_MONTHLY', 'STRIPE_PRICE_ULTRA_YEARLY'];
 
 /** @param {unknown} v @param {number} dflt @param {number} min @param {number} max */
 function int(v, dflt, min, max) {
@@ -43,16 +50,17 @@ function appOriginOf(v, allowed) {
 
 /**
  * Web subscriptions (src/billing/, docs/PAYMENTS.md). Every value is checked for its
- * shape; one that does not fit counts as unset. `configured` needs the Stripe key,
- * the sign-in project, APP_ORIGIN and at least one price; the webhook also needs its
- * own secret. Nothing here is ever logged or returned.
+ * shape; one that does not fit counts as unset, and so does a placeholder price id
+ * (PRICE_PLACEHOLDER). `configured` needs the Stripe key, the sign-in project,
+ * APP_ORIGIN and at least one real price; the webhook also needs its own secret.
+ * No value here is ever logged or returned (placeholderPrices is only a count).
  * @param {Record<string, any>} env @param {string[]} allowedOrigins
  */
 function readBilling(env, allowedOrigins) {
   const secretKey = /^(?:sk|rk)_(?:live|test)_[A-Za-z0-9]{8,}$/.test(str(env.STRIPE_SECRET_KEY)) ? str(env.STRIPE_SECRET_KEY) : '';
   const webhookSecret = /^whsec_[A-Za-z0-9+/=_-]{8,}$/.test(str(env.STRIPE_WEBHOOK_SECRET)) ? str(env.STRIPE_WEBHOOK_SECRET) : '';
   /** @param {unknown} v */
-  const price = (v) => (/^price_[A-Za-z0-9]{4,64}$/.test(str(v)) ? str(v) : '');
+  const price = (v) => (/^price_[A-Za-z0-9]{4,64}$/.test(str(v)) && !PRICE_PLACEHOLDER.test(str(v)) ? str(v) : '');
   const prices = {
     paid: { monthly: price(env.STRIPE_PRICE_PAID_MONTHLY), yearly: price(env.STRIPE_PRICE_PAID_YEARLY) },
     ultra: { monthly: price(env.STRIPE_PRICE_ULTRA_MONTHLY), yearly: price(env.STRIPE_PRICE_ULTRA_YEARLY) },
@@ -62,8 +70,10 @@ function readBilling(env, allowedOrigins) {
   const supabaseKey = /^sb_publishable_[A-Za-z0-9_-]{16,128}$/.test(str(env.SUPABASE_PUBLISHABLE_KEY)) ? str(env.SUPABASE_PUBLISHABLE_KEY) : '';
   const appOrigin = appOriginOf(str(env.APP_ORIGIN), allowedOrigins);
   const anyPrice = [prices.paid, prices.ultra].some((p) => !!(p.monthly || p.yearly));
+  // how many price vars still hold a placeholder (never their values): /v1/health and the 503 say so
+  const placeholderPrices = PRICE_VARS.filter((k) => PRICE_PLACEHOLDER.test(str(env[k]))).length;
   return {
-    secretKey, webhookSecret, prices, supabaseUrl, supabaseKey, appOrigin,
+    secretKey, webhookSecret, prices, supabaseUrl, supabaseKey, appOrigin, placeholderPrices,
     // optional: pins the Stripe API version of the server's own requests (the webhook's comes from its endpoint)
     apiVersion: /^\d{4}-\d{2}-\d{2}(?:\.[a-z]+)?$/.test(str(env.STRIPE_API_VERSION)) ? str(env.STRIPE_API_VERSION) : '',
     tokenTtlMs: int(env.BILLING_TOKEN_TTL_HOURS, 24, 1, 168) * 3600000,

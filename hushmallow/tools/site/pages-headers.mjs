@@ -8,7 +8,11 @@
 //     lines; "! Name" removes a header; # starts a comment;
 //   * a pattern is a path (or an absolute https://host/path URL); "*" (splat)
 //     matches any characters, slashes included; ":name" matches one path
-//     segment; matching is on the path only (no query);
+//     segment, or in the host one DNS label (no dots); matching is on the
+//     host name (no port) and the path only (no query);
+//   * a rule with a host applies only to a request for a host it matches
+//     (headersFor() without a host is a request to a host no such rule names,
+//     such as the production domain);
 //   * EVERY matching rule applies, in file order: the first rule to set a
 //     header replaces Pages' default for it, a later rule setting the same
 //     header appends ", value"; "! Name" deletes it at that point;
@@ -33,19 +37,24 @@ export const PAGES_DEFAULTS = Object.freeze([
   ['X-Content-Type-Options', 'nosniff'],
 ]);
 
-/** [{ pattern, re, host, set: [[name, value]], unset: [name] }] in file order. */
+/** [{ pattern, re, host, hostRe, set: [[name, value]], unset: [name] }] in file order. */
 export function parseHeadersFile(text) {
   const rules = [];
   let cur = null;
+  const esc = (p) => p.replace(/[.+?^${}()|[\]\\]/g, '\\$&');
   for (const raw of String(text || '').split(/\r?\n/)) {
     const t = raw.trim();
     if (!t || t.startsWith('#')) continue;
     if (!/^\s/.test(raw)) {
-      let pattern = t, host = null;
+      let pattern = t, host = null, hostRe = null;
       const abs = /^https?:\/\/([^/]+)(\/.*)?$/.exec(t);
-      if (abs) { host = abs[1]; pattern = abs[2] || '/'; }
-      const re = new RegExp(`^${pattern.split(/(\*|:[A-Za-z]\w*)/).map((p) => (p === '*' ? '(.*)' : /^:[A-Za-z]/.test(p) ? '([^/]+)' : p.replace(/[.+?^${}()|[\]\\]/g, '\\$&'))).join('')}$`);
-      cur = { pattern: t, re, host, set: [], unset: [] };
+      if (abs) {
+        host = abs[1]; pattern = abs[2] || '/';
+        // a host placeholder is one DNS label (Pages: [^/.]+)
+        hostRe = new RegExp(`^${host.split(/(:[A-Za-z]\w*)/).map((p) => (/^:[A-Za-z]/.test(p) ? '([^/.]+)' : esc(p))).join('')}$`);
+      }
+      const re = new RegExp(`^${pattern.split(/(\*|:[A-Za-z]\w*)/).map((p) => (p === '*' ? '(.*)' : /^:[A-Za-z]/.test(p) ? '([^/]+)' : esc(p))).join('')}$`);
+      cur = { pattern: t, re, host, hostRe, set: [], unset: [] };
       rules.push(cur);
       continue;
     }
@@ -58,13 +67,17 @@ export function parseHeadersFile(text) {
   return rules;
 }
 
-/** The response headers for a path: Pages' defaults, then every matching rule in order. Returns a Map(lowercased name → { name, value }). */
+/**
+ * The response headers for a path on a host: Pages' defaults, then every matching rule in order. Returns a
+ * Map(lowercased name → { name, value }). Without a host, rules that name a host never apply (the production domain).
+ */
 export function headersFor(rules, pathname, { host = null, defaults = PAGES_DEFAULTS } = {}) {
   const out = new Map();
   for (const [k, v] of defaults) out.set(k.toLowerCase(), { name: k, value: v });
   const setByRules = new Set();
+  const hostname = host ? String(host).replace(/:\d+$/, '').toLowerCase() : null;
   for (const r of rules) {
-    if (r.host && host && r.host !== host) continue;
+    if (r.host && !(hostname && (r.hostRe ? r.hostRe.test(hostname) : r.host === hostname))) continue;
     if (!r.re.test(pathname)) continue;
     for (const n of r.unset) out.delete(n.toLowerCase());
     for (const [k, v] of r.set) {
