@@ -3,14 +3,16 @@
 // the fixes in place.
 //   M1  320×568 at text size Largest: a V3 ritual's play area ran under the ritual dock (Molten Tempo's rim under the
 //       words chip, so it could not be turned past halfway). The stage now keeps clear of the dock at every size.
-//   m2  touch targets under 44 px: .chip, the Settings Volume slider, the Thought Mallow's words tag.
+//   m2  touch targets under 44 px: .chip, the Settings Volume slider, the Thought Mallow's words tag (and, from its
+//       review, the classic Another Angle's sort chips, which kept a 38 px minimum of their own: every chip in src/
+//       is now checked).
 //   m3  a V3 ritual's first Mallow line covered the play dial (its bubble sat just above the small Mallow in the dock).
 //   m4  the small tappable Mallow in a V3 ritual's dock stuck a few px out of the viewport at every size.
 //   (and, found by the gesture sweep of all 240 built rituals: world law 19's own hint could not be followed.)
 // Run: node --test hushmallow/tests/qa-mobile-fix.test.mjs
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 
 const read = (p) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
 const fnBody = (src, start, end) => { const a = src.indexOf(start); const b = src.indexOf(end, a + start.length); assert.ok(a >= 0 && b > a, `${start} … ${end}`); return src.slice(a, b); };
@@ -132,14 +134,117 @@ test('M1: the host lays the stage out from stage-fit.js, compacting the title fi
   assert.match(read('src/app/scenes/ritual.js'), /status\.textContent = `\$\{e\}\. \$\{title\}\. \$\{prompt\}`;/, 'the location is still announced');
 });
 
+// Every chip-family tap target (.chip, .hf-chip, .hm-chip …) a source builds, and the heights it is given: an
+// h('button', …) whose class is one, with the consts its style names looked up in the same file (a 38 px minimum kept
+// in SORT_CHIP once slipped past a one-line match), a button given one as its className or class and then a style, and
+// every CSS rule (a .css file, or CSS held in a .js string) that sizes one. → [{ at, what, px }] (what 'chip': one found)
+const CHIP_CLASS = /(?:^|[\s'"`])(?:[a-z0-9]+-)?chip(?=[\s'"`$])/;
+const skipString = (src, k) => {
+  const q = src[k];
+  for (let j = k + 1; j < src.length; j++) {
+    if (src[j] === '\\') { j++; continue; }
+    if (q === '`' && src[j] === '$' && src[j + 1] === '{') { j = skipBalanced(src, j + 1) - 1; continue; }
+    if (src[j] === q) return j;
+  }
+  return src.length;
+};
+// src[i] opens a bracket → the index just after its partner (strings, templates and comments skipped); with
+// stopAt, the index of the first stopAt character at depth 0 (or of a bracket closing the enclosing scope)
+function skipBalanced(src, i, stopAt = null) {
+  let depth = 0;
+  for (let k = i; k < src.length; k++) {
+    const ch = src[k];
+    if (ch === '/' && src[k + 1] === '/') { k = src.indexOf('\n', k); if (k < 0) return src.length; continue; }
+    if (ch === '/' && src[k + 1] === '*') { k = src.indexOf('*/', k + 2) + 1; continue; }
+    if (ch === "'" || ch === '"' || ch === '`') { k = skipString(src, k); continue; }
+    if (stopAt && depth === 0 && stopAt.includes(ch)) return k;
+    if ('([{'.includes(ch)) depth++;
+    else if (')]}'.includes(ch)) { if (--depth === 0 && !stopAt) return k + 1; if (depth < 0) return k; }
+  }
+  return src.length;
+}
+const pxOf = (re, text) => [...text.matchAll(re)].flatMap((m) => [...m[2].matchAll(/(\d+(?:\.\d+)?)px/g)].map((n) => ({ what: m[1], px: +n[1] })));
+const jsHeights = (text) => pxOf(/(?<![\w$-])(minHeight|height)\s*:\s*([^,;}\n]+)/g, text);
+const cssHeights = (text) => pxOf(/(?<![\w-])(min-height|height)\s*:\s*([^;}]+)/g, text);
+function chipHeights(src, file = 'src') {
+  const out = [];
+  const lineAt = (i) => `${file}:${src.slice(0, i).split('\n').length}`;
+  const defs = new Map();
+  for (const d of src.matchAll(/(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*/g)) { if (!defs.has(d[1])) defs.set(d[1], []); defs.get(d[1]).push(d.index + d[0].length); }
+  // a style's heights (an object, or CSS text) and those of the consts it names as values (spread, or passed to a
+  // helper: SORT_CHIP in type('label', SORT_CHIP)); never a helper it calls, an object it reads from, an object key or
+  // a template's ${…}
+  const resolve = (expr, seen = new Set()) => {
+    const found = [...jsHeights(expr), ...cssHeights(expr).filter((x) => x.what === 'min-height')];
+    const bare = expr.replace(/'(?:\\.|[^'\\])*'|"(?:\\.|[^"\\])*"|`(?:\\.|[^`\\])*`/g, "''").replace(/\.\.\./g, ' ');
+    for (const m of bare.matchAll(/(?<![\w$.])[A-Za-z_$][\w$]*(?![\w$])/g)) {
+      const name = m[0], after = bare.slice(m.index + name.length, m.index + name.length + 40);
+      if (/^\s*(\(|\??\.(?!\.))/.test(after) || (/^\s*:/.test(after) && /[{,]\s*$/.test(bare.slice(Math.max(0, m.index - 40), m.index)))) continue;
+      if (seen.has(name) || !defs.has(name)) continue;
+      seen.add(name);
+      for (const a of defs.get(name)) found.push(...resolve(src.slice(a, skipBalanced(src, a, ';')), seen));
+    }
+    return found;
+  };
+  const chipVars = new Set();
+  for (const m of src.matchAll(/\bh\(\s*(['"])button\1\s*,\s*\{/g)) {
+    const open = m.index + m[0].length - 1;
+    const attrs = src.slice(open, skipBalanced(src, open));
+    const cls = /[{,]\s*class\s*:\s*(['"`])((?:\\.|(?!\1).)*)\1/.exec(attrs);
+    if (!cls || !CHIP_CLASS.test(` ${cls[2]} `)) continue;
+    out.push({ at: lineAt(m.index), what: 'chip' });
+    const st = /[{,]\s*style\s*:\s*/.exec(attrs);
+    if (st) { const a = st.index + st[0].length; out.push(...resolve(attrs.slice(a, skipBalanced(attrs, a, ',}'))).map((x) => ({ at: lineAt(m.index), ...x }))); }
+    const v = /(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*$/.exec(src.slice(Math.max(0, m.index - 80), m.index));
+    if (v) chipVars.add(v[1]);
+  }
+  for (const m of src.matchAll(/(?<![\w$.])([A-Za-z_$][\w$]*)\.(?:className\s*=\s*|classList\.add\()(['"`])((?:\\.|(?!\2).)*)\2/g)) {
+    if (CHIP_CLASS.test(` ${m[3]} `)) { chipVars.add(m[1]); out.push({ at: lineAt(m.index), what: 'chip' }); }
+  }
+  for (const v of chipVars) {
+    const e = v.replace(/\$/g, '\\$');
+    for (const m of src.matchAll(new RegExp(`(?<![\\w$.])${e}\\.style\\.(minHeight|height)\\s*=\\s*([^;\\n]+)`, 'g'))) out.push(...pxOf(/(minHeight|height)\s*=\s*([^;\n]+)/g, m[0]).map((x) => ({ at: lineAt(m.index), ...x })));
+    for (const m of src.matchAll(new RegExp(`(?<![\\w$.])${e}\\.style\\.cssText\\s*=\\s*([^;\\n]+)`, 'g'))) out.push(...cssHeights(m[1]).map((x) => ({ at: lineAt(m.index), ...x })));
+    for (const m of src.matchAll(new RegExp(`Object\\.assign\\(\\s*${e}\\.style\\s*,\\s*`, 'g'))) {
+      const a = m.index + m[0].length;
+      out.push(...resolve(src.slice(a, skipBalanced(src, a, ')'))).map((x) => ({ at: lineAt(m.index), ...x })));
+    }
+  }
+  // CSS: a rule whose selector ends in a chip-family class (not in a pseudo-element of one, nor in what is inside one:
+  // .chip .hue). Found from the class itself, so a long generated file is read once.
+  for (const m of src.matchAll(/\.(?:[a-z0-9]+-)?chip(?![\w-])([^{};]*)\{([^{}]*)\}/g)) {
+    const [own, ...others] = m[1].split(',');
+    const key = (sel) => sel.trim().split(/[\s>+~]+/).pop() || '';
+    const sized = (/^[^\s>+~]*\s*$/.test(own) && !own.includes('::')) || others.some((x) => /\.(?:[a-z0-9]+-)?chip(?![\w-])/.test(key(x)) && !key(x).includes('::'));
+    if (sized) out.push(...cssHeights(m[2]).map((x) => ({ at: lineAt(m.index), ...x })));
+  }
+  return out;
+}
+const srcFiles = (dir = new URL('../src/', import.meta.url)) => readdirSync(dir, { withFileTypes: true })
+  .flatMap((d) => (d.isDirectory() ? srcFiles(new URL(`${d.name}/`, dir)) : [new URL(d.name, dir)]));
+
+test('m2: the chip scan finds a 38 px minimum kept in a style const, a className chip given a height, and CSS', () => {
+  const at = (src) => chipHeights(src).filter((x) => x.px != null).map((x) => `${x.what} ${x.px}`);
+  // the classic Another Angle's sort chips, as they were
+  assert.deepEqual(at("const SORT_CHIP = { minHeight: '38px', fontWeight: '700', padding: '0 12px' };\nconst b = h('button', { class: 'chip', 'data-short': 'Happened', style: type('label', SORT_CHIP), onclick: () => drop(p, 'fact') }, '← Happened');"), ['minHeight 38']);
+  assert.deepEqual(at("const base = compact ? { minHeight: '40px' }\n  : { minHeight: '44px' };\nh('button', { class: `hf-chip${on ? ' primary' : ''}`, style: { ...base, borderStyle: 'dashed' } }, 'x');"), ['minHeight 40', 'minHeight 44']);
+  assert.deepEqual(at("const b = document.createElement('button'); b.className = 'hfl-chip'; b.style.minHeight = '36px';"), ['minHeight 36']);
+  assert.deepEqual(at('.hm-chip { min-height: 40px; line-height: 1.2 }\n.chip .hue { width: 8px; height: 8px; }\n.tm-tag::before { height: 48px; }\n@media (max-height: 600px) { .chips .chip { height: 42px; } }'), ['min-height 40', 'height 42']);
+  // not a chip: the row of them, another control, or a chip's own label or line height
+  assert.deepEqual(at("h('div', { class: 'chips', style: { minHeight: '20px' } }); h('button', { class: 'btn ghost', style: { minHeight: '40px' } }); h('button', { class: 'chip', style: { lineHeight: '1.15' } });"), []);
+});
+
 test('m2: chips, the Settings Volume slider and the Thought Mallow’s words tag are at least 44 px to a finger', () => {
   const css = read('src/ui/app.css');
   assert.match(css, /^\.chip \{ flex: 0 0 auto; min-height: 44px;/m);
-  for (const m of css.matchAll(/\.chip\b[^{,]*\{[^}]*min-height:\s*(\d+)px/g)) assert.ok(+m[1] >= 44, m[0]);
-  // no chip anywhere is given a smaller inline minimum
-  for (const p of ['src/app/scenes/settings.js', 'src/app/scenes/library.js', 'src/app/scenes/landing.js', 'src/app/scenes/express.js', 'src/app/emotion-picker.js']) {
-    for (const m of read(p).matchAll(/class: 'chip'[^\n]*minHeight: '(\d+)px'/g)) assert.ok(+m[1] >= 44, `${p}: ${m[0]}`);
-  }
+  // no chip anywhere in the app is given less, inline or in CSS: every .js and .css file under src/ (the check used to
+  // read five files, and the classic Another Angle's 38 px sort chips went unseen)
+  const files = srcFiles().filter((u) => /\.(js|css)$/.test(u.pathname));
+  assert.ok(files.filter((u) => u.pathname.endsWith('.js')).length >= 200, `${files.length} files`);
+  const found = files.flatMap((u) => chipHeights(readFileSync(u, 'utf8'), u.pathname.slice(u.pathname.indexOf('/src/') + 1)));
+  assert.ok(found.filter((x) => x.what === 'chip').length >= 40, 'the chips themselves were found');
+  assert.ok(found.some((x) => x.at.startsWith('src/ultra/another-angle.js') && x.what === 'chip'), 'the classic Another Angle’s chips are in the scan');
+  assert.deepEqual(found.filter((x) => x.px != null && x.px < 44).map((x) => `${x.at}: ${x.what} ${x.px}px`), []);
   // the slider: 44 px tall inside its row's own padding (the row keeps its height: 14 px padding either side)
   assert.match(css, /\.setting \.range \{ height: 44px; margin-block: -6px; \}/);
   assert.match(css, /\.setting \{ display: flex; align-items: center; gap: 12px; padding: 14px 0;/);
