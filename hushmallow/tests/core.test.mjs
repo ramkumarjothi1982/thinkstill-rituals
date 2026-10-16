@@ -107,8 +107,11 @@ test('shipped code calls no remote service except Another Angle’s own server',
   const authSrc = readFileSync(`${root}src/auth/client.js`, 'utf8');
   assert.equal(authSrc.split(authFetch).length, 2, 'one fetch site in auth/client.js');
   assert.match(authSrc, /if \(u\.origin !== origin\) return Promise\.reject/);
-  const { PROJECT_URL } = await import('../src/auth/config.js');
+  const { PROJECT_URL, STAGING_PROJECT_URL } = await import('../src/auth/config.js');
   assert.equal(PROJECT_URL, 'https://igbxbfuaoybfzsroxuln.supabase.co');
+  // the branch previews' own project (docs/STAGING.md): derived from STAGING_PROJECT_REF, '' while it is the placeholder
+  const STAGING_PROJECT_TEMPLATE = 'https://${STAGING_PROJECT_REF}.supabase.co';
+  assert.ok(STAGING_PROJECT_URL === '' || (/^https:\/\/[a-z0-9]{20}\.supabase\.co$/.test(STAGING_PROJECT_URL) && STAGING_PROJECT_URL !== PROJECT_URL), STAGING_PROJECT_URL);
   // …and web subscriptions (src/app/billing.js; off unless src/app/config.js switches them on): one fetch, only to the
   // billing endpoint (the same Worker, one of ANGLE_ALLOWED_HOSTS) + one of its three paths, with the account's token
   const billingFetch = 'const netFetch = (url, init) => globalThis.fetch(url, init);';
@@ -126,10 +129,12 @@ test('shipped code calls no remote service except Another Angle’s own server',
     // the only URLs allowed: the SVG namespace, the support-line directory and Lifeline's crisis chat
     // (Australia) that people can open themselves, (in src/app/config.js only) the configured Another
     // Angle endpoint and the branch previews' staging one, and (in src/auth/config.js only) the sign-in project
+    // and the branch previews' staging project (STAGING_PROJECT_URL, written once as its template)
     const urls = (s.match(/https?:\/\/[^'"`\s)]+/g) || []).filter((u) => !/^https?:\/\/(www\.w3\.org\/|findahelpline\.com|www\.lifeline\.org\.au\/crisis-chat\/$)/.test(u))
       .filter((u) => !(ANGLE_ENDPOINT && f.endsWith('/src/app/config.js') && u === ANGLE_ENDPOINT))
       .filter((u) => !(f.endsWith('/src/app/config.js') && u === STAGING_ANGLE_ENDPOINT))
-      .filter((u) => !(f.endsWith('/src/auth/config.js') && u === PROJECT_URL));
+      .filter((u) => !(f.endsWith('/src/auth/config.js') && u === PROJECT_URL))
+      .filter((u) => !(f.endsWith('/src/auth/config.js') && u === STAGING_PROJECT_TEMPLATE));
     assert.deepEqual(urls, [], f);
   }
 });
