@@ -150,7 +150,11 @@ export async function run(ctx) {
   const haptic = (k) => app.haptic(k);
   let reactAt = 0;
   const react = (kind, force = false) => { const tt = performance.now(); if (!force && tt - reactAt < 700) return; reactAt = tt; world.react(kind); };
-  const say = (text, ms = 3400) => { if (text) { ctx.say(text, { who: lead.name, ms }); live.textContent = `${lead.name}: ${text}`; } };
+  // the Mallow's lines never cover the play area (the dial, the path, the pieces to touch): its bubble keeps out of the
+  // whole stage, borrowing the title band (whose prompt dims meanwhile) when nothing else is free; read live, so it
+  // follows a stage laid out again
+  const stageAvoid = () => (phaseName === 'end' ? [] : [{ left: stage.x, top: stage.y, right: stage.x + stage.w, bottom: stage.y + stage.h }]);
+  const say = (text, ms = 3400) => { if (text) { ctx.say(text, { who: lead.name, ms, avoid: stageAvoid }); live.textContent = `${lead.name}: ${text}`; } };
   const userMix = faceMix(ctx.input.emotions || []);
   const emote = (k) => {
     const m = {}; for (const [key, val] of Object.entries(userMix)) m[key] = val * (1 - k);

@@ -4,6 +4,7 @@
 //   M1  320×568 at text size Largest: a V3 ritual's play area ran under the ritual dock (Molten Tempo's rim under the
 //       words chip, so it could not be turned past halfway). The stage now keeps clear of the dock at every size.
 //   m2  touch targets under 44 px: .chip, the Settings Volume slider, the Thought Mallow's words tag.
+//   m3  a V3 ritual's first Mallow line covered the play dial (its bubble sat just above the small Mallow in the dock).
 // Run: node --test hushmallow/tests/qa-mobile-fix.test.mjs
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -94,4 +95,24 @@ test('m2: chips, the Settings Volume slider and the Thought Mallow’s words tag
   const tag = /\.tm-tag\{([^}]*)\}/.exec(layer)[1];
   assert.doesNotMatch(tag, /overflow\s*:|contain\s*:/, 'nothing clips the hit area');
   assert.match(tag, /pointer-events:auto/);
+});
+
+test('m3: a V3 ritual’s Mallow lines keep out of the whole stage (the title band is borrowed instead), live as it moves', () => {
+  const host = read('src/v3/host.js');
+  assert.match(host, /const stageAvoid = \(\) => \(phaseName === 'end' \? \[\] : \[\{ left: stage\.x, top: stage\.y, right: stage\.x \+ stage\.w, bottom: stage\.y \+ stage\.h \}\]\);/);
+  assert.match(host, /const say = \(text, ms = 3400\) => \{ if \(text\) \{ ctx\.say\(text, \{ who: lead\.name, ms, avoid: stageAvoid \}\);/);
+  // every line goes through it: the opening, halfway, the law's and the finale's (the law module is handed the same say)
+  assert.doesNotMatch(host.replace(/const say = [^\n]*\n/, ''), /ctx\.say\(/);
+  assert.match(host, /words: E\.words, photos, sound, haptic, react: \(k\) => react\(k, true\), say, setPrompt,/);
+  assert.match(read('src/app/scenes/ritual.js'), /say: \(text, opts\) => say\(world, text, opts\),/, 'the ritual scene passes the options on');
+  const ui = read('src/app/ui.js');
+  const obs = fnBody(ui, 'function collectObstacles(world, avoid) {', '// the top bar and the dock always stay clear');
+  // a rect a ritual passes is a piece however big (a tall phone's stage is more than half the screen); only layers found
+  // in the page are let off for their size
+  assert.match(obs, /if \(kind === 'piece' && el && \(right - r\.left\) \* \(bottom - r\.top\) > area \* 0\.5\) return;/);
+  assert.match(obs, /for \(const r of \(typeof avoid === 'function' \? avoid\(\) : avoid\) \|\| \[\]\) add\(r, 'piece'\);/);
+  // a title the line has dimmed is still the title band: no flicker (it was measured as gone once faded, and the line
+  // moved off it and back every few hundred ms)
+  assert.match(obs, /add\(el\.classList\.contains\('say-dim'\) \? boxRect\(el\) : visibleRect\(el\), 'title', el\)/);
+  assert.match(ui, /function boxRect\(el\) \{\n  const r = el\.getBoundingClientRect\(\);\n  return r\.width >= 1 && r\.height >= 1 \? r : null;\n\}/);
 });
