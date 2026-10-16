@@ -15,12 +15,15 @@
 //    src/auth/client.js) and is never parsed as app code; /auth/callback/
 //    names only absolute /v/<version>/ files and its module graph resolves;
 //    _headers keeps /auth/* uncached, unframed and referrer-free; the
-//    published public-config.js holds only valid public values.
+//    published public-config.js holds only valid public values, for this
+//    build's stage (auth-config.mjs buildStage: a branch build only the
+//    staging project, main and every other build only production's).
 // Prints a short summary; exits 1 with the list of problems.
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { buildStage } from './auth-config.mjs';
 
 // Referenced only by localhost labs (main.js v3Lab) and removed from the
 // published copy on purpose: listed, never a failure.
@@ -110,7 +113,7 @@ export function specifiers(src, isCss = false) {
   return { lit, tpl };
 }
 
-export async function checkSite(outArg, ver) {
+export async function checkSite(outArg, ver, { env = process.env } = {}) {
   const out = resolve(outArg);
   const app = join(out, 'v', ver);
   const problems = [], notes = [], allowed = [], templates = [];
@@ -232,12 +235,12 @@ export async function checkSite(outArg, ver) {
     if (!isFile(p)) { missing++; problems.push(`asset missing: ${rel(p)}`); }
   }
 
-  const auth = await checkAuth(out, app, problems);
+  const auth = await checkAuth(out, app, problems, buildStage(env));
   return { problems, notes, allowed, templates, reached: seen.size, assets: { checked: urls.size, missing }, auth };
 }
 
 /** Section 5: the sign-in pieces. Returns a one-line summary. */
-async function checkAuth(out, app, problems) {
+async function checkAuth(out, app, problems, stage) {
   // the vendored library: exactly the pinned file
   const vdir = join(app, 'vendor/supabase');
   let man = null;
@@ -278,7 +281,7 @@ async function checkAuth(out, app, problems) {
       const keys = Object.keys(cfg || {}).sort().join(',');
       if (cfg?.enabled) {
         if (keys !== 'enabled,key,mode,url') problems.push(`src/auth/public-config.js publishes ${keys} (only enabled, url, key, mode allowed)`);
-        const v = validatePublicConfig({ url: cfg.url, key: cfg.key, mode: cfg.mode });
+        const v = validatePublicConfig({ url: cfg.url, key: cfg.key, mode: cfg.mode, stage });
         if (!v.ok) problems.push(`src/auth/public-config.js: ${v.error}`);
         summary = `sign-in on (${cfg.mode}, ${cfg.url})`;
       } else {
