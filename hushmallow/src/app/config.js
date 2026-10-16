@@ -39,7 +39,10 @@ export const ANGLE_ALLOWED_HOSTS = ['hushmallow-another-angle.vibyfy-chat.worker
 // once the Worker's billing is set up: BILLING_PROVIDER = 'stripe' and
 // BILLING_ENDPOINT = ANGLE_ENDPOINT (it must be one of ANGLE_ALLOWED_HOSTS).
 // The build needs sign-in too: a web plan belongs to an account. The App Store
-// app never uses it. Development: ?billingDev=<port> on localhost (src/app/billing.js).
+// app never uses it, and localhost keeps its test purchases unless
+// ?billingDev=<port> points at a local server (src/app/billing.js). The tests in
+// tests/billing.test.mjs follow these values (off: exactly today's; on: our
+// own Worker and prices like 'A$9.99'), so switching on needs no test change.
 export const BILLING_PROVIDER = '';
 export const BILLING_ENDPOINT = '';
 /**

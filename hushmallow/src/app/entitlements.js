@@ -81,6 +81,8 @@ const NONE = Object.freeze({ tier: 'none', source: null, since: null });
 export const BILLING_GRACE_MS = 3 * 86400000;
 /** The least time between two checks with the billing server (start, coming back to the app). */
 export const BILLING_RECHECK_MS = 60000;
+/** A web plan checked later than now by more than this (the phone's clock set back, or an edited copy) is not trusted. */
+export const BILLING_CLOCK_SKEW_MS = 10 * 60000;
 
 function nativeBridge() {
   if (typeof window === 'undefined') return null;
@@ -110,8 +112,10 @@ export function createEntitlements({ store, billing = null, now = () => Date.now
   if (testEnded) state = { tier: 'none', source: null, since: null };
   // web subscriptions (src/app/billing.js; null when off): never in the App Store app, where Apple's purchase is the only one
   const web = native ? null : billing;
-  // a web plan whose last check is older than the grace counts as no plan (nothing stored changes) until the server answers
-  const cur = () => (state.source === 'billing' && !(now() - (Number(state.checkedAt) || 0) < BILLING_GRACE_MS) ? NONE : state);
+  // a web plan whose last check is older than the grace (or later than now) counts as no plan (nothing stored changes)
+  // until the server answers
+  const fresh = (checkedAt) => { const age = now() - (Number(checkedAt) || 0); return age > -BILLING_CLOCK_SKEW_MS && age < BILLING_GRACE_MS; };
+  const cur = () => (state.source === 'billing' && !fresh(state.checkedAt) ? NONE : state);
 
   const set = (tier, source) => {
     state = { tier, source, since: Date.now() };
@@ -125,7 +129,7 @@ export function createEntitlements({ store, billing = null, now = () => Date.now
     store.set('entitlement', state);
     listeners.forEach((fn) => fn(state));
   };
-  let lastWebCheck = -Infinity, webCheck = null;
+  let lastWebCheck = -Infinity, webCheck = null, webAnswered = false;
   /** Ask the billing server (at most once a BILLING_RECHECK_MS unless forced; one request at a time). */
   function refreshWeb(force) {
     if (webCheck) return webCheck;
@@ -134,6 +138,7 @@ export function createEntitlements({ store, billing = null, now = () => Date.now
     webCheck = (async () => {
       let r = null;
       try { r = await web.status(); } catch { r = null; }
+      webAnswered = !!r?.ok;
       // a plan, or what the server says about a web plan kept here (ended, or a past one with receipts to see);
       // a test or App Store plan is never taken away by it. Offline or signed out: what is kept stays, within the grace
       if (r?.ok && (RANK[r.tier] > 0 || state.source === 'billing' || (state.tier === 'none' && r.manageable))) setWeb(r);
@@ -190,7 +195,12 @@ export function createEntitlements({ store, billing = null, now = () => Date.now
     },
     async restore() {
       if (native) { const r = await native.restore(); if (r?.tier) set(r.tier, 'app-store'); return state; }
-      if (web) return refreshWeb(true);
+      if (web) {
+        const s = await refreshWeb(true);
+        // offline, or the server could not say: the plans page says "Couldn't check", never "Nothing to restore yet"
+        if (!webAnswered) throw new Error('The billing server did not answer');
+        return s;
+      }
       return state;
     },
     cancelTest() { if (state.source === 'test') set('none', null); },

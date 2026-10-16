@@ -3,7 +3,10 @@
 // src/app/config.js switches them on (BILLING_PROVIDER 'stripe',
 // BILLING_ENDPOINT our Worker) AND this build has sign-in: a web plan belongs
 // to an account, so it follows the person to any device they sign in on.
-// With it off, createBilling() is null and nothing here ever runs.
+// With it off, createBilling() is null and nothing here ever runs. It is null
+// in the App Store app's shell too (inNativeShell: the StoreKit bridge is
+// there), so that app never shows, says or sends anything of web billing, and
+// on a development host unless ?billingDev asks for it (test purchases stay).
 //
 // This file holds hushmallow's ONE billing network call (tests/core.test.mjs
 // allows exactly the `netFetch` line below, only to the configured endpoint
@@ -11,7 +14,7 @@
 // token (Authorization: Bearer) and, for a checkout, { plan, period }. Never
 // words, feelings or photos, and nothing at all for a guest.
 //
-//   createBilling({ auth, signIn, config?, prices?, fetchImpl?, nav?, timeoutMs? }) → billing | null (off)
+//   createBilling({ auth, signIn, config?, shell?, prices?, fetchImpl?, nav?, timeoutMs? }) → billing | null (off)
 //     signedIn()             the account is signed in on this device
 //     accountToken()         → its current access token, or null (Another Angle's session sends it too, src/beyond/angle-client.js)
 //     status()               → { ok: true, tier, status, periodEnd, cancelAtPeriodEnd, manageable } | { ok: false, reason }
@@ -19,6 +22,7 @@
 //     portal()               → { redirecting } (Stripe's customer portal) | { needsAccount } | { none } | { failed, reason }
 //     prices()               → { productId: 'A$…' }, from BILLING_PRICES (only those set)
 //   resolveBilling({ provider, endpoint, allowedHosts, loc, session }) → { provider, endpoint } | null
+//   inNativeShell(win?)     the App Store app's shell (window.HushNative or the hushStore message handler)
 //   takeReturn({ loc, hist }) → 'success' | 'cancel' | 'portal' | null: the ?billing= Stripe sent the person
 //     back with, taken out of the address at once (Back never brings it again)
 //   welcomeBack(app, kind)  after Stripe: the plan is asked for again (a few times: the webhook can take a
@@ -52,17 +56,20 @@ function safeSession() { try { return globalThis.sessionStorage || null; } catch
  * https, on a host listed in ANGLE_ALLOWED_HOSTS, an origin and a path only. Development only:
  * on localhost, `?billingDev=<port>` points at a local server on this machine for the rest of the tab
  * (kept in sessionStorage, so the way back from Stripe still has it; `?billingDev=off` clears it).
+ * Without it a development host has no billing at all, whatever the config says: the production
+ * Worker never accepts its origin, and its free test purchases stay as they were.
  */
 export function resolveBilling({ provider = BILLING_PROVIDER, endpoint = BILLING_ENDPOINT, allowedHosts = ANGLE_ALLOWED_HOSTS, loc = globalThis.location, session = safeSession() } = {}) {
-  try {
-    if (loc && DEV_HOSTS.includes(loc.hostname)) {
+  if (loc && DEV_HOSTS.includes(loc.hostname)) {
+    let port = null;
+    try {
       const q = new URLSearchParams(loc.search || '').get('billingDev');
       if (q === 'off' || q === '0') session?.removeItem(DEV_KEY);
       else if (q && /^\d{2,5}$/.test(q)) session?.setItem(DEV_KEY, q);
-      const port = q && /^\d{2,5}$/.test(q) ? q : q === 'off' || q === '0' ? null : session?.getItem(DEV_KEY);
-      if (port && /^\d{2,5}$/.test(port)) return { provider: 'stripe', endpoint: `${loc.protocol === 'https:' ? 'https:' : 'http:'}//${loc.hostname}:${port}` };
-    }
-  } catch { /* no dev override */ }
+      port = q && /^\d{2,5}$/.test(q) ? q : q === 'off' || q === '0' ? null : session?.getItem(DEV_KEY);
+    } catch { port = null; }
+    return port && /^\d{2,5}$/.test(port) ? { provider: 'stripe', endpoint: `${loc.protocol === 'https:' ? 'https:' : 'http:'}//${loc.hostname}:${port}` } : null;
+  }
   if (provider !== 'stripe' || !endpoint || typeof endpoint !== 'string') return null;
   let u;
   try { u = new URL(endpoint); } catch { return null; }
@@ -79,11 +86,19 @@ export function stripePage(url) {
   return u.href;
 }
 
+/**
+ * The App Store app's shell: the StoreKit bridge entitlements.js uses (window.HushNative.store or the hushStore
+ * message handler), or any window.HushNative. Web subscriptions never run there: Apple's purchase is the only one.
+ */
+export function inNativeShell(win = globalThis.window) {
+  try { return !!win && !!(win.HushNative || win.webkit?.messageHandlers?.hushStore); } catch { return false; }
+}
+
 export function createBilling({
-  auth, signIn = false, config = resolveBilling(), prices = BILLING_PRICES, fetchImpl = netFetch,
+  auth, signIn = false, config = resolveBilling(), shell = inNativeShell(), prices = BILLING_PRICES, fetchImpl = netFetch,
   nav = (url) => globalThis.location.assign(url), timeoutMs = TIMEOUT_MS,
 } = {}) {
-  if (!config || !signIn) return null;
+  if (!config || !signIn || shell) return null;
   const { endpoint } = config;
   const handle = () => (typeof auth === 'function' ? auth() : auth);
 

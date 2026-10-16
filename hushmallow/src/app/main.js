@@ -24,7 +24,9 @@ const AUTH = authBoot();
 const store = AUTH.store;
 const prefs = createPrefs(store);
 // Web subscriptions (src/app/billing.js): null unless src/app/config.js switches them on and this build has
-// sign-in; then the plans page sells through Stripe and a plan is the billing server's answer for the account
+// sign-in; then the plans page sells through Stripe and a plan is the billing server's answer for the account.
+// Always null in the App Store app's shell (createBilling checks for its StoreKit bridge), so app.billing, and with it
+// the consent card's, the delete screen's and Another Angle's web-billing branches, never run there
 const billing = createBilling({ auth: () => app.auth, signIn: !!AUTH.config.enabled && !AUTH.forwarding });
 const ent = createEntitlements({ store, billing });
 
