@@ -283,15 +283,18 @@ async function checkLegal(out, app, ver, problems, enqueue) {
           else if (frag && file.endsWith('.html') && !idsOf(file).has(frag)) problems.push(`${page} links to ${value}, which is not an id on that page`);
           continue;
         }
-        // anything else the page loads: one of this version's files, through a relative path, never another site
-        if (name === 'srcset' || external(value) || value.startsWith('/')) { problems.push(`${page} loads ${value} (only this version's files, relative)`); continue; }
-        const target = resolve(dirname(p), bare(value));
-        if (!target.startsWith(app + sep)) { problems.push(`${page} loads ${value}, which is outside v/${ver}/`); continue; }
-        if (!isFile(target)) { problems.push(`${page} loads ${value}, which is not in the site`); continue; }
-        if (target.endsWith('.css')) {
-          for (const s of specifiers(readFileSync(target, 'utf8'), true).lit) if (external(s) && !s.startsWith('#')) problems.push(`${rel(out, target)} (loaded by ${page}) names ${s}, another site`);
+        // anything else the page loads (each candidate of a srcset): one of this version's files, through a relative
+        // path, never another site
+        for (const v of name === 'srcset' ? value.split(',').map((c) => c.trim().split(/\s+/)[0]).filter(Boolean) : [value]) {
+          if (external(v) || v.startsWith('/')) { problems.push(`${page} loads ${v} (only this version's files, relative)`); continue; }
+          const target = resolve(dirname(p), bare(v));
+          if (!target.startsWith(app + sep)) { problems.push(`${page} loads ${v}, which is outside v/${ver}/`); continue; }
+          if (!isFile(target)) { problems.push(`${page} loads ${v}, which is not in the site`); continue; }
+          if (target.endsWith('.css')) {
+            for (const s of specifiers(readFileSync(target, 'utf8'), true).lit) if (external(s) && !s.startsWith('#')) problems.push(`${rel(out, target)} (loaded by ${page}) names ${s}, another site`);
+          }
+          enqueue(target, page);
         }
-        enqueue(target, page);
       }
     }
   }
