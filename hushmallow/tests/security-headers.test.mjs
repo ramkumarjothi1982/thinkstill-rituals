@@ -84,7 +84,7 @@ test('frame-ancestors: only the owner\'s Framer site (the agreed embed); X-Frame
 });
 
 test('HSTS, nosniff, referrer, COOP and Permissions-Policy on every path', () => {
-  for (const path of ['/', '/auth/callback/', '/v/x/src/app/main.js', '/version.json']) {
+  for (const path of ['/', '/auth/callback/', '/legal/privacy.html', '/v/x/src/app/main.js', '/version.json']) {
     assert.equal(get(prod, path, 'Strict-Transport-Security'), 'max-age=31536000; includeSubDomains', path);
     assert.equal(get(prod, path, 'X-Content-Type-Options'), 'nosniff', `${path}: one exact token`);
     assert.equal(get(prod, path, 'Cross-Origin-Opener-Policy'), 'same-origin', path);
@@ -107,6 +107,21 @@ test('/auth/* stays uncached, unframed and referrer-free, with its own connect-s
   assert.deepEqual(a.get('connect-src'), ["'self'", SUPA]);
   assert.deepEqual(a.get('script-src'), ["'self'"]);
   assert.deepEqual(a.get('style-src'), ["'self'"]);
+});
+
+test('/legal/* (Privacy Policy, Terms of Use): revalidated, unframed, referrer-free, and a second policy with no script', () => {
+  for (const path of ['/legal/privacy.html', '/legal/terms.html']) {
+    assert.equal(get(prod, path, 'Cache-Control'), 'no-cache', `${path}: exactly one cache rule`);
+    assert.equal(get(prod, path, 'X-Frame-Options'), 'DENY');
+    assert.equal(get(prod, path, 'Referrer-Policy').split(',').map((s) => s.trim()).pop(), 'no-referrer');
+    const ps = policies(get(prod, path, 'Content-Security-Policy'));
+    assert.equal(ps.length, 2, 'the app policy and the /legal/* policy are both enforced');
+    assert.deepEqual(ps[1].get('default-src'), ["'none'"]);
+    assert.equal(ps[1].get('script-src'), undefined, 'no script source: default-src none applies');
+    assert.deepEqual(ps[1].get('frame-ancestors'), ["'none'"]);
+  }
+  // the app's own pages keep the app policy only
+  assert.equal(policies(get(prod, '/', 'Content-Security-Policy')).length, 1);
 });
 
 test('cache: v/<version>/ is immutable, pages / version.json / public-config.js always revalidate, one rule per path', () => {

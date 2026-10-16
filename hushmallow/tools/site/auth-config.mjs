@@ -7,7 +7,11 @@
 // and the Another Angle Worker (src/app/config.js; on the branch previews of the
 // Pages project only, the staging Worker instead: PREVIEW_PATTERN), HSTS, nosniff, a referrer
 // policy, a Permissions-Policy and COOP; the rules for /auth/*: never cached,
-// no referrer, never framed; and the cache rules of the versioned layout.
+// no referrer, never framed; for /legal/* (the Privacy Policy and the Terms of
+// Use, static pages): a second Content-Security-Policy that allows no script
+// and nothing from another site, no referrer, never framed, and revalidated on
+// every visit (each names the current v/<version>/ folder); and the cache
+// rules of the versioned layout.
 //
 // Reads SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY and HM_AUTH_MODE ('' | dev | ci)
 // from the environment (Cloudflare Pages build variables; nothing in CI sets
@@ -104,6 +108,26 @@ export function angleOrigins(endpoint = ANGLE_ENDPOINT, hosts = ANGLE_ALLOWED_HO
  */
 export const PREVIEW_PATTERN = `https://:preview${PREVIEW_HOST_SUFFIX}/*`;
 
+/** /legal/*: the same policy as the pages' own meta tag (legal/*.html), plus what only a header can say (frame-ancestors). */
+export const LEGAL_CSP = "default-src 'none'; style-src 'self'; font-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'";
+
+/**
+ * The /legal/* rule: the Privacy Policy and the Terms of Use run no script and load nothing from another site.
+ * Like /auth/*, it is added to the whole-site rule: both CSPs are enforced (the stricter wins) and
+ * "same-origin, no-referrer" means no-referrer; nosniff comes from the whole-site rule only (one exact token).
+ * No cache rule matches /legal/*, so its Cache-Control is the only one.
+ */
+export function legalRule() {
+  return [
+    '# /legal/: the Privacy Policy and the Terms of Use. Plain pages: no script, nothing from another site.',
+    '/legal/*',
+    '  Cache-Control: no-cache',
+    '  Referrer-Policy: no-referrer',
+    '  X-Frame-Options: DENY',
+    `  Content-Security-Policy: ${LEGAL_CSP}`,
+  ];
+}
+
 /**
  * The /auth/* rule, unchanged since sign-in shipped (docs/AUTH.md "/auth/callback"):
  * the sign-in callback is never cached, framed or leaked by a referrer, and may
@@ -141,6 +165,7 @@ export function headersFile(origin, { production = true, version, root = ROOT } 
     srcTree: readSrcTree(resolve(root, 'src')),
     version,
     authRule: authRule(origin),
+    legalRule: legalRule(),
     // staging (docs/STAGING.md): previews talk to the staging Worker only, as src/app/config.js deploySettings decides
     preview: { pattern: PREVIEW_PATTERN, angle: angleOrigins(STAGING_ANGLE_ENDPOINT, STAGING_ALLOWED_HOSTS) },
   });

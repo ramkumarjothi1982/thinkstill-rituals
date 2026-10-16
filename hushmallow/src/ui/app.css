@@ -327,6 +327,13 @@ input.search:focus, input.text:focus { border-color: var(--accent); }
 .invite-included { color: var(--text-2); }
 .plans-foot { display: grid; gap: 4px; margin-top: 14px; }
 .test-note { font: var(--type-caption); letter-spacing: var(--type-caption-ls); color: var(--text-3); text-align: center; margin: 8px 8px 0; text-shadow: var(--type-shadow); text-wrap: pretty; }
+/* "Terms · Privacy Policy" (src/app/legal.js): small links into the legal pages (a new tab), 44 px tall each,
+   under Settings → About and at the foot of the plans page */
+.legal-links { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; margin: 4px 0 0; color: var(--text-3);
+  font: var(--type-caption); letter-spacing: var(--type-caption-ls); }
+.legal-links a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 8px; border-radius: 10px; color: var(--text-2);
+  text-decoration: underline; text-underline-offset: 3px; text-decoration-color: rgba(205, 198, 234, .45); }
+.plans-legal { margin-top: 6px; text-shadow: var(--type-shadow); }
 @media (prefers-reduced-motion: reduce) {
   .invite, .invite::after { animation: none; }
   .invite::after { display: none; }

@@ -46,6 +46,9 @@
   text-decoration-color: rgba(255, 217, 138, .45); cursor: pointer; border-radius: 12px; }
 .hm-auth-actions .hm-auth-link { justify-self: center; }
 .hm-auth-error .hm-auth-link { padding: 0 4px; color: #ffe7a8; }
+/* the sign-up form's agreement, just above its button: "Terms" and "Privacy Policy" open the legal pages in a new tab */
+.hm-auth-agree { margin: 0; text-wrap: pretty; }
+.hm-auth-agree a { padding: 6px 0; color: var(--text-1); text-decoration: underline; text-underline-offset: 3px; text-decoration-color: rgba(255, 217, 138, .55); border-radius: 6px; }
 .hm-account-forgot { display: flex; justify-content: flex-end; margin-top: -6px; }
 
 /* buttons this scene adds */

@@ -1,0 +1,237 @@
+<!doctype html>
+<!-- DRAFT SWITCH: the "Draft — awaiting owner and legal review" notice below is shown by one line in src/ui/legal.css, for this page
+     and terms.html together. Once both are approved, replace every [Owner: …] placeholder and delete that line (see its comment):
+     tests/legal-pages.test.mjs refuses an approved page that still holds a placeholder. -->
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; font-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#0a0818">
+<meta name="color-scheme" content="dark">
+<meta name="description" content="How hushmallow handles your information: what stays on your device, what an optional account keeps, and what Another Angle sends, only after you say yes.">
+<title>Privacy Policy · hushmallow</title>
+<!-- tools/build-site.sh rewrites every ../src/ and ../assets/ path below to ../v/<version>/… (this page is published at /legal/) -->
+<link rel="icon" href="../assets/brand/favicon-48.png" sizes="48x48" type="image/png">
+<link rel="preload" href="../assets/fonts/nunito-sans-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="../assets/fonts/manrope-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../src/ui/tokens.css">
+<link rel="stylesheet" href="../src/ui/type.css">
+<link rel="stylesheet" href="../src/ui/legal.css">
+</head>
+<body class="legal-page">
+<a class="legal-skip" href="#legal-main">Skip to the policy</a>
+<header class="legal-top">
+  <a class="legal-home" href="../"><img class="hm-logo hm-logo-light" src="../assets/brand/hushmallow-logo-light-360.webp" alt="hushmallow, back to the app" width="168" height="32"></a>
+  <nav class="legal-switch" aria-label="Legal pages">
+    <a href="privacy.html" aria-current="page">Privacy Policy</a>
+    <a href="terms.html">Terms of Use</a>
+  </nav>
+</header>
+
+<main class="legal" id="legal-main" tabindex="-1">
+  <aside class="legal-draft" role="note" aria-label="Draft notice"><strong>Draft — awaiting owner and legal review.</strong> This policy (draft of 16 October 2026) is not in force yet. Text in [square brackets] is for the owner to complete.</aside>
+
+  <h1 class="legal-title">Privacy Policy</h1>
+  <p class="legal-meta">Last updated: <span class="legal-todo" data-todo="effective-date">[Owner: the date this policy takes effect]</span></p>
+
+  <p class="legal-lead"><span class="brand-name">hushmallow</span> is built so that what you feel stays yours. Most of what you do in it never leaves your device. This policy explains, in plain words, what the app keeps, what leaves your device and when, who helps us run it, and what you can do about it.</p>
+  <p><span class="brand-name">hushmallow</span> is provided by <span class="legal-todo" data-todo="entity">[Owner: legal entity name]</span> (ABN <span class="legal-todo" data-todo="abn">[Owner: ABN]</span>), called “we” or “us” here. We handle personal information in line with the Australian Privacy Principles (APPs) in the <cite>Privacy Act 1988</cite> (Cth). This policy covers the <span class="brand-name">hushmallow</span> web app, our Another Angle server and the subscriptions <span class="brand-name">hushmallow Flow</span> and <span class="brand-name">hushmallow Beyond</span>.</p>
+
+  <section class="legal-summary" aria-labelledby="summary">
+    <h2 id="summary">In short</h2>
+    <ul>
+      <li><strong>Your device first.</strong> Without an account, everything <span class="brand-name">hushmallow</span> keeps stays in your browser on this device. We can’t see it.</li>
+      <li><strong>Your words, feelings and photos stay with you.</strong> They are never sent with an account, and photos never leave your device.</li>
+      <li><strong>One exception, only if you say yes.</strong> In <span class="brand-name">hushmallow Beyond</span>, Another Angle sends the words you choose to our server and on to Anthropic, an outside provider, to prepare a perspective. Nothing is sent until you tap Accept.</li>
+      <li><strong>No ads, no analytics, no tracking.</strong> We never sell, rent or trade your information.</li>
+      <li><strong>You’re in control.</strong> You can delete what’s on this device, your Another Angle data or your account at any time in Settings.</li>
+    </ul>
+  </section>
+
+  <nav class="legal-toc" aria-labelledby="toc">
+    <h2 id="toc">On this page</h2>
+    <ol>
+      <li><a href="#device">What stays on your device</a></li>
+      <li><a href="#account">If you create an account</a></li>
+      <li><a href="#another-angle">Another Angle</a></li>
+      <li><a href="#payments">Payments</a></li>
+      <li><a href="#hosting">Hosting</a></li>
+      <li><a href="#never">What we never do</a></li>
+      <li><a href="#dictation">Dictation and your keyboard</a></li>
+      <li><a href="#sharing">Who we share information with</a></li>
+      <li><a href="#overseas">Information sent overseas</a></li>
+      <li><a href="#retention">How long we keep it</a></li>
+      <li><a href="#rights">Your choices and rights</a></li>
+      <li><a href="#security">Keeping it safe</a></li>
+      <li><a href="#age">Age</a></li>
+      <li><a href="#support">Not a crisis service</a></li>
+      <li><a href="#changes">Changes to this policy</a></li>
+      <li><a href="#contact">Contact and complaints</a></li>
+    </ol>
+  </nav>
+
+  <h2 id="device">1. What stays on your device</h2>
+  <p>You can use <span class="brand-name">hushmallow</span> without an account and without telling us who you are. What the app keeps is stored in your browser’s local storage on this device, under names that start with <code>hm2:</code>. It is not sent to us, and we can’t see it:</p>
+  <ul>
+    <li>your settings (such as sound, motion and text size) and your plan;</li>
+    <li>your favourite worlds, where a Hushflow paused, and which Mallow lines and rituals you’ve already had, so they don’t repeat too often;</li>
+    <li>your Memory Garden: the skills you choose to keep, with when you kept and practised them, never your words or photos;</li>
+    <li>if “Remember what I played” is on: which rituals and worlds you played, the feelings you picked for them and how they felt afterwards;</li>
+    <li>if “Keep sealed predictions” is on: the predictions you sealed in the simpler Another Angle, with your words;</li>
+    <li>for Another Angle: your sharing choice, a random code for this device, a session code, any tester code, and a count of the feedback buttons you tapped.</li>
+  </ul>
+  <p>While the app is open, it also keeps a short note for that browser tab only (in session storage, for up to 12 hours), so that after something heavy it stays gentle if the page reloads. The note holds only how the visit should continue, never your words.</p>
+  <p><strong>Your words and photos.</strong> What you type is used on your device to bring your thought to life. It isn’t saved, except sealed predictions as above, and it isn’t sent anywhere unless you choose Another Angle (<a href="#another-angle">section 3</a>). Photos you add stay in the app’s memory on this device while you use them: they are never uploaded and never saved.</p>
+
+  <h2 id="account">2. If you create an account</h2>
+  <p>An account keeps your things apart from anyone else’s on a shared device and, only if you choose, brings them to a new one. Our account service is provided by Supabase, and account data is stored in Sydney, Australia (Supabase region ap-southeast-2).</p>
+  <blockquote><p>An account is optional. If you make one, your email (and your name and home Mallow, if you choose them) is kept with it, as is when you last opened the app; if you switch on sync, so are the parts you choose: your settings, favourite worlds, Memory Garden and where a Hushflow paused. Never your words, feelings or photos.</p></blockquote>
+  <ul>
+    <li><strong>Your password</strong> is handled by the sign-in service and stored only in scrambled (hashed) form. We never see it.</li>
+    <li><strong>We also keep</strong> when your account was created, and your sync choices with when you made or withdrew them.</li>
+    <li><strong>The sign-in service</strong> keeps its own security records, such as when you signed in and from which network address, to protect your account. Deleting your account doesn’t delete these records: they are kept for <span class="legal-todo" data-todo="auth-log-retention">[Owner: how long Supabase keeps its sign-in security records on our plan]</span>.</li>
+    <li><strong>Account emails</strong> (to confirm your address, reset your password or check it’s you) are sent through <span class="legal-todo" data-todo="email-provider">[Owner: the email delivery service used for account emails, and where it is based]</span>.</li>
+    <li><strong>On your device</strong>, the app keeps your sign-in session so you stay signed in, and keeps each account’s things separate from the guest’s and from other accounts’.</li>
+    <li><strong>Sync is your choice.</strong> Switching a sync option off deletes what was kept with your account for it.</li>
+  </ul>
+  <p>We use this information only to run your account and the sync you choose. If you don’t want to give an email address and password, you can keep using <span class="brand-name">hushmallow</span> as a guest.</p>
+
+  <h2 id="another-angle">3. Another Angle</h2>
+  <p>Another Angle is part of <span class="brand-name">hushmallow Beyond</span>. It is the only part of <span class="brand-name">hushmallow</span> that sends your thoughts or feelings off your device, and only after you tap Accept on its consent card. If you tap Not now, nothing is sent and Zuzu’s own angles play on your device. As the card says:</p>
+  <blockquote><p>Your words go to our secure server, where an AI language model from Anthropic, an outside provider, suggests a perspective.</p></blockquote>
+  <h3 id="angle-sent">What’s sent</h3>
+  <ul>
+    <li><strong>For each angle:</strong> only the words you choose, the feeling and the kind of help you pick, and (for another angle) the lines you’ve already seen and what kind they were, with the app’s language and a one-off random code.</li>
+    <li><strong>To start:</strong> a random code for this device, the app’s version and the type of device (and any tester code), so the daily allowance stays fair. Our server replies with a session code, which the app keeps on your device for up to 30 days and sends with each request.</li>
+    <li><strong>For a feedback tap:</strong> which button, which Mallow and what kind of angle it was (and its version), never your words.</li>
+    <li><strong>Never</strong> your photos, your name or your account.</li>
+  </ul>
+  <h3 id="angle-server">What our server keeps</h3>
+  <p><span class="brand-name">hushmallow</span> stores nothing you write and doesn’t log your words. Our server runs on Cloudflare (<a href="#hosting">section 5</a>) and keeps only:</p>
+  <ul>
+    <li>daily usage counts per device and per network, filed under one-way scrambled codes (never your network address or device code itself), deleted two days after the day they count;</li>
+    <li>a short technical record of each request, such as whether it worked and how long it took; codes for the feeling, the kind of help, the area of life it is about (such as work or family) and the kind of perspective; a rough length (short, medium or long); and a coarse safety level (none, concern, care or crisis). It never holds your words, the perspectives you see, your network address or your device code. These records are kept for <span class="legal-todo" data-todo="log-retention">[Owner: how long Cloudflare keeps the server’s logs on our plan]</span>.</li>
+  </ul>
+  <h3 id="angle-anthropic">Anthropic</h3>
+  <p>Anthropic, PBC, based in the United States, receives your words, the feeling and the kind of help you picked and the earlier lines, with a code that changes every day and doesn’t identify you. It prepares the perspective you see.</p>
+  <blockquote>
+    <p>Anthropic doesn’t use your words to train its AI. It usually deletes them within 30 days.</p>
+    <p>If its automatic safety checks flag a message as breaking its rules, Anthropic can keep it for up to 2 years. It also keeps anything the law requires it to.</p>
+    <p>Anthropic uses your words only to prepare your perspective, to keep its service safe, and where the law requires. It isn’t sent your account or photos, but it sees anything you type, names included.</p>
+  </blockquote>
+  <p><strong>Sensitive information.</strong> What you write may say something about your health, your relationships or other private matters. We send it only with your consent and only to prepare your perspective. You don’t need to include names or details that identify you or anyone else: the perspective works without them.</p>
+  <p><strong>Changing your mind.</strong> In Settings → Privacy, switch off “Share my words with Another Angle” at any time. “Delete my Another Angle data” removes this device’s Another Angle codes, your sharing choice, your feedback and any sealed predictions. Our server keeps no copy of your words, so there is nothing of yours to delete there, and its usage counts are cleared after two days.</p>
+  <blockquote><p>Anthropic’s copy is usually deleted within 30 days (kept longer only if flagged or the law requires it). We can’t delete it sooner from here.</p></blockquote>
+
+  <h2 id="payments">4. Payments</h2>
+  <p>Subscriptions to <span class="brand-name">hushmallow Flow</span> and <span class="brand-name">hushmallow Beyond</span> on the web are processed by Stripe. You enter your payment details on Stripe’s secure checkout: we never see or store your card number. Stripe handles the payment information it collects as an independent controller, under its own privacy policy (<a href="https://stripe.com/privacy">stripe.com/privacy</a>), and may process it in Australia, the United States and other countries.</p>
+  <p>From Stripe we receive only what we need to give you your plan and to keep the records the law requires: which plan you chose, whether it is active and when it renews, a Stripe customer reference and the email address you gave Stripe. <span class="legal-todo" data-todo="stripe-data">[Owner: confirm this list once web payments are built]</span></p>
+  <p>If you subscribe through an app store instead, that store handles the payment under its own terms and privacy policy.</p>
+
+  <h2 id="hosting">5. Hosting</h2>
+  <p>Cloudflare hosts the <span class="brand-name">hushmallow</span> app at app.hushmallow.com and runs our Another Angle server on its global network. Like any web host, it handles the technical details of each request, such as your IP address, browser type, the page asked for and the time, to deliver the app and protect it from abuse. We don’t use these details to identify you or to build a profile of you.</p>
+  <p><strong>The GitHub Pages copy.</strong> A copy of the app is also published on GitHub Pages, at an address ending in github.io. GitHub, Inc., in the United States, hosts that copy: if you open the app there, GitHub handles the same technical details of your visit, and keeps your IP address for security, under its own privacy statement. <span class="legal-todo" data-todo="github-pages">[Owner: keep the GitHub Pages copy, or retire it before launch and take GitHub out of sections 5, 8 and 9]</span></p>
+  <p><strong>Our website.</strong> Our website, hushmallow.com, is a separate site. Where it shows the app, the app runs in its own frame from the app’s own address, as this policy describes. <span class="legal-todo" data-todo="website">[Owner: name the website’s host (such as Framer) and where it is based, and say whether the website uses analytics or cookies; if it does, say so here and in sections 6, 8 and 9]</span></p>
+  <p>The app’s fonts and art are served from the same place as the app. Apart from the account service (section 2) and our Another Angle server (section 3), it connects to nothing else: no font services, advertising networks or other third-party sites.</p>
+
+  <h2 id="never">6. What we never do</h2>
+  <ul>
+    <li>No advertising, and no cookies for advertising or analytics.</li>
+    <li>No analytics, tracking pixels or third-party trackers.</li>
+    <li>We never sell, rent or trade your personal information, and never share it for marketing.</li>
+    <li>Your photos never leave your device.</li>
+  </ul>
+
+  <h2 id="dictation">7. Dictation and your keyboard</h2>
+  <p><span class="brand-name">hushmallow</span> has no speech recognition of its own and never uses your microphone. If you dictate with your keyboard’s microphone key, that is your phone’s or keyboard’s own feature: its maker handles the audio under your device’s settings and its own privacy terms. <span class="brand-name">hushmallow</span> only receives the text, as if you had typed it.</p>
+
+  <h2 id="sharing">8. Who we share information with</h2>
+  <p>We share personal information only with the providers that help us run <span class="brand-name">hushmallow</span>, and only what each one needs:</p>
+  <dl>
+    <dt>Supabase, Inc.: accounts (optional)</dt>
+    <dd>Your account data (section 2), stored in Sydney, Australia.</dd>
+    <dt>Cloudflare, Inc.: hosting and our server</dt>
+    <dd>The technical details of each request (section 5). Another Angle requests pass through Cloudflare to our server, which keeps no words.</dd>
+    <dt>GitHub, Inc.: hosting of the GitHub Pages copy</dt>
+    <dd>The technical details of each request, if you open the copy of the app on GitHub Pages (section 5).</dd>
+    <dt>Anthropic, PBC: Another Angle (only after you say yes)</dt>
+    <dd>Your words, the feeling and the kind of help you picked, earlier lines and a daily code (section 3), in the United States.</dd>
+    <dt>Stripe: payments</dt>
+    <dd>The payment details you give Stripe (section 4).</dd>
+    <dt><span class="legal-todo" data-todo="email-provider">[Owner: email delivery service]</span>: account emails</dt>
+    <dd>Your email address and the message we send you.</dd>
+  </dl>
+  <p>We may also disclose information where the law requires or allows it, for example in answer to a valid legal request, or to prevent a serious threat to someone’s life, health or safety.</p>
+
+  <h2 id="overseas">9. Information sent overseas</h2>
+  <p>Some of our providers are outside Australia or handle information outside it (APP 8):</p>
+  <ul>
+    <li><strong>United States:</strong> Anthropic (Another Angle), Cloudflare, Supabase, Stripe and GitHub (the GitHub Pages copy) are companies based in the United States and may access or handle information there.</li>
+    <li><strong>Cloudflare’s global network:</strong> requests are handled in the Cloudflare data centre that serves you, which may be in any country where Cloudflare operates.</li>
+    <li><strong>Australia:</strong> account data is stored in Sydney.</li>
+  </ul>
+  <p>Before we disclose personal information overseas, we take reasonable steps to make sure it is handled in line with the APPs, including through our agreements with these providers. <span class="legal-todo" data-todo="app8">[Owner and legal review: confirm the APP 8 basis for each provider, that these agreements are in place, and the countries]</span></p>
+
+  <h2 id="retention">10. How long we keep it</h2>
+  <ul>
+    <li><strong>On your device:</strong> until you delete it in Settings or clear this site’s data in your browser.</li>
+    <li><strong>Your account:</strong> until you delete it. What sync keeps goes when you switch that sync off. If you never confirm your email address, we may delete the sign-up after 30 days. The sign-in service’s own security records stay after you delete your account, for <span class="legal-todo" data-todo="auth-log-retention">[Owner: how long Supabase keeps its sign-in security records on our plan]</span> (section 2).</li>
+    <li><strong>Another Angle:</strong> our server keeps no words; its usage counts go after two days and its technical records as set out in section 3. Anthropic’s copy is usually deleted within 30 days, as set out in section 3.</li>
+    <li><strong>Payments:</strong> subscription and payment records for as long as the law requires, such as tax records for five years.</li>
+  </ul>
+
+  <h2 id="rights">11. Your choices and rights</h2>
+  <ul>
+    <li><strong>Delete what’s on this device:</strong> Settings → Privacy → Delete everything on this phone (signed in, it deletes that account’s things on this device).</li>
+    <li><strong>Another Angle:</strong> Settings → Privacy → switch off “Share my words with Another Angle”, or Delete my Another Angle data.</li>
+    <li><strong>Delete your account:</strong> Settings → Privacy → Your account → Delete account. This deletes your sign-in, your profile, your sync choices and everything kept with your account from our server, and that account’s things on this device. It doesn’t delete the sign-in service’s own security records (section 2), and it doesn’t touch Another Angle’s data, which isn’t part of your account.</li>
+    <li><strong>Sync:</strong> switch each sync option off at any time on your account screen.</li>
+    <li><strong>Access and correction:</strong> you can ask for a copy of the personal information we hold about you, or ask us to correct it (APPs 12 and 13), by emailing <a href="mailto:support@hushmallow.com">support@hushmallow.com</a>. You can also change your name and home Mallow yourself on your account screen. We’ll reply within <span class="legal-todo" data-todo="reply-days">[Owner decision: 30]</span> days, <span class="legal-todo" data-todo="access-fee">[Owner decision: there is no charge]</span>, and we may need to check it’s you, for example by asking you to write from your account’s email address.</li>
+    <li><strong>What’s only on your device</strong> is out of our reach: you can see it and delete it there, and we can’t retrieve or restore it.</li>
+  </ul>
+
+  <h2 id="security">12. Keeping it safe</h2>
+  <ul>
+    <li>Everything the app sends travels over encrypted connections (HTTPS).</li>
+    <li>Each account can reach only its own records in our database.</li>
+    <li>Our Another Angle server never stores or logs your words.</li>
+    <li>If a data breach is likely to cause you serious harm, we’ll tell you and the Office of the Australian Information Commissioner, as the Notifiable Data Breaches scheme requires.</li>
+  </ul>
+  <p>No online service can be perfectly secure, and the device you use matters too. If other people use your device, an account or Delete everything keeps your things your own.</p>
+
+  <h2 id="age">13. Age</h2>
+  <p><span class="brand-name">hushmallow</span> is for people aged 18 and over. <span class="legal-todo" data-todo="age">[Owner decision: confirm the minimum age (18 and over by default)]</span> We don’t knowingly collect personal information from anyone younger. If you think someone under 18 has created an account, contact us and we’ll delete it.</p>
+
+  <section class="legal-crisis" aria-labelledby="support">
+    <h2 id="support">14. Not a crisis service</h2>
+    <p><span class="brand-name">hushmallow</span> is a wellbeing app. It isn’t a crisis service, therapy or medical advice. If you or someone else is in danger, or you’re thinking about ending your life, please reach out now:</p>
+    <ul>
+      <li><strong>Australia:</strong> emergency <a href="tel:000">000</a>; Lifeline <a href="tel:131114">13 11 14</a> (any time); Suicide Call Back Service <a href="tel:1300659467">1300 659 467</a>; 13YARN <a href="tel:139276">13 92 76</a> (for Aboriginal and Torres Strait Islander people).</li>
+      <li><strong>Elsewhere:</strong> your local emergency number (such as 112, 911 or 999), or find a free, confidential line in your country at <a href="https://findahelpline.com">findahelpline.com</a>. UK and Ireland: Samaritans <a href="tel:116123">116 123</a>. US and Canada: <a href="tel:988">988</a>.</li>
+    </ul>
+  </section>
+
+  <h2 id="changes">15. Changes to this policy</h2>
+  <p>If we change this policy, we’ll update the date at the top. If a change matters for how your information is handled, such as a new provider or a new kind of information leaving your device, we’ll tell you in the app before it applies, and ask again where we need your consent, as Another Angle’s card does when its notice changes.</p>
+
+  <h2 id="contact">16. Contact and complaints</h2>
+  <p>For questions, requests or complaints about privacy, contact <span class="legal-todo" data-todo="entity">[Owner: legal entity name]</span>:</p>
+  <ul>
+    <li>Email: <a href="mailto:support@hushmallow.com">support@hushmallow.com</a> <span class="legal-todo" data-todo="contact-email">[Owner: confirm this is the address for privacy requests]</span></li>
+    <li>Post: <span class="legal-todo" data-todo="address">[Owner: postal address]</span></li>
+  </ul>
+  <p>If you have a complaint about how we’ve handled your information, please write to us first and we’ll reply within <span class="legal-todo" data-todo="reply-days">[Owner decision: 30]</span> days. If you’re not satisfied with our answer, you can complain to the Office of the Australian Information Commissioner (OAIC): <a href="https://www.oaic.gov.au">www.oaic.gov.au</a>, phone <a href="tel:1300363992">1300 363 992</a>.</p>
+</main>
+
+<footer class="legal-foot">
+  <nav aria-label="More from hushmallow">
+    <a href="../">Back to <span class="brand-name">hushmallow</span></a>
+    <a href="terms.html">Terms of Use</a>
+    <a href="mailto:support@hushmallow.com">Contact</a>
+  </nav>
+  <p><span class="brand-name">hushmallow</span> — Less noise. More magic.</p>
+</footer>
+</body>
+</html>
