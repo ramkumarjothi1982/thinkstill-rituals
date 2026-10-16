@@ -183,20 +183,25 @@ test('config: billing is off by default; every value is checked for its shape', 
   assert.equal(readConfig({ ENTITLEMENT_MODE: 'stripe' }).entitlementMode, 'testing', 'an unknown mode reads as testing, as before');
 });
 
-test('wrangler.toml: the mode stays "testing" everywhere; the Billing class arrives in migration v2; no billing value is committed', () => {
+test('wrangler.toml: production and dev stay "testing" with no billing value; the Billing class arrives in migration v2', () => {
   const toml = readFileSync(new URL('../wrangler.toml', import.meta.url), 'utf8');
   const live = toml.split('\n').filter((l) => !/^\s*#/.test(l)).join('\n');
-  assert.equal((live.match(/^ENTITLEMENT_MODE = "testing"$/gm) || []).length, 3, 'production, dev and staging');
-  assert.doesNotMatch(live, /ENTITLEMENT_MODE = "(?!testing")/);
+  // [env.staging] is the one environment with billing on (docs/STAGING.md): its values are pinned by the staging test below
+  const [prodDev, staging] = toml.split(/^\[env\.staging\]$/m);
+  assert.ok(staging, '[env.staging] is there');
+  const prodDevLive = prodDev.split('\n').filter((l) => !/^\s*#/.test(l)).join('\n');
+  assert.equal((prodDevLive.match(/^ENTITLEMENT_MODE = "testing"$/gm) || []).length, 2, 'production and dev');
+  assert.doesNotMatch(prodDevLive, /ENTITLEMENT_MODE = "(?!testing")/);
   assert.match(live, /\[\[migrations\]\]\ntag = "v1"\nnew_sqlite_classes = \["Ledger"\]\n\n\[\[migrations\]\]\ntag = "v2"\nnew_sqlite_classes = \["Billing"\]/);
   assert.match(live, /\[\[env\.staging\.migrations\]\]\ntag = "v2"\nnew_sqlite_classes = \["Billing"\]/);
   assert.equal((live.match(/name = "BILLING"\nclass_name = "Billing"/g) || []).length, 3);
   assert.equal((live.match(/name = "BILLING_IP_LIMITER"/g) || []).length, 3);
   for (const k of ['STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET', 'STRIPE_PRICE_', 'SUPABASE_URL', 'SUPABASE_PUBLISHABLE_KEY', 'APP_ORIGIN', 'BILLING_TOKEN_TTL_HOURS', 'STRIPE_API_VERSION']) {
-    assert.doesNotMatch(live, new RegExp(`^${k}\\w* =`, 'm'), `${k} is documented, not set`);
-    assert.match(toml, new RegExp(k), `${k} is documented`);
+    assert.doesNotMatch(prodDevLive, new RegExp(`^${k}\\w* =`, 'm'), `${k} is documented, not set (production, dev)`);
+    assert.match(prodDev, new RegExp(k), `${k} is documented`);
   }
-  assert.doesNotMatch(toml, /(?:sk|rk)_(?:live|test)_[A-Za-z0-9]|whsec_[A-Za-z0-9]|price_[A-Za-z0-9]|sb_publishable_[A-Za-z0-9]|supabase\.co/, 'no real value');
+  assert.doesNotMatch(prodDev, /(?:sk|rk)_(?:live|test)_[A-Za-z0-9]|whsec_[A-Za-z0-9]|price_[A-Za-z0-9]|sb_publishable_[A-Za-z0-9]|supabase\.co/, 'no real value in production or dev');
+  assert.doesNotMatch(toml, /(?:sk|rk)_(?:live|test)_[A-Za-z0-9]|whsec_[A-Za-z0-9]/, 'no secret anywhere, staging included');
 });
 
 // -------------------------------------------------------------- not set up --
@@ -667,6 +672,45 @@ function tomlVars(toml, table) {
   }
   return out;
 }
+
+test('wrangler.toml [env.staging]: billing+testing for staging only, the preview origin, the public billing vars and four placeholder prices', () => {
+  const toml = readFileSync(new URL('../wrangler.toml', import.meta.url), 'utf8');
+  const prod = tomlVars(toml, 'vars'), dev = tomlVars(toml, 'env.dev.vars'), staging = tomlVars(toml, 'env.staging.vars');
+  // production and dev exactly as before
+  assert.equal(prod.ENTITLEMENT_MODE, 'testing');
+  assert.equal(dev.ENTITLEMENT_MODE, 'testing');
+  assert.equal(prod.ALLOWED_ORIGINS, 'https://app.hushmallow.com,https://hushmallow.pages.dev,https://ramkumarjothi1982.github.io');
+  for (const k of [...PRICE_VARS, 'SUPABASE_URL', 'SUPABASE_PUBLISHABLE_KEY', 'APP_ORIGIN']) {
+    assert.equal(prod[k], undefined, `production: no ${k}`);
+    assert.equal(dev[k], undefined, `dev: no ${k}`);
+  }
+  // staging: billing (or a tester code) for Another Angle; the preview origin added, the others kept
+  assert.equal(staging.ENTITLEMENT_MODE, 'billing+testing');
+  assert.deepEqual(staging.ALLOWED_ORIGINS.split(','), ['https://ramkumarjothi1982.github.io', 'https://claude-upbeat-pasteur-b0aqg1.hushmallow.pages.dev', PREVIEW, 'http://localhost:8000', 'http://127.0.0.1:8000']);
+  assert.equal(staging.APP_ORIGIN, PREVIEW, 'Checkout returns to the preview');
+  assert.equal(staging.SUPABASE_URL, SUPABASE);
+  assert.match(staging.SUPABASE_PUBLISHABLE_KEY, /^sb_publishable_[A-Za-z0-9_-]{16,128}$/);
+  for (const k of PRICE_VARS) assert.equal(staging[k], 'price_TODO_owner', `${k}: a marked placeholder`);
+  // secrets are never vars; the rest of staging is as it was (the real model, a $3 cap, https, browsers only)
+  for (const k of ['STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET', 'ANTHROPIC_API_KEY', 'TOKEN_SIGNING_KEY', 'TESTER_INVITE_CODES']) assert.equal(staging[k], undefined, k);
+  assert.deepEqual([staging.PROVIDER, staging.DAILY_SPEND_CAP_USD, staging.REQUIRE_HTTPS, staging.ALLOW_NO_ORIGIN], ['anthropic', '3', 'true', 'false']);
+  // as the staging Worker reads it once the owner's TEST secrets are set: still off while the prices are placeholders
+  const cfg = readConfig({ ...staging, STRIPE_SECRET_KEY: SK, STRIPE_WEBHOOK_SECRET: WHSEC });
+  assert.equal(cfg.entitlementMode, 'billing+testing');
+  assert.equal(cfg.billing.appOrigin, PREVIEW);
+  assert.equal(cfg.billing.supabaseUrl, SUPABASE);
+  assert.equal(cfg.billing.supabaseKey, staging.SUPABASE_PUBLISHABLE_KEY);
+  assert.deepEqual(cfg.billing.prices, { paid: { monthly: '', yearly: '' }, ultra: { monthly: '', yearly: '' } });
+  assert.equal(cfg.billing.placeholderPrices, 4);
+  assert.equal(cfg.billing.configured, false);
+  // …and on, once the four test price ids are pasted in
+  const on = readConfig({ ...staging, ...REAL_PRICES, STRIPE_SECRET_KEY: SK, STRIPE_WEBHOOK_SECRET: WHSEC }).billing;
+  assert.equal(on.configured, true);
+  assert.equal(on.placeholderPrices, 0);
+  // production's [vars] never turn billing on
+  assert.equal(readConfig(prod).billing.configured, false);
+  assert.equal(readConfig(prod).entitlementMode, 'testing');
+});
 
 test('placeholder price ids (price_TODO…) count as unset: billing answers "not configured" and says why; Stripe is never called', async () => {
   for (const v of ['price_TODO_owner', 'price_TODO', 'price_TODOowner', 'price_todo1234', '', '  ']) {

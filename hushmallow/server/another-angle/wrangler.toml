@@ -196,7 +196,13 @@ enabled = false
 # spending cap, deployed from a work branch by
 # .github/workflows/another-angle-staging.yml (edit deploy/STAGING to run it).
 # Lets the whole path (session → angle → feedback) be checked against the
-# real model before anything is merged to main.
+# real model before anything is merged to main. Staging ONLY (production's
+# [vars] above are untouched): web subscriptions in Stripe TEST mode for the
+# rehearsal on the release branch's preview (docs/STAGING.md), with
+# ENTITLEMENT_MODE "billing+testing" (a test hushmallow Beyond subscription,
+# or one of TESTER_INVITE_CODES, opens Another Angle). Its secrets are the
+# staging Worker's own, set with `--env staging`: STRIPE_SECRET_KEY (sk_test_…
+# only) and STRIPE_WEBHOOK_SECRET (the staging webhook endpoint's whsec_…).
 [env.staging]
 name = "hushmallow-another-angle-staging"
 workers_dev = true
@@ -210,10 +216,10 @@ MODEL_TIMEOUT_MS = "15000"
 REQUEST_DEADLINE_MS = "28000"
 MODEL_MAX_RETRIES = "1"
 REFUSAL_FALLBACK = "default"
-ALLOWED_ORIGINS = "https://ramkumarjothi1982.github.io,https://claude-upbeat-pasteur-b0aqg1.hushmallow.pages.dev,http://localhost:8000,http://127.0.0.1:8000"
+ALLOWED_ORIGINS = "https://ramkumarjothi1982.github.io,https://claude-upbeat-pasteur-b0aqg1.hushmallow.pages.dev,https://claude-launch-rc.hushmallow.pages.dev,http://localhost:8000,http://127.0.0.1:8000"
 ALLOW_NO_ORIGIN = "false"
 REQUIRE_HTTPS = "true"
-ENTITLEMENT_MODE = "testing"
+ENTITLEMENT_MODE = "billing+testing"
 TESTING_TOKEN_TTL_DAYS = "7"
 DEVICE_DAILY_LIMIT = "20"
 SESSION_DAILY_CAP = "100"
@@ -222,6 +228,20 @@ DAILY_SPEND_CAP_USD = "3"
 APPLE_BUNDLE_ID = ""
 APPLE_PRODUCT_IDS = "hushmallow.ultra.monthly,hushmallow.ultra.yearly"
 APPLE_ENVIRONMENTS = "Sandbox"
+# Web subscriptions, Stripe TEST mode (docs/STAGING.md). None of these is secret.
+# The sign-in project and its publishable key: the same public values as the Pages build.
+SUPABASE_URL = "https://igbxbfuaoybfzsroxuln.supabase.co"
+SUPABASE_PUBLISHABLE_KEY = "sb_publishable_NSv1Liou2yjKjauX09U5qQ_CxwzDuiw"
+# Where Stripe sends people back: the release branch's preview (one of ALLOWED_ORIGINS).
+APP_ORIGIN = "https://claude-launch-rc.hushmallow.pages.dev"
+# PLACEHOLDERS until the owner pastes the four TEST price ids (price_…) from
+# Stripe's test mode. A price_TODO… value counts as unset (src/config.js
+# PRICE_PLACEHOLDER): with all four unset, every billing route answers 503
+# billing_not_configured and /v1/health says "placeholder_prices": 4.
+STRIPE_PRICE_PAID_MONTHLY = "price_TODO_owner"
+STRIPE_PRICE_PAID_YEARLY = "price_TODO_owner"
+STRIPE_PRICE_ULTRA_MONTHLY = "price_TODO_owner"
+STRIPE_PRICE_ULTRA_YEARLY = "price_TODO_owner"
 
 [[env.staging.durable_objects.bindings]]
 name = "LEDGER"
