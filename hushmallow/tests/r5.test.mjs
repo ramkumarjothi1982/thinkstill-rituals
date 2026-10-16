@@ -22,6 +22,7 @@ import { DEATH_CARE } from '../src/app/scenes/hushfold.js';
 import { visit, STUBS } from './probes/r10-replay.mjs';
 import { literals } from '../tools/beyond/detection-gate.mjs';
 import * as P from './probes/r5.mjs';
+import { cpuPerCall, within, readings } from './helpers/cost.mjs';
 
 await loadGrief();
 const read = (p) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
@@ -189,17 +190,17 @@ test('additive: the shapes\' neighbours are never care (a lead, a dream, a vitam
 });
 
 test('the new rules stay cheap: 2,000 characters built to make them work hard', () => {
-  // the fastest of seven runs: a shared CI runner's pauses inflate any one run (CI once took 134 ms for what is ~42 ms on a
-  // quiet machine), while a rule that backtracks badly is slow on every run, so the fastest still catches it
-  const best = (xs) => Math.min(...xs);
+  // the CPU time of seven runs, per run (tests/helpers/cost.mjs): a shared CI runner's other test files inflate the wall
+  // time (CI once took 134 ms for what is ~42 ms on a quiet machine; the fastest of seven still failed with heavy load
+  // beside it) but never this thread's CPU time, while a rule that backtracks badly costs CPU on every run. Read again at
+  // most twice if it misses: a slow rule misses all three
   for (const seed of ['d i e d i e ', 'k i l l k i l l ', 'i want to follow my my my ', 'pray my heart my heart ', 'lie down lie down and ', 'tonight im going to meet ',
     'wait for me wait ', 'i want to want to want to see ', 'joine folow joine folow ', 'stopped taking my my ', 'everyone is dead and i dead and i ']) {
     const t = seed.repeat(Math.ceil(2000 / seed.length)).slice(0, 2000);
     for (const f of [GR.keepLocal, GR.selfEnding, GR.wantsToFollow, GR.deathCare]) {
       f(t);
-      const xs = [];
-      for (let i = 0; i < 7; i++) { const t0 = performance.now(); f(t); xs.push(performance.now() - t0); }
-      assert.ok(best(xs) < 120, `${f.name} ${seed}: ${best(xs).toFixed(1)} ms (fastest of 7)`);
+      const r = within(120, () => cpuPerCall(() => f(t), 7));
+      assert.ok(r.ok, `${f.name} ${seed}: ${readings(r.seen)} ms of CPU per run (7 runs a reading)`);
     }
   }
 });
