@@ -140,6 +140,7 @@ check that every library file is listed and every module exists.
 | `src/beyond/` | Another Angle in the Hushfold: consent and privacy, the endpoint and its one request, authored scenes and the ten mechanics |
 | `src/auth/` | Optional sign-in: boot and local namespaces, the client, opt-in sync, the account Mallow, `/auth/callback` (`docs/AUTH.md`) |
 | `auth/callback/` | The page email links open (confirm, reset, change email) |
+| `legal/` | The Privacy Policy and the Terms of Use: static pages published at `/legal/`, linked from Settings, the plans page and the sign-up form (`src/app/legal.js`); drafts until the owner removes `data-draft` |
 | `supabase/` | Migrations `0001`–`0009`, rollback, RLS check, email templates, `config.toml` for the CI stack |
 | `server/another-angle/` | Another Angle's server (a Cloudflare Worker) and its evaluation tools |
 | `vendor/` | Vendored supabase-js (loaded only for sign-in screens and signed-in sessions) |

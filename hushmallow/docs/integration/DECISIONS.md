@@ -130,6 +130,23 @@ Taken after six independent reviews of `fb1bae2` (blind held-out safety, privacy
 | "Keep sealed predictions" | The Settings row formerly "Keep my saved angles" names what it really keeps (the fallback ritual's sealed predictions, with the words); "Delete my Another Angle data" now removes them too |
 | Copy | The dictation hint says hushmallow keeps the words on the phone and the keyboard's dictation follows the phone's settings; About names the feeling and kind of help Another Angle sends; account copy names "when you last opened the app" and that the sign-in service's own security log is not deleted from here; returning github.io testers see "Test access ended for the pilot." |
 
+## Defaults taken on the owner's behalf (2026-10-16, Privacy Policy and Terms: drafts)
+
+`legal/privacy.html` and `legal/terms.html` (published at `/legal/`) are drafts: `data-draft` on each page's `<html>` shows "Draft — awaiting owner and legal review". Remove it from a page once the owner and a lawyer approve it; `tests/legal-pages.test.mjs` then refuses any `[Owner: …]` placeholder left on that page.
+
+| Topic | Default |
+|---|---|
+| Minimum age | 18 and over (both pages), marked as an owner decision |
+| Contact address | support@hushmallow.com (to confirm) |
+| Refunds | None for the rest of a billing period or for a change of mind, except where the law requires; the Australian Consumer Law wording for services is quoted in full |
+| Price changes | At least 30 days' notice, from the first renewal after it |
+| A change that takes away a large part of a plan | Notice first, and a refund of the unused part of the billing period |
+| Liability cap | What the person was charged in the 12 months before the claim, to the extent the law allows |
+| Crisis lines on the pages | 000, Lifeline 13 11 14, Suicide Call Back Service 1300 659 467, 13YARN 13 92 76; elsewhere Find A Helpline, Samaritans 116 123, 988 (the app's own urgent sheet is unchanged) |
+| Payments | Described as Stripe on the web (Stripe billing, Manage subscription to cancel), ahead of that work landing |
+
+Placeholders for the owner: legal entity name, ABN, postal address, State or Territory for governing law, the effective dates, confirming the contact address and the minimum age, the email delivery service for account emails, how long Cloudflare and Supabase keep their logs, what Stripe sends us once payments are built, the currency and GST, the refund policy, the price-change notice period, and (with a lawyer) the APP 8 basis for each overseas provider.
+
 ## Still open for the owner
 
 - **Tester invite codes** (`TESTER_INVITE_CODES` on the production Worker): the only server-side gate on who reaches the real model.
@@ -141,3 +158,4 @@ Taken after six independent reviews of `fb1bae2` (blind held-out safety, privacy
 - Development Partner Program: confirm not enrolled.
 - Art: is the browless cyan drawing Loomi; do Blubi, Noomi and Loomi read as distinct.
 - Does the ocean keep the feel of Drift and Dock's "Slow the wave".
+- Privacy Policy and Terms of Use: fill the placeholders above, have them reviewed by a lawyer, then remove `data-draft` from both pages.
