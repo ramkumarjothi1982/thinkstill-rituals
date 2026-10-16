@@ -15,9 +15,15 @@
 // Purchases go through a provider. In the iOS app wrapper the native
 // provider talks to StoreKit 2 (window.webkit.messageHandlers.hushStore or
 // window.HushNative.store) and the App Store receipt is the source of truth.
-// In a plain browser there is no store, so a clearly labelled *test*
-// provider can grant tiers locally for development and review — it never
-// charges and the UI always says "Test purchase".
+// On the web, once web subscriptions are switched on (src/app/billing.js,
+// off by default), Stripe sells them through our own server and the plan is
+// that server's answer (source 'billing'), kept on this phone with the time
+// it was checked: trusted for BILLING_GRACE_MS without a new answer (offline),
+// then set aside until the server answers again. Another Angle's server checks
+// the subscription itself, so a forged plan here never reaches it in billing
+// mode. In a plain browser without them there is no store, so a clearly
+// labelled *test* provider can grant tiers locally for development and
+// review — it never charges and the UI always says "Test purchase".
 
 import { RITUALS } from '../data/rituals.js';
 import { BRAND } from '../brand.js';
@@ -70,6 +76,11 @@ export const PLANS = {
 import { testPurchasesAllowed } from './config.js';
 
 const RANK = { none: 0, paid: 1, ultra: 2 };
+const NONE = Object.freeze({ tier: 'none', source: null, since: null });
+/** How long a web plan (source 'billing') is trusted without a new answer from the billing server: the offline grace. */
+export const BILLING_GRACE_MS = 3 * 86400000;
+/** The least time between two checks with the billing server (start, coming back to the app). */
+export const BILLING_RECHECK_MS = 60000;
 
 function nativeBridge() {
   if (typeof window === 'undefined') return null;
@@ -88,7 +99,7 @@ function nativeBridge() {
   };
 }
 
-export function createEntitlements({ store }) {
+export function createEntitlements({ store, billing = null, now = () => Date.now() }) {
   const native = nativeBridge();
   const listeners = new Set();
   let state = store.get('entitlement', { tier: 'none', source: null, since: null });
@@ -97,25 +108,62 @@ export function createEntitlements({ store }) {
   // a returning pilot tester whose test plan this host no longer honours; nothing stored is changed)
   const testEnded = state.source === 'test' && !testOk && !native;
   if (testEnded) state = { tier: 'none', source: null, since: null };
+  // web subscriptions (src/app/billing.js; null when off): never in the App Store app, where Apple's purchase is the only one
+  const web = native ? null : billing;
+  // a web plan whose last check is older than the grace counts as no plan (nothing stored changes) until the server answers
+  const cur = () => (state.source === 'billing' && !(now() - (Number(state.checkedAt) || 0) < BILLING_GRACE_MS) ? NONE : state);
 
   const set = (tier, source) => {
     state = { tier, source, since: Date.now() };
     store.set('entitlement', state);
     listeners.forEach((fn) => fn(state));
   };
+  /** The billing server's answer, kept with when it was checked. */
+  const setWeb = (r) => {
+    const since = state.source === 'billing' && state.tier === r.tier && state.since ? state.since : now();
+    state = { tier: r.tier, source: 'billing', since, checkedAt: now(), status: r.status, periodEnd: r.periodEnd, cancelAtPeriodEnd: r.cancelAtPeriodEnd, manageable: r.manageable };
+    store.set('entitlement', state);
+    listeners.forEach((fn) => fn(state));
+  };
+  let lastWebCheck = -Infinity, webCheck = null;
+  /** Ask the billing server (at most once a BILLING_RECHECK_MS unless forced; one request at a time). */
+  function refreshWeb(force) {
+    if (webCheck) return webCheck;
+    if (!force && now() - lastWebCheck < BILLING_RECHECK_MS) return Promise.resolve(cur());
+    lastWebCheck = now();
+    webCheck = (async () => {
+      let r = null;
+      try { r = await web.status(); } catch { r = null; }
+      // a plan, or what the server says about a web plan kept here (ended, or a past one with receipts to see);
+      // a test or App Store plan is never taken away by it. Offline or signed out: what is kept stays, within the grace
+      if (r?.ok && (RANK[r.tier] > 0 || state.source === 'billing' || (state.tier === 'none' && r.manageable))) setWeb(r);
+      return cur();
+    })().finally(() => { webCheck = null; });
+    return webCheck;
+  }
 
   const api = {
     get isNative() { return !!native; },
+    /** Web subscriptions are on: plans are sold through Stripe (src/app/billing.js). */
+    get isWeb() { return !!web; },
     /** Can this build sell (or test-grant) a plan right now? */
-    get canPurchase() { return !!native || testOk; },
+    get canPurchase() { return !!native || !!web || testOk; },
     /** A test plan was kept on this phone, and this host has no test purchases: it was set aside at start. */
     get testEnded() { return testEnded && state.tier === 'none'; },
-    tier: () => state.tier,
-    source: () => state.source,
-    has: (need) => RANK[state.tier] >= RANK[need],
-    flags: () => ({ paid: RANK[state.tier] >= 1, ultra: RANK[state.tier] >= 2 }),
+    tier: () => cur().tier,
+    source: () => cur().source,
+    has: (need) => RANK[cur().tier] >= RANK[need],
+    flags: () => ({ paid: RANK[cur().tier] >= 1, ultra: RANK[cur().tier] >= 2 }),
     onChange(fn) { listeners.add(fn); return () => listeners.delete(fn); },
-    async refresh() {
+    /** Web subscriptions: the account is signed in here (a web plan needs one). */
+    webSignedIn: () => !!web && web.signedIn(),
+    /** A web plan's details for Settings: { status, periodEnd, cancelAtPeriodEnd, manageable } | null. */
+    webPlan() {
+      const s = cur();
+      return s.source === 'billing' ? { status: s.status || null, periodEnd: s.periodEnd ?? null, cancelAtPeriodEnd: !!s.cancelAtPeriodEnd, manageable: !!s.manageable } : null;
+    },
+    async refresh({ force = false } = {}) {
+      if (web) return refreshWeb(force);
       if (!native) return state;
       const r = await native.current();   // {tier: 'none'|'paid'|'ultra'}
       if (r && RANK[r.tier] != null) set(r.tier, 'app-store');
@@ -132,6 +180,9 @@ export function createEntitlements({ store }) {
         // a reply carrying the old tier is not a purchase
         return { ok: RANK[r?.tier] >= RANK[planId], test: false };
       }
+      // web subscriptions: on to Stripe Checkout ({ redirecting }: the page leaves; the plan arrives from the server on the
+      // way back), or { needsAccount } (sign in first), { manage } (a plan already: changed in the portal), { failed }
+      if (web) return { ok: false, test: false, ...(await web.checkout(planId, period)) };
       // development/test provider: grants locally, never charges — dev/preview hosts only
       if (!testOk) return { ok: false, test: false, unavailable: true };
       set(planId, 'test');
@@ -139,10 +190,15 @@ export function createEntitlements({ store }) {
     },
     async restore() {
       if (native) { const r = await native.restore(); if (r?.tier) set(r.tier, 'app-store'); return state; }
+      if (web) return refreshWeb(true);
       return state;
     },
     cancelTest() { if (state.source === 'test') set('none', null); },
+    /** Web subscriptions: Stripe's customer portal (cancel as easily as subscribing, change plan, card, receipts). */
+    async manage() { return web ? web.portal() : { failed: true, reason: 'off' }; },
   };
+  // the plans page shows these under each button (src/app/scenes/plans.js); only with web subscriptions on
+  if (web) api.prices = () => web.prices();
   return api;
 }
 

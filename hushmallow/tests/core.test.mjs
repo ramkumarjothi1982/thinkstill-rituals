@@ -106,11 +106,19 @@ test('shipped code calls no remote service except Another Angle’s own server',
   assert.match(authSrc, /if \(u\.origin !== origin\) return Promise\.reject/);
   const { PROJECT_URL } = await import('../src/auth/config.js');
   assert.equal(PROJECT_URL, 'https://igbxbfuaoybfzsroxuln.supabase.co');
+  // …and web subscriptions (src/app/billing.js; off unless src/app/config.js switches them on): one fetch, only to the
+  // billing endpoint (the same Worker, one of ANGLE_ALLOWED_HOSTS) + one of its three paths, with the account's token
+  const billingFetch = 'const netFetch = (url, init) => globalThis.fetch(url, init);';
+  const billingSrc = readFileSync(`${root}src/app/billing.js`, 'utf8');
+  assert.equal(billingSrc.split(billingFetch).length, 2, 'one fetch site in app/billing.js');
+  assert.match(billingSrc, /const url = `\$\{endpoint\}\$\{path\}`;/);
+  assert.match(billingSrc, /if \(!endpoint \|\| !Object\.values\(PATHS\)\.includes\(path\)\)/);
   for (const f of walk(`${root}src`)) {
     let s = readFileSync(f, 'utf8');
     if (f.endsWith('/src/app/update.js')) s = s.replace(versionCheck, '');
     if (f.endsWith('/src/beyond/angle-client.js')) s = s.replace(angleFetch, '');
     if (f.endsWith('/src/auth/client.js')) s = s.replace(authFetch, '');
+    if (f.endsWith('/src/app/billing.js')) s = s.replace(billingFetch, '');
     assert.doesNotMatch(s, /\bfetch\s*\(|XMLHttpRequest|new WebSocket|EventSource\(|sendBeacon/, f);
     // the only URLs allowed: the SVG namespace, the support-line directory people can open themselves,
     // (in src/app/config.js only) the configured Another Angle endpoint, and (in src/auth/config.js

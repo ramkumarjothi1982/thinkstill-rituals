@@ -22,6 +22,7 @@
 //                         and updatePassword({ current, password, nonce }) finishes it
 //     reauthenticate()    emails a new code (60 s cooldown)
 //     deleteAccount()   server rows + the auth user (delete_my_account RPC), this device's copy, reload as guest
+//     accessToken()     the account's current access token (web subscriptions only: src/app/billing.js), or null
 //     removeDeviceData()  this account's things on this device only
 //     addQuiescer({ pause, resume })  the opt-in sync, paused (and waited for) before a sign-out,
 //                         a deletion or "Remove this device's data"; the account's store is sealed then
@@ -510,6 +511,18 @@ export function createAuth({
     ensureClient,
     verify,
     reconcile,
+    /**
+     * The signed-in account's access token, for our own billing server (src/app/billing.js) and Another
+     * Angle's session when web subscriptions are on: supabase-js refreshes one about to expire first. null for
+     * a guest, a page that is signing out, deleting or reloading, another account's session, or a token that
+     * could not be refreshed (offline). Never logged, never stored anywhere else.
+     */
+    async accessToken() {
+      if (!enabled || mode !== 'account' || settled || sealedHere()) return null;
+      try { const c = await ensureClient(); await c.auth.getSession(); } catch { /* offline: what is stored */ }
+      const own = ownSession();
+      return own?.at && own.exp * 1000 > now() + 30000 ? own.at : null;
+    },
     /** Whether the once-only "keep this device's guest things?" question is waiting. */
     get pendingGuestChoice() { const uid = pendingUid || bootUid; return !!uid && needsGuestChoice(ls, uid); },
     /** What happened before the last reload ('signed-in' | 'signed-out' | 'deleted' | 'expired' | 'verified' | 'password-updated'), once. */

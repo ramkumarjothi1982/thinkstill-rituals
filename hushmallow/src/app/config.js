@@ -32,5 +32,24 @@ export const ANGLE_ENDPOINT = 'https://hushmallow-another-angle.vibyfy-chat.work
 /** The only hosts ANGLE_ENDPOINT may point at (https, no path tricks): the production Worker. */
 export const ANGLE_ALLOWED_HOSTS = ['hushmallow-another-angle.vibyfy-chat.workers.dev'];
 
+// Web subscriptions (hushmallow Flow and hushmallow Beyond on the web): Stripe,
+// through the billing routes of the same Worker (server/another-angle
+// src/billing/, docs/PAYMENTS.md). OFF while BILLING_PROVIDER is '': the plans
+// page, Settings and Another Angle are then exactly as before. To switch on,
+// once the Worker's billing is set up: BILLING_PROVIDER = 'stripe' and
+// BILLING_ENDPOINT = ANGLE_ENDPOINT (it must be one of ANGLE_ALLOWED_HOSTS).
+// The build needs sign-in too: a web plan belongs to an account. The App Store
+// app never uses it. Development: ?billingDev=<port> on localhost (src/app/billing.js).
+export const BILLING_PROVIDER = '';
+export const BILLING_ENDPOINT = '';
+/**
+ * The price each plan shows under its button, exactly as set in Stripe (for
+ * example 'A$9.99'), by product id. Empty: no price is shown.
+ */
+export const BILLING_PRICES = Object.freeze({
+  'hushmallow.paid.monthly': '', 'hushmallow.paid.yearly': '',
+  'hushmallow.ultra.monthly': '', 'hushmallow.ultra.yearly': '',
+});
+
 /** Shown at the bottom of Settings so a tester can tell which version has loaded. */
 export const BUILD = '2026-10-13 · Hushfold pilot + optional sign-in';
