@@ -3,7 +3,11 @@
 //
 // <headers-out> (the site's _headers, Cloudflare Pages) gets the rules for
 // /auth/*: never cached, no referrer, never framed, and a Content-Security-
-// Policy whose connect-src is this site plus the one configured project.
+// Policy whose connect-src is this site plus the one configured project. And
+// for /legal/* (the Privacy Policy and the Terms of Use, static pages): a
+// Content-Security-Policy that allows no script and nothing from another site,
+// no referrer, never framed, and revalidated on every visit (each names the
+// current v/<version>/ folder).
 //
 // Reads SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY and HM_AUTH_MODE ('' | dev | ci)
 // from the environment (Cloudflare Pages build variables; nothing in CI sets
@@ -46,7 +50,10 @@ export function buildPublicConfig(env, { stamp = '' } = {}) {
   return { ok: true, source: publicConfigModule(v, { stamp }), summary, enabled: !!v.enabled, headers: headersFile(v.enabled ? new URL(v.url).origin : null) };
 }
 
-/** Cloudflare Pages _headers: the sign-in callback is never cached, framed or leaked by a referrer. */
+/** /legal/*: the same policy as the pages' own meta tag (legal/*.html), plus what only a header can say (frame-ancestors). */
+export const LEGAL_CSP = "default-src 'none'; style-src 'self'; font-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'";
+
+/** Cloudflare Pages _headers: the sign-in callback is never cached, framed or leaked by a referrer; the legal pages run no script. */
 export function headersFile(origin) {
   const connect = origin ? `'self' ${origin}` : "'self'";
   return [
@@ -58,6 +65,14 @@ export function headersFile(origin) {
     '  X-Frame-Options: DENY',
     '  X-Content-Type-Options: nosniff',
     `  Content-Security-Policy: default-src 'self'; script-src 'self'; connect-src ${connect}; img-src 'self' data:; style-src 'self'; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'`,
+    '',
+    '# /legal/: the Privacy Policy and the Terms of Use. Plain pages: no script, nothing from another site.',
+    '/legal/*',
+    '  Cache-Control: no-cache',
+    '  Referrer-Policy: no-referrer',
+    '  X-Frame-Options: DENY',
+    '  X-Content-Type-Options: nosniff',
+    `  Content-Security-Policy: ${LEGAL_CSP}`,
     '',
   ].join('\n');
 }

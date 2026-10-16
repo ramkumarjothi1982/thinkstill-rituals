@@ -21,6 +21,13 @@
 # on localhost. /auth/callback/ is written with absolute /v/<version>/ paths
 # (it lives two folders down), and _headers keeps /auth/* uncached, unframed
 # and referrer-free.
+#
+# The Privacy Policy and the Terms of Use (legal/*.html) are published at
+# /legal/, addresses that never change between versions (the app, the plans
+# page and the sign-up form link there: src/app/legal.js). Their styles, fonts
+# and logo come from this version's folder through relative ../v/<version>/
+# paths, so the GitHub Pages copy (served one folder down) works too; _headers
+# gives /legal/* a strict Content-Security-Policy (no script at all).
 set -euo pipefail
 here="$(cd "$(dirname "$0")/.." && pwd)"
 out="$1"; ver="$2"
@@ -55,6 +62,14 @@ sed -e "s#\"\.\./\.\./src/#\"/v/$ver/src/#g; s#\"\.\./\.\./assets/#\"/v/$ver/ass
   "$here/auth/callback/index.html" > "$out/auth/callback/index.html"
 grep -q "/v/$ver/src/auth/callback.js" "$out/auth/callback/index.html" || { echo "auth/callback/index.html was not rewritten" >&2; exit 1; }
 if grep -nE '(href|src)="\.\.?/' "$out/auth/callback/index.html"; then echo "relative path left in auth/callback/index.html" >&2; exit 1; fi
+# /legal/: the Privacy Policy and the Terms of Use (relative ../v/<version>/ paths: they live one folder down)
+mkdir -p "$out/legal"
+for f in "$here"/legal/*.html; do
+  n=$(basename "$f")
+  sed -e "s#\"\.\./src/#\"../v/$ver/src/#g; s#\"\.\./assets/#\"../v/$ver/assets/#g" "$f" > "$out/legal/$n"
+  grep -q "\"../v/$ver/src/ui/legal.css\"" "$out/legal/$n" || { echo "legal/$n was not rewritten" >&2; exit 1; }
+  if grep -nE '(href|src)="\.\./(src|assets)/' "$out/legal/$n"; then echo "unversioned path left in legal/$n" >&2; exit 1; fi
+done
 grep -q "v/$ver/src/app/main.js" "$out/index.html" || { echo "index.html was not rewritten" >&2; exit 1; }
 if grep -nE '(href|src)="(src|assets)/' "$out/index.html"; then echo "unversioned path left in index.html" >&2; exit 1; fi
 node "$here/tools/site/check.mjs" "$out" "$ver"

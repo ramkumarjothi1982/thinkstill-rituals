@@ -16,6 +16,13 @@
 //    names only absolute /v/<version>/ files and its module graph resolves;
 //    _headers keeps /auth/* uncached, unframed and referrer-free; the
 //    published public-config.js holds only valid public values.
+// 6. The legal pages: every page src/app/legal.js links to (LEGAL_PAGES, read
+//    from the published copy) is in the site; each loads only this version's
+//    files through relative paths (its stylesheets and their fonts resolve,
+//    and none of them names another site), carries no script, no inline
+//    style or handler and a strict Content-Security-Policy meta tag, and links
+//    only to shipped pages, ids that exist, https:, mailto: or tel:; _headers
+//    gives /legal/* its strict policy too.
 // Prints a short summary; exits 1 with the list of problems.
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
@@ -29,6 +36,8 @@ const LOCAL_ONLY = ['src/v3/dev/'];
 const DEV_ONLY = ['src/v3/dev', 'src/studio', 'assets/source'];
 // Modules whose exports name the art, rig and brand files.
 const ASSET_MODULES = ['src/mallows/registry.js', 'src/mallows/hires.js', 'src/brand.js'];
+// The module whose LEGAL_PAGES names the legal pages the app links to.
+const LEGAL_MODULE = 'src/app/legal.js';
 
 const isFile = (p) => { try { return statSync(p).isFile(); } catch { return false; } };
 const isDir = (p) => { try { return statSync(p).isDirectory(); } catch { return false; } };
@@ -185,6 +194,9 @@ export async function checkSite(outArg, ver) {
     else templates.push(`${rel(from)}: \`${t}\` (${n} file${n === 1 ? '' : 's'})`);
   }
 
+  // ------------------------------------------- 6. the legal pages (their files join the graph) --
+  const legal = await checkLegal(out, app, ver, problems, (p, from) => { if (!referrer.has(p)) referrer.set(p, from); queue.push(p); });
+
   // --------------------------------------------------------- 2. graph --
   const seen = new Set();
   while (queue.length) {
@@ -233,8 +245,67 @@ export async function checkSite(outArg, ver) {
   }
 
   const auth = await checkAuth(out, app, problems);
-  return { problems, notes, allowed, templates, reached: seen.size, assets: { checked: urls.size, missing }, auth };
+  return { problems, notes, allowed, templates, reached: seen.size, assets: { checked: urls.size, missing }, auth, legal };
 }
+
+/** Section 6: the legal pages. enqueue(file, from) adds a file they load to the module and stylesheet graph. Returns their paths. */
+async function checkLegal(out, app, ver, problems, enqueue) {
+  let pages = [];
+  try {
+    const mod = await import(pathToFileURL(join(app, LEGAL_MODULE)).href);
+    pages = Object.values(mod.LEGAL_PAGES || {});
+  } catch (e) { problems.push(`${LEGAL_MODULE} does not load in Node: ${e.message}`); return pages; }
+  if (!pages.length) problems.push(`${LEGAL_MODULE} names no legal pages`);
+  const idsOf = (file) => new Set([...readFileSync(file, 'utf8').replace(/<!--[\s\S]*?-->/g, '').matchAll(/\sid="([^"]+)"/g)].map((m) => m[1]));
+  for (const page of pages) {
+    const p = join(out, page);
+    if (!isFile(p)) { problems.push(`${page} (the app links to it) is not in the site`); continue; }
+    const html = readFileSync(p, 'utf8').replace(/<!--[\s\S]*?-->/g, '');
+    if (/<script\b/i.test(html)) problems.push(`${page} has a <script> (the legal pages run none)`);
+    if (/<style\b|\sstyle\s*=/i.test(html)) problems.push(`${page} has inline style (its policy allows none)`);
+    if (/<[a-z][^>]*\son[a-z]+\s*=/i.test(html)) problems.push(`${page} has an inline event handler`);
+    if (/<(?:iframe|object|embed|form|base)\b/i.test(html)) problems.push(`${page} has an iframe, object, embed, form or base element`);
+    const csp = /<meta http-equiv="Content-Security-Policy" content="([^"]+)"/i.exec(html)?.[1] || '';
+    if (!/(^|;)\s*default-src 'none'/.test(csp) || /script-src|unsafe-|https?:|\*/.test(csp)) problems.push(`${page}: no strict Content-Security-Policy meta tag (default-src 'none', no script)`);
+    const ids = idsOf(p);
+    for (const m of html.matchAll(/<([a-z][a-z0-9]*)\b([^>]*)>/gi)) {
+      const tag = m[1].toLowerCase();
+      for (const [, name, value] of m[2].matchAll(/\s(href|src|srcset|poster|data|action|formaction)="([^"]*)"/gi)) {
+        if (tag === 'a' && name === 'href') {
+          // a link: an id on this page, another shipped page (and an id on it), or a way out (https:, mailto:, tel:)
+          if (value.startsWith('#')) { if (!ids.has(value.slice(1))) problems.push(`${page} links to ${value}, which is not an id on the page`); continue; }
+          if (/^(?:https:\/\/|mailto:|tel:)/i.test(value)) continue;
+          if (external(value) || value.startsWith('/')) { problems.push(`${page} links to ${value} (only relative links, https:, mailto: and tel:)`); continue; }
+          const target = resolve(dirname(p), bare(value));
+          const file = isDir(target) ? join(target, 'index.html') : target;
+          const frag = value.includes('#') ? value.slice(value.indexOf('#') + 1) : '';
+          if (!isFile(file)) problems.push(`${page} links to ${value}, which is not in the site`);
+          else if (frag && file.endsWith('.html') && !idsOf(file).has(frag)) problems.push(`${page} links to ${value}, which is not an id on that page`);
+          continue;
+        }
+        // anything else the page loads: one of this version's files, through a relative path, never another site
+        if (name === 'srcset' || external(value) || value.startsWith('/')) { problems.push(`${page} loads ${value} (only this version's files, relative)`); continue; }
+        const target = resolve(dirname(p), bare(value));
+        if (!target.startsWith(app + sep)) { problems.push(`${page} loads ${value}, which is outside v/${ver}/`); continue; }
+        if (!isFile(target)) { problems.push(`${page} loads ${value}, which is not in the site`); continue; }
+        if (target.endsWith('.css')) {
+          for (const s of specifiers(readFileSync(target, 'utf8'), true).lit) if (external(s) && !s.startsWith('#')) problems.push(`${rel(out, target)} (loaded by ${page}) names ${s}, another site`);
+        }
+        enqueue(target, page);
+      }
+    }
+  }
+  // _headers: the same strict policy for /legal/*
+  const hp = join(out, '_headers');
+  if (isFile(hp)) {
+    const block = readFileSync(hp, 'utf8').split(/\n(?=\S)/).find((b) => b.startsWith('/legal/*')) || '';
+    if (!/Content-Security-Policy:\s*default-src 'none';/.test(block)) problems.push("_headers: /legal/* lacks Content-Security-Policy default-src 'none'");
+    if (!/frame-ancestors 'none'/.test(block)) problems.push("_headers: /legal/* lacks frame-ancestors 'none'");
+    if (/script-src|unsafe-/.test(block)) problems.push('_headers: /legal/* allows script');
+  }
+  return pages;
+}
+const rel = (out, p) => relative(out, p).split(sep).join('/');
 
 /** Section 5: the sign-in pieces. Returns a one-line summary. */
 async function checkAuth(out, app, problems) {
@@ -294,7 +365,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   const [outArg, ver] = process.argv.slice(2);
   if (!outArg || !ver) { console.error('usage: node tools/site/check.mjs <out-dir> <version>'); process.exit(2); }
   const r = await checkSite(outArg, ver);
-  console.log(`check: ${r.reached} files reached from index.html and auth/callback/; ${r.templates.length} template imports matched; asset urls ${r.assets.checked}, missing ${r.assets.missing}; ${r.auth}`);
+  console.log(`check: ${r.reached} files reached from index.html, auth/callback/ and legal/; ${r.templates.length} template imports matched; asset urls ${r.assets.checked}, missing ${r.assets.missing}; ${r.auth}; legal pages ${(r.legal || []).length}`);
   if (r.allowed.length) console.log(`check: local-only, not published (allowed): ${r.allowed.join(', ')}`);
   for (const n of r.notes) console.log(`check: note: ${n}`);
   if (process.env.CHECK_VERBOSE) for (const t of r.templates) console.log(`check: template ${t}`);
