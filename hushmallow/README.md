@@ -61,7 +61,8 @@ shows **test purchases**. "Step into hushmallow Flow" unlocks Flow and
 "Step into hushmallow Beyond" unlocks Beyond, without charging anything. Settings →
 "Remove test plan" resets this. Test purchases only work on the hosts listed
 in `src/app/config.js`, so a public site can't give plans away. The App
-Store build swaps in StoreKit (see `src/app/entitlements.js`).
+Store build swaps in StoreKit (see `src/app/entitlements.js`). Web
+subscriptions through Stripe are built and switched off: `docs/PAYMENTS.md`.
 
 Putting it on your Framer site: see `docs/FRAMER.md`.
 
