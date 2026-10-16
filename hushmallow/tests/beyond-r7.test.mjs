@@ -377,5 +377,6 @@ test('r7.E5: the consent card (shown before anything is sent) carries what the o
   // words, the feeling, the help, our secure server, a perspective, never photos: each on the card, in its lead or "What's sent"
   for (const must of [/your words/i, /the feeling/, /the kind of help you pick/, /our secure server/, /a perspective/, /Never your photos/]) assert.match(`${lead} ${sent}`, must);
   // the card is the notice itself, shown before the first request (arrive → askConsent → invite)
-  assert.match(aa, /if \(client && consentState\(store\) === 'unasked'\) \{ await askConsent\(\); if \(S\.left\) return; \}\s*invite\(\);/);
+  // (payments review: the call also says whether the session carries the account's token, src/beyond/consent.js sendsAccount)
+  assert.match(aa, /if \(client && consentState\(store, accountNotice\) === 'unasked'\) \{ await askConsent\(\); if \(S\.left\) return; \}\s*invite\(\);/);
 });

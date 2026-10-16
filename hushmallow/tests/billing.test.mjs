@@ -396,7 +396,8 @@ const tick = () => new Promise((r) => setTimeout(r, 0));
 const prevDoc = globalThis.document;
 after(() => { if (prevDoc === undefined) delete globalThis.document; else globalThis.document = prevDoc; });
 
-async function plansPage(ent, { calls = [] } = {}) {
+/** A document made of FakeEl, as the scenes need it; → its body. */
+function fakeDocument() {
   const body = new FakeEl('body');
   globalThis.document = {
     createElement: (t) => new FakeEl(t), createElementNS: (_, t) => new FakeEl(t),
@@ -405,6 +406,10 @@ async function plansPage(ent, { calls = [] } = {}) {
     getElementById: () => null, head: new FakeEl('head'), body, documentElement: new FakeEl('html'),
   };
   globalThis.requestAnimationFrame ||= (fn) => setTimeout(fn, 0);
+  return body;
+}
+async function plansPage(ent, { calls = [] } = {}) {
+  const body = fakeDocument();
   const { default: plans } = await import('../src/app/scenes/plans.js');
   const world = { dim() {}, showMallow() {}, place() {}, setStage() {}, react() {}, fitBetween() {}, setMallow: async () => {}, mallowId: 'boppo' };
   const app = { ent, world, state: {}, haptic() {}, audio: { ui() {} }, go: (name, params) => calls.push([name, params]), back() {} };
@@ -504,14 +509,62 @@ test('Another Angle: the account\'s token goes with /v1/session only when billin
   assert.doesNotMatch(JSON.parse(billed.find((c) => c.path === '/v1/session').init.body).device_id, /eyJ/);
   // the consent card says so, only when billing is on (off, its line is exactly as before)
   const consent = read('src/beyond/consent.js');
-  assert.match(consent, /app\?\.billing \? ACCOUNT_CHECK : ' Never your name or account\.'/);
+  assert.match(consent, /sendsAccount\(app\) \? ACCOUNT_CHECK : ' Never your name or account\.'/);
+  assert.match(consent, /export const sendsAccount = \(app\) => !!app\?\.billing;/, 'the same condition as the token');
   const { ACCOUNT_CHECK } = await import('../src/beyond/consent.js');
-  assert.equal(ACCOUNT_CHECK, ' With a web subscription it also sends a sign-in token for your account, so our server can check your plan. Never your name or email.');
+  assert.equal(ACCOUNT_CHECK, ' When you’re signed in, it also sends a sign-in token for your account, so our server can check your plan. Never your name or email.');
   // a token that cannot be had (signed out, offline): the session goes without one
   const none = await run({ accountToken: async () => null });
   assert.equal(none.find((c) => c.path === '/v1/session').init.headers.authorization, undefined);
   const boom = await run({ accountToken: async () => { throw new Error('no'); } });
   assert.equal(boom.find((c) => c.path === '/v1/session').init.headers.authorization, undefined);
+});
+
+// ------------------------------------------------ the consent card --
+/** The consent card as Another Angle opens it, in a fake document: → { text, accept(), close() } (one of the two, so its timers end). */
+async function consentCard(app) {
+  const { openConsent } = await import('../src/beyond/consent.js');
+  const root = fakeDocument();
+  const card = openConsent({ app, root, onDecide: () => {} });
+  return { text: text(card.el), close: card.close, accept: () => all(card.el).find((n) => n.tagName === 'BUTTON' && text(n) === 'Accept').listeners.click[0]({}) };
+}
+
+test('consent: with billing on, a yes given before (the notice did not name the token) is asked again; off, exactly as before', async () => {
+  const { consentState, setConsent, STORE_KEYS, CONSENT_VERSION, ACCOUNT_CHECK } = await import('../src/beyond/consent.js');
+  const store = memStore();
+  store.set(STORE_KEYS.consent, { v: CONSENT_VERSION, choice: 'yes', at: '2026-10-12' });   // accepted before billing was on
+  assert.equal(consentState(store), 'yes', 'billing off: the stored yes counts, as today');
+  assert.equal(consentState(store, { account: false }), 'yes');
+  assert.equal(consentState(store, { account: true }), 'unasked', 'billing on: asked again before the token goes with the session');
+  setConsent(store, 'yes', { account: true });
+  assert.equal(consentState(store, { account: true }), 'yes');
+  assert.equal(consentState(store), 'yes', 'a yes to the fuller notice counts with billing off too');
+  // a "Not now" stays one (nothing is sent then); off, the record is exactly as before
+  store.set(STORE_KEYS.consent, { v: CONSENT_VERSION, choice: 'no', at: '2026-10-12' });
+  assert.equal(consentState(store, { account: true }), 'no');
+  setConsent(store, 'yes');
+  assert.deepEqual(Object.keys(store.get(STORE_KEYS.consent)), ['v', 'choice', 'at']);
+  assert.equal(consentState(store, { account: true }), 'unasked');
+  // the card with billing on names the token, and its Accept records the notice it showed
+  const on = { billing: setup().billing, store: memStore() };
+  const card = await consentCard(on);
+  assert.ok(card.text.includes(ACCOUNT_CHECK.trim()), 'the token line');
+  assert.ok(!card.text.includes('Never your name or account.'));
+  card.accept();
+  assert.equal(consentState(on.store, { account: true }), 'yes');
+  // off: the line as before, and the record as before
+  const off = { billing: null, store: memStore() };
+  const plain = await consentCard(off);
+  assert.ok(plain.text.includes('(and any invite code) to keep the daily allowance fair. Never your name or account.'));
+  assert.ok(!/sign-in token/.test(plain.text));
+  plain.accept();
+  assert.deepEqual(Object.keys(off.store.get(STORE_KEYS.consent)), ['v', 'choice', 'at']);
+  // Another Angle and Settings ask with the same condition as the token
+  const aa = read('src/beyond/another-angle.js');
+  assert.match(aa, /const accountNotice = \{ account: sendsAccount\(app\) \};/);
+  assert.equal((aa.match(/consentState\(store, accountNotice\)/g) || []).length, 3);
+  assert.doesNotMatch(aa, /consentState\(store\)/);
+  assert.match(read('src/beyond/consent.js'), /input\.checked = consentState\(store, notice\) === 'yes';/);
 });
 
 // ------------------------------------------------- the sign-in client --
