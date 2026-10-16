@@ -3,6 +3,7 @@
 // the fixes in place.
 //   M1  320×568 at text size Largest: a V3 ritual's play area ran under the ritual dock (Molten Tempo's rim under the
 //       words chip, so it could not be turned past halfway). The stage now keeps clear of the dock at every size.
+//   m2  touch targets under 44 px: .chip, the Settings Volume slider, the Thought Mallow's words tag.
 // Run: node --test hushmallow/tests/qa-mobile-fix.test.mjs
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -69,4 +70,28 @@ test('M1: the host lays the stage out from stage-fit.js, compacting the title fi
   assert.deepEqual(rules.map((r) => r[0]), ['', '.eyebrow', '.v3-law-chip']);
   for (const [sel, body] of rules) if (sel !== '.eyebrow') assert.doesNotMatch(body, /display:\s*none|font|visibility|opacity/, `${sel}: ${body}`);
   assert.match(read('src/app/scenes/ritual.js'), /status\.textContent = `\$\{e\}\. \$\{title\}\. \$\{prompt\}`;/, 'the location is still announced');
+});
+
+test('m2: chips, the Settings Volume slider and the Thought Mallow’s words tag are at least 44 px to a finger', () => {
+  const css = read('src/ui/app.css');
+  assert.match(css, /^\.chip \{ flex: 0 0 auto; min-height: 44px;/m);
+  for (const m of css.matchAll(/\.chip\b[^{,]*\{[^}]*min-height:\s*(\d+)px/g)) assert.ok(+m[1] >= 44, m[0]);
+  // no chip anywhere is given a smaller inline minimum
+  for (const p of ['src/app/scenes/settings.js', 'src/app/scenes/library.js', 'src/app/scenes/landing.js', 'src/app/scenes/express.js', 'src/app/emotion-picker.js']) {
+    for (const m of read(p).matchAll(/class: 'chip'[^\n]*minHeight: '(\d+)px'/g)) assert.ok(+m[1] >= 44, `${p}: ${m[0]}`);
+  }
+  // the slider: 44 px tall inside its row's own padding (the row keeps its height: 14 px padding either side)
+  assert.match(css, /\.setting \.range \{ height: 44px; margin-block: -6px; \}/);
+  assert.match(css, /\.setting \{ display: flex; align-items: center; gap: 12px; padding: 14px 0;/);
+  assert.match(read('src/app/scenes/settings.js'), /h\('input', \{ type: 'range', class: 'range',[^\n]*'aria-label': 'Volume'/);
+  // the words tag keeps its look; its target is the invisible ::before, at least 48 px tall and a little wider, and
+  // nothing clips it (QA's audit measured the 36 px box; a tap 4 px above or 5 px below it reads the words)
+  const layer = read('src/mallows/thought/layer.js');
+  const before = /\.tm-tag::before\{([^}]*)\}/.exec(layer)?.[1];
+  assert.ok(before, 'the tag has its hit area');
+  assert.match(before, /content:"";position:absolute;left:-2px;right:-2px;top:50%;height:max\(100% \+ 4px,(\d+)px\);transform:translateY\(-50%\)/);
+  assert.ok(+/max\(100% \+ 4px,(\d+)px\)/.exec(before)[1] >= 44);
+  const tag = /\.tm-tag\{([^}]*)\}/.exec(layer)[1];
+  assert.doesNotMatch(tag, /overflow\s*:|contain\s*:/, 'nothing clips the hit area');
+  assert.match(tag, /pointer-events:auto/);
 });

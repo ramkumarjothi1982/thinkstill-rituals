@@ -88,7 +88,7 @@ a { color: var(--accent); }
 .chips.scroll::-webkit-scrollbar { display: none; }
 /* inside a card the row bleeds only to the card's own edge (never past its border) */
 .card .chips.scroll { margin: 0 -14px; padding: 2px 14px; scroll-padding-inline: 14px; }
-.chip { flex: 0 0 auto; min-height: 40px; padding: 0 15px; border-radius: var(--r-pill); border: 1px solid var(--line-strong); background: var(--glass);
+.chip { flex: 0 0 auto; min-height: 44px; padding: 0 15px; border-radius: var(--r-pill); border: 1px solid var(--line-strong); background: var(--glass);
   backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); font: var(--type-control); letter-spacing: var(--type-control-ls); color: var(--text-1); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
 .chip[aria-pressed="true"] { background: var(--accent); color: var(--text-on-accent); border-color: transparent; }
 .chip .hue { width: 8px; height: 8px; border-radius: 50%; }
@@ -100,6 +100,9 @@ input.search, input.text { width: 100%; min-height: 48px; border-radius: 14px; b
   color: var(--text-1); font: var(--type-input); letter-spacing: var(--type-input-ls); padding: 0 14px; outline: none; }
 input.search:focus, input.text:focus { border-color: var(--accent); }
 .range { width: 100%; accent-color: var(--accent); height: 32px; }
+/* a slider in a Settings row (Volume): the track stays as drawn; the finger's target is 44 px tall, reaching into the
+   row's own padding (the negative margins), so the row keeps its height */
+.setting .range { height: 44px; margin-block: -6px; }
 
 /* ----------------------------------------------------------- cards -- */
 .card { border-radius: var(--r-lg); border: 1px solid var(--line); background: var(--glass-strong); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
