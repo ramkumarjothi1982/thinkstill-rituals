@@ -139,3 +139,39 @@ Two design notes remain:
 
 - On a small phone at the largest text size, the belief's words fade out while a choice or line overlaps them, and come back once it is answered.
 - The press-on-words-during-room path is right by code, but no probe step exercises it.
+
+## Integration (16 Oct 2026, owner-authorised)
+
+Done on `claude/hm-belief-mallows`, then fast-forwarded onto the integration branch `claude/upbeat-pasteur-b0aqg1`. `main` was not touched: a push there deploys the published site (`hushmallow-pages.yml`).
+
+**Changes**
+
+- **Switched on.** `LIVE_FEATURES.beliefMallows = true`.
+  - Beyond sells "Belief Mallow investigation for the stories that keep coming back". The line sits behind Beyond's "Everything included" disclosure, beside "Perspective-changing worlds made for Another Angle", because Beyond now has 5 lines of its own.
+  - Flow never sells it.
+  - `gate.js` still requires 'ultra'.
+- **The Another Angle delete row.** `consent.js` `ANGLE_EXTRA_KEYS` lists `beyond.belief.kept`.
+  - `deleteAngleData` removes kept Belief Mallows, and `hasAngleData` counts them.
+  - Its sheet and Settings' three "Delete everything" sheets name them.
+  - `tests/beyond-fix-angle.test.mjs` is updated to match. The former todo test now runs for real.
+- **Privacy hardening from the regression review.** A belief Tell stays a belief even if Beyond ends before its question is answered. It never falls through to an angle, and nothing is sent; it ends quietly.
+
+**Checks**
+
+- **Full suite on 58c4052:** 1129 of 1129 pass, 0 fail, 0 todo.
+  - An earlier run, with two agents also using the CPU, failed one timing budget (`r4.test.mjs`, grief-rule cost). That test passes alone, and so does the uncontended run.
+- **Browser, live build, no dev switch:**
+  - full flow at 390x844 and 320x568 with the largest text;
+  - crisis at 320x568 with the largest text;
+  - Flow plan: Another Angle opens the plans page, with no Another Angle and no Belief Mallow; Beyond sells the line and Flow never does;
+  - crisis, care and wipe at 390x844 (run by the reviewer).
+  - The request log was clean in every run.
+- **Independent regression review:** "ready for production". No Blocker or High findings.
+  - Payments: product ids, purchase, restore and test purchase are untouched; `LIVE_FEATURES` is read only by the plans line and `gate.js`.
+  - Published-site build: `build-site.sh` copies `src` wholesale. There is no service worker to update.
+  - Lows fixed: the downgrade race above and two stale comments.
+  - Low noted: Beyond's disclosure (above).
+- **Compatibility trial merge** (local only):
+  - With `hm-prod-security`, `hm-world-moonmilk-cove` and `hm-hires-loomi`: clean, and the combined suite passed 1160 of 1160.
+  - `hm-world-raindrop-lagoon` and `hm-world-sunpop-orchard` conflict with moonmilk-cove, and with each other, in `src/hushfold/flow/lab.js` (the lab-world registry). That is between world branches, not with Belief Mallows. Each merges cleanly onto this branch alone.
+  - prod-security's Content Security Policy allows everything Belief Mallows uses: a same-origin `import()`, plus an inline `<style>` allowed by its `'unsafe-inline'`.
