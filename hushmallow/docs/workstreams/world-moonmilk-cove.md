@@ -1,5 +1,7 @@
 # Workstream world-moonmilk-cove — Noomi's Moonmilk Cove (Hushflow world 5, lab-only)
 
+> **Integrated 16 Oct 2026 (ws-worlds, owner-approved).** The cove is in `registry.js` `WORLDS` as PLAYABLE, `calm: true`, `next: ['raindrop-lagoon']` (the ocean's `next` is the cove; `final` moved to the orchard). A gentle session may play it, and plays each calm world (the ocean, the cove) at most once. Its entry lives in registry.js and `worlds/moonmilk-cove.js` re-exports it; the lab's `LAB_WORLDS` list is gone. The notes below are the workstream's, as written before integration.
+
 ## What I built
 This world teaches the Memory Garden skill `permission-to-rest`: "Rest can be a valid response, even with things left to do."
 

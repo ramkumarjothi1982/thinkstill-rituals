@@ -1,5 +1,7 @@
 # Workstream world-raindrop-lagoon: Blubi's Raindrop Lagoon
 
+> **Integrated 16 Oct 2026 (ws-worlds, owner-approved).** The lagoon is in `registry.js` `WORLDS` as PLAYABLE, `calm: false` (as recommended below), `next: ['sunpop-orchard']`, no `final`. Its entry lives in registry.js and `worlds/raindrop-lagoon.js` re-exports it; the lab hook is gone. The notes below are the workstream's, as written before integration.
+
 Hushflow world 6 (`raindrop-lagoon`). It is **lab-only**: it is not in `WORLDS`, and its status is `IN_PROGRESS`, never `DEV`. It teaches the Memory Garden skill `name-it` ("Putting a feeling into words can make it easier to hold.").
 
 ## What it is
