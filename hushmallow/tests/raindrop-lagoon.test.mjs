@@ -23,12 +23,14 @@ const hits = (a, b, pad = 0) => a.x0 < b.x1 + pad && a.x1 > b.x0 - pad && a.y0 <
 const discBox = (d) => ({ x0: d.x - d.D / 2, y0: d.y - TIP * d.D, x1: d.x + d.D / 2, y1: d.y + d.D / 2 });
 
 // ------------------------------------------------------------- registry --
-test('entry: every §16 field, lab-only status (never DEV), the realm’s horizon, the name-it skill, honest lines', () => {
+test('entry: every §16 field, PLAYABLE in WORLDS (never DEV), the realm’s horizon, the name-it skill, honest lines', () => {
   assert.deepEqual(missingFields(RAINDROP_LAGOON), []);
   assert.ok(REQUIRED_FIELDS.every((k) => RAINDROP_LAGOON[k] != null));
-  assert.equal(RAINDROP_LAGOON.status, STATUS.IN_PROGRESS, 'not playable until the coordinator switches it on');
-  assert.ok(!isPlayable(RAINDROP_LAGOON), 'IN_PROGRESS is not playable (DEV would be)');
-  assert.ok(!WORLDS.some((w) => w.id === 'raindrop-lagoon'), 'never added to WORLDS by this workstream');
+  assert.equal(RAINDROP_LAGOON.status, STATUS.PLAYABLE, 'switched on (16 Oct), never DEV');
+  assert.ok(isPlayable(RAINDROP_LAGOON));
+  assert.equal(WORLDS.find((w) => w.id === 'raindrop-lagoon'), RAINDROP_LAGOON, 'the world file re-exports the registry’s own entry');
+  assert.deepEqual(RAINDROP_LAGOON.next, ['sunpop-orchard']);
+  assert.ok(!RAINDROP_LAGOON.final);
   assert.equal(RAINDROP_LAGOON.horizon, REALM_HORIZON['raindrop-lagoon']);
   assert.equal(RAINDROP_LAGOON.horizon, LAGOON.HORIZON);
   assert.equal(RAINDROP_LAGOON.mallow.id, 'blubi');
@@ -241,7 +243,6 @@ const fakeMallow = (W, H) => {
   return m;
 };
 const fakeThought = () => ({ id: 't', token: 'My boss embarrassed me today.', text: 'My boss embarrassed me today.', x: 0, y: 0, z: 0, scale: 1, r: 40, state: {}, reacts: [], react(k) { this.reacts.push(k); }, hitTest: () => false, pointer() {} });
-const LAB = { ...RAINDROP_LAGOON, status: STATUS.PLAYABLE };
 const steps = (D, sec, dt = 1 / 30) => { for (let t = 0; t < sec; t += dt) D.debug.step(dt); };
 /** Press a drop, hold still for `hold` s, carry it to (x1, y1), let go. */
 function holdAndCarry(D, d, x1, y1, hold = 1.4, id = 1) {
@@ -270,7 +271,7 @@ test('world: hold a drop still and its word surfaces; carry it to the thought an
     const mallow = fakeMallow(W, H), thought = fakeThought();
     const said = [], found = [], offers = [];
     const subtitles = { say(lines, o) { said.push({ lines: [].concat(lines), kind: o?.kind }); return Promise.resolve(); }, choice: () => new Promise(() => {}), clear() {} };
-    D = createHushflow({ worldEl: dom.el(), fxEl: dom.el(), mallow, thought, subtitles, registry: createRegistry([...WORLDS, LAB]), ticker: fakeTicker(), store: memStore(), reducedMotion: false, safeRect: () => ({ x: 20, y: 64, w: W - 40, h: 400 }) });
+    D = createHushflow({ worldEl: dom.el(), fxEl: dom.el(), mallow, thought, subtitles, registry: createRegistry(WORLDS), ticker: fakeTicker(), store: memStore(), reducedMotion: false, safeRect: () => ({ x: 20, y: 64, w: W - 40, h: 400 }) });
     D.on('discovery', (e) => found.push(e)); D.on('offer', (e) => offers.push(e));
     await D.start({ worldId: 'raindrop-lagoon', emotion: 'sad', intention: 'steady', intensity: 0.7 });
     const w = D.world;
@@ -365,7 +366,7 @@ test('world: a tap reveals a drop; tapping the thought gives it; tapping elsewhe
   try {
     const { createHushflow } = await import('../src/hushfold/flow/director.js');
     const W = 360, H = 780, mallow = fakeMallow(W, H), thought = fakeThought(), found = [];
-    D = createHushflow({ worldEl: Object.assign(dom.el(), { clientWidth: W, clientHeight: H }), fxEl: Object.assign(dom.el(), { clientWidth: W, clientHeight: H }), mallow, thought, registry: createRegistry([...WORLDS, LAB]), ticker: fakeTicker(), store: memStore(), reducedMotion: false, subtitles: { say: () => Promise.resolve(), choice: () => new Promise(() => {}), clear() {} } });
+    D = createHushflow({ worldEl: Object.assign(dom.el(), { clientWidth: W, clientHeight: H }), fxEl: Object.assign(dom.el(), { clientWidth: W, clientHeight: H }), mallow, thought, registry: createRegistry(WORLDS), ticker: fakeTicker(), store: memStore(), reducedMotion: false, subtitles: { say: () => Promise.resolve(), choice: () => new Promise(() => {}), clear() {} } });
     D.on('discovery', (e) => found.push(e));
     await D.start({ worldId: 'raindrop-lagoon', emotion: 'anxious', intention: 'calm' });
     const w = D.world;
@@ -396,7 +397,7 @@ test('world: a gentle session — quiet lines, no offers, Blubi never happy; red
   try {
     const { createHushflow } = await import('../src/hushfold/flow/director.js');
     const W = 320, H = 568, mallow = fakeMallow(W, H), thought = fakeThought(), said = [], offers = [], found = [];
-    D = createHushflow({ worldEl: Object.assign(dom.el(), { clientWidth: W, clientHeight: H }), fxEl: Object.assign(dom.el(), { clientWidth: W, clientHeight: H }), mallow, thought, registry: createRegistry([...WORLDS, LAB]), ticker: fakeTicker(), store: memStore(), reducedMotion: true, lowStimulation: true, subtitles: { say(l) { said.push([].concat(l)); return Promise.resolve(); }, choice: () => new Promise(() => {}), clear() {} } });
+    D = createHushflow({ worldEl: Object.assign(dom.el(), { clientWidth: W, clientHeight: H }), fxEl: Object.assign(dom.el(), { clientWidth: W, clientHeight: H }), mallow, thought, registry: createRegistry(WORLDS), ticker: fakeTicker(), store: memStore(), reducedMotion: true, lowStimulation: true, subtitles: { say(l) { said.push([].concat(l)); return Promise.resolve(); }, choice: () => new Promise(() => {}), clear() {} } });
     D.on('offer', (e) => offers.push(e)); D.on('discovery', (e) => found.push(e));
     // (a gentle session never starts a world that is not calm: the session turns gentle while the lagoon plays)
     await D.start({ worldId: 'raindrop-lagoon', emotion: 'sad', intention: 'steady' });
@@ -426,7 +427,7 @@ test('world: melting in from the ocean, the thought glides from where it was; th
     const { createHushflow } = await import('../src/hushfold/flow/director.js');
     const W = 390, H = 844, mallow = fakeMallow(W, H), thought = fakeThought();
     const photos = { n: 3, standIn: false, draw: () => ({ w: 1, h: 1 }), size: () => ({ w: 1, h: 1 }), colour: () => '#7fd4ff' };
-    D = createHushflow({ worldEl: dom.el(), fxEl: dom.el(), mallow, thought, photos, registry: createRegistry([...WORLDS, LAB]), forceNext: 'raindrop-lagoon', ticker: fakeTicker(), store: memStore(), reducedMotion: false, subtitles: { say: () => Promise.resolve(), choice: () => new Promise(() => {}), clear() {} } });
+    D = createHushflow({ worldEl: dom.el(), fxEl: dom.el(), mallow, thought, photos, registry: createRegistry(WORLDS), forceNext: 'raindrop-lagoon', ticker: fakeTicker(), store: memStore(), reducedMotion: false, subtitles: { say: () => Promise.resolve(), choice: () => new Promise(() => {}), clear() {} } });
     const melts = [];
     D.on('melt', (e) => melts.push(e));
     await D.start({ worldId: 'luminous-ocean', emotion: 'sad', intention: 'steady' });
@@ -456,7 +457,7 @@ test('world (review): a relayout mid-hold keeps the drop; "unsure" is not "a wor
   try {
     const { createHushflow } = await import('../src/hushfold/flow/director.js');
     const W = 390, H = 844, mallow = fakeMallow(W, H), thought = fakeThought(), said = [], found = [];
-    D = createHushflow({ worldEl: dom.el(), fxEl: dom.el(), mallow, thought, registry: createRegistry([...WORLDS, LAB]), ticker: fakeTicker(), store: memStore(), reducedMotion: false, subtitles: { say(l) { said.push([].concat(l)); return Promise.resolve(); }, choice: () => new Promise(() => {}), clear() {} } });
+    D = createHushflow({ worldEl: dom.el(), fxEl: dom.el(), mallow, thought, registry: createRegistry(WORLDS), ticker: fakeTicker(), store: memStore(), reducedMotion: false, subtitles: { say(l) { said.push([].concat(l)); return Promise.resolve(); }, choice: () => new Promise(() => {}), clear() {} } });
     D.on('discovery', (e) => found.push(e));
     await D.start({ worldId: 'raindrop-lagoon', emotion: 'sad', intention: 'steady' });
     const w = D.world;
@@ -524,7 +525,7 @@ test('world (review r2): two long words never grow the tag past the place kept f
     const { createHushflow } = await import('../src/hushfold/flow/director.js');
     for (const [W, H] of [[320, 568], [390, 844]]) {
       const mallow = fakeMallow(W, H), thought = fakeThought();
-      D = createHushflow({ worldEl: Object.assign(dom.el(), { clientWidth: W, clientHeight: H }), fxEl: Object.assign(dom.el(), { clientWidth: W, clientHeight: H }), mallow, thought, registry: createRegistry([...WORLDS, LAB]), ticker: fakeTicker(), store: memStore(), reducedMotion: true, subtitles: { say: () => Promise.resolve(), choice: () => new Promise(() => {}), clear() {} } });
+      D = createHushflow({ worldEl: Object.assign(dom.el(), { clientWidth: W, clientHeight: H }), fxEl: Object.assign(dom.el(), { clientWidth: W, clientHeight: H }), mallow, thought, registry: createRegistry(WORLDS), ticker: fakeTicker(), store: memStore(), reducedMotion: true, subtitles: { say: () => Promise.resolve(), choice: () => new Promise(() => {}), clear() {} } });
       await D.start({ worldId: 'raindrop-lagoon', emotion: 'frustrated', intention: 'calm' });
       const w = D.world;
       steps(D, 3);

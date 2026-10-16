@@ -159,19 +159,21 @@ test('progress: monotonic; completion needs five given, 30 s of play and the dis
 });
 
 // --------------------------------------------------------------- registry --
-test('registry entry: every §16 field, fits, calm, next and load; not in WORLDS yet, never DEV', async () => {
+test('registry entry: every §16 field, fits, calm, next and load; PLAYABLE in WORLDS (never DEV), the last world', async () => {
   const { SUNPOP_ORCHARD } = await import('../src/hushfold/flow/worlds/sunpop-orchard.js');
   assert.deepEqual(missingFields(SUNPOP_ORCHARD), []);
   for (const k of REQUIRED_FIELDS) assert.ok(SUNPOP_ORCHARD[k] != null, k);
   assert.ok(SUNPOP_ORCHARD.fits && typeof SUNPOP_ORCHARD.calm === 'boolean' && Array.isArray(SUNPOP_ORCHARD.next) && typeof SUNPOP_ORCHARD.load === 'function');
   assert.notEqual(SUNPOP_ORCHARD.status, 'dev');
-  assert.ok(!WORLDS.some((w) => w.id === 'sunpop-orchard'), 'lab-only: the coordinator adds it');
+  assert.equal(WORLDS.find((w) => w.id === 'sunpop-orchard'), SUNPOP_ORCHARD, 'the world file re-exports the registry’s own entry');
+  assert.equal(SUNPOP_ORCHARD.final, true, 'the last world: nothing follows it');
+  assert.deepEqual(SUNPOP_ORCHARD.next, []);
   assert.equal(SUNPOP_ORCHARD.memory.skillId, 'kinder-voice');
   assert.equal(SUNPOP_ORCHARD.mallow.id, 'boppo');
   const { SKILLS } = await import('../src/hushfold/skills.js').catch(() => ({}));
   const sk = Array.isArray(SKILLS) ? SKILLS.find((s) => s.id === 'kinder-voice') : SKILLS?.['kinder-voice'];
   if (sk) assert.equal(sk.world?.id, 'sunpop-orchard');
-  const reg = createRegistry([...WORLDS, SUNPOP_ORCHARD]);
+  const reg = createRegistry(WORLDS);
   assert.ok(isPlayable(SUNPOP_ORCHARD) && reg.playable('sunpop-orchard'));
   const mod = await reg.load('sunpop-orchard');
   assert.equal(typeof mod.create, 'function');
@@ -216,7 +218,7 @@ const quiet = () => ({ say: () => Promise.resolve(), choice: () => new Promise((
 let ORCH = null;
 async function orchardRegistry(extra = []) {
   if (!ORCH) ORCH = (await import('../src/hushfold/flow/worlds/sunpop-orchard.js')).SUNPOP_ORCHARD;
-  return createRegistry([...WORLDS, ...extra, ORCH]);
+  return createRegistry([...WORLDS.filter((w) => w.id !== ORCH.id), ...extra, ORCH]);
 }
 /** A finger resting on (x, y) for `sec`, then (optionally) lifted. */
 function hold(D, x, y, sec, { id = 1, lift = true } = {}) {

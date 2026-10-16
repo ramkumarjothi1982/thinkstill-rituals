@@ -1,4 +1,4 @@
-// Moonmilk Cove (world 5, lab-only) tests: the pure core (the screen plan, the rest meter, the discoveries, completion,
+// Moonmilk Cove (world 5) tests: the pure core (the screen plan, the rest meter, the discoveries, completion,
 // the moon's phase), the registry entry's contract — and a headless run of the world inside the director (a fake DOM):
 // a resting finger fills the moon, moving only pauses it, doing nothing counts after the first touch, the shells keep
 // their places, a gentle session keeps its quiet, the storm melts into the cove and hands over its thought.
@@ -163,15 +163,18 @@ test('the moon: a thin crescent at the start, full at the minute, filling steadi
 });
 
 // ------------------------------------------------------- the registry entry --
-test('entry: every §16 field, lab-only (never playable in production, never DEV), calm, its skill exists; not in WORLDS', async () => {
+test('entry: every §16 field, PLAYABLE in WORLDS (never DEV), calm, its skill exists; the lagoon follows it', async () => {
   const { MOONMILK_COVE } = await import('../src/hushfold/flow/worlds/moonmilk-cove.js');
   const e = MOONMILK_COVE;
   assert.deepEqual(missingFields(e), []);
   for (const k of REQUIRED_FIELDS) assert.ok(e[k] != null, k);
   assert.ok(e.fits && e.calm === true && Array.isArray(e.next) && typeof e.load === 'function');
   assert.notEqual(e.status, STATUS.DEV);
-  assert.ok(!isPlayable(e), 'not offered until the coordinator switches it on');
-  assert.ok(!WORLDS.some((w) => w.id === e.id), 'not in WORLDS (integration adds it)');
+  assert.equal(e.status, STATUS.PLAYABLE, 'switched on (16 Oct)');
+  assert.ok(isPlayable(e));
+  assert.equal(WORLDS.find((w) => w.id === e.id), e, 'the world file re-exports the registry’s own entry');
+  assert.deepEqual(e.next, ['raindrop-lagoon']);
+  assert.ok(!e.final);
   assert.equal(e.mallow.id, 'noomi');
   assert.equal(e.memory.skillId, 'permission-to-rest');
   const { SKILLS } = await import('../src/hushfold/skills.js');
@@ -185,9 +188,8 @@ test('entry: every §16 field, lab-only (never playable in production, never DEV
   assert.equal(e.dialogue.gentle.busy, null);
   const mod = await e.load();
   assert.equal(typeof mod.create, 'function');
-  // switched on (as the coordinator will), a gentle session may pick it, the selector is happy with it
-  const on = { ...e, status: STATUS.PLAYABLE };
-  const pick = selectNext([...WORLDS, on], { current: null, emotion: 'overwhelmed', intention: 'calm', gentle: true, exclude: ['luminous-ocean'] });
+  // switched on, a gentle session may pick it, the selector is happy with it
+  const pick = selectNext(WORLDS, { current: null, emotion: 'overwhelmed', intention: 'calm', gentle: true, exclude: ['luminous-ocean'] });
   assert.equal(pick.id, 'moonmilk-cove');
 });
 
@@ -234,8 +236,7 @@ function stroke(D, x0, y0, x1, y1, sec, id = 2) {
   D.pointer({ type: 'up', id, x: x1, y: y1, t: t + 16, pointerType: 'touch' });
 }
 async function covedRegistry() {
-  const { MOONMILK_COVE } = await import('../src/hushfold/flow/worlds/moonmilk-cove.js');
-  return createRegistry([...WORLDS, { ...MOONMILK_COVE, status: STATUS.PLAYABLE }]);
+  return createRegistry(WORLDS);
 }
 function director(dom, { W = 390, H = 844, gentle = false, photos = fakePhotos(), thought = fakeThought(), mallow = fakeMallow(W, H), audio = null, reducedMotion = false, registry, forceNext = null } = {}) {
   return import('../src/hushfold/flow/director.js').then(({ createHushflow }) => {
@@ -312,7 +313,7 @@ test('world: a resting finger fills the moon and hushes the shells; moving pause
     assert.ok(!JSON.stringify(st).includes('boss'));
     assert.ok(st.complete && st.discoveries.includes('rest'));
     assert.ok(w.restore(st));
-    assert.equal(D.state.canNext, false, 'nothing follows the cove yet: Stay as long as you like, or Finish');
+    assert.equal(D.state.canNext, true, 'the lagoon follows the cove: Stay, or drift on');
   } finally { D?.destroy(); dom.restore(); }
 });
 

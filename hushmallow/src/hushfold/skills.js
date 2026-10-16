@@ -200,8 +200,8 @@ const LIST = [
     related: ['a-little-more-room', 'kinder-voice', 'slowing-down'],
     charm: { family: 'prism', motif: 'split', palette: { deep: '#260540', body: '#8a1fd1', light: '#e6a6ff', core: '#ffffff', rim: '#7ff6ff' } },
   }),
-  // ------------------------------- for worlds still being made (planned) --
-  // `found` stays null until the world that teaches it is built and played.
+  // ------------------- worlds 5–7 (Moonmilk Cove, Raindrop Lagoon, Sunpop Orchard), and worlds still being made --
+  // `found` stays null until the world that teaches it is built and played (one-quiet-point and worry-can-wait: planned).
   skill({
     id: 'name-it',
     title: 'A Word for the Feeling',
@@ -214,7 +214,7 @@ const LIST = [
       'If there are two, name both, side by side.',
     ],
     example: 'Try it: when something stings, say quietly “This is…” and finish it with one exact word. “Unsure” counts.',
-    found: null,
+    found: 'In the lagoon, you looked into a feeling drop until its word came clear, and gave the feeling that word. It had a name.',
     world: { id: 'raindrop-lagoon', title: 'Blubi’s Raindrop Lagoon' },
     mallow: 'blubi',
     plan: 'paid',
@@ -243,7 +243,7 @@ const LIST = [
       'Say one believable, kind sentence to yourself. Plain words are fine.',
     ],
     example: 'Try it: write the message you’d send a friend in your shoes, then read it as if it were for you.',
-    found: null,
+    found: 'In the orchard, gentle holds ripened the sunpops, and each one you gave became a small light on the swing. All that warmth came from you, the kind you’d give a friend.',
     world: { id: 'sunpop-orchard', title: 'Boppo’s Sunpop Orchard' },
     mallow: 'boppo',
     plan: 'paid',
@@ -301,7 +301,7 @@ const LIST = [
       'Then decide what comes next.',
     ],
     example: 'Try it: set a one-minute timer, put everything down and do nothing useful until it rings.',
-    found: null,
+    found: 'In the cove, you rested and let the moon fill. The shells were still there, and resting was allowed.',
     world: { id: 'moonmilk-cove', title: 'Noomi’s Moonmilk Cove' },
     mallow: 'noomi',
     plan: 'paid',

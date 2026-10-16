@@ -1,5 +1,7 @@
 # Workstream: world-sunpop-orchard (Boppo's Sunpop Orchard, Hushflow world 7)
 
+> **Integrated 16 Oct 2026 (ws-worlds, owner-approved).** The orchard is in `registry.js` `WORLDS` as PLAYABLE, `calm: false`, `next: []` and `final: true`: the last world ("Stay as long as you like" and Finish). Its entry lives in registry.js and `worlds/sunpop-orchard.js` re-exports it; the lab hook is gone. The notes below are the workstream's, as written before integration.
+
 This world is lab-only. It is not in `WORLDS`, and its status is `playable`, not `dev`.
 The lab URL is `index.html?hushflow=sunpop-orchard`.
 

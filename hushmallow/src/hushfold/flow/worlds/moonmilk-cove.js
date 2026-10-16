@@ -33,116 +33,13 @@
 import { createRealmCore, moodForEmotion } from '../../../world/realm.js';
 import { glowSprite, Pool, Rings, clamp, lerp, smoothstep, TAU, makeCanvas, flashEnv } from '../../../world/util.js';
 import { PACE } from '../discovery.js';
-import { STATUS } from '../registry.js';
+import { WORLDS } from '../registry.js';
 import { wrapLines } from '../placeholders.js';
 import { COVE, planCove, plateRect, shoreY, createRestMeter, createRestDetector, createWaitedDetector, createCoveProgress, moonShadow, tideBusy } from './moonmilk-cove-rules.js';
 
-// ------------------------------------------------------------------ registry entry (lab-only until integration) --
-/**
- * The registry entry (every REQUIRED_FIELDS field, fits, calm, next, load). Not in WORLDS: the coordinator adds it at
- * integration (status IN_PROGRESS → PLAYABLE there). The dev lab plays it from its own list.
- */
-export const MOONMILK_COVE = {
-  id: 'moonmilk-cove',
-  title: 'Noomi’s Moonmilk Cove',
-  version: 1,
-  realm: 'moonmilk-cove',
-  horizon: COVE.HORIZON,
-  palette: { sky: '#2a2668', deep: '#15123d' },
-  purpose: 'Let a short rest be enough: rest a finger, or simply do nothing, and the moon fills — the things left to do are still there, and resting was allowed.',
-  technique: {
-    name: 'Permission to rest (acceptance and self-kindness)',
-    related: ['A realistic one-minute rest with no task attached', 'Mental holiday (contemplative inspiration)', 'Empty space and stillness'],
-  },
-  evidence: {
-    classification: 'Moderate – treatment-derived skill',
-    skill: 'Permission to Rest',
-    basis: 'Rest can be a valid response even if tasks remain; a realistic one-minute rest permission with no productivity task.',
-    sources: ['skills.js S.rest'],
-    framing: 'Rest is never scored against doing: moving is allowed and only pauses the rest; the shells (things left to do) never vanish, they wait.',
-  },
-  scene: 'A sleepy crescent cove under a huge milky moon: lavender water, a shimmering moon path, a pearly shore with little pinging shells, a slow lighthouse. '
-    + 'Rest fills the moon from a crescent to full; the tide stills to a mirror, more stars come out and a moonmilk aurora unfurls.',
-  touch: [
-    { gesture: 'Resting a finger still, anywhere', effect: 'A pool of moonmilk blooms under it in slow breath rings; the cove hushes and the moon fills.' },
-    { gesture: 'Leaving the cove alone (after the first touch)', effect: 'Counts as rest too: doing nothing fills the moon.' },
-    { gesture: 'Moving fingers', effect: 'Draw moonmilk ribbons that marble and dissolve; the tide gets a little busier; rest pauses, never resets.' },
-    { gesture: 'Tapping a shell', effect: 'It hops and chimes: still there, waiting.' },
-    { gesture: 'Tapping a lantern', effect: 'The photo glows warmer and bobs.' },
-    { gesture: 'Resting a finger on the Thought Mallow', effect: 'Rests with it: its cradle rocks slower and its tension eases.' },
-  ],
-  mallow: { id: 'noomi', behaviour: 'Sleepy and soft; watches the finger, else the thought; grows calmer and sleepier as the moon fills; sighs at the full moon.' },
-  input: {
-    words: 'The person’s exact words stay on the Thought Mallow resting in a crescent moon-cradle on the water, always readable.',
-    photos: { becomes: 'little arched lanterns floating on the far water', change: 'they glow warmer when tapped and as the rest deepens', shape: 'arch', standIn: 'the seven Mallow cards',
-      gentle: 'the stand-in cards become plain lantern light in each card’s colour' },
-  },
-  progression: [
-    'The cove starts a little restless with the chosen feeling; the shells ping now and then.',
-    'Resting a finger (or leaving the cove alone after the first touch) fills the moon; moving only pauses it.',
-    'Discovery: an unbroken rest of 15 s with the things left to do still there.',
-    'Natural completion: a full moon (60 s of rest in all); the tide stills to a mirror. It stays playable.',
-  ],
-  dialogue: {
-    intro: ['Mm. The cove’s sleepy tonight.', 'Those little shells keep pinging. Things left to do.'],
-    hint: ['Rest a finger anywhere.', 'They’ll wait.'],
-    busy: ['Busy hands are allowed too.', 'Rest is here whenever you want it.'],
-    thoughtRest: ['Your thought can rest too.', 'Still yours.'],
-    half: ['Half a moon.', 'A little at a time counts too.'],
-    gentle: {
-      intro: ['Somewhere quiet.', 'Rest here as long as you like.'],
-      hint: ['You can rest a finger anywhere.'],
-      busy: null, half: null,
-      thoughtRest: ['It can rest here too.'],
-    },
-    complete: 'A full moon of rest. What comes next is yours. Stay, or drift on?',
-    completeStay: 'A full moon of rest. Stay as long as you like.',
-    feeling: {
-      more: ['A busier tide tonight.', 'Rest is still here.'],
-      less: ['The tide’s settling.', 'The cove heard you.'],
-      other: ['Noted. The cove’s listening.'],
-    },
-  },
-  discoveries: {
-    rest: { skillId: 'permission-to-rest', lines: ['You rested.', 'The shells are still there.', 'And that was allowed.'] },
-    waited: { skillId: null, offer: false, lines: ['Still there.', 'It waited for you.'] },
-  },
-  sound: {
-    ambience: 'moonmilk-cove',
-    holds: { hum: 'a low hum while resting, warmer as the rest deepens' },
-    fx: ['a soft shimmer when a rest settles', 'a faint drip as a shell pings (never while resting)', 'a glass chime when a shell is tapped', 'a bubble note for a lantern', 'a chime at a discovery', 'bloom at the full moon'],
-  },
-  haptics: ['soft when a rest settles under the finger', 'light when a shell or a lantern is tapped', 'success at a discovery'],
-  completion: {
-    rule: 'Rest ≥ 60 s in all (a finger resting still, or no touch for ≥ 3 s after the first touch), then 1.2 s with no finger moving.',
-    after: 'The moon stays full, the tide a mirror; resting still blooms moonmilk. Stay as long as you like, or Finish / Drift on.',
-  },
-  transition: {
-    next: null,
-    melt: 'In: the mask spreads from the outgoing world’s horizon; the cove’s horizon is 0.5 H. Out: from the cove’s horizon.',
-    handoff: 'In: the Thought Mallow glides from where it was into its cradle; photos glide into lanterns. Reduced motion: fades in place. Out: the thought and the lanterns keep their places.',
-  },
-  memory: { skillId: 'permission-to-rest' },
-  accessibility: {
-    tapAlt: 'No gesture is needed at all: after one touch, leaving the cove alone fills the moon.',
-    reducedMotion: 'No rocking or bobbing, ribbons fade without marbling, breath rings become a steady glow, glides become fades, the hint holds still.',
-    lowStimulation: 'Fewer motes and softer ribbons; the realm’s low-stimulation contrast.',
-    precision: 'Rest works anywhere on the screen; shells and lanterns have 44 px targets.',
-  },
-  playtest: { results: [], note: 'Built 15 Oct (lab only); browser-checked with CDP touch (Chromium). Not yet playtested with real users or on a phone.' },
-  // lab-only: never offered in production until the coordinator adds it to WORLDS as PLAYABLE (never DEV)
-  status: STATUS.IN_PROGRESS,
-  // a rest world: calm, quiet, no charge — fit for a gentle session
-  calm: true,
-  // (owner P1 pattern) nothing follows it until Raindrop Lagoon exists: 'Stay as long as you like' and Finish
-  final: true,
-  fits: {
-    emotions: { overwhelmed: 1, sad: 0.9, anxious: 0.85, lonely: 0.8, restless: 0.7, frustrated: 0.6, angry: 0.5, other: 0.7 },
-    intentions: { calm: 1, steady: 0.9, 'let-go': 0.8, distract: 0.6, play: 0.5 },
-  },
-  next: [],
-  load: () => import('./moonmilk-cove.js'),
-};
+// ------------------------------------------------------------------------------------ registry entry --
+/** The registry entry (every REQUIRED_FIELDS field, fits, calm, next, load): it lives in registry.js WORLDS (PLAYABLE). */
+export const MOONMILK_COVE = WORLDS.find((w) => w.id === 'moonmilk-cove');
 
 // --------------------------------------------------------------------------------------------- constants --
 const C = { milk: '#fff4dc', moon: '#fffaf0', lav: '#b9a6ff', pink: '#ffd2ec', blue: '#bfe6ff', peach: '#ffcfa8', ink: '#15123d', night: '#1a1650' };
