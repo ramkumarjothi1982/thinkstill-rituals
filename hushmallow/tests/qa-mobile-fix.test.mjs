@@ -6,6 +6,7 @@
 //   m2  touch targets under 44 px: .chip, the Settings Volume slider, the Thought Mallow's words tag.
 //   m3  a V3 ritual's first Mallow line covered the play dial (its bubble sat just above the small Mallow in the dock).
 //   m4  the small tappable Mallow in a V3 ritual's dock stuck a few px out of the viewport at every size.
+//   (and, found by the gesture sweep of all 240 built rituals: world law 19's own hint could not be followed.)
 // Run: node --test hushmallow/tests/qa-mobile-fix.test.mjs
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -146,4 +147,48 @@ test('m4: the small Mallow in a V3 ritual’s dock stays on screen, inside the s
   assert.match(place, /const fit = keepInside\(\{ left: cx - w \/ 2, top: cy - hh \/ 2, right: cx \+ w \/ 2, bottom: cy \+ hh \/ 2 \},/);
   assert.match(place, /world\.place\(\{ x: \(\(cx \+ fit\.dx\) \/ innerWidth\) \* 100, y: \(\(cy \+ fit\.dy\) \/ innerHeight\) \* 100, scale: ms \* fit\.k \}\)/);
   assert.match(fnBody(host, 'function cleanup() {', 'function finish('), /insetProbe\.remove\(\);/);
+});
+
+test('law 19 (Anchor and Explore): its own hints, followed with one finger, finish it; two fingers still do', async () => {
+  const { createLaw } = await import('../src/v3/laws.js');
+  let t = 0;
+  // the stage at 320×568, text size Largest (a three-line prompt)
+  const L = () => ({ stage: { x: 12, y: 245, w: 296, h: 201, cx: 160, cy: 345.5, s: 0.72 }, now: () => t, sound() {}, haptic() {}, react() {}, setPrompt() {},
+    words: { token: 'my words' }, pal: { glow: '#ffffff' }, photos: { n: 0 }, particles: { emit() {} } });
+  const swipe = (law, h, id) => {
+    law.down({ ...h.from, id });
+    for (let i = 1; i <= 12; i++) law.move({ x: h.from.x + ((h.to.x - h.from.x) * i) / 12, y: h.from.y + ((h.to.y - h.from.y) * i) / 12, id });
+    law.up({ ...h.to, id });
+  };
+  // one finger, as the ghost shows: tap the anchor, then trace out from it to each light (the first trace begins on the
+  // anchor: it used to take the anchor again and never count, so the law stayed at a quarter at every size)
+  const one = createLaw(19, L());
+  const h0 = one.hint();
+  assert.ok(h0.tap, 'first: tap the anchor');
+  one.down({ ...h0.tap, id: 1 }); one.up({ ...h0.tap, id: 1 });
+  assert.equal(one.progress, 0.25);
+  for (let k = 0; k < 3; k++) {
+    const h = one.hint();
+    if (k === 0) assert.deepEqual(h.from, h0.tap, 'the first trace starts on the anchor');
+    swipe(one, h, 2 + k);
+    assert.equal(one.progress, 0.5 + k * 0.25, `light ${k + 1}`);
+  }
+  t = 5;
+  assert.equal(one.done, true);
+  assert.equal(one.hint(), null);
+  // two fingers: one holds the anchor while another traces (from the anchor or anywhere)
+  t = 0;
+  const two = createLaw(19, L());
+  const a = two.hint().tap;
+  two.down({ ...a, id: 1 });
+  for (let k = 0; k < 3; k++) swipe(two, k === 0 ? { from: { x: a.x + 60, y: a.y }, to: two.hint().to } : two.hint(), 10 + k);
+  assert.equal(two.progress, 1);
+  two.up({ ...a, id: 1 });
+  t = 5;
+  assert.equal(two.done, true);
+  // Tap instead still sets the anchor, then each press lights the next light
+  t = 0;
+  const tap = createLaw(19, L());
+  for (let i = 0; i < 4; i++) tap.assist();
+  assert.equal(tap.progress, 1);
 });

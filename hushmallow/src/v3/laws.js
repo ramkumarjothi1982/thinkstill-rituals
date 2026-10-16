@@ -708,7 +708,10 @@ function anchorExplore(L) {
     progress: () => (held() ? 0.25 : 0) + reached * 0.25,
     isDone: () => doneAt >= 0 && L.now() - doneAt > 0.6,
     down(p) {
-      if (hit(p, anchor.x, anchor.y, 46 * s + 12)) { if (anchorId == null) { anchorId = p.id; L.sound('thrum', { intensity: 0.3 }); L.haptic('soft'); } return; }
+      // the first finger on the anchor holds it (lifted at once, it sets it); once the anchor is held or set, a finger
+      // that lands on it traces out from there, as the ghost hint shows (it used to take the anchor again, so a trace
+      // begun on the anchor never counted and the law stayed at a quarter)
+      if (!held() && hit(p, anchor.x, anchor.y, 46 * s + 12)) { anchorId = p.id; L.sound('thrum', { intensity: 0.3 }); L.haptic('soft'); return; }
       if (held()) { explorer = p.id; trail.push([p.x, p.y]); }
     },
     move(p) {
