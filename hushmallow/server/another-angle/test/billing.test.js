@@ -12,6 +12,7 @@ import { createMockProvider } from '../src/providers/mock.js';
 import { verifyWebhookSignature, signWebhookPayload, formEncode, SIGNATURE_TOLERANCE_SEC } from '../src/billing/stripe.js';
 import { memoryBillingNamespace, billingClient, summarise, supersedes, effectiveTier, planForPrice, PERIOD_GRACE_MS, EVENT_KEEP_MS, Billing } from '../src/billing/store.js';
 import { createAccountVerifier } from '../src/billing/account.js';
+import { CHECKOUT_WINDOW_MS } from '../src/billing/routes.js';
 import { readConfig } from '../src/config.js';
 import { fromB64url } from '../src/auth/tokens.js';
 import worker from '../src/index.js';
@@ -378,6 +379,28 @@ test('checkout: refusals (no account, a dead session, bad bodies, no price, Stri
   const limited = setup({ env: billingEnv({ BILLING_IP_LIMITER: denyAll() }) });
   assert.deepEqual(await code(await limited.app.fetch(billingReq('/v1/billing/checkout', { body: { plan: 'ultra', period: 'monthly' } }), limited.env)), [429, 'rate_limited']);
   assert.equal(limited.up.calls.length, 0);
+  assertClean(s.logs);
+});
+
+test('checkout: two tabs at once get one Checkout Session (one idempotency key per account, plan and period, for two minutes)', async () => {
+  const s = setup();
+  const post = (plan, period, token = TOKEN) => s.app.fetch(billingReq('/v1/billing/checkout', { body: { plan, period }, token }), s.env);
+  const keys = () => s.up.stripe().map((c) => c.headers['idempotency-key']);
+  await Promise.all([post('ultra', 'monthly'), post('ultra', 'monthly')]);
+  const [a, b] = keys();
+  assert.ok(a && a === b, 'the same key, so Stripe gives back the same session: it can be paid once');
+  await post('ultra', 'yearly');
+  await post('paid', 'monthly');
+  s.up.users[jwt(OTHER)] = { id: OTHER };
+  await post('ultra', 'monthly', jwt(OTHER));
+  s.now.advance(CHECKOUT_WINDOW_MS);
+  await post('ultra', 'monthly');
+  assert.equal(new Set(keys()).size, 5, 'another period, plan or account, or a later try: a key of its own');
+  for (const k of keys()) assert.ok(k.length <= 255, 'within Stripe\'s limit');
+  // the portal and the webhook's reads carry none
+  await subscribe(s);
+  await s.app.fetch(billingReq('/v1/billing/portal', { body: {} }), s.env);
+  assert.deepEqual(s.up.stripe().filter((c) => c.path !== '/v1/checkout/sessions').map((c) => c.headers['idempotency-key']), [undefined, undefined]);
   assertClean(s.logs);
 });
 

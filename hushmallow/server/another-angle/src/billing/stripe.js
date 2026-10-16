@@ -2,8 +2,9 @@
 // web subscriptions (src/billing/routes.js):
 //
 //   createStripe({ secretKey, apiVersion?, fetch }) →
-//     createCheckoutSession(params), createPortalSession(params), retrieveSubscription(id)
+//     createCheckoutSession(params, { idempotencyKey? }), createPortalSession(params), retrieveSubscription(id)
 //     each → { ok: true, data } | { ok: false, status, code }   (never throws; status 0 = no answer)
+//     (idempotencyKey: Stripe's Idempotency-Key header; the same key gives back the first answer for 24 hours)
 //   verifyWebhookSignature(payload, header, secret, nowMs, toleranceSec?) →
 //     { ok: true, timestamp } | { ok: false, code }
 //   signWebhookPayload(payload, secret, timestampSec) → a Stripe-Signature header (tests, rehearsals)
@@ -42,12 +43,16 @@ export function formEncode(params) {
  * @param {{ secretKey: string, apiVersion?: string, fetch: typeof fetch, timeoutMs?: number }} o
  */
 export function createStripe({ secretKey, apiVersion = '', fetch: fetchImpl, timeoutMs = 10000 }) {
-  /** @param {'GET' | 'POST'} method @param {string} path @param {Record<string, unknown>} [params] @returns {Promise<StripeResult>} */
-  async function call(method, path, params) {
+  /**
+   * @param {'GET' | 'POST'} method @param {string} path @param {Record<string, unknown>} [params]
+   * @param {{ idempotencyKey?: string }} [o] @returns {Promise<StripeResult>}
+   */
+  async function call(method, path, params, { idempotencyKey = '' } = {}) {
     /** @type {Record<string, string>} */
     const headers = { authorization: `Bearer ${secretKey}`, accept: 'application/json' };
     if (apiVersion) headers['stripe-version'] = apiVersion;
     if (method === 'POST') headers['content-type'] = 'application/x-www-form-urlencoded';
+    if (idempotencyKey) headers['idempotency-key'] = idempotencyKey;
     /** @type {Response} */
     let res;
     try {
@@ -62,8 +67,8 @@ export function createStripe({ secretKey, apiVersion = '', fetch: fetchImpl, tim
     return { ok: false, status: res.status, code };
   }
   return {
-    /** POST /v1/checkout/sessions @param {Record<string, unknown>} params */
-    createCheckoutSession: (params) => call('POST', '/v1/checkout/sessions', params),
+    /** POST /v1/checkout/sessions @param {Record<string, unknown>} params @param {{ idempotencyKey?: string }} [o] */
+    createCheckoutSession: (params, o) => call('POST', '/v1/checkout/sessions', params, o),
     /** POST /v1/billing_portal/sessions @param {{ customer: string, return_url: string }} params */
     createPortalSession: (params) => call('POST', '/v1/billing_portal/sessions', params),
     /** GET /v1/subscriptions/:id (the current truth, whatever order the events came in) @param {string} id */

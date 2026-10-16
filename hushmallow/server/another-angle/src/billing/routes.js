@@ -28,6 +28,12 @@ export const PATHS = Object.freeze({ checkout: '/v1/billing/checkout', status: '
 /** The events the webhook endpoint should send (docs/PAYMENTS.md); any other is acknowledged and ignored. */
 export const EVENTS = Object.freeze(['checkout.session.completed', 'customer.subscription.created', 'customer.subscription.updated', 'customer.subscription.deleted', 'invoice.payment_failed']);
 export const WEBHOOK_MAX_BYTES = 262144;
+/**
+ * Checkouts for the same account, plan and period within one such window share an idempotency key, so two tabs
+ * starting at once get one Checkout Session (paid once), never two subscriptions. Short, because Stripe gives back
+ * the first answer to a key, a failure included.
+ */
+export const CHECKOUT_WINDOW_MS = 120000;
 const PLANS = ['paid', 'ultra'];
 const PERIODS = ['monthly', 'yearly'];
 
@@ -118,6 +124,7 @@ export function createBilling({ logger, now, fetch: fetchImpl = (input, init) =>
       return error(409, 'already_subscribed', 'This account already has a subscription; change it in the portal.', cors);
     }
     const back = cfg.billing.appOrigin;
+    const idempotencyKey = `checkout:${who.uid}:${plan}:${period}:${Math.floor(now() / CHECKOUT_WINDOW_MS)}`;
     const r = await stripeFor(cfg).createCheckoutSession({
       mode: 'subscription',
       line_items: [{ price, quantity: 1 }],
@@ -127,7 +134,7 @@ export function createBilling({ logger, now, fetch: fetchImpl = (input, init) =>
       metadata: { user_id: who.uid, plan, period },
       subscription_data: { metadata: { user_id: who.uid } },
       ...(rec?.customer ? { customer: rec.customer } : {}),
-    });
+    }, { idempotencyKey });
     const url = r.ok ? httpsUrl(r.data?.url) : null;
     if (!url) {
       log('checkout', t0, { status: 'stripe_error', http: 502, plan, period, err: r.ok ? 'no_url' : r.code });
