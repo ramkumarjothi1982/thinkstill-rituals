@@ -87,6 +87,12 @@ export async function run(ctx) {
   howBtn.addEventListener('click', () => openHow());
   helpBtn.addEventListener('click', () => openSupport(app));
 
+  // a line (or a sound, a move of the Mallow) that comes a moment later is dropped once the ritual has ended (Finish,
+  // Leave): it would come over the next scene, and could replace that scene's own line (the landing's check-in)
+  let finished = false;
+  const alive = () => !finished && !signal.aborted;
+  const later = (ms, fn) => setTimeout(() => { if (alive()) fn(); }, ms);
+
   // --------------------------------------------------------- canvas --
   const cvs = h('canvas', { 'aria-hidden': 'true', style: { position: 'absolute', inset: '0', width: '100%', height: '100%', touchAction: 'none' } });
   world.fx.replaceChildren(cvs);
@@ -147,7 +153,7 @@ export async function run(ctx) {
   const onResize = () => layout();
   addEventListener('resize', onResize);
   let roT = 0;
-  const ro = typeof ResizeObserver === 'function' ? new ResizeObserver(() => { cancelAnimationFrame(roT); roT = requestAnimationFrame(() => layout()); }) : null;
+  const ro = typeof ResizeObserver === 'function' ? new ResizeObserver(() => { cancelAnimationFrame(roT); roT = requestAnimationFrame(() => { if (alive()) layout(); }); }) : null;
   if (ro) { if (titleBox) ro.observe(titleBox); ro.observe(dock); }
 
   // ----------------------------------------------------- shared kit --
@@ -304,7 +310,7 @@ export async function run(ctx) {
       if (law.locked) { showLock(); return; }
       law.onDown?.({ x: 0, y: 0, id: -1 });
       engine.assist?.();
-      setTimeout(() => law?.onUp?.({ x: 0, y: 0, id: -1 }), 90);
+      later(90, () => law?.onUp?.({ x: 0, y: 0, id: -1 }));
     } else if (phaseName === 'law') law.assist?.();
     app.audio.ui('tap');
   });
@@ -339,8 +345,8 @@ export async function run(ctx) {
     world.realm?.setEmotion?.(Object.keys(userMix)[0] || 'neutral', ctx.input.intensity ?? 0.6);
     lastInput = 0;
     const r0 = round;
-    if (round === 1) setTimeout(() => { if (!signal.aborted && phaseName === 'play') say(copy.open[0], 3800); }, 650);
-    else if (round % 3 === 0) setTimeout(() => { if (!signal.aborted && round === r0) say(round % 5 === 0 ? 'We can keep going as long as it helps. Or rest here — that counts too.' : LOOP_LINES[(round + v.num) % LOOP_LINES.length], 3000); }, 900);
+    if (round === 1) later(650, () => { if (phaseName === 'play') say(copy.open[0], 3800); });
+    else if (round % 3 === 0) later(900, () => { if (round === r0) say(round % 5 === 0 ? 'We can keep going as long as it helps. Or rest here — that counts too.' : LOOP_LINES[(round + v.num) % LOOP_LINES.length], 3000); });
   }
   function passLaw() { return { kind: 'none', gate: (r) => r, allow: () => true, gateReady: () => true, locked: false, frame() {}, onDown() {}, onUp() {} }; }
 
@@ -407,7 +413,7 @@ export async function run(ctx) {
     ctx.setMove(1, { eyebrow: `${location} · World law`, title: LAW.name, prompt: law.howTo });
     if (promptOverride) promptOverride = null;
     lawChip.replaceChildren(h('b', {}, 'Closing move'), ' · ', LAW.rule.length < 90 ? LAW.rule : law.howTo);
-    if (copy.during[1]) setTimeout(() => { if (phaseName === 'law') say(copy.during[1], 3400); }, 900);
+    if (copy.during[1]) later(900, () => { if (phaseName === 'law') say(copy.during[1], 3400); });
     lastInput = now();
   }
 
@@ -419,13 +425,13 @@ export async function run(ctx) {
     world.realm?.transform?.(1);
     world.realm?.pulse?.('clear', { x: stage.cx, y: stage.cy });
     sound(heavy ? 'settle' : 'clear', { intensity: 0.55 });
-    if (heavy) setTimeout(() => sound('chime', { intensity: 0.35 }), 500);
+    if (heavy) later(500, () => sound('chime', { intensity: 0.35 }));
     haptic('success');
     emote(1);
     if (heavy) { world.setStage?.('comforting'); react('comfort', true); } else { world.setStage?.('celebrating'); react('celebrate', true); }
     ctx.setMove(law.kind === 'phase' ? 2 : 1, { eyebrow: location, title: ENG.name, prompt: cap(ENG.win) + '.' });
     lawChip.replaceChildren(h('b', {}, `✦ ${LAW.name}`), ' · ', cap(LAW.payoff) + '.');
-    if (round === 1) setTimeout(() => say(copy.exit[0], 4200), 500);
+    if (round === 1) later(500, () => { if (phaseName === 'finale') say(copy.exit[0], 4200); });
     roundsDone++;
   }
 
@@ -470,7 +476,7 @@ export async function run(ctx) {
     live.textContent = `Mind bend: ${bend}`;
     ctx.setMove(law.kind === 'phase' ? 3 : 2, { eyebrow: `${lead.name} · ${location}`, title: ritual.name.split(' — ')[0], prompt: 'Done. Take the moment with you.' });
     lawChip.replaceChildren();
-    requestAnimationFrame(() => placeMallow('end'));
+    requestAnimationFrame(() => { if (alive()) placeMallow('end'); });
   }
 
   function veil(a) { g.fillStyle = rgba(pal.deep, a); g.fillRect(0, 0, view.w, view.h); }
@@ -558,9 +564,8 @@ export async function run(ctx) {
   }
 
   // --------------------------------------------------------- finish --
-  let finished = false;
   function cleanup() {
-    cancelAnimationFrame(raf);
+    cancelAnimationFrame(raf); cancelAnimationFrame(roT);
     removeEventListener('resize', onResize);
     ro?.disconnect();
     try { engine?.destroy?.(); } catch (e) { console.warn(e); }
