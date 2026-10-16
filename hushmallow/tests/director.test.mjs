@@ -590,6 +590,43 @@ test('director: setGentle(true) drops a staged world that is not calm; the next 
   } finally { dom.restore(); }
 });
 
+test('director: a gentle session plays each calm world once — never drifts back into one it played; a session that is not gentle may', async () => {
+  const dom = installFakeDom();
+  try {
+    const list = () => [world('sea', { calm: true, next: ['cove'] }), world('cove', { calm: true, next: ['hot'] }), world('hot', { next: ['sea'] })];
+    const { D } = await director(dom, list(), {});
+    await D.start({ worldId: 'sea', gentle: true });
+    assert.equal(D.state.canNext, true, 'the other calm world follows');
+    assert.ok(D.next());
+    assert.ok(await until(D, () => D.state.worldId === 'cove' && D.state.phase === 'playing', 600));
+    assert.equal(D.state.canNext, false, 'every calm world played: nothing follows (the sea was played, hot is not calm)');
+    assert.equal(D.next(), false);
+    assert.equal(D.next({ worldId: 'sea' }), true, 'a calm world the shell asks for by name still goes (care: "Somewhere calm")');
+    D.destroy();
+    // the same worlds, not gentle: the authored link, then (all played recently) the one played longest ago
+    const { D: D2 } = await director(dom, list(), {});
+    await D2.start({ worldId: 'cove' });
+    assert.ok(D2.next());
+    assert.ok(await until(D2, () => D2.state.worldId === 'hot' && D2.state.phase === 'playing', 600));
+    assert.equal(D2.state.canNext, true, 'not gentle: the rotation goes on');
+    // a session turned gentle (care) with a world it already played staged: that world is dropped, nothing follows
+    const ctl = {};
+    const { D: D3 } = await director(dom, [world('sea', { calm: true, next: ['cove'], ctl }), world('cove', { calm: true, next: ['sea'], ctl: {} })], {});
+    await D3.start({ worldId: 'sea' });
+    assert.ok(D3.next());
+    assert.ok(await until(D3, () => D3.state.worldId === 'cove' && D3.state.phase === 'playing', 600));
+    D3.next();
+    D3.pause();
+    await wait(120);
+    assert.equal(D3.state.nextId, 'sea', 'staged: back to the sea (not gentle)');
+    D3.setGentle(true);
+    assert.equal(D3.incoming, null, 'gentle now: the sea was played, so it is dropped');
+    D3.resume();
+    assert.equal(D3.state.canNext, false);
+    D2.destroy(); D3.destroy();
+  } finally { dom.restore(); }
+});
+
 test('director: stay(false) un-stays without melting; stay() keeps Auto-flow from melting a complete world', async () => {
   const dom = installFakeDom();
   try {
