@@ -23,7 +23,17 @@ function installFakeDom() {
   globalThis.addEventListener = () => {}; globalThis.removeEventListener = () => {};
   globalThis.requestAnimationFrame = (fn) => setTimeout(() => fn(performance.now()), 16);
   globalThis.cancelAnimationFrame = (id) => clearTimeout(id);
-  return { el, restore() { for (const [k, d] of Object.entries(saved)) { if (d) Object.defineProperty(globalThis, k, d); else delete globalThis[k]; } } };
+  // (every director made on it is destroyed before it goes, even when an assertion stopped the test first: a live one keeps
+  // its 250 ms watchdog interval going, and the file then never exits — CI's job time limit instead of a 'not ok')
+  const made = [];
+  return {
+    el,
+    keep(D) { made.push(D); return D; },
+    restore() {
+      for (const D of made.splice(0)) { try { D.destroy(); } catch { /* (the test's own failure is the one to read) */ } }
+      for (const [k, d] of Object.entries(saved)) { if (d) Object.defineProperty(globalThis, k, d); else delete globalThis[k]; }
+    },
+  };
 }
 const fakeTicker = () => { const t = { fns: new Set(), add(fn) { t.fns.add(fn); }, remove(fn) { t.fns.delete(fn); }, tick(dt = 1 / 60) { for (const f of [...t.fns]) f(dt); } }; return t; };
 const memStore = () => { const m = new Map(); return { get: (k, d = null) => (m.has(k) ? JSON.parse(m.get(k)) : d), set: (k, v) => { m.set(k, JSON.stringify(v)); return true; }, remove: (k) => m.delete(k) }; };
@@ -62,7 +72,7 @@ const subs = (said = []) => ({ say(lines, o) { said.push({ lines: [].concat(line
 async function director(dom, list, extra = {}) {
   const { createHushflow } = await import('../src/hushfold/flow/director.js');
   const tk = extra.ticker || fakeTicker();
-  const D = createHushflow({ worldEl: dom.el(), fxEl: dom.el(), registry: createRegistry(list), ticker: tk, store: memStore(), reducedMotion: false, ...extra, ...(extra.ticker ? {} : { ticker: tk }) });
+  const D = dom.keep(createHushflow({ worldEl: dom.el(), fxEl: dom.el(), registry: createRegistry(list), ticker: tk, store: memStore(), reducedMotion: false, ...extra, ...(extra.ticker ? {} : { ticker: tk }) }));
   return { D, tk };
 }
 /** Step until fn() is true (or n steps), letting idle-time builds run. */
