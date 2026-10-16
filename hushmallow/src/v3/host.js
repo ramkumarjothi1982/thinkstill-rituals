@@ -25,6 +25,7 @@ import { faceMix } from '../engine/interpret.js';
 import { openSupport } from '../app/scenes/support.js';
 import { brandName } from '../brand.js';
 import { canvasFontPx, fontsReady } from '../ui/type.js';
+import { stageRect, wantsCompact } from './stage-fit.js';
 
 const { clamp, lerp, smooth, ease, rgba, glow, Particles, Ripples, Trail } = fx;
 
@@ -101,12 +102,16 @@ export async function run(ctx) {
     cvs.width = Math.round(view.w * dpr); cvs.height = Math.round(view.h * dpr);
     if (phaseName === 'end') { placeMallow('end'); return; }
     const scene = document.getElementById('scene').getBoundingClientRect();
-    const tb = (titleBox?.getBoundingClientRect().bottom ?? 120) + 10;
-    const dt = dock.getBoundingClientRect().top - 10;
-    stage.x = scene.left + 12; stage.w = scene.width - 24;
-    stage.y = tb; stage.h = Math.max(220, dt - tb);
-    stage.cx = stage.x + stage.w / 2; stage.cy = stage.y + stage.h / 2;
-    stage.s = clamp(Math.min(stage.w, stage.h) / 360, 0.72, 1.45);
+    // the stage is the band between the title and the dock, never under the dock (stage-fit.js); a short band
+    // (a small phone at a large text size) compacts the title first
+    const titleBottom = () => titleBox?.getBoundingClientRect().bottom ?? 120;
+    const dockTop = dock.getBoundingClientRect().top;
+    if (titleBox) {
+      titleBox.classList.remove('v3-compact');
+      if (wantsCompact(titleBottom(), dockTop)) titleBox.classList.add('v3-compact');
+    }
+    const bar = document.querySelector('#scene .ritual-ui > .topbar')?.getBoundingClientRect().bottom ?? 0;
+    Object.assign(stage, stageRect({ left: scene.left, width: scene.width, titleBottom: titleBottom(), dockTop, barBottom: bar }));
     stage.v++;
     vignette = g.createRadialGradient(stage.cx, stage.cy, Math.min(stage.w, stage.h) * 0.2, stage.cx, stage.cy, Math.max(view.w, view.h) * 0.75);
     vignette.addColorStop(0, rgba(pal.deep, 0)); vignette.addColorStop(1, rgba(pal.deep, 0.55));
@@ -541,6 +546,7 @@ export async function run(ctx) {
     world.fx.classList.remove('live');
     world.fx.replaceChildren();
     lawChip.remove();
+    titleBox?.classList.remove('v3-compact');
     dock.classList.remove('v3-dock', 'v3-ending');
     if (globalThis.__hm3) globalThis.__hm3.phase = 'closed';
   }

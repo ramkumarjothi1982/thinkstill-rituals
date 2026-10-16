@@ -450,6 +450,11 @@ input.search:focus, input.text:focus { border-color: var(--accent); }
 .v3-law-chip { margin: 8px auto 0; display: inline-block; max-width: min(94%, 40ch); padding: 5px 12px; border-radius: 999px; background: rgba(12,8,34,.55);
   border: 1px solid rgba(255,255,255,.12); font: var(--type-caption); letter-spacing: var(--type-caption-ls); font-weight: 600; line-height: 1.3; color: rgba(247,243,255,.92); text-shadow: none; }
 .v3-law-chip:empty { display: none; }
+/* a short stage (a small phone at a large text size: src/v3/stage-fit.js): the title's location line steps out so the
+   play area keeps its room above the dock; the prompt and the world law stay (the location is still announced) */
+.move-title.v3-compact { margin-top: 2px; }
+.move-title.v3-compact .eyebrow { display: none; }
+.move-title.v3-compact .v3-law-chip { margin-top: 5px; }
 .v3-law-chip b { color: var(--accent); font-weight: 800; }
 .dock.v3-ending { grid-template-columns: minmax(0, 1fr); }
 .v3-end { text-align: left; padding: 16px 18px; }
