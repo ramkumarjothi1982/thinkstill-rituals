@@ -5,13 +5,15 @@
 // squeezable above the invitation (the top of the screen lets touches
 // through to it) and steps aside once the invitations scroll over it.
 // Each invitation leads with three or four things; the rest waits behind
-// "Everything included".
+// "Everything included". The foot ends with small "Terms · Privacy Policy"
+// links (src/app/legal.js).
 import { h, iconBtn, toast } from '../ui.js';
 import { PLANS } from '../entitlements.js';
 import { BRAND, brandName } from '../../brand.js';
 import { brandMark, logoImg, fitLabel } from '../../ui/type.js';
 import { openSupport } from './support.js';
 import { plansBeyondNote } from '../privacy.js';
+import { legalLinks } from '../legal.js';
 
 const PERIODS = [['monthly', 'Monthly'], ['yearly', 'Yearly']];
 // Lines that must not leave a word alone at 320 px (no-break spaces; app.css also
@@ -203,7 +205,8 @@ export default function plans(app, params = {}) {
         h('button', { class: 'btn ghost block', onclick: () => openSupport(app) }, SUPPORT_LINK),
         ent.isNative ? null : h('p', { class: 'test-note' }, ent.canPurchase
           ? 'Development build: purchases here are test purchases. Nothing is charged. In the App Store version, Apple handles payment and receipts.'
-          : 'Subscriptions aren’t on sale on the web yet. The App Store app handles payment and receipts.'))));
+          : 'Subscriptions aren’t on sale on the web yet. The App Store app handles payment and receipts.'),
+        legalLinks('legal-links plans-legal'))));
 
   // the invitations scroll over the Mallow's spot: it steps aside (fades)
   // and comes back near the top, so its face never shows through the cards

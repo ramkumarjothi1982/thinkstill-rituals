@@ -6,7 +6,9 @@
 // screens (data-auth-view on the scene; src/auth/view-model.js VIEWS):
 //
 //   welcome        sign in / create an account / continue as a guest
-//   create         email, password (a gentle strength hint), optional name
+//   create         email, password (a gentle strength hint), optional name; above
+//                  its button, "By creating an account you agree to the Terms and
+//                  Privacy Policy." with both linked (src/app/legal.js)
 //   check-email    the link is on its way; send it again (cooldown); sign in
 //   signin         email, password (show / hide), forgot password
 //   forgot         email → reset-sent (the same answer whether or not the
@@ -47,6 +49,7 @@ import { createAuthMallow } from '../../auth/mallow.js';
 import { checkEmail, checkPassword, friendlyError, passwordStrength, MESSAGES } from '../../auth/errors.js';
 import * as VM from '../../auth/view-model.js';
 import { NOTICE_TEXT } from '../../auth/boot.js';
+import { agreeLine } from '../legal.js';
 
 const CSS = [new URL('../../auth/auth.css', import.meta.url).href, new URL('../../ui/account.css', import.meta.url).href];
 /** Both stylesheets; resolves when they have loaded (or after 1.2 s). */
@@ -280,13 +283,16 @@ export default function account(app, params = {}) {
     return { name, input, hintEl, wrap: h('div', { class: 'hm-auth-field', 'data-field': name }, ...parts), onInput(fn) { onFieldInput = fn; } };
   }
 
-  /** A form whose submit runs onSubmit(values) → { ok } | { ok, hold } (stays busy: the next screen is coming) | { ok:false, error, action? }. */
-  function form({ fields, submit, busy, onSubmit, before = [], after = [], act = 'submit', danger = false, quiet = false }) {
+  /**
+   * A form whose submit runs onSubmit(values) → { ok } | { ok, hold } (stays busy: the next screen is coming) | { ok:false, error, action? }.
+   * note: a line between the fields and the button (the sign-up form's agreement), above any error.
+   */
+  function form({ fields, submit, busy, onSubmit, before = [], after = [], note = null, act = 'submit', danger = false, quiet = false }) {
     const errEl = h('p', { class: 'hm-auth-error', role: 'alert', id: uid('err') });
     const submitBtn = btn(submit, null, { cls: danger ? 'danger' : quiet ? 'small' : 'primary', type: 'submit', act });
     const actionsEl = h('div', { class: 'hm-auth-actions' }, submitBtn, ...after);
     const f = h('form', { class: 'hm-auth-form', novalidate: true },
-      ...before, ...fields.map((x) => x.wrap), errEl, actionsEl);
+      ...before, ...fields.map((x) => x.wrap), note, errEl, actionsEl);
     const clear = () => { errEl.replaceChildren(); actionsEl.before(errEl); for (const x of fields) { x.input.removeAttribute('aria-invalid'); x.input.setAttribute('aria-describedby', x.hintEl.id); } };
     function fail(error, action) {
       const e = error || friendlyError({}, 'unknown');
@@ -373,6 +379,7 @@ export default function account(app, params = {}) {
     const name = field({ name: 'name', label: 'Your name', autocomplete: 'nickname', enterkeyhint: 'go', optional: true, maxlength: 40, hintText: 'Kept with your account. Only you see it.' });
     const f = form({
       fields: [email, pw, name], submit: 'Create my account', busy: 'Creating your account…', act: 'create-submit',
+      note: agreeLine('hm-auth-hint hm-auth-center hm-auth-agree'),
       onSubmit: async (v) => {
         const bad = checkEmail(v.email) || checkPassword(v.password);
         if (bad) return { ok: false, error: bad };

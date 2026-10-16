@@ -4,7 +4,8 @@
 // says whose things it deletes (this account's, or the guest's when accounts
 // also live on this phone). About's first sentence (what is written in advance)
 // and its privacy lines come from src/app/privacy.js, shared with the Plans
-// page, so they follow Another Angle going live together.
+// page, so they follow Another Angle going live together. Privacy ends with the
+// Privacy Policy and About with "Terms · Privacy Policy" (src/app/legal.js).
 import { h, iconBtn, openSheet, toast } from '../ui.js';
 import { PLANS } from '../entitlements.js';
 import { openSupport } from './support.js';
@@ -14,6 +15,7 @@ import { type, withBrand, keepHyphenated } from '../../ui/type.js';
 import { aboutIntro, aboutPrivacy } from '../privacy.js';
 import { accountNamespaces } from '../../auth/namespace.js';
 import { forgetVisitSafety } from '../visit-safety.js';
+import { legalLink, legalLinks } from '../legal.js';
 
 const TEXT_SIZES = [[1, 'Standard'], [1.12, 'Larger'], [1.25, 'Largest']];
 const SPEEDS = [[0.75, '0.75×'], [1, '1×'], [1.25, '1.25×'], [1.5, '1.5×']];
@@ -102,6 +104,8 @@ export default function settings(app) {
       sw('saveWords', 'Keep sealed predictions', 'From the simpler Another Angle that opens if the new one can’t load. Kept on this phone with your words, never uploaded.'),
       angleRows,
       h('button', { class: 'btn block', style: { marginTop: '12px', textWrap: 'balance' }, 'data-act': 'delete-local', onclick: () => confirmClear() }, deleteLabel),
+      // the whole story in plain words (legal/privacy.html, a new tab)
+      legalLink('privacy', { cls: 'btn ghost block', style: { textDecoration: 'none', marginTop: '4px' } }),
 
       section('Plan'),
       h('div', { class: 'setting' }, rowLabel(tierName), h('button', { class: 'btn', style: { minHeight: '44px' }, onclick: () => app.go('plans') }, 'View plans')),
@@ -112,6 +116,7 @@ export default function settings(app) {
       // so the first sentence and the privacy lines switch together when Another Angle goes live
       aboutPara,
       h('button', { class: 'btn ghost block', onclick: () => openSupport(app) }, 'Support lines'),
+      legalLinks(),
       // the version, exactly as BUILD says it (the server sees the same string), never broken at a hyphen ("sign-" / "in")
       h('p', { 'data-version': '', style: type('caption', { color: 'var(--text-3)', textAlign: 'center', margin: '8px 0 0', textWrap: 'balance' }) }, ...keepHyphenated(`Version ${BUILD}${RUNNING ? ` · ${RUNNING}` : ''}`)),
       // developer tools: not part of the published site
