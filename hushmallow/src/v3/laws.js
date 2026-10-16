@@ -701,18 +701,20 @@ function anchorExplore(L) {
   const { cx, cy, w, h } = S(L), s = unit(L);
   const anchor = { x: cx - w * 0.3, y: cy + h * 0.05 };
   const way = [{ x: cx - w * 0.02, y: cy - h * 0.18 }, { x: cx + w * 0.22, y: cy + h * 0.02 }, { x: cx + w * 0.32, y: cy - h * 0.22 }];
-  let anchorId = null, locked = false, reached = 0, trail = [], doneAt = -1, explorer = null;
+  let anchorId = null, locked = false, reached = 0, trail = [], doneAt = -1, explorer = null, reachedAtHold = 0;
   const held = () => anchorId != null || locked;
   return phase(L, {
     name: 'Anchor and Explore', howTo: 'Hold the anchor with one finger while another traces to the three lights (or tap the anchor once to set it).',
     progress: () => (held() ? 0.25 : 0) + reached * 0.25,
     isDone: () => doneAt >= 0 && L.now() - doneAt > 0.6,
     down(p) {
-      // the first finger on the anchor holds it (lifted at once, it sets it); once the anchor is held or set, a finger
-      // that lands on it traces out from there, as the ghost hint shows (it used to take the anchor again, so a trace
-      // begun on the anchor never counted and the law stayed at a quarter)
-      if (!held() && hit(p, anchor.x, anchor.y, 46 * s + 12)) { anchorId = p.id; L.sound('thrum', { intensity: 0.3 }); L.haptic('soft'); return; }
-      if (held()) { explorer = p.id; trail.push([p.x, p.y]); }
+      // the first finger on the anchor holds it (lifted before any light is reached, it sets it); once the anchor is
+      // held or set, a finger that lands on it traces out from there, as the ghost hint shows (it used to take the
+      // anchor again, so a trace begun on the anchor never counted and the law stayed at a quarter), unless another
+      // finger is tracing: then it only rests on the anchor and that trace goes on counting
+      const onAnchor = hit(p, anchor.x, anchor.y, 46 * s + 12);
+      if (!held() && onAnchor) { anchorId = p.id; reachedAtHold = reached; L.sound('thrum', { intensity: 0.3 }); L.haptic('soft'); return; }
+      if (held() && !(onAnchor && explorer != null && explorer !== p.id)) { explorer = p.id; trail.push([p.x, p.y]); }
     },
     move(p) {
       if (p.id !== explorer || !held() || doneAt >= 0) return;
@@ -720,7 +722,10 @@ function anchorExplore(L) {
       if (reached < 3 && hit(p, way[reached].x, way[reached].y, 34 * s + 8)) reach();
     },
     up(p) {
-      if (p.id === anchorId) { anchorId = null; if (!locked && trail.length < 2) { locked = true; L.setPrompt('Anchor set. Now trace out to the three lights.'); } }
+      // lifted with no light reached while it was down, the anchor is set (a tap, with a second finger too); a hold
+      // that saw a light reached lets it go, as before (the test was the whole trail ever drawn, so once anything had
+      // been traced no tap could set the anchor again)
+      if (p.id === anchorId) { anchorId = null; if (!locked && reached === reachedAtHold) { locked = true; L.setPrompt('Anchor set. Now trace out to the three lights.'); } }
       if (p.id === explorer) explorer = null;
     },
     assist() { if (!held()) { locked = true; L.setPrompt('Anchor set. Now trace out to the three lights.'); } else if (reached < 3) { trail.push([way[reached].x, way[reached].y]); reach(); } },
