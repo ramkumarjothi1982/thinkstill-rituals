@@ -242,6 +242,11 @@ function checkWrangler(toml) {
   assert.doesNotMatch(rest, /price_[A-Za-z0-9]|sb_publishable_[A-Za-z0-9]|supabase\.co/, 'a billing value only as its own var');
 }
 
+/** wrangler.toml with billing off: as committed today, or with a switch-on taken out again. */
+const offOf = (toml) => toml
+  .replace(/^(?:SUPABASE_URL|SUPABASE_PUBLISHABLE_KEY|APP_ORIGIN|STRIPE_PRICE_[A-Z_]+|BILLING_TOKEN_TTL_HOURS|STRIPE_API_VERSION) = .*\n/gm, '')
+  .replace(/^ENTITLEMENT_MODE = "[^"]*"$/gm, 'ENTITLEMENT_MODE = "testing"');
+
 /** wrangler.toml as docs/PAYMENTS.md tells the owner to edit it: section 2's vars in production's [vars], then section 4's mode. */
 function switchedOn(mode = 'billing+testing') {
   const block = /Then add the vars to `\[vars\]`[\s\S]*?```\n([\s\S]*?)```/.exec(PAYMENTS_MD)?.[1];
@@ -250,23 +255,23 @@ function switchedOn(mode = 'billing+testing') {
   // the owner's own values, stood in for with ones of the same shape
   const lines = block.replace(/sb_publishable_…/g, `sb_publishable_${'k'.repeat(24)}`).replace(/price_…/g, () => `price_Rehearsal${++n}`);
   assert.equal(n, 4, 'the four price ids');
-  const at = WRANGLER.indexOf('APPLE_ENVIRONMENTS = "Production"\n') + 'APPLE_ENVIRONMENTS = "Production"\n'.length;
+  const off = offOf(WRANGLER);
+  const at = off.indexOf('APPLE_ENVIRONMENTS = "Production"\n') + 'APPLE_ENVIRONMENTS = "Production"\n'.length;
   assert.ok(at > 100);
   const doc = /\| `billing\+testing` \|/.test(PAYMENTS_MD) && /set `ENTITLEMENT_MODE = "billing\+testing"`/.test(PAYMENTS_MD);
   assert.ok(doc, 'PAYMENTS.md section 4 names the mode');
-  const toml = `${WRANGLER.slice(0, at)}${lines}${WRANGLER.slice(at)}`.replace('ENTITLEMENT_MODE = "testing"', `ENTITLEMENT_MODE = "${mode}"`);
+  // (production's [vars] come first in the file)
+  const toml = `${off.slice(0, at)}${lines}${off.slice(at)}`.replace('ENTITLEMENT_MODE = "testing"', `ENTITLEMENT_MODE = "${mode}"`);
   assert.deepEqual(Object.values(varsTables(toml).production).filter((v) => v.includes('…')), [], 'no placeholder left in a value');
   return toml;
 }
 
-test('wrangler.toml as committed: billing off, every mode as before, the Billing class in migration v2, no billing value', () => {
+test('wrangler.toml as committed passes the guards (off: every mode as before, no billing value; on: every value has its shape)', () => {
   checkWrangler(WRANGLER);
-  const tables = varsTables(WRANGLER);
-  for (const [name, vars] of Object.entries(tables)) {
-    assert.deepEqual(BILLING_VARS.filter((k) => k in vars), [], `${name}: billing is documented, not set`);
-    assert.equal(vars.ENTITLEMENT_MODE, 'testing', `${name}: unchanged until the owner switches`);
-  }
-  assert.equal(tables.production.ALLOWED_ORIGINS, 'https://app.hushmallow.com,https://hushmallow.pages.dev,https://ramkumarjothi1982.github.io');
+  // off and on are the same file apart from the switch: the Billing class in migration v2, bound in all three environments
+  checkWrangler(offOf(WRANGLER));
+  assert.deepEqual(Object.values(varsTables(offOf(WRANGLER))).map((v) => v.ENTITLEMENT_MODE), ['testing', 'testing', 'testing']);
+  assert.equal(varsTables(WRANGLER).production.ALLOWED_ORIGINS, 'https://app.hushmallow.com,https://hushmallow.pages.dev,https://ramkumarjothi1982.github.io');
 });
 
 test('wrangler.toml switched on exactly as docs/PAYMENTS.md says passes the same guards; a half-done or wrong switch does not', () => {
@@ -275,7 +280,7 @@ test('wrangler.toml switched on exactly as docs/PAYMENTS.md says passes the same
   assert.equal(readConfig({ ...on, STRIPE_SECRET_KEY: SK, STRIPE_WEBHOOK_SECRET: WHSEC }).entitlementMode, 'billing+testing');
   assert.equal(on.APP_ORIGIN, APP);
   // a billing mode without the vars (every session refused): never
-  assert.throws(() => checkWrangler(WRANGLER.replace('ENTITLEMENT_MODE = "testing"', 'ENTITLEMENT_MODE = "billing"')), /without the billing vars/);
+  assert.throws(() => checkWrangler(offOf(WRANGLER).replace('ENTITLEMENT_MODE = "testing"', 'ENTITLEMENT_MODE = "billing"')), /without the billing vars/);
   // half the vars, another sign-in project, an origin the server does not allow, a price that is not a price id
   assert.throws(() => checkWrangler(switchedOn().replace(/^STRIPE_PRICE_[A-Z_]+ = .*\n/gm, '')), /complete, each with its shape/);
   assert.throws(() => checkWrangler(switchedOn().replace('igbxbfuaoybfzsroxuln', 'abcdefghijklmnopqrst')), /complete, each with its shape|hushmallow1/);
