@@ -112,9 +112,8 @@ test('first world: a confident reading of the words steers it when no feeling wa
   assert.equal(world('I\'m so angry my boss ignored me again'), 'static-storm', 'an angry Tell reaches Glitzi\'s storm');
   assert.equal(world('I am furious at my sister'), 'static-storm');
   assert.equal(world('I\'m worried about tomorrow'), 'luminous-ocean');
-  // no reading: the best fit for "something else" (fits.emotions.other) — Raindrop Lagoon (0.8) since worlds 5–7 were
-  // switched on (it was the ocean while only the storm and the ocean were playable); never the storm
-  assert.equal(registry.select({ emotion: null })?.id, 'raindrop-lagoon', 'no reading: the best fit for something else');
+  // no reading: the calm ocean, as before worlds 5–7 were switched on (their fits.emotions.other stay below the ocean's 0.6)
+  assert.equal(registry.select({ emotion: null })?.id, 'luminous-ocean', 'no reading: as before');
   const scene = read('src/app/scenes/hushfold.js');
   const after = scene.slice(scene.indexOf('async function afterTell('), scene.indexOf('async function gentleWorld('));
   // after the safety branches (care, crisis and loss take their own paths) and only when nothing was tapped

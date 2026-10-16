@@ -328,7 +328,7 @@ const MOONMILK_COVE = {
   // a rest world: calm, quiet, no charge — fit for a gentle session
   calm: true,
   fits: {
-    emotions: { overwhelmed: 1, sad: 0.9, anxious: 0.85, lonely: 0.8, restless: 0.7, frustrated: 0.6, angry: 0.5, other: 0.7 },
+    emotions: { overwhelmed: 1, sad: 0.9, anxious: 0.85, lonely: 0.8, restless: 0.7, frustrated: 0.6, angry: 0.5, other: 0.55 },
     intentions: { calm: 1, steady: 0.9, 'let-go': 0.8, distract: 0.6, play: 0.5 },
   },
   next: ['raindrop-lagoon'],
@@ -432,7 +432,7 @@ const RAINDROP_LAGOON = {
   // a gentle session never plays it by itself: naming can feel heavier right after something heavy (skills.js care)
   calm: false,
   fits: {
-    emotions: { sad: 1, lonely: 0.9, overwhelmed: 0.85, anxious: 0.8, frustrated: 0.7, other: 0.8, angry: 0.6, restless: 0.5 },
+    emotions: { sad: 1, lonely: 0.9, overwhelmed: 0.85, anxious: 0.8, frustrated: 0.7, other: 0.55, angry: 0.6, restless: 0.5 },
     intentions: { steady: 1, calm: 0.8, 'let-go': 0.7, distract: 0.5, play: 0.5 },
   },
   next: ['sunpop-orchard'],
@@ -543,7 +543,7 @@ const SUNPOP_ORCHARD = {
   // back into an earlier world. Move this to the new last world when one is added after it.
   final: true,
   fits: {
-    emotions: { sad: 1, lonely: 1, frustrated: 0.8, overwhelmed: 0.75, anxious: 0.7, other: 0.7, restless: 0.55, angry: 0.45 },
+    emotions: { sad: 1, lonely: 1, frustrated: 0.8, overwhelmed: 0.75, anxious: 0.7, other: 0.55, restless: 0.55, angry: 0.45 },
     intentions: { steady: 0.9, calm: 0.85, play: 0.85, distract: 0.8, 'let-go': 0.65 },
   },
   next: [],
