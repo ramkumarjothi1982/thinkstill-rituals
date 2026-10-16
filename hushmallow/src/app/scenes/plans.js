@@ -6,6 +6,10 @@
 // through to it) and steps aside once the invitations scroll over it.
 // Each invitation leads with three or four things; the rest waits behind
 // "Everything included".
+// With web subscriptions on (src/app/billing.js, off by default) "Step into…"
+// asks a guest to sign in first (a web plan belongs to an account), then goes
+// on to the secure checkout page for the chosen plan and period; prices come
+// from configuration only (none set: none shown). Off, nothing here changes.
 import { h, iconBtn, toast } from '../ui.js';
 import { PLANS } from '../entitlements.js';
 import { BRAND, brandName } from '../../brand.js';
@@ -20,12 +24,20 @@ const PERIODS = [['monthly', 'Monthly'], ['yearly', 'Yearly']];
 export const SUPPORT_LINK = 'Need support right\u00a0now? It’s\u00a0free\u00a0→';
 /** Said on the plans page when a test plan kept on this phone is not honoured by this site (entitlements.js testEnded). */
 export const TEST_ENDED = 'Test access ended for the pilot.';
-/** The line under a plan's button: how it is billed (App Store) or that a test purchase is free. */
-export function periodNote({ native = false, period = 'monthly' } = {}) {
+/** The line under a plan's button: how it is billed (the App Store, or the web) or that a test purchase is free. */
+export function periodNote({ native = false, web = false, period = 'monthly' } = {}) {
   const yearly = period === 'yearly';
   if (native) return `${yearly ? 'Billed once a year' : 'Billed monthly'} by the App Store. Cancel any\u00a0time.`;
+  if (web) return `${yearly ? 'Billed once a year' : 'Billed monthly'}. Cancel any\u00a0time in\u00a0Settings.`;
   return `Test\u00a0purchase\u00a0· ${yearly ? 'yearly' : 'monthly'}\u00a0· nothing\u00a0is\u00a0charged`;
 }
+/** Web subscriptions: the foot of the page (never the App Store's name: this is the web). */
+export const WEB_NOTE = 'You’ll sign in first, so your plan stays with your account. Payment is on a secure checkout page, and you can cancel any time in Settings.';
+/** Web subscriptions: said on the account screen when a guest steps into a plan, or restores one. */
+export const SIGN_IN_FIRST = 'Sign in or create an account first, so your plan stays with you.';
+export const SIGN_IN_TO_RESTORE = 'Sign in to the account your plan is with.';
+/** Web subscriptions: the account has a plan already; a change of plan happens on the subscription page. */
+export const CHANGE_PLAN = 'You already have a plan. You can change it on the next page.';
 const SVG = 'http://www.w3.org/2000/svg';
 
 // Flow's sigil: three soft swells (Hushflow); Beyond reuses Zuzu's spiral
@@ -63,11 +75,12 @@ export default function plans(app, params = {}) {
   let period = app.state.planPeriod === 'yearly' ? 'yearly' : 'monthly';
   const included = (id) => tier === id || (id === 'paid' && tier === 'ultra');
 
-  const noteText = () => periodNote({ native: ent.isNative, period });
+  const noteText = () => periodNote({ native: ent.isNative, web: ent.isWeb, period });
 
   // The App Store's own localised price for the chosen period, when the
   // native shell provides it (StoreKit Product.displayPrice through
-  // ent.prices()); until then the billing note stands alone.
+  // ent.prices()), or on the web the price configured for it
+  // (src/app/config.js BILLING_PRICES); until then the billing note stands alone.
   let prices = null;
   const priceLine = (p) => {
     const v = prices?.[p.productIds[period]];
@@ -118,6 +131,8 @@ export default function plans(app, params = {}) {
 
   // one purchase at a time: a double tap never sends two requests
   let pending = false, homeTimer = 0, gone = false;
+  // web: Back from the checkout page can bring this page back from the browser's cache as it was left, busy
+  const onPageShow = (e) => { if (e?.persisted && pending && !gone) { pending = false; setBusy(false); } };
   function setBusy(on, btn) {
     for (const b of buttons) {
       b.disabled = on;
@@ -141,7 +156,20 @@ export default function plans(app, params = {}) {
       homeTimer = setTimeout(() => { if (!gone) app.go('home', {}, { replace: true }); }, 900);
       return;   // the buttons stay quiet until the Hushfold opens
     }
-    if (r?.unavailable) toast('Subscriptions are handled in the App Store app.');
+    // web: on to the secure checkout page (the buttons stay quiet while the page leaves)
+    if (r?.redirecting) return;
+    if (r?.needsAccount) {
+      pending = false; setBusy(false);
+      app.go('account', { view: 'welcome', notice: SIGN_IN_FIRST });
+      return;
+    }
+    if (r?.manage) {
+      toast(CHANGE_PLAN, 3200);
+      let m = null;
+      try { m = await ent.manage(); } catch { m = null; }
+      if (gone || m?.redirecting) return;
+      toast('That didn’t open just now. Try again in a moment.', 3200);
+    } else if (r?.unavailable) toast('Subscriptions are handled in the App Store app.');
     else if (r?.cancelled) toast('No problem. Nothing was charged.');
     else toast('That didn’t go through. Nothing was charged.', 3200);
     pending = false;
@@ -196,12 +224,14 @@ export default function plans(app, params = {}) {
         h('button', { class: 'btn ghost block', onclick: async (e) => {
           const b = e.currentTarget;
           if (b.disabled) return;
+          // web: a plan lives with an account, so a guest signs in to it first
+          if (ent.isWeb && !ent.webSignedIn()) { app.go('account', { view: 'signin', notice: SIGN_IN_TO_RESTORE }); return; }
           b.disabled = true;
-          try { await ent.restore(); if (!gone) toast(ent.has('paid') ? 'Purchases restored' : 'Nothing to restore yet'); } catch { if (!gone) toast('Couldn’t reach the App Store just now. Try again in a moment.', 3200); }
+          try { await ent.restore(); if (!gone) toast(ent.has('paid') ? 'Purchases restored' : 'Nothing to restore yet'); } catch { if (!gone) toast(ent.isWeb ? 'Couldn’t check just now. Try again in a moment.' : 'Couldn’t reach the App Store just now. Try again in a moment.', 3200); }
           b.disabled = false;
         } }, 'Restore purchases'),
         h('button', { class: 'btn ghost block', onclick: () => openSupport(app) }, SUPPORT_LINK),
-        ent.isNative ? null : h('p', { class: 'test-note' }, ent.canPurchase
+        ent.isNative ? null : h('p', { class: 'test-note' }, ent.isWeb ? WEB_NOTE : ent.canPurchase
           ? 'Development build: purchases here are test purchases. Nothing is charged. In the App Store version, Apple handles payment and receipts.'
           : 'Subscriptions aren’t on sale on the web yet. The App Store app handles payment and receipts.'))));
 
@@ -238,12 +268,14 @@ export default function plans(app, params = {}) {
       fit();
       requestAnimationFrame(() => fits.forEach((f) => f()));
       setTimeout(() => { if (!gone) fits.forEach((f) => f()); }, 700);   // after the web fonts swap in
-      // localised prices from the App Store, if the native shell offers them
+      // localised prices from the App Store, if the native shell offers them (or the web's configured ones)
       Promise.resolve(typeof ent.prices === 'function' ? ent.prices() : null)
         .then((v) => { if (v && typeof v === 'object' && !gone) { prices = v; drawNotes(); } }, () => {});
+      if (ent.isWeb) globalThis.addEventListener?.('pageshow', onPageShow);
     },
     leave() {
       gone = true; clearTimeout(homeTimer);
+      if (ent.isWeb) globalThis.removeEventListener?.('pageshow', onPageShow);
       if (mallowAway) world.showMallow?.(true);
       if (swapMallow && world.mallowId === 'zuzu') world.setMallow(prevMallow, { entrance: false }).catch(() => {});
     },
