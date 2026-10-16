@@ -1,6 +1,6 @@
 # Web subscriptions with Stripe
 
-hushmallow Flow and hushmallow Beyond can be sold on the web (app.hushmallow.com) through Stripe, with Another Angle's server checking the subscription itself. **Everything described here is built and switched off.** Nothing changes for anyone until the owner does the steps below. The App Store app (StoreKit) is separate and keeps working as before; the iOS shell never shows web billing.
+hushmallow Flow and hushmallow Beyond can be sold on the web (app.hushmallow.com) through Stripe, with Another Angle's server checking the subscription itself. **Everything described here is built and switched off.** Nothing changes for anyone until the owner does the steps below. The App Store app (StoreKit) is separate and keeps working as before; the iOS shell never shows web billing. There the app's billing module is off whatever the config says (`src/app/billing.js` `inNativeShell`), so no account token is sent and the consent card and delete screen read as before.
 
 There are two switches, and both are off in the repository for production. (The staging rehearsal is the one exception: the release branch's Pages preview has billing on, through the staging Worker in Stripe test mode. See `docs/STAGING.md`.)
 
@@ -9,11 +9,13 @@ There are two switches, and both are off in the repository for production. (The 
 | The Worker, `hushmallow/server/another-angle/wrangler.toml` | No billing vars or secrets; `ENTITLEMENT_MODE = "testing"` | The vars and secrets below; then `ENTITLEMENT_MODE = "billing+testing"` or `"billing"` |
 | The app, `hushmallow/src/app/config.js` | `BILLING_PROVIDER = ''` | `BILLING_PROVIDER = 'stripe'`, `BILLING_ENDPOINT = ANGLE_ENDPOINT` |
 
+The tests follow both switches. With a switch off, they check today's state. With it on, they check that every value has the right shape. So the commits that switch billing on need no change to any test, and both deploy workflows (which run the tests first) still go through. A half-done switch fails them, for example a billing mode without the vars, or a price that is not a `price_` id.
+
 ## How it works
 
 1. On the plans page a person picks hushmallow Flow or hushmallow Beyond, monthly or yearly, and taps "Step into…".
 2. A guest is sent to the account screen first ("Sign in or create an account first, so your plan stays with you."). A web plan belongs to an account, so it follows the person to every device they sign in on.
-3. Signed in, the app sends `{ plan, period }` and the account's Supabase access token to `POST /v1/billing/checkout` on our Worker. The Worker checks the token with the sign-in project (`/auth/v1/user`, hushmallow1 only). It then creates a Stripe Checkout Session in subscription mode for the configured price, with `client_reference_id` set to the account id. The app opens Stripe's page (only `checkout.stripe.com` or `billing.stripe.com` are ever opened).
+3. Signed in, the app sends `{ plan, period }` and the account's Supabase access token to `POST /v1/billing/checkout` on our Worker. The Worker checks the token with the sign-in project (`/auth/v1/user`, hushmallow1 only). It then creates a Stripe Checkout Session in subscription mode for the configured price, with `client_reference_id` set to the account id. Checkouts for the same account, plan and period within two minutes share a Stripe idempotency key, so two tabs started together get one Checkout Session, which can be paid only once. The app opens Stripe's page (only `checkout.stripe.com` or `billing.stripe.com` are ever opened).
 4. Stripe takes the payment and sends signed events to `POST /v1/billing/webhook`. The Worker checks the signature, reads the subscription back from Stripe, and records it in the `Billing` Durable Object, keyed by the account id. That record is the only thing that decides what anyone has. A browser can never say it has a plan.
 5. Stripe sends the person back to `https://app.hushmallow.com/?billing=success`. The app takes `?billing=` out of the address, asks `GET /v1/billing/status` (several times over about 30 seconds, because the webhook can be a moment behind), and says "Welcome to hushmallow Beyond".
 6. The plan is kept on the phone as the entitlement with source `billing`, together with the time it was checked. It is checked again at start and whenever the app comes back to the foreground (at most once a minute). Without a new answer it is trusted for **3 days** of offline grace, then set aside until the server answers again.
@@ -46,6 +48,7 @@ Do all of this in **test mode** first (the toggle at the top of the dashboard), 
    * Turn on **switch plans**, with both products and all four prices. Flow → Beyond and monthly ↔ yearly happen here: an account with a plan is sent to the portal instead of a second Checkout. Proration is your choice.
    * Business information: add links to the privacy policy and terms. **Neither exists yet for the main app** (see "Before launch").
    * Default redirect link: `https://app.hushmallow.com/`. The server also sends `/?billing=portal` itself.
+   * Recommended: turn on the portal's **login link**, where a customer signs in with their email address. Put it on the support page and in the receipt emails. Someone who has deleted their hushmallow account can then still cancel. The app can't help them any more, because Manage subscription needs a signed-in account. (Not checked against the live dashboard.)
 7. **Payments and emails.**
    * Under Settings → Payment methods, cards, Apple Pay and Google Pay are enough. Delayed methods such as BECS Direct Debit leave a subscription waiting for days.
    * Under Settings → Subscriptions and emails, turn on renewal reminders and failed-payment emails, and Smart Retries.
@@ -84,7 +87,7 @@ curl -s -H 'origin: https://app.hushmallow.com' https://hushmallow-another-angle
 # … "billing":{"configured":true,"webhook":true}
 ```
 
-Every value is checked for its shape. If one is wrong, that value counts as unset and `/v1/health` keeps saying `"configured": false`. All the existing limits stay as they are:
+Every value is checked for its shape. If one is wrong, that value counts as unset and `/v1/health` keeps saying `"configured": false`. `npm test` checks the same shapes in `wrangler.toml` itself. `test/billing.test.js` builds the file exactly as this section and section 4 describe, then runs the guards on it. A secret (`sk_…`, `rk_…`, `whsec_…`) anywhere in the file fails the tests, comments included. All the existing limits stay as they are:
 
 * the rate limits, plus a new `BILLING_IP_LIMITER`: 20 billing requests a minute per network;
 * 20 angles a day per subscriber;
@@ -105,7 +108,8 @@ export const BILLING_PRICES = Object.freeze({        // shown under each button,
 
 * Sign-in must be on in the Pages build: `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` as build variables (`docs/AUTH.md`). Without sign-in the app ignores billing.
 * Prices come only from `BILLING_PRICES`. Stripe Checkout always shows the real amount whatever is set here, so keep the two the same. Today it holds the owner's provisional test values for the staging rehearsal (`docs/STAGING.md`): replace them with the final amounts in the release that switches production on.
-* `TEST_PURCHASE_HOSTS` stays localhost-only.
+* `TEST_PURCHASE_HOSTS` stays localhost-only. On localhost billing stays off unless `?billingDev=<port>` points at a local server (section 5), so test purchases keep working there.
+* The client tests (`tests/billing.test.mjs`) follow these values. Each price must be `''` or an AUD price written like `A$9.99`.
 * The billing copy never mentions the App Store.
 
 ## 4. The `ENTITLEMENT_MODE` switch
@@ -161,7 +165,7 @@ On your own computer, with Stripe **test** keys and the [Stripe CLI](https://doc
    python3 -m http.server 8000 -d /tmp/hm-site
    ```
 
-4. Open `http://localhost:8000/?billingDev=8790&angleDev=8790`. `billingDev` switches billing on for that tab only, on localhost only, and survives the trip to Stripe and back. Sign in with a test account on hushmallow1.
+4. Open `http://localhost:8000/?billingDev=8790&angleDev=8790`. `billingDev` switches billing on for that tab only, on localhost only, and survives the trip to Stripe and back. Without it, localhost has test purchases, as before. Sign in with a test account on hushmallow1.
 5. Pay with Stripe's test cards. Use any future expiry date, any CVC and any postcode:
    * `4242 4242 4242 4242`: succeeds.
    * `4000 0025 0000 3155`: asks for 3-D Secure.
@@ -186,8 +190,8 @@ A staging rehearsal with the real Worker and the real model is set up: the relea
 
 ## What is sent, stored and logged
 
-* **The app → our Worker:** the account's access token, and `{ plan, period }` for a checkout. Never words, feelings or photos. A guest sends nothing. Another Angle's `/v1/session` also carries the account's token, but only when billing is on. The consent card's "What's kept" line then says so ("…a sign-in token for your account, so our server can check your plan. Never your name or email."); with billing off it reads exactly as before.
-  * Anyone who accepted the card before billing was switched on keeps their earlier yes. To show everyone the new line, raise `CONSENT_VERSION` in `src/beyond/consent.js` in the release that switches billing on. That is the owner's choice.
+* **The app → our Worker:** the account's access token, and `{ plan, period }` for a checkout. Never words, feelings or photos. A guest sends nothing. When billing is on and the person is signed in, Another Angle's `/v1/session` also carries the account's token. The consent card's "What's kept" line then says so ("When you're signed in, it also sends a sign-in token for your account, so our server can check your plan. Never your name or email."). With billing off, the line reads exactly as before.
+  * Anyone who accepted the card before billing was switched on is asked again, once, before their token goes with a session (`src/beyond/consent.js` `sendsAccount`). No `CONSENT_VERSION` change is needed. A "Not now" stays as it was, since nothing is sent then. With billing off, nobody is asked again.
 * **Our Worker → Stripe:**
   * the price;
   * the account id, as `client_reference_id` and as metadata on the session and the subscription (a random UUID, not an email);
@@ -208,8 +212,9 @@ A staging rehearsal with the real Worker and the real model is set up: the relea
 
 * **Flow is enforced only in the browser.** hushmallow Flow's rituals and worlds run entirely on the phone. A determined person can edit the stored entitlement (or the code) and unlock Flow, and Beyond's on-phone parts, without paying. Stripe and the server cannot stop that; only moving content behind a server could. **Beyond's server cost is enforced:** in `billing` mode, Another Angle's model is reached only with a session the server issued after checking an active Beyond subscription.
 * A cancelled or refunded subscription keeps a session it already has until that token expires (at most 24 hours). The app's own copy of the plan lapses at the next check, or after the 3-day offline grace.
-* **Deleting a hushmallow account does not cancel its Stripe subscription.** With billing on, the delete screen's "Not touched" list says so ("…deleting your account doesn't cancel it, so cancel it first in Settings → Manage subscription"). The `Billing` record for that account id also stays: the Worker is not told about deletions. Removing it, or cancelling for the person, is an open item.
-* One subscription per account. Changes (Flow ↔ Beyond, monthly ↔ yearly) happen in the portal, so "switch plans" must be on there.
+* **Deleting a hushmallow account does not cancel its Stripe subscription.** The account's `Billing` record also stays, because the Worker is not told about deletions. With billing on, the delete screen's "Not touched" list says both: "a web subscription, if you have one, and our server's record of it (which plan and its status, never your card): deleting your account doesn't cancel it, so cancel it first in Settings → Manage subscription". After deleting, the person can no longer reach Manage subscription, so turn on the portal's login link (section 1). Cancelling for the person, or removing the record, is an open item.
+* **Only `APP_ORIGIN` sells.** Stripe sends everyone back to `APP_ORIGIN`, and the app's other addresses (`hushmallow.pages.dev`, the github.io address) have no checkout return of their own. Someone who subscribes from one of them comes back to app.hushmallow.com, where they are not signed in yet: sign-in is kept per address. They sign in there. The plan belongs to the account, so it also shows on the other address at its next check.
+* One subscription per account. Changes (Flow ↔ Beyond, monthly ↔ yearly) happen in the portal, so "switch plans" must be on there. Two checkouts started at once share one Checkout Session. A second checkout started more than two minutes later, before the first one's webhook arrives, can still make a second subscription. Refund it in the dashboard.
 * After signing in, the app reloads into the account screen. The person goes back to the plans page themselves, and their choice is not remembered.
 * A person who subscribes on the web and later uses the App Store app is not recognised there: StoreKit and Stripe are separate.
 * **Not tested against live Stripe or Supabase.** The tests use faithful fakes of both (`server/another-angle/test/billing.test.js`, `tests/billing.test.mjs`). The first test-mode rehearsal above is the real check.

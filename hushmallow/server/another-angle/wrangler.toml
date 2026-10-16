@@ -245,7 +245,7 @@ SUPABASE_PUBLISHABLE_KEY = "sb_publishable_TODO"
 # Where Stripe sends people back: the release branch's preview (one of ALLOWED_ORIGINS).
 APP_ORIGIN = "https://claude-launch-rc.hushmallow.pages.dev"
 # PLACEHOLDERS until the owner pastes the four TEST price ids (price_…) from
-# Stripe's test mode. A price_TODO… value counts as unset (src/config.js
+# Stripe's test mode. A placeholder price id (the marked TODO value below) counts as unset (src/config.js
 # PRICE_PLACEHOLDER): with all four unset, every billing route answers 503
 # billing_not_configured and /v1/health says "placeholder_prices": 4.
 STRIPE_PRICE_PAID_MONTHLY = "price_TODO_owner"

@@ -4,16 +4,19 @@
 // only Stripe's pages; the plan is the server's answer (source 'billing'),
 // kept with an expiry and a few days' offline grace; Settings' "Manage
 // subscription"; Another Angle's session carries the account's token only
-// when billing is on; the access token comes from the sign-in client.
+// when billing is on, and the consent card asks again before it does; the
+// access token comes from the sign-in client. Never in the App Store app's
+// shell, never on a development host without ?billingDev. The guards on the
+// shipped config follow it: off, today's state; switched on, its shape.
 // Run with: node --test tests/
 import { test, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-import { createBilling, resolveBilling, takeReturn, welcomeBack, stripePage, PATHS, RETURN_LINES, STRIPE_PAGES } from '../src/app/billing.js';
-import { createEntitlements, BILLING_GRACE_MS, BILLING_RECHECK_MS, PLANS } from '../src/app/entitlements.js';
-import { BILLING_PROVIDER, BILLING_ENDPOINT, BILLING_PRICES, ANGLE_ENDPOINT } from '../src/app/config.js';
+import { createBilling, resolveBilling, inNativeShell, takeReturn, welcomeBack, stripePage, PATHS, RETURN_LINES, STRIPE_PAGES } from '../src/app/billing.js';
+import { createEntitlements, BILLING_GRACE_MS, BILLING_RECHECK_MS, BILLING_CLOCK_SKEW_MS, PLANS } from '../src/app/entitlements.js';
+import { BILLING_PROVIDER, BILLING_ENDPOINT, BILLING_PRICES, ANGLE_ENDPOINT, ANGLE_ALLOWED_HOSTS } from '../src/app/config.js';
 import { createStore } from '../src/engine/storage.js';
 import { createAngleClient } from '../src/beyond/angle-client.js';
 import { SCHEMA_VERSION } from '../src/beyond/vocab.js';
@@ -56,19 +59,32 @@ function setup({ signedIn = true, server = billingServer(), prices } = {}) {
 const clockAt = (t = NOW) => { const c = () => c.t; c.t = t; return c; };
 
 // ------------------------------------------------------------------ off --
-test('off by default: the shipped config switches nothing on (outside a branch preview: tests/staging.test.mjs), and createBilling() is null', () => {
-  assert.equal(BILLING_PROVIDER, '');
-  assert.equal(BILLING_ENDPOINT, '');
-  // the owner's provisional test prices (docs/STAGING.md), shown only where billing is on
-  assert.deepEqual(Object.values(BILLING_PRICES), ['A$9.99', 'A$99.99', 'A$19.99', 'A$199.99']);
+// The guards follow the shipped config (as the ANGLE_ENDPOINT tests do): off (as committed), exactly today's state;
+// switched on as docs/PAYMENTS.md section 3 says, its values must have their shape. So the release that switches it
+// on needs no change to any test.
+test('the shipped config: off (then nothing is switched on), or switched on with our own Worker and prices of the right shape', () => {
   assert.deepEqual(Object.keys(BILLING_PRICES), ['hushmallow.paid.monthly', 'hushmallow.paid.yearly', 'hushmallow.ultra.monthly', 'hushmallow.ultra.yearly']);
-  assert.equal(resolveBilling(), null);
-  assert.equal(resolveBilling({ loc: { hostname: 'app.hushmallow.com', search: '' } }), null);
-  assert.equal(resolveBilling({ loc: { hostname: 'app.hushmallow.com', protocol: 'https:', search: '' } }), null);
+  if (BILLING_PROVIDER === '') {
+    assert.equal(BILLING_ENDPOINT, '');
+    // the owner's provisional test prices (docs/STAGING.md): shown only where billing is on (a branch preview)
+    for (const [id, v] of Object.entries(BILLING_PRICES)) assert.match(v, /^(?:A\$\d{1,3}(?:,\d{3})*(?:\.\d{2})?)?$/, `${id}: '' or an AUD price`);
+    assert.equal(resolveBilling({ loc: { hostname: 'app.hushmallow.com', protocol: 'https:', search: '' } }), null);
+    assert.equal(resolveBilling(), null);
+    assert.equal(resolveBilling({ loc: { hostname: 'app.hushmallow.com', search: '' } }), null);
+    assert.equal(createBilling({ auth: () => authHandle(), signIn: true, shell: false }), null);
+  } else {
+    assert.equal(BILLING_PROVIDER, 'stripe');
+    const on = resolveBilling({ loc: { hostname: 'app.hushmallow.com', search: '' } });
+    assert.ok(on && ANGLE_ALLOWED_HOSTS.includes(new URL(on.endpoint).hostname), 'BILLING_ENDPOINT: our own Worker (ANGLE_ALLOWED_HOSTS, https)');
+    assert.deepEqual(resolveBilling(), on);
+    for (const [id, v] of Object.entries(BILLING_PRICES)) assert.match(v, /^(?:A\$\d{1,3}(?:,\d{3})*(?:\.\d{2})?)?$/, `${id}: '' or the AUD price as Stripe shows it`);
+    assert.notEqual(createBilling({ auth: () => authHandle(), signIn: true, shell: false }), null);
+  }
+  // either way: a development host without ?billingDev never has billing (its test purchases stay)…
   assert.equal(resolveBilling({ loc: { hostname: 'localhost', protocol: 'http:', search: '' }, session: null }), null, 'localhost without ?billingDev');
-  assert.equal(createBilling({ auth: () => authHandle(), signIn: true }), null);
-  // configured but the build has no sign-in: still off (a web plan belongs to an account)
+  // …a build without sign-in has none (a web plan belongs to an account), nor has the App Store app
   assert.equal(createBilling({ auth: () => authHandle(), signIn: false, config: CONFIG }), null);
+  assert.equal(createBilling({ auth: () => authHandle(), signIn: true, config: CONFIG, shell: true }), null);
   // main.js passes it straight to the entitlements; null is exactly the old behaviour
   const main = read('src/app/main.js');
   assert.match(main, /const billing = createBilling\(\{ auth: \(\) => app\.auth, signIn: !!AUTH\.config\.enabled && !AUTH\.forwarding \}\);\nconst ent = createEntitlements\(\{ store, billing \}\);/);
@@ -191,8 +207,10 @@ test('status and portal: the server\'s answer, read strictly; the portal opens o
 });
 
 test('prices come from configuration only; none set, none shown', () => {
+  const shipped = Object.fromEntries(Object.entries(BILLING_PRICES).filter(([, v]) => v));
+  assert.deepEqual(setup().billing.prices(), shipped, 'the shipped BILLING_PRICES (none while billing is off)');
+  assert.deepEqual(setup({ prices: Object.fromEntries(Object.keys(BILLING_PRICES).map((k) => [k, ''])) }).billing.prices(), {}, 'none set: none shown');
   assert.deepEqual(setup({ prices: {} }).billing.prices(), {}, 'none set: none shown');
-  assert.deepEqual(setup().billing.prices(), { ...BILLING_PRICES }, 'the shipped BILLING_PRICES: the provisional test values');
   const s = setup({ prices: { 'hushmallow.paid.monthly': ' A$9.99 ', 'hushmallow.ultra.yearly': 'A$149.99', 'hushmallow.paid.yearly': '', 'something.else': 'A$1' } });
   assert.deepEqual(s.billing.prices(), { 'hushmallow.paid.monthly': 'A$9.99', 'hushmallow.ultra.yearly': 'A$149.99' });
   const ent = createEntitlements({ store: memStore(), billing: s.billing });
@@ -365,12 +383,15 @@ test('web billing copy: no App Store, no price written in, no plan word, no "ser
   assert.match(webPlanNote({ status: 'past_due', periodEnd: end }, 'ultra'), /^Your last payment didn’t go through\./);
   assert.equal(webPlanNote({ status: 'canceled', periodEnd: end }, 'none'), null);
   assert.equal(webPlanNote({ status: 'active', periodEnd: null }, 'ultra'), null);
-  // deleting the account never cancels a web subscription, and the delete screen says so (only with billing on)
+  // deleting the account never cancels a web subscription nor deletes our server's record of it, and the delete screen
+  // says so (only with billing on)
   const acct = read('src/app/scenes/account.js');
-  assert.match(acct, /list\(app\.billing \? NOT_TOUCHED\.map\(\(l\) => \(l\.startsWith\('your plan:'\) \? WEB_PLAN_NOT_TOUCHED : l\)\) : NOT_TOUCHED\)/);
-  assert.match(acct, /'your plan: it belongs to this phone’s app store account',/, 'the line it replaces, unchanged when billing is off');
-  const { WEB_PLAN_NOT_TOUCHED } = await import('../src/app/scenes/account.js');
-  assert.equal(WEB_PLAN_NOT_TOUCHED, 'a web subscription, if you have one: deleting your account doesn’t cancel it, so cancel it first in Settings → Manage subscription');
+  assert.match(acct, /h\('h2', \{ class: 'hm-account-eyebrow' \}, 'Not touched'\), list\(notTouched\(app\)\)\)/);
+  const { WEB_PLAN_NOT_TOUCHED, notTouched } = await import('../src/app/scenes/account.js');
+  assert.equal(WEB_PLAN_NOT_TOUCHED, 'a web subscription, if you have one, and our server’s record of it (which plan and its status, never your card): deleting your account doesn’t cancel it, so cancel it first in Settings → Manage subscription');
+  const before = notTouched({ billing: null });
+  assert.ok(before.includes('your plan: it belongs to this phone’s app store account'), 'off: the list as before');
+  assert.deepEqual(notTouched({ billing: setup().billing }), before.map((l) => (l.startsWith('your plan:') ? WEB_PLAN_NOT_TOUCHED : l)));
 });
 
 // ------------------------------------------------------- the plans page --
@@ -399,7 +420,8 @@ const tick = () => new Promise((r) => setTimeout(r, 0));
 const prevDoc = globalThis.document;
 after(() => { if (prevDoc === undefined) delete globalThis.document; else globalThis.document = prevDoc; });
 
-async function plansPage(ent, { calls = [] } = {}) {
+/** A document made of FakeEl, as the scenes need it; → its body. */
+function fakeDocument() {
   const body = new FakeEl('body');
   globalThis.document = {
     createElement: (t) => new FakeEl(t), createElementNS: (_, t) => new FakeEl(t),
@@ -408,6 +430,10 @@ async function plansPage(ent, { calls = [] } = {}) {
     getElementById: () => null, head: new FakeEl('head'), body, documentElement: new FakeEl('html'),
   };
   globalThis.requestAnimationFrame ||= (fn) => setTimeout(fn, 0);
+  return body;
+}
+async function plansPage(ent, { calls = [] } = {}) {
+  const body = fakeDocument();
   const { default: plans } = await import('../src/app/scenes/plans.js');
   const world = { dim() {}, showMallow() {}, place() {}, setStage() {}, react() {}, fitBetween() {}, setMallow: async () => {}, mallowId: 'boppo' };
   const app = { ent, world, state: {}, haptic() {}, audio: { ui() {} }, go: (name, params) => calls.push([name, params]), back() {} };
@@ -507,14 +533,158 @@ test('Another Angle: the account\'s token goes with /v1/session only when billin
   assert.doesNotMatch(JSON.parse(billed.find((c) => c.path === '/v1/session').init.body).device_id, /eyJ/);
   // the consent card says so, only when billing is on (off, its line is exactly as before)
   const consent = read('src/beyond/consent.js');
-  assert.match(consent, /app\?\.billing \? ACCOUNT_CHECK : ' Never your name or account\.'/);
+  assert.match(consent, /sendsAccount\(app\) \? ACCOUNT_CHECK : ' Never your name or account\.'/);
+  assert.match(consent, /export const sendsAccount = \(app\) => !!app\?\.billing;/, 'the same condition as the token');
   const { ACCOUNT_CHECK } = await import('../src/beyond/consent.js');
-  assert.equal(ACCOUNT_CHECK, ' With a web subscription it also sends a sign-in token for your account, so our server can check your plan. Never your name or email.');
+  assert.equal(ACCOUNT_CHECK, ' When you’re signed in, it also sends a sign-in token for your account, so our server can check your plan. Never your name or email.');
   // a token that cannot be had (signed out, offline): the session goes without one
   const none = await run({ accountToken: async () => null });
   assert.equal(none.find((c) => c.path === '/v1/session').init.headers.authorization, undefined);
   const boom = await run({ accountToken: async () => { throw new Error('no'); } });
   assert.equal(boom.find((c) => c.path === '/v1/session').init.headers.authorization, undefined);
+});
+
+// ------------------------------------------------ the consent card --
+/** The consent card as Another Angle opens it, in a fake document: → { text, accept(), close() } (one of the two, so its timers end). */
+async function consentCard(app) {
+  const { openConsent } = await import('../src/beyond/consent.js');
+  const root = fakeDocument();
+  const card = openConsent({ app, root, onDecide: () => {} });
+  return { text: text(card.el), close: card.close, accept: () => all(card.el).find((n) => n.tagName === 'BUTTON' && text(n) === 'Accept').listeners.click[0]({}) };
+}
+
+test('consent: with billing on, a yes given before (the notice did not name the token) is asked again; off, exactly as before', async () => {
+  const { consentState, setConsent, STORE_KEYS, CONSENT_VERSION, ACCOUNT_CHECK } = await import('../src/beyond/consent.js');
+  const store = memStore();
+  store.set(STORE_KEYS.consent, { v: CONSENT_VERSION, choice: 'yes', at: '2026-10-12' });   // accepted before billing was on
+  assert.equal(consentState(store), 'yes', 'billing off: the stored yes counts, as today');
+  assert.equal(consentState(store, { account: false }), 'yes');
+  assert.equal(consentState(store, { account: true }), 'unasked', 'billing on: asked again before the token goes with the session');
+  setConsent(store, 'yes', { account: true });
+  assert.equal(consentState(store, { account: true }), 'yes');
+  assert.equal(consentState(store), 'yes', 'a yes to the fuller notice counts with billing off too');
+  // a "Not now" stays one (nothing is sent then); off, the record is exactly as before
+  store.set(STORE_KEYS.consent, { v: CONSENT_VERSION, choice: 'no', at: '2026-10-12' });
+  assert.equal(consentState(store, { account: true }), 'no');
+  setConsent(store, 'yes');
+  assert.deepEqual(Object.keys(store.get(STORE_KEYS.consent)), ['v', 'choice', 'at']);
+  assert.equal(consentState(store, { account: true }), 'unasked');
+  // the card with billing on names the token, and its Accept records the notice it showed
+  const on = { billing: setup().billing, store: memStore() };
+  const card = await consentCard(on);
+  assert.ok(card.text.includes(ACCOUNT_CHECK.trim()), 'the token line');
+  assert.ok(!card.text.includes('Never your name or account.'));
+  card.accept();
+  assert.equal(consentState(on.store, { account: true }), 'yes');
+  // off: the line as before, and the record as before
+  const off = { billing: null, store: memStore() };
+  const plain = await consentCard(off);
+  assert.ok(plain.text.includes('(and any invite code) to keep the daily allowance fair. Never your name or account.'));
+  assert.ok(!/sign-in token/.test(plain.text));
+  plain.accept();
+  assert.deepEqual(Object.keys(off.store.get(STORE_KEYS.consent)), ['v', 'choice', 'at']);
+  // Another Angle and Settings ask with the same condition as the token
+  const aa = read('src/beyond/another-angle.js');
+  assert.match(aa, /const accountNotice = \{ account: sendsAccount\(app\) \};/);
+  assert.equal((aa.match(/consentState\(store, accountNotice\)/g) || []).length, 3);
+  assert.doesNotMatch(aa, /consentState\(store\)/);
+  assert.match(read('src/beyond/consent.js'), /input\.checked = consentState\(store, notice\) === 'yes';/);
+});
+
+test('the App Store app’s shell: no web billing whatever the config (the consent card, the delete screen and the session as before)', async () => {
+  const { consentState, STORE_KEYS, CONSENT_VERSION } = await import('../src/beyond/consent.js');
+  const { notTouched } = await import('../src/app/scenes/account.js');
+  const before = await consentCard({ billing: null, store: memStore() });
+  before.close();
+  const prev = globalThis.window;
+  const shells = {
+    storekit: { HushNative: { store: { current: async () => ({ tier: 'ultra' }), purchase: async () => ({ tier: 'ultra' }), restore: async () => ({ tier: 'ultra' }) } } },
+    'HushNative alone': { HushNative: {} },
+    'the message handler': { webkit: { messageHandlers: { hushStore: { postMessage() {} } } } },
+  };
+  try {
+    for (const [name, win] of Object.entries(shells)) {
+      globalThis.window = win;
+      assert.equal(inNativeShell(), true, name);
+      // configured, signed in and sign-in on, as main.js would build it with billing switched on: still null
+      const s = setup();
+      assert.equal(s.billing, null, name);
+      const app = { billing: s.billing, store: memStore() };   // main.js: app.billing
+      assert.deepEqual(notTouched(app), notTouched({}), `${name}: the delete screen keeps "your plan: it belongs to this phone’s app store account"`);
+      const card = await consentCard(app);
+      card.close();
+      assert.equal(card.text, before.text, `${name}: the consent card word for word`);
+      app.store.set(STORE_KEYS.consent, { v: CONSENT_VERSION, choice: 'yes', at: '2026-10-12' });
+      assert.equal(consentState(app.store, { account: !!app.billing }), 'yes', `${name}: nobody is asked again`);
+      assert.equal(createEntitlements({ store: memStore(), billing: s.billing }).isWeb, false);
+    }
+  } finally { if (prev === undefined) delete globalThis.window; else globalThis.window = prev; }
+  // the session carries an account token only through app.billing (null here)
+  assert.match(read('src/beyond/another-angle.js'), /\.\.\.\(app\.billing \? \{ accountToken: \(\) => app\.billing\.accountToken\(\) \} : \{\}\)/);
+  assert.match(read('src/app/billing.js'), /if \(!config \|\| !signIn \|\| shell\) return null;/);
+  assert.equal(inNativeShell(), false, 'Node, like a plain browser');
+  assert.equal(inNativeShell({ location: {} }), false);
+});
+
+// ------------------------------------------------ development hosts --
+test('a development host keeps its test purchases with billing switched on, unless ?billingDev points at a local server', async () => {
+  const session = new Map();
+  const ss = { getItem: (k) => session.get(k) ?? null, setItem: (k, v) => session.set(k, v), removeItem: (k) => session.delete(k) };
+  const loc = { hostname: 'localhost', protocol: 'http:', search: '' };
+  for (const hostname of ['localhost', '127.0.0.1']) {
+    const cfg = resolveBilling({ provider: 'stripe', endpoint: EP, loc: { ...loc, hostname }, session: ss });
+    assert.equal(cfg, null, `${hostname}: never the production Worker (it refuses this origin)`);
+    const ent = createEntitlements({ store: memStore(), billing: createBilling({ auth: () => authHandle(), signIn: true, config: cfg, shell: false }) });
+    assert.equal(ent.isWeb, false);
+    assert.deepEqual(await ent.purchase('paid'), { ok: true, test: true }, 'a free test purchase, as before');
+  }
+  assert.deepEqual(resolveBilling({ provider: 'stripe', endpoint: EP, loc: { ...loc, search: '?billingDev=8790' }, session: ss }), { provider: 'stripe', endpoint: 'http://localhost:8790' });
+  const blocked = { getItem() { throw new Error('blocked'); }, setItem() { throw new Error('blocked'); }, removeItem() { throw new Error('blocked'); } };
+  assert.equal(resolveBilling({ provider: 'stripe', endpoint: EP, loc, session: blocked }), null, 'storage blocked: still no production billing here');
+  assert.deepEqual(resolveBilling({ provider: 'stripe', endpoint: EP, loc: { hostname: 'app.hushmallow.com', protocol: 'https:', search: '?billingDev=8790' }, session: ss }), CONFIG, 'a public host: the configured Worker, never a dev port');
+});
+
+// ---------------------------------------------- entitlement edges --
+test('entitlement source "billing": a check dated later than now (a clock set back, an edited copy) is not trusted', async () => {
+  const now = clockAt();
+  const store = memStore();
+  const away = setup({ signedIn: false });   // a signed-out tab never asks the server
+  store.set('entitlement', { tier: 'ultra', source: 'billing', since: NOW, checkedAt: NOW + 365 * 86400000 });
+  const ent = createEntitlements({ store, billing: away.billing, now });
+  assert.equal(ent.tier(), 'none');
+  await ent.refresh({ force: true });
+  assert.equal(ent.tier(), 'none', 'it never becomes trusted by waiting');
+  now.t += 200 * 86400000;
+  assert.equal(ent.tier(), 'none');
+  store.set('entitlement', { tier: 'ultra', source: 'billing', since: NOW, checkedAt: now.t + BILLING_CLOCK_SKEW_MS - 1 });
+  assert.equal(createEntitlements({ store, billing: away.billing, now }).tier(), 'ultra', 'a few minutes of drift are fine');
+  // the server's next answer decides, dated now
+  const s = setup();
+  s.server.status = { tier: 'ultra', status: 'active', current_period_end: null, cancel_at_period_end: false, manageable: true };
+  store.set('entitlement', { tier: 'ultra', source: 'billing', since: NOW, checkedAt: now.t + 365 * 86400000 });
+  const e2 = createEntitlements({ store, billing: s.billing, now });
+  await e2.refresh();
+  assert.equal(e2.tier(), 'ultra');
+  assert.equal(store.get('entitlement').checkedAt, now.t);
+});
+
+test('Restore on the web: no answer from the server says "Couldn’t check", never "Nothing to restore yet"', async () => {
+  const s = setup();
+  const ent = createEntitlements({ store: memStore(), billing: s.billing });
+  s.server.down = true;
+  await assert.rejects(ent.restore(), /did not answer/);
+  s.server.down = false;
+  assert.equal((await ent.restore()).tier, 'none', 'answered: nothing to restore');
+  s.server.down = true;
+  const p = await plansPage(ent);
+  await click(p.buttons().find((b) => text(b) === 'Restore purchases'));
+  const said = all(p.body).map(text);
+  assert.ok(said.includes('Couldn’t check just now. Try again in a moment.'));
+  assert.ok(!said.includes('Nothing to restore yet'));
+  s.server.down = false;
+  await click(p.buttons().find((b) => text(b) === 'Restore purchases'));
+  assert.ok(all(p.body).map(text).includes('Nothing to restore yet'));
+  p.view.leave();
 });
 
 // ------------------------------------------------- the sign-in client --

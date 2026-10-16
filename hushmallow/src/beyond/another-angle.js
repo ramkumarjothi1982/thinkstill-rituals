@@ -40,7 +40,7 @@ import { authoredScene, sceneParts, candidatePatterns, gentleScene, feelingOf, f
 import { deathEscalation, suicideDeath, serverLoss, griefLinesOk, keepLocal, noteShape } from './grief.js';
 import { heavyHarm, gentleRoute, framingAllowed, bagWords, framesAsGuess, lossRoute, griefFeeling } from './backstop.js';
 import { FEELING_LOOK } from './feelings.js';
-import { consentState, openConsent, noteFeedback, lessWanted, STORE_KEYS } from './consent.js';
+import { consentState, sendsAccount, openConsent, noteFeedback, lessWanted, STORE_KEYS } from './consent.js';
 import { createAngleClient, resolveEndpoint, TIMEOUTS } from './angle-client.js';
 import { RATINGS, MECHANICS } from './vocab.js';
 import { loadMechanic, prefetchMechanic } from './mechanics/index.js';
@@ -94,7 +94,9 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
   const devBudget = devTimeout > 0 ? devTimeout + 500 : 0;
   // web subscriptions on (src/app/billing.js): the session also carries the account's token, for the server's own Beyond check
   const client = endpoint ? createAngleClient({ store, endpoint, ...(devTimeout > 0 ? { timeouts: { ...TIMEOUTS, angle: devTimeout } } : {}), ...(app.billing ? { accountToken: () => app.billing.accountToken() } : {}) }) : null;
-  const serverMode = () => !!client && consentState(store) === 'yes';
+  // (and a yes given before the notice said so is asked again: src/beyond/consent.js sendsAccount)
+  const accountNotice = { account: sendsAccount(app) };
+  const serverMode = () => !!client && consentState(store, accountNotice) === 'yes';
 
   const S = {
     left: false, phase: 'arrive', text: params.text || '', emotion: null, intention: null,
@@ -593,7 +595,7 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
     S.phase = 'arrive';
     zt?.setStage('curious');
     if (!rmOn()) zt?.react('hop');
-    if (client && consentState(store) === 'unasked') { await askConsent(); if (S.left) return; }
+    if (client && consentState(store, accountNotice) === 'unasked') { await askConsent(); if (S.left) return; }
     invite();
   }
   function askConsent() {
@@ -643,7 +645,7 @@ export function createAnotherAngle(app, { root, params = {} } = {}) {
   /** Said "Not now" before, and this is one of the visits (every few) where sharing is mentioned again. */
   let shareAsked = false;
   function shareAgainNow() {
-    if (shareAsked || !client || consentState(store) !== 'no') return false;
+    if (shareAsked || !client || consentState(store, accountNotice) !== 'no') return false;
     shareAsked = true;
     let n = 0;
     try { n = (Number(store.get(STORE_KEYS.visits, 0)) || 0) + 1; store.set(STORE_KEYS.visits, n); } catch { return false; }
