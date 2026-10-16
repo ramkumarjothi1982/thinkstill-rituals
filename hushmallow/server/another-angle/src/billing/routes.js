@@ -47,7 +47,7 @@ export function bearerOf(request) {
  *   ipKey: (request: Request, cfg: Config) => Promise<string> }} deps
  */
 export function createBilling({ logger, now, fetch: fetchImpl = (input, init) => fetch(input, init), ipKey }) {
-  const limiter = memoryRateLimiter({ limit: 10, periodMs: 60000, now });
+  const limiter = memoryRateLimiter({ limit: 20, periodMs: 60000, now });   // as BILLING_IP_LIMITER in wrangler.toml
   /** @type {Map<string, ReturnType<typeof createAccountVerifier>>} */
   const verifiers = new Map();
 

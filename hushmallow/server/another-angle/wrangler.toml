@@ -100,11 +100,13 @@ simple = { limit = 20, period = 60 }
 
 # Web subscriptions' checkout, status and portal (each asks the sign-in
 # project, and checkout and portal ask Stripe). Not the webhook: Stripe's
-# deliveries are checked by their signature instead.
+# deliveries are checked by their signature instead. 20, not fewer: the app
+# asks for the status at every start, and many phones on mobile data share
+# one address.
 [[ratelimits]]
 name = "BILLING_IP_LIMITER"
 namespace_id = "41004"
-simple = { limit = 10, period = 60 }
+simple = { limit = 20, period = 60 }
 
 # Workers Logs keep only the server's own metadata lines (src/log.js).
 # Invocation logs are OFF: they would store each request's headers and
@@ -255,7 +257,7 @@ simple = { limit = 20, period = 60 }
 [[env.staging.ratelimits]]
 name = "BILLING_IP_LIMITER"
 namespace_id = "41204"
-simple = { limit = 10, period = 60 }
+simple = { limit = 20, period = 60 }
 
 [env.staging.observability]
 enabled = true

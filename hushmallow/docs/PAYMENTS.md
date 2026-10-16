@@ -86,7 +86,7 @@ curl -s -H 'origin: https://app.hushmallow.com' https://hushmallow-another-angle
 
 Every value is checked for its shape. If one is wrong, that value counts as unset and `/v1/health` keeps saying `"configured": false`. All the existing limits stay as they are:
 
-* the rate limits, plus a new `BILLING_IP_LIMITER`: 10 billing requests a minute per network;
+* the rate limits, plus a new `BILLING_IP_LIMITER`: 20 billing requests a minute per network;
 * 20 angles a day per subscriber;
 * the `DAILY_SPEND_CAP_USD` spend cap.
 
