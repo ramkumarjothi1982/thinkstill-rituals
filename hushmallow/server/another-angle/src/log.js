@@ -1,5 +1,6 @@
 // Metadata-only logging. The person's text, the model's lines, tokens, IPs
-// and device ids are never logged: only whitelisted keys with short,
+// and device ids (and, for web subscriptions, account ids, emails and
+// Stripe ids) are never logged: only whitelisted keys with short,
 // code-like values (numbers, booleans, enums, error codes) get through.
 // Safety is logged as a level only (none / concern / care / crisis), never
 // the category ("self-harm", "abuse"…). Cloudflare's own invocation logs
@@ -11,6 +12,8 @@ const KEYS = new Set([
   'normalised', 'provider', 'provider_error', 'refusal_category', 'model', 'fallback_model', 'fallback_reason',
   'tokens_in', 'tokens_out', 'cache_read', 'cache_write', 'cost_micros', 'quota_left', 'source', 'err', 'prompt_version',
   'previous', 'intention', 'chosen_emotion', 'text_len_bucket', 'cap_left_micros', 'rating',
+  // web subscriptions (src/billing/routes.js): which plan and period, Stripe's event type and status; never an id
+  'plan', 'period', 'tier', 'stripe_event', 'sub_status', 'duplicate',
 ]);
 const SAFE_STRING = /^[A-Za-z0-9_.:-]{0,48}$/;
 

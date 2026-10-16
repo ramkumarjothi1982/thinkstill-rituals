@@ -6,6 +6,12 @@
 #   IP_HASH_KEY         ≥16 random characters; keys the IP hashes used for limits
 #   TESTER_INVITE_CODES comma-separated invite codes for testers (recommended
 #                       for the testing phase; without it anyone can get a session)
+# Web subscriptions (Stripe, src/billing/; off until set, see docs/PAYMENTS.md),
+# set by hand with `npx wrangler secret put <NAME>`:
+#   STRIPE_SECRET_KEY     the Stripe secret key (sk_live_… / sk_test_…, or a
+#                         restricted rk_ key with Checkout, Portal and
+#                         Subscriptions read access)
+#   STRIPE_WEBHOOK_SECRET the webhook endpoint's signing secret (whsec_…)
 name = "hushmallow-another-angle"
 main = "src/index.js"
 compatibility_date = "2026-10-01"
@@ -40,15 +46,39 @@ DAILY_SPEND_CAP_USD = "10"
 APPLE_BUNDLE_ID = ""
 APPLE_PRODUCT_IDS = "hushmallow.ultra.monthly,hushmallow.ultra.yearly"
 APPLE_ENVIRONMENTS = "Production"
+# Web subscriptions (src/billing/, docs/PAYMENTS.md): every /v1/billing route
+# answers 503 until these vars are added here (and the two secrets above are
+# set); nothing else changes while they are absent. The values are the
+# owner's, from the Stripe dashboard, never committed before launch:
+#   SUPABASE_URL              the hushmallow1 project URL (the only one accepted)
+#   SUPABASE_PUBLISHABLE_KEY  its publishable key (sb_publishable_…, public by design)
+#   APP_ORIGIN                where Stripe sends people back; one of ALLOWED_ORIGINS
+#   STRIPE_PRICE_PAID_MONTHLY, STRIPE_PRICE_PAID_YEARLY,
+#   STRIPE_PRICE_ULTRA_MONTHLY, STRIPE_PRICE_ULTRA_YEARLY   price_… ids (A$)
+#   BILLING_TOKEN_TTL_HOURS   optional, default 24: the longest a Beyond session lasts
+#   STRIPE_API_VERSION        optional: pins the API version of the server's own requests
+# Then ENTITLEMENT_MODE = "billing" (a Beyond subscription for Another Angle),
+# or "billing+testing" (that, or one of TESTER_INVITE_CODES) while testers
+# keep their codes. "testing", "storekit" and "both" work as before.
 
 # Daily counters: per-device quota, per-IP session cap, global spend cap.
 [[durable_objects.bindings]]
 name = "LEDGER"
 class_name = "Ledger"
 
+# Web subscriptions: one record per signed-in account (src/billing/store.js).
+# Holds nothing until billing is switched on.
+[[durable_objects.bindings]]
+name = "BILLING"
+class_name = "Billing"
+
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["Ledger"]
+
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["Billing"]
 
 # Burst limits per IP (per Cloudflare location). period must be 10 or 60.
 [[ratelimits]]
@@ -67,6 +97,14 @@ simple = { limit = 3, period = 60 }
 name = "FEEDBACK_IP_LIMITER"
 namespace_id = "41003"
 simple = { limit = 20, period = 60 }
+
+# Web subscriptions' checkout, status and portal (each asks the sign-in
+# project, and checkout and portal ask Stripe). Not the webhook: Stripe's
+# deliveries are checked by their signature instead.
+[[ratelimits]]
+name = "BILLING_IP_LIMITER"
+namespace_id = "41004"
+simple = { limit = 10, period = 60 }
 
 # Workers Logs keep only the server's own metadata lines (src/log.js).
 # Invocation logs are OFF: they would store each request's headers and
@@ -117,6 +155,10 @@ APPLE_ENVIRONMENTS = "Sandbox"
 name = "LEDGER"
 class_name = "Ledger"
 
+[[env.dev.durable_objects.bindings]]
+name = "BILLING"
+class_name = "Billing"
+
 [[env.dev.ratelimits]]
 name = "ANGLE_IP_LIMITER"
 namespace_id = "41101"
@@ -131,6 +173,11 @@ simple = { limit = 10, period = 60 }
 name = "FEEDBACK_IP_LIMITER"
 namespace_id = "41103"
 simple = { limit = 60, period = 60 }
+
+[[env.dev.ratelimits]]
+name = "BILLING_IP_LIMITER"
+namespace_id = "41104"
+simple = { limit = 30, period = 60 }
 
 [env.dev.observability]
 enabled = true
@@ -178,9 +225,17 @@ APPLE_ENVIRONMENTS = "Sandbox"
 name = "LEDGER"
 class_name = "Ledger"
 
+[[env.staging.durable_objects.bindings]]
+name = "BILLING"
+class_name = "Billing"
+
 [[env.staging.migrations]]
 tag = "v1"
 new_sqlite_classes = ["Ledger"]
+
+[[env.staging.migrations]]
+tag = "v2"
+new_sqlite_classes = ["Billing"]
 
 [[env.staging.ratelimits]]
 name = "ANGLE_IP_LIMITER"
@@ -196,6 +251,11 @@ simple = { limit = 3, period = 60 }
 name = "FEEDBACK_IP_LIMITER"
 namespace_id = "41203"
 simple = { limit = 20, period = 60 }
+
+[[env.staging.ratelimits]]
+name = "BILLING_IP_LIMITER"
+namespace_id = "41204"
+simple = { limit = 10, period = 60 }
 
 [env.staging.observability]
 enabled = true
