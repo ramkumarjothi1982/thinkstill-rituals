@@ -62,8 +62,10 @@ test('M1: the host lays the stage out from stage-fit.js, compacting the title fi
   assert.match(host, /import \{ stageRect, wantsCompact(, keepInside)? \} from '\.\/stage-fit\.js';/);
   const lay = fnBody(host, 'function layout() {', 'function placeMallow(');
   assert.doesNotMatch(lay, /Math\.max\(220/, 'no floor that pushes the stage under the dock');
-  assert.match(lay, /titleBox\.classList\.remove\('v3-compact'\);\n\s+if \(wantsCompact\(titleBottom\(\), dockTop\)\) titleBox\.classList\.add\('v3-compact'\);/);
-  assert.match(lay, /Object\.assign\(stage, stageRect\(\{ left: scene\.left, width: scene\.width, titleBottom: titleBottom\(\), dockTop, barBottom: bar \}\)\);/);
+  // the dock is measured again after each toggle (compacting the title can bring it up the screen): played through the
+  // host in qa-mobile-review.test.mjs (2)
+  assert.match(lay, /titleBox\.classList\.remove\('v3-compact'\);\n\s+if \(wantsCompact\(titleBottom\(\), dockTop\(\)\)\) titleBox\.classList\.add\('v3-compact'\);/);
+  assert.match(lay, /Object\.assign\(stage, stageRect\(\{ left: scene\.left, width: scene\.width, titleBottom: titleBottom\(\), dockTop: dockTop\(\), barBottom: bar \}\)\);/);
   // measured again whenever the title or the dock changes size (a new prompt, the law chip, the end card)
   assert.match(host, /if \(ro\) \{ if \(titleBox\) ro\.observe\(titleBox\); ro\.observe\(dock\); \}/);
   assert.match(fnBody(host, 'function cleanup() {', 'function finish('), /titleBox\?\.classList\.remove\('v3-compact'\);/);

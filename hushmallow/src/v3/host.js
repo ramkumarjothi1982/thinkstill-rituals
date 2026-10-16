@@ -110,14 +110,16 @@ export async function run(ctx) {
     const scene = document.getElementById('scene').getBoundingClientRect();
     // the stage is the band between the title and the dock, never under the dock (stage-fit.js); a short band
     // (a small phone at a large text size) compacts the title first
+    // (both measured after each toggle: on a phone on its side the full title pushes the dock down the screen, and
+    // compacting it brings the dock back up; the decision is made on the full title, so it never flips back and forth)
     const titleBottom = () => titleBox?.getBoundingClientRect().bottom ?? 120;
-    const dockTop = dock.getBoundingClientRect().top;
+    const dockTop = () => dock.getBoundingClientRect().top;
     if (titleBox) {
       titleBox.classList.remove('v3-compact');
-      if (wantsCompact(titleBottom(), dockTop)) titleBox.classList.add('v3-compact');
+      if (wantsCompact(titleBottom(), dockTop())) titleBox.classList.add('v3-compact');
     }
     const bar = document.querySelector('#scene .ritual-ui > .topbar')?.getBoundingClientRect().bottom ?? 0;
-    Object.assign(stage, stageRect({ left: scene.left, width: scene.width, titleBottom: titleBottom(), dockTop, barBottom: bar }));
+    Object.assign(stage, stageRect({ left: scene.left, width: scene.width, titleBottom: titleBottom(), dockTop: dockTop(), barBottom: bar }));
     stage.v++;
     vignette = g.createRadialGradient(stage.cx, stage.cy, Math.min(stage.w, stage.h) * 0.2, stage.cx, stage.cy, Math.max(view.w, view.h) * 0.75);
     vignette.addColorStop(0, rgba(pal.deep, 0)); vignette.addColorStop(1, rgba(pal.deep, 0.55));
