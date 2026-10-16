@@ -121,9 +121,9 @@ export default function settings(app) {
           h('button', { class: 'btn ghost block', onclick: () => app.go('classic') }, 'Classic home (QA)')) : null));
 
   function confirmClear() {
-    const body = signedIn ? 'This removes this account’s favourites, history, sealed predictions, Memory Garden, saved worlds and settings from this phone. What you chose to keep with your account stays with it, and other people’s things on this phone aren’t touched. Your subscription isn’t affected.'
-      : otherAccounts ? 'This removes the guest’s favourites, history, sealed predictions, Memory Garden, saved worlds and settings from this phone. Accounts on this phone keep their own things. Your subscription isn’t affected.'
-        : 'This removes your favourites, history, sealed predictions, Memory Garden, saved worlds and settings from this phone. Your subscription isn’t affected.';
+    const body = signedIn ? 'This removes this account’s favourites, history, sealed predictions, kept Belief Mallows, Memory Garden, saved worlds and settings from this phone. What you chose to keep with your account stays with it, and other people’s things on this phone aren’t touched. Your subscription isn’t affected.'
+      : otherAccounts ? 'This removes the guest’s favourites, history, sealed predictions, kept Belief Mallows, Memory Garden, saved worlds and settings from this phone. Accounts on this phone keep their own things. Your subscription isn’t affected.'
+        : 'This removes your favourites, history, sealed predictions, kept Belief Mallows, Memory Garden, saved worlds and settings from this phone. Your subscription isn’t affected.';
     const s = openSheet({ title: signedIn ? 'Delete this account’s things?' : otherAccounts ? 'Delete the guest’s things?' : 'Delete everything?', body: h('p', { style: type('body', { margin: 0, color: 'var(--text-2)' }) }, body),
       foot: h('div', { class: 'row-btns' }, h('button', { class: 'btn', onclick: () => s.close() }, 'Cancel'),
         h('button', { class: 'btn primary', onclick: () => { const keep = app.store.get('entitlement', null); app.store.clearAll(); if (keep) app.store.set('entitlement', keep); prefs.reset(); rec.clearAll(); forgetVisit(); s.close(); toast('Deleted'); app.go('home'); } }, 'Delete')) });

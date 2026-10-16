@@ -114,17 +114,19 @@ test('deleting: its own row, "Delete everything" (clearAll), and the props list 
   assert.deepEqual([...store.PROPS], [...PROPS]);
 });
 
-test('the Another Angle delete row removes kept Belief Mallows (needs the one-line consent.js change at integration)', async (t) => {
+test('the Another Angle delete row removes kept Belief Mallows, counts them as data, and says so', async () => {
   const consent = await import('../src/beyond/consent.js');
-  if (!consent.ANGLE_EXTRA_KEYS.includes(store.BELIEF_KEYS.kept)) {
-    t.todo('consent.js ANGLE_EXTRA_KEYS does not list beyond.belief.kept yet: docs/workstreams/belief-mallows.md, integration step 2');
-    return;
-  }
+  assert.ok(consent.ANGLE_EXTRA_KEYS.includes(store.BELIEF_KEYS.kept));
   const s = memStore();
+  assert.equal(consent.hasAngleData(s), false);
   store.keepBelief(s, { text: 'Everybody judges me', prop: 'stone' });
-  assert.equal(consent.hasAngleData(s), true);
+  assert.equal(consent.hasAngleData(s), true, 'only a kept Belief Mallow: the delete row shows');
   consent.deleteAngleData(s);
   assert.deepEqual(store.keptBeliefs(s), []);
+  assert.equal(s.m.size, 0);
+  // the sheets say what goes: the Another Angle row, and "Delete everything" (its clearAll removes the key: above)
+  assert.match(read('src/beyond/consent.js'), /any Belief Mallows you kept\./);
+  for (const m of read('src/app/scenes/settings.js').matchAll(/This removes [^']*sealed predictions[^']*/g)) assert.match(m[0], /kept Belief Mallows/);
 });
 
 test('never synced: the account sync carries only its own listed keys', () => {
@@ -134,11 +136,15 @@ test('never synced: the account sync carries only its own listed keys', () => {
 });
 
 // ------------------------------------------------------------------ the switch --
-test('off in the committed build; the dev host may switch it on for review; Beyond required', () => {
-  assert.equal(LIVE_FEATURES.beliefMallows, false, 'the coordinator flips it at integration');
-  assert.doesNotMatch(PLANS.ultra.includes.join(' '), /Belief Mallow/);
-  const beyond = { ent: { has: (t) => t === 'ultra' || t === 'paid' } }, flow = { ent: { has: (t) => t === 'paid' } };
-  assert.equal(beliefMallowsOn(beyond), false);
+test('on since the integration (16 Oct 2026), sold on Beyond only; Beyond required; the dev switch never on the published site', () => {
+  assert.equal(LIVE_FEATURES.beliefMallows, true);
+  assert.match(PLANS.ultra.includes.join(' '), /Belief Mallow investigation for the stories that keep coming back/);
+  assert.doesNotMatch(PLANS.paid.includes.join(' '), /Belief/, 'never sold on Flow');
+  const beyond = { ent: { has: (t) => t === 'ultra' || t === 'paid' } }, flow = { ent: { has: (t) => t === 'paid' } }, none = { ent: { has: () => false } };
+  assert.equal(beliefMallowsOn(beyond), true);
+  assert.equal(beliefMallowsOn(flow), false, 'Flow alone never');
+  assert.equal(beliefMallowsOn(none), false);
+  assert.equal(beliefMallowsOn(beyond, { live: false, dev: false }), false, 'the switch still turns it off');
   assert.equal(beliefMallowsOn(beyond, { live: true }), true);
   assert.equal(beliefMallowsOn(flow, { live: true }), false, 'Flow alone never');
   assert.equal(beliefMallowsOn(beyond, { live: false, dev: true }), true);
@@ -194,8 +200,8 @@ const withDev = async (fn) => {
   try { return await fn(); } finally { if (had) Object.defineProperty(globalThis, 'location', had); else delete globalThis.location; }
 };
 
-test('switched off: no answer, no prompt, no question, never active', () => {
-  const { host } = fakeHost();
+test('without Beyond: no answer, no prompt, no question, never active', () => {
+  const { host } = fakeHost({ on: false });
   const b = createBeliefHook(host);
   assert.deepEqual(b.inviteOptions(), []);
   assert.deepEqual(b.tell(), {});
