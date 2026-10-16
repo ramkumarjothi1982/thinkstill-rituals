@@ -180,6 +180,18 @@ export function createWorld({ prefs, audio, haptic = null }) {
       const width = bw * kx, height = bh * ky;
       return { left, top, width, height, right: left + width, bottom: top + height, cx: left + width / 2, cy: top + height / 2 };
     },
+    /**
+     * Where the body sits in the layer, as shares of the layer's box ({ left, top, right, bottom }, 0…1): the rig's
+     * own framing, standing (no hop), so it holds for wherever the layer is being placed, mid-move or not. Before the
+     * rig has measured itself, the estimate fitBetween uses.
+     */
+    bodyFrame() {
+      const rg = rig;
+      if (!rg?.S || !rg.W || !rg.H || !rg.mallow?.bodyBox) return { left: 0.18, top: 0.22, right: 0.82, bottom: 0.88 };
+      const [bx0, by0, bx1, by1] = rg.mallow.bodyBox;
+      const bw = (bx1 - bx0) * rg.S, bh = (by1 - by0) * rg.S;
+      return { left: (rg.CX - bw / 2) / rg.W, top: (rg.BASE - bh) / rg.H, right: (rg.CX + bw / 2) / rg.W, bottom: rg.BASE / rg.H };
+    },
     setAudio(a) { if (rig) rig.opts.audio = a; },
     setReducedMotion(b) { rig?.setReducedMotion(b); realm?.setReducedMotion?.(b); },
     /** Live haptics switch: the rig reads opts.haptics on every touch. */
