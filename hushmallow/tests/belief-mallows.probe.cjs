@@ -3,7 +3,7 @@
 //   node hushmallow/tests/belief-mallows.probe.cjs <scenario> W H [rm] [big] [port=8000] [out=DIR] [cpu=4]
 //
 // The repo root must be served (python3 -m http.server 8000 --bind 127.0.0.1 from it). The switch is on for this page
-// load only through the development host's ?beliefMallows=1 (LIVE_FEATURES.beliefMallows stays false). Scenarios:
+// load as the published build has it. Scenarios:
 //   flow      Beyond → Another Angle → "A story that keeps coming back" → the Tell in belief mode → the belief question →
 //             "Look at it together" → a stone → see how it shapes things (two moments, touch) → loosen its hold (touch,
 //             then the assist pill) → give it some room (a held finger) → get to know it → how it sits → Keep it on this
@@ -13,7 +13,9 @@
 //   check     words the risk screener reads as possibly at risk → the check-in (belief wording) → "Not really": support first
 //   notokay   ordinary words → the belief question → "I'm not okay" → support first, no Belief Mallow
 //   wipe      keep one, then Settings → Delete everything → nothing kept
-//   off       without ?beliefMallows=1 (the committed default): no belief answer at all
+//   flowtier  a Flow (not Beyond) plan: Another Angle (and so Belief Mallows) opens the plans page, whose Beyond card sells
+//             "Belief Mallow investigation…" (behind "Everything included") and whose Flow card never does
+//   (LIVE_FEATURES.beliefMallows is on since the integration of 16 Oct 2026: no development switch is used)
 // Every request the page makes is logged: only GETs of this host's own files are allowed, and none may carry the words.
 // Prints one JSON line ("RESULT {...}") and writes screenshots to out. Playwright from /opt/node-tools; Chromium at
 // /opt/pw-browsers/chromium (never playwright install). Touch via CDP.
@@ -28,10 +30,10 @@ const SCEN = argv[0] || 'flow', W = +argv[1] || 390, H = +argv[2] || 844, RM = a
 const opt = (k, d) => { const a = argv.find((x) => x.startsWith(`${k}=`)); return a ? a.slice(k.length + 1) : d; };
 const PORT = +opt('port', 8000), CPU = +opt('cpu', 0);
 const OUT = opt('out', path.join(os.tmpdir(), 'belief-probe'));
-const ON = SCEN !== 'off';
-const BASE = `http://127.0.0.1:${PORT}/hushmallow/index.html${ON ? '?beliefMallows=1' : ''}`;
+const TIER = SCEN === 'flowtier' ? 'paid' : 'ultra';
+const BASE = `http://127.0.0.1:${PORT}/hushmallow/index.html`;
 const TAG = `${SCEN}-${W}x${H}${RM ? '-rm' : ''}${BIG ? '-big' : ''}`;
-const WORDS = { flow: 'I’m not good enough', crisis: 'I want to kill myself tonight', care: 'He hits me when he is angry', check: 'I’m not good enough', notokay: 'Everybody judges me', wipe: 'I must always be perfect', off: 'x' }[SCEN];
+const WORDS = { flow: 'I’m not good enough', crisis: 'I want to kill myself tonight', care: 'He hits me when he is angry', check: 'I’m not good enough', notokay: 'Everybody judges me', wipe: 'I must always be perfect', flowtier: 'x' }[SCEN];
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const res = { scen: SCEN, W, H, RM, BIG, fails: [], notes: {}, shots: [] };
 const fail = (k, v) => { res.fails.push({ k, v }); console.log('FAIL', k, JSON.stringify(v ?? null).slice(0, 400)); };
@@ -76,16 +78,16 @@ async function waitLine(o, re, timeout = 25000) {
 async function open(browser) {
   const ctx = await browser.newContext({ viewport: { width: W, height: H }, deviceScaleFactor: 2, hasTouch: true, isMobile: true, reducedMotion: RM ? 'reduce' : 'no-preference' });
   const prefs = { ...(RM ? { motion: 'reduced' } : {}), ...(BIG ? { textScale: 1.25 } : {}) };
-  await ctx.addInitScript(({ prefs }) => {
+  await ctx.addInitScript(({ prefs, tier }) => {
     try {
       if (!sessionStorage.getItem('bm:seeded')) {
         sessionStorage.setItem('bm:seeded', '1');
         localStorage.clear();
-        localStorage.setItem('hm2:entitlement', JSON.stringify({ tier: 'ultra', source: 'test', since: Date.now() }));
+        localStorage.setItem('hm2:entitlement', JSON.stringify({ tier, source: 'test', since: Date.now() }));
         if (Object.keys(prefs).length) localStorage.setItem('hm2:prefs', JSON.stringify(prefs));
       }
     } catch { /* storage blocked */ }
-  }, { prefs });
+  }, { prefs, tier: TIER });
   // every line said (subtitles come and go: a wait looks in this log, never only at the screen now)
   await ctx.addInitScript(() => {
     window.__heard = [];
@@ -333,11 +335,23 @@ async function wipe(o) {
   check(await o.page.evaluate(() => localStorage.getItem('hm2:beyond.belief.kept') === null), 'Delete everything removes it');
 }
 
-async function off(o) {
-  await toAngle(o);
-  await sleep(1000);
-  check(!(await chips(o)).includes('A story that keeps coming back'), 'no belief answer with the switch off', await chips(o));
-  await shot(o, 'off');
+async function flowtier(o) {
+  await o.page.goto(BASE);
+  await o.page.waitForFunction(() => window.__hush && window.__hush.world, null, { timeout: 120000 });
+  await o.page.evaluate(() => window.__hush.go('angle'));
+  await o.page.waitForFunction(() => document.querySelector('.invite-beyond'), null, { timeout: 60000 });
+  await sleep(1200);
+  const r = await o.page.evaluate(() => ({
+    angle: !!window.__angle, belief: !!window.__belief,
+    beyond: document.querySelector('.invite-beyond')?.textContent || '',
+    flow: document.querySelector('.invite-flow')?.textContent || '',
+    hash: location.hash,
+  }));
+  res.notes.plans = { angle: r.angle, belief: r.belief, hash: r.hash };
+  check(!r.angle && !r.belief, 'Flow: no Another Angle, no Belief Mallow (the plans page instead)', res.notes.plans);
+  check(/Belief Mallow investigation for the stories that keep coming back/.test(r.beyond), 'Beyond sells Belief Mallows', r.beyond.slice(0, 300));
+  check(!/Belief/.test(r.flow), 'Flow never sells Belief Mallows', r.flow.slice(0, 300));
+  await shot(o, 'plans');
 }
 
 (async () => {
@@ -347,7 +361,7 @@ async function off(o) {
     if (SCEN === 'flow') await flow(o);
     else if (['crisis', 'care', 'check', 'notokay'].includes(SCEN)) await safetyRoute(o, SCEN);
     else if (SCEN === 'wipe') await wipe(o);
-    else if (SCEN === 'off') await off(o);
+    else if (SCEN === 'flowtier') await flowtier(o);
   } catch (e) {
     fail('exception', String(e && e.stack || e).slice(0, 600));
     try { await shot(o, 'exception'); res.notes.subs = await subtitle(o); res.notes.chips = await chips(o); } catch { /* ignore */ }
