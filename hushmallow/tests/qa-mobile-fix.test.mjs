@@ -16,6 +16,63 @@ const read = (p) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
 const fnBody = (src, start, end) => { const a = src.indexOf(start); const b = src.indexOf(end, a + start.length); assert.ok(a >= 0 && b > a, `${start} … ${end}`); return src.slice(a, b); };
 const { stageRect, wantsCompact, keepInside, STAGE_MIN, STAGE_FLOOR, STAGE_GAP } = await import('../src/v3/stage-fit.js');
 
+// A small DOM for running a scene or a ritual step in node: elements keep their children, attributes, inline style,
+// handlers and listeners; nothing is laid out (every box is 0 × 0, nothing matches a selector)
+class FakeEl {
+  constructor(tag) {
+    this.tagName = String(tag).toUpperCase(); this.nodeType = tag === '#text' ? 3 : 1;
+    this.children = []; this.attrs = {}; this.style = {}; this.dataset = {}; this.listeners = {}; this.parentNode = null; this.textContent = '';
+    const cls = new Set();
+    this.classList = { add: (...c) => c.forEach((x) => cls.add(x)), remove: (...c) => c.forEach((x) => cls.delete(x)), toggle: (c, on) => { if (on ?? !cls.has(c)) cls.add(c); else cls.delete(c); }, contains: (c) => cls.has(c) };
+  }
+  setAttribute(k, v) { this.attrs[k] = String(v); }
+  getAttribute(k) { return k in this.attrs ? this.attrs[k] : null; }
+  removeAttribute(k) { delete this.attrs[k]; }
+  toggleAttribute(k, on) { if (on) this.attrs[k] = ''; else delete this.attrs[k]; }
+  addEventListener(t, fn) { (this.listeners[t] ||= []).push(fn); }
+  removeEventListener(t, fn) { this.listeners[t] = (this.listeners[t] || []).filter((f) => f !== fn); }
+  append(...kids) { for (const k of kids) { k.parentNode = this; this.children.push(k); } }
+  prepend(...kids) { for (const k of kids) k.parentNode = this; this.children.unshift(...kids); }
+  replaceChildren(...kids) { this.children = []; this.append(...kids); }
+  remove() { if (this.parentNode) this.parentNode.children = this.parentNode.children.filter((c) => c !== this); this.parentNode = null; }
+  querySelector() { return null; }
+  querySelectorAll() { return []; }
+  closest() { return null; }
+  getBoundingClientRect() { return { left: 0, top: 0, right: 0, bottom: 0, width: 0, height: 0 }; }
+  focus() {}
+}
+const textOf = (n) => (n.nodeType === 3 ? n.textContent : (n.children || []).map(textOf).join('') || n.textContent || '');
+const allEls = (n, out = []) => { out.push(n); for (const c of n.children || []) allEls(c, out); return out; };
+const classes = (n) => (n.attrs?.class || '').split(/\s+/);
+const until = async (fn, what, ms = 8000) => {
+  const t0 = Date.now();
+  for (;;) { const v = fn(); if (v) return v; assert.ok(Date.now() - t0 < ms, `timed out waiting for ${what}`); await new Promise((r) => setTimeout(r, 10)); }
+};
+/** Puts a FakeEl document (and the window globals a scene reads) in place; → { body, restore }. */
+function fakeWindow({ W = 320, H = 568 } = {}) {
+  const keys = ['document', 'innerWidth', 'innerHeight', 'requestAnimationFrame', 'addEventListener', 'removeEventListener'];
+  const prev = Object.fromEntries(keys.map((k) => [k, Object.getOwnPropertyDescriptor(globalThis, k)]));
+  const body = new FakeEl('body');
+  const listeners = [];
+  Object.assign(globalThis, {
+    document: {
+      createElement: (t) => new FakeEl(t), createElementNS: (_, t) => new FakeEl(t),
+      createTextNode: (t) => Object.assign(new FakeEl('#text'), { textContent: String(t) }),
+      addEventListener() {}, removeEventListener() {}, querySelector: () => null, querySelectorAll: () => [],
+      getElementById: () => null, head: new FakeEl('head'), body, documentElement: new FakeEl('html'),
+    },
+    innerWidth: W, innerHeight: H,
+    requestAnimationFrame: (fn) => setTimeout(fn, 0),
+    // the window's own listeners, kept so a test can see what a scene left behind
+    addEventListener: (type, fn) => listeners.push([type, fn]),
+    removeEventListener: (type, fn) => { const i = listeners.findIndex(([t, f]) => t === type && f === fn); if (i >= 0) listeners.splice(i, 1); },
+  });
+  return {
+    body, listeners,
+    restore() { for (const k of keys) { if (prev[k]) Object.defineProperty(globalThis, k, prev[k]); else delete globalThis[k]; } },
+  };
+}
+
 // what the browser measured on the release candidate (Playwright, HM-0001 Molten Tempo): the title's bottom in full and
 // compacted, and the dock's top (the scene column is 20…W-20 on a phone, 480 wide and centred on a tablet)
 const PHONES = [
@@ -97,6 +154,41 @@ test('m2: chips, the Settings Volume slider and the Thought Mallow’s words tag
   const tag = /\.tm-tag\{([^}]*)\}/.exec(layer)[1];
   assert.doesNotMatch(tag, /overflow\s*:|contain\s*:/, 'nothing clips the hit area');
   assert.match(tag, /pointer-events:auto/);
+});
+
+// (review of m2) the classic Another Angle's "Fact or fiction" step gave its sort chips an inline 38 px minimum, over
+// the .chip's own 44 px: the step's main controls stayed 38 px tall. Run to that step and measure what it builds.
+test('m2: the classic Another Angle’s “← Happened” / “Brain added →” chips are at least 44 px to a finger', async () => {
+  const cssMin = +/^\.chip \{[^}]*min-height: (\d+)px/m.exec(read('src/ui/app.css'))[1];
+  const win = fakeWindow({ W: 320, H: 568 });
+  const ac = new AbortController();
+  let running = null;
+  try {
+    const [angle, frameworks, engine] = await Promise.all([import('../src/ultra/another-angle.js'), import('../src/ultra/frameworks.js'), import('../src/ultra/reframe-engine.js')]);
+    const dock = new FakeEl('div');
+    const world = { realm: null, fx: new FakeEl('div'), layer: { offsetHeight: 470 }, showMallow() {}, setEmotion() {}, place() {}, setStage() {}, fitBetween() {} };
+    const ctx = { world, dock, signal: ac.signal, audio: { fx() {}, ui() {} }, haptic() {}, setMove() {}, say() {}, toast() {}, reducedMotion: true,
+      input: { text: 'My manager criticised my report in front of everyone. I think I am terrible at my job and everyone knows it.' } };
+    running = angle.run(ctx, { frameworks, engine });
+    const press = async (re) => { const b = await until(() => allEls(dock).find((n) => n.tagName === 'BUTTON' && re.test(textOf(n)) && n.onclick), `${re}`); b.onclick(); };
+    await press(/plot twist/);
+    await press(/^That’s it$/);
+    const pieces = await until(() => { const p = allEls(win.body).filter((n) => classes(n).includes('piece')); return p.length ? p : null; }, 'the pieces', 5000);
+    const chips = pieces.flatMap((p) => allEls(p).filter((n) => n.tagName === 'BUTTON' && classes(n).includes('chip')));
+    assert.equal(chips.length, 2 * pieces.length, 'each piece has its two sort chips');
+    assert.deepEqual([...new Set(chips.map(textOf))], ['← Happened', 'Brain added →']);
+    for (const c of chips) {
+      // an inline minimum wins over the class's; with none, the .chip's 44 px holds
+      const min = c.style.minHeight ? parseFloat(c.style.minHeight) : cssMin;
+      assert.ok(min >= 44, `“${textOf(c)}”: min-height ${c.style.minHeight || `${cssMin}px (.chip)`}`);
+      assert.ok(!c.style.height || parseFloat(c.style.height) >= 44, `“${textOf(c)}”: height ${c.style.height}`);
+    }
+  } finally {
+    ac.abort();
+    await running?.catch(() => {});
+    await new Promise((r) => setTimeout(r, 600));   // the step's own timers (its 520 ms relayout) still find the window
+    win.restore();
+  }
 });
 
 test('m3: a V3 ritual’s Mallow lines keep out of the whole stage (the title band is borrowed instead), live as it moves', () => {

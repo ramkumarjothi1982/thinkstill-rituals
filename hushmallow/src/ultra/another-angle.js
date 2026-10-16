@@ -152,7 +152,9 @@ export async function run(ctx, { frameworks: F, engine: E }) {
   await wait(380);
   crystal.remove();
   const placeY = (i) => 30 + i * 11;
-  const SORT_CHIP = { minHeight: '38px', fontWeight: '700', flex: '0 1 auto', minWidth: '0', padding: '0 12px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' };
+  // (no height of their own: the .chip's 44 px is the finger's target; the piece's padding gives back the 6 px,
+  // so a piece is as tall as with the old 38 px chips and the stack fits where it did)
+  const SORT_CHIP = { fontWeight: '700', flex: '0 1 auto', minWidth: '0', padding: '0 12px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' };
   // one line per chip: the arrows go first, then some side padding
   const fitChips = () => {
     for (const c of stageEl.querySelectorAll('.piece .chip[data-short]')) {
@@ -163,7 +165,7 @@ export async function run(ctx, { frameworks: F, engine: E }) {
   const pieceEls = pieces.map((p, i) => {
     const el = h('div', { class: 'piece', style: pieceStyle(placeY(i)), role: 'group', 'aria-label': `Piece: ${p.text}` },
       h('div', { style: type('thought', { fontSize: 'calc(16px * var(--type-scale))', lineHeight: '1.3' }) }, p.text),
-      h('div', { style: { display: 'flex', gap: '6px', marginTop: '8px' } },
+      h('div', { style: { display: 'flex', gap: '6px', marginTop: '6px' } },
         h('button', { class: 'chip', 'data-short': 'Happened', style: type('label', SORT_CHIP), onclick: () => drop(p, 'fact') }, '← Happened'),
         h('button', { class: 'chip', 'data-short': 'Brain added', style: type('label', SORT_CHIP), onclick: () => drop(p, 'added') }, 'Brain added →')));
     makeDraggable(el, (x) => drop(p, x < innerWidth / 2 ? 'fact' : 'added'));
@@ -564,7 +566,7 @@ export async function run(ctx, { frameworks: F, engine: E }) {
       boxShadow: '0 0 50px rgba(150,80,255,.45), inset 0 1px 0 rgba(255,255,255,.4)', backdropFilter: 'blur(10px)', transition: 'all 380ms var(--ease-out)' };
   }
   function pieceStyle(top) {
-    return { position: 'absolute', left: '50%', top: `${top}%`, transform: 'translate(-50%,-50%)', width: 'min(82vw, 360px)', padding: '12px 14px', borderRadius: '20px', color: '#fff',
+    return { position: 'absolute', left: '50%', top: `${top}%`, transform: 'translate(-50%,-50%)', width: 'min(82vw, 360px)', padding: '10px 14px', borderRadius: '20px', color: '#fff',
       background: 'linear-gradient(135deg, rgba(57,240,255,.16), rgba(196,20,230,.22))', border: '1px solid rgba(255,255,255,.3)', backdropFilter: 'blur(10px)', boxShadow: '0 10px 30px rgba(20,0,60,.4)',
       pointerEvents: 'auto', touchAction: 'none', cursor: 'grab', animation: 'fadeIn 420ms var(--ease-out) both' };
   }
