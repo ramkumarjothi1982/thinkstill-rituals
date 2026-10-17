@@ -44,12 +44,30 @@ const preloadInput = () => {
 };
 const idle = (fn) => (typeof requestIdleCallback === 'function' ? requestIdleCallback(fn, { timeout: 1500 }) : setTimeout(fn, 300));
 
-function mallowForNow() {
-  const hr = new Date().getHours();
+/** The Mallow of the time of day (nobody has chosen one). index.html asks for its art as the page starts, with a copy of
+ *  this pick that tests/first-mallow.test.mjs holds to this one. */
+export function mallowForNow(now = new Date()) {
+  const hr = now.getHours();
   if (hr >= 21 || hr < 6) return 'noomi';
   if (hr < 11) return 'boppo';
   if (hr < 17) return 'pipzi';
   return 'loomi';
+}
+/** The Mallow a Hushfold opens with: an explicit pick (Meet the Mallows, the panel switcher), then the last one chosen, then the time of day. */
+export function openingMallow(state, prefs, now = new Date()) {
+  return (MALLOWS[state.homeMallow] && state.homeMallow) || (MALLOWS[prefs.get('mallow')] && prefs.get('mallow')) || mallowForNow(now);
+}
+/**
+ * MallowTouch on stage: its art first, then its own set-up. The 5 s are the set-up's alone, timed once the art is in: on a
+ * slow line the art alone can take longer, and the rig it would fall back to waits for the same art, so the visit still
+ * gets the squeezable Mallow. The art has its own generous cap, so a load that never ends still falls back to the rig
+ * (one that fails does at once). Rejects with why it gave up.
+ */
+export async function touchReady(mt, art, { artMs = 30000, setupMs = 5000 } = {}) {
+  let wait = 0;
+  const within = (p, ms, why) => Promise.race([p, new Promise((_, no) => { wait = setTimeout(() => no(new Error(why)), ms); })]).finally(() => clearTimeout(wait));
+  await within(art, artMs, `its art not in after ${artMs / 1000} s`);
+  return within(mt.loaded, setupMs, `not ready after ${setupMs / 1000} s`);
 }
 const REACTION_KINDS = new Set(['squeeze', 'tap', 'doubleTap', 'flick', 'stretch', 'massage', 'stroke', 'jiggle', 'pull']);
 // how carefully the stage behaves, from the shared detector (src/engine/safety.js); it only ever rises in a visit
@@ -153,7 +171,7 @@ export default function hushfold(app, params = {}) {
   const { world, prefs, ent, store } = app;
   // explicit picks (Meet the Mallows, the panel switcher) win, then the last one chosen, then the time of day
   if (app.state.homeMallow && MALLOWS[app.state.homeMallow]) prefs.set('mallow', app.state.homeMallow);
-  let mallowId = (MALLOWS[app.state.homeMallow] && app.state.homeMallow) || (MALLOWS[prefs.get('mallow')] && prefs.get('mallow')) || mallowForNow();
+  let mallowId = openingMallow(app.state, prefs);
   const lines = createLines({ store });
   const S = {
     emotion: null, emotionName: null, intention: null, reactions: 0, touches: 0, firstTouchAt: 0, lastLineAt: 0,
@@ -2751,7 +2769,7 @@ export default function hushfold(app, params = {}) {
         keepOut: () => mallowAvoidRect(), bounds: () => thoughtBounds, haptic: (k) => app.haptic?.(k),
         audio: { fx: (n, o) => (prefs.get('sound') ? app.audio?.fx?.(n, o) : false) } });
       // MallowTouch (W2), the squeezable Mallow, is the stage's Mallow for everyone (owner P9), behind the
-      // same stage calls; the approved rig is the fallback (it failed to load in 5 s, or prefs.mallowTouch
+      // same stage calls; the approved rig is the fallback (not ready 5 s after its art: touchReady, or prefs.mallowTouch
       // is false; ?touch=0 on the development host). The classic rig goes at once, before the import, so
       // only one Mallow is ever on screen.
       const dev = ['localhost', '127.0.0.1'].includes(location.hostname), qs = new URLSearchParams(location.search);
@@ -2759,7 +2777,6 @@ export default function hushfold(app, params = {}) {
         world.showMallow(false);
         world.releaseMallow?.();
         rigReleased = true;
-        let wait = 0;
         try {
           const { MallowTouch } = await import('../../mallows/touch/mallow-touch.js');
           if (S.left) return;
@@ -2773,13 +2790,14 @@ export default function hushfold(app, params = {}) {
           // placed before it is ready, it starts exactly where the layout puts it (no entrance glide)
           stageMallow = createStageMallow(world, { touch: touchMt });
           layout();
-          await Promise.race([touchMt.loaded, new Promise((_, no) => { wait = setTimeout(() => no(new Error('not ready after 5 s')), 5000); })]);
+          // (the art is the registry's, shared with the rig inside MallowTouch: the same download, already on its way)
+          await touchReady(touchMt, loadMallowAssets(touchMt.id));
         } catch (e) {
           if (S.left) return;
           console.warn('[hushfold] MallowTouch unavailable; using the rig', e?.message || e);
           try { touchMt?.destroy(); } catch { /* already gone */ }
           touchMt = null; touchBox?.remove(); touchBox = null; stageMallow = null;
-        } finally { clearTimeout(wait); }
+        }
         if (S.left) return;
       }
       if (!touchMt) world.showMallow(true);
