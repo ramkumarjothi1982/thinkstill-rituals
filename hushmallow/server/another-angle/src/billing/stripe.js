@@ -82,8 +82,11 @@ export function createStripe({ secretKey, apiVersion = '', fetch: fetchImpl, tim
     createCustomer: (params, o) => call('POST', '/v1/customers', params, o),
     /** GET /v1/customers/:id (a deleted one reads back as { id, deleted: true }) @param {string} id */
     retrieveCustomer: (id) => call('GET', `/v1/customers/${encodeURIComponent(id)}`),
-    /** GET /v1/prices/:id @param {string} id */
-    retrievePrice: (id) => call('GET', `/v1/prices/${encodeURIComponent(id)}`),
+    /**
+     * GET /v1/prices/:id, with every currency it can be charged in (currency_options: Stripe sends it only when
+     * expanded; Checkout charges a customer in one of them) @param {string} id
+     */
+    retrievePrice: (id) => call('GET', `/v1/prices/${encodeURIComponent(id)}?${new URLSearchParams({ 'expand[]': 'currency_options' })}`),
     /** GET /v1/subscriptions?customer=…&status=all (a customer's subscriptions, ended ones included) @param {string} customer */
     listSubscriptions: (customer) => call('GET', `/v1/subscriptions?${new URLSearchParams({ customer, status: 'all', limit: String(SUBSCRIPTION_LIST_LIMIT) })}`),
     /** GET /v1/checkout/sessions/:id @param {string} id */

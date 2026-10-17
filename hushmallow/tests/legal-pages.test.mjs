@@ -294,11 +294,14 @@ test('both pages: not a crisis service, with Australian and international lines;
   const terms = textOf(read(PAGES[1]));
   for (const fact of [
     /wellbeing and entertainment app/, /not therapy, counselling or medical advice/, /doesn’t diagnose any condition/, /monthly or yearly/,
-    /billed by Stripe/, /renews automatically/, /cancel at any time in the app with Manage subscription/, /until the end of the current billing period/,
+    /billed by Stripe/, /Prices are in US dollars \(USD\)/, /renews automatically/, /cancel at any time in the app with Manage subscription/, /until the end of the current billing period/,
     /Australian Consumer Law/, /guarantees that cannot be excluded under the Australian Consumer Law/, /before a new price applies to you/,
     /They may be wrong, incomplete or not right for you/, /You decide what to make of them/, /To the extent the law allows/,
     /governed by the laws of/, /Changes to these terms/, /18 or older/, /Acceptable use/,
   ]) assert.match(terms, fact);
+  // the owner's USD decision (2026-10-17): no Australian-dollar price or currency is left; the tax wording stays the owner's placeholder
+  assert.doesNotMatch(terms, /A\$\d|\bAUD\b|Australian dollars?/);
+  assert.match(read(PAGES[1]), /<span class="legal-todo" data-todo="tax">\[Owner: [^\]]*GST[^\]]*\]<\/span>/);
 });
 
 // ------------------------------------------------------------------ 5 --

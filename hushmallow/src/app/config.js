@@ -42,25 +42,27 @@ export const ANGLE_ALLOWED_HOSTS = ['hushmallow-another-angle.vibyfy-chat.worker
 // app never uses it, and localhost keeps its test purchases unless
 // ?billingDev=<port> points at a local server (src/app/billing.js). The tests in
 // tests/billing.test.mjs follow these values (off: exactly today's; on: our
-// own Worker and prices like 'A$9.99'), so switching on needs no test change.
+// own Worker and prices like 'US$9.99'), so switching on needs no test change.
 // These two are production's switch; a branch preview has its own (Staging, below).
 export const BILLING_PROVIDER = '';
 export const BILLING_ENDPOINT = '';
 /**
  * The price each plan shows under its button, exactly as set in Stripe, by
- * product id (Australian dollars; the amount a person pays, GST included if it
- * applies). Empty: no price is shown. Shown only where billing is on (today
- * only a branch preview, below; production too once the owner switches
- * BILLING_PROVIDER on), never on its own.
+ * product id, in US dollars (the owner's decision of 2026-10-17). Empty: no
+ * price is shown. Shown only where billing is on (today only a branch preview,
+ * below; production too once the owner switches BILLING_PROVIDER on), never
+ * on its own.
  *
- * PROVISIONAL TEST VALUES from the owner for the staging rehearsal
- * (docs/STAGING.md): NOT the final commercial prices. Before launch, set the
- * owner's final amounts here and in Stripe (live mode) together: Stripe
- * Checkout always charges what Stripe holds, whatever this says.
+ * THE OWNER'S PRICES, as the four Stripe prices of 2026-10-17 hold them. DISPLAY
+ * ONLY: Stripe Checkout always charges what Stripe holds, whatever this says.
+ * The Worker sells a price only at these amounts (server CHECKOUT_PRICE_RULES
+ * unit_amount; its tests keep the two the same). Production's own live prices
+ * must hold the same amounts before launch, or all of them change together
+ * (D2); the sandbox driver compares them (P0).
  */
 export const BILLING_PRICES = Object.freeze({
-  'hushmallow.paid.monthly': 'A$9.99', 'hushmallow.paid.yearly': 'A$99.99',
-  'hushmallow.ultra.monthly': 'A$19.99', 'hushmallow.ultra.yearly': 'A$199.99',
+  'hushmallow.paid.monthly': 'US$9.99', 'hushmallow.paid.yearly': 'US$99.99',
+  'hushmallow.ultra.monthly': 'US$19.99', 'hushmallow.ultra.yearly': 'US$199.99',
 });
 
 // Staging (the owner-approved rehearsal, docs/STAGING.md). A BRANCH PREVIEW

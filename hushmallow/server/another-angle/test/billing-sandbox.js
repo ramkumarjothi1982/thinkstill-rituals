@@ -17,6 +17,8 @@ const DAY = 86400;
 const CARDS = { pm_card_visa: 'ok', pm_card_chargeCustomerFail: 'fail', pm_card_authenticationRequired: 'auth' };
 export const AMOUNTS = { [PRICES.paidMonthly]: 999, [PRICES.paidYearly]: 9999, [PRICES.ultraMonthly]: 1999, [PRICES.ultraYearly]: 19999 };
 const SLOTS = { [PRICES.paidMonthly]: ['paid', 'monthly'], [PRICES.paidYearly]: ['paid', 'yearly'], [PRICES.ultraMonthly]: ['ultra', 'monthly'], [PRICES.ultraYearly]: ['ultra', 'yearly'] };
+/** The EU's member states, for the One Stop Shop registrations. */
+const EU = new Set(['AT', 'BE', 'BG', 'HR', 'CY', 'CZ', 'DK', 'EE', 'FI', 'FR', 'DE', 'GR', 'HU', 'IE', 'IT', 'LV', 'LT', 'LU', 'MT', 'NL', 'PL', 'PT', 'RO', 'SK', 'SI', 'ES', 'SE']);
 /** A made-up product tax code (not one of Stripe's): the owner chooses the real one (D4). */
 const FAKE_TAX_CODE = 'txcd_99999999';
 
@@ -178,22 +180,39 @@ export function sandbox({ now, deliver, worker, afterRetries = 'cancel', retries
     const p = u.pathname, q = u.searchParams;
     let m;
     // read by P0
-    if (method === 'GET' && p === '/v1/prices') {
-      const keys = [...q].filter(([k]) => /^lookup_keys\[\d*\]$/.test(k)).map(([, v]) => v);
-      const expand = [...q].some(([k, v]) => /^expand\[\d*\]$/.test(k) && v === 'data.product');
-      const found = [...prices.values()].filter((x) => keys.includes(x.lookup_key)).map((x) => ({ ...x, product: expand ? Object.values(products).find((y) => y.id === x.product) : x.product }));
-      return reply(200, listOf(found));
+    if (method === 'GET' && (m = /^\/v1\/prices\/(price_\w+)$/.exec(p))) {
+      const x = prices.get(m[1]);
+      if (!x) return missing();
+      const expand = (/** @type {string} */ f) => [...q].some(([k, v]) => /^expand\[\d*\]$/.test(k) && v === f);
+      // currency_options only when expanded (as Stripe), then with the default currency in it
+      const { currency_options: options, ...rest } = x;
+      const currencies = expand('currency_options') ? { currency_options: options || { [x.currency]: { unit_amount: x.unit_amount, tax_behavior: x.tax_behavior } } } : {};
+      return reply(200, { ...rest, ...currencies, product: expand('product') ? Object.values(products).find((y) => y.id === x.product) : x.product });
     }
-    if (method === 'GET' && (m = /^\/v1\/prices\/(price_\w+)$/.exec(p))) return prices.has(m[1]) ? reply(200, prices.get(m[1])) : missing();
     if (method === 'GET' && p === '/v1/webhook_endpoints') return reply(200, listOf(s.endpoints));
     if (method === 'GET' && p === '/v1/billing_portal/configurations') return reply(200, listOf(s.portal ? [s.portal] : []));
     if (method === 'GET' && p === '/v1/tax/settings') return reply(200, s.taxSettings);
     if (method === 'GET' && p === '/v1/tax/registrations') return reply(200, listOf(s.registrations.filter((r) => !q.get('status') || r.status === q.get('status'))));
     if (method === 'POST' && p === '/v1/tax/calculations') {
       const amount = Number(form.get('line_items[0][amount]'));
-      const au = form.get('customer_details[address][country]') === 'AU' && s.registrations.some((r) => r.country === 'AU' && r.status === 'active');
-      const reason = au ? s.taxReason : 'not_collecting';
-      return reply(200, { id: id('taxcalc'), object: 'tax.calculation', currency: 'aud', amount_total: amount, tax_amount_inclusive: reason === 'standard_rated' ? Math.round(amount / 11) : 0, tax_breakdown: [{ amount: 0, inclusive: true, taxability_reason: reason }], livemode: false });
+      // collected where an active registration covers the address: its own country, or (the EU's One Stop Shop) the
+      // other member states (Union scheme) or all of them (non-Union scheme)
+      const to = form.get('customer_details[address][country]') || '';
+      const covered = s.registrations.some((/** @type {any} */ r) => {
+        if (r.status !== 'active') return false;
+        const type = r.country_options?.[String(r.country).toLowerCase()]?.type;
+        if (type === 'oss_union') return EU.has(to) && to !== r.country;
+        if (type === 'oss_non_union') return EU.has(to);
+        return type !== 'ioss' && r.country === to;
+      });
+      const reason = covered ? s.taxReason : 'not_collecting';
+      // a 10% rate: inside an inclusive amount (1/11 of it), or on top of an exclusive one
+      const inclusive = form.get('line_items[0][tax_behavior]') === 'inclusive';
+      const tax = reason === 'standard_rated' ? Math.round(inclusive ? amount / 11 : amount / 10) : 0;
+      return reply(200, {
+        id: id('taxcalc'), object: 'tax.calculation', currency: form.get('currency'), amount_total: inclusive ? amount : amount + tax,
+        tax_amount_inclusive: inclusive ? tax : 0, tax_amount_exclusive: inclusive ? 0 : tax, tax_breakdown: [{ amount: tax, inclusive, taxability_reason: reason }], livemode: false,
+      });
     }
     // test clocks
     if (method === 'POST' && p === '/v1/test_helpers/test_clocks') {

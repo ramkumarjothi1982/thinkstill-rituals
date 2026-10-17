@@ -69,6 +69,7 @@ export function foreignToken(project, nowMs) {
 function offWhy(b) {
   if (b?.accounts_configured === false) return 'its sign-in project is still a placeholder';
   if (b?.placeholder_prices) return 'its price ids are still placeholders';
+  if (b?.duplicate_prices) return 'the same price id is in more than one price slot';
   if (b?.key_refused) return `its Stripe key is refused (${b.key_refused})`;
   if (!b?.stripe_mode) return 'no Stripe key';
   return 'not configured';

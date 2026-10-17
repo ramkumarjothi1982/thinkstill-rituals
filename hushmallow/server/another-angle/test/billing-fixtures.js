@@ -14,6 +14,7 @@ import { createApp } from '../src/app.js';
 import { createMockProvider } from '../src/providers/mock.js';
 import { signWebhookPayload } from '../src/billing/stripe.js';
 import { memoryBillingNamespace } from '../src/billing/store.js';
+import { CHECKOUT_PRICE_RULES } from '../src/billing/routes.js';
 import { STRIPE_API_VERSION_EXPECTED } from '../src/config.js';
 
 export const SUPABASE = 'https://igbxbfuaoybfzsroxuln.supabase.co';
@@ -72,10 +73,14 @@ export const PRICE_SLOTS = Object.freeze({
   [PRICES.paidMonthly]: ['paid', 'monthly'], [PRICES.paidYearly]: ['paid', 'yearly'],
   [PRICES.ultraMonthly]: ['ultra', 'monthly'], [PRICES.ultraYearly]: ['ultra', 'yearly'],
 });
-/** A Stripe price for that plan and period that may be sold (AUD, GST-inclusive, recurring, active, its lookup key), with `over` on top. */
+/**
+ * A Stripe price for that plan and period that may be sold (USD, recurring, the owner's amount for the slot, active,
+ * its lookup key; tax behaviour inclusive, so it sells with Stripe Tax on or off), with `over` on top.
+ */
 export function price(id, plan, period, over = {}) {
   return {
-    id, object: 'price', active: true, currency: 'aud', type: 'recurring', tax_behavior: 'inclusive', lookup_key: `hushmallow.${plan}.${period}`,
+    id, object: 'price', active: true, currency: 'usd', type: 'recurring', tax_behavior: 'inclusive', lookup_key: `hushmallow.${plan}.${period}`,
+    unit_amount: CHECKOUT_PRICE_RULES.unit_amount[plan][period],
     recurring: { interval: period === 'monthly' ? 'month' : 'year', interval_count: 1, usage_type: 'licensed' }, ...over,
   };
 }
@@ -91,7 +96,7 @@ export function price(id, plan, period, over = {}) {
  * (unless `deletedListing` is 'empty') or making a session for it answers 400 resource_missing.
  */
 export function upstream({ users = { [TOKEN]: { id: UID, email: 'ana@example.com' } } } = {}) {
-  /** @type {{ url: string, path: string, method: string, headers: Record<string, string>, form: URLSearchParams | null, query: URLSearchParams }[]} */
+  /** @type {{ url: string, path: string, method: string, headers: Record<string, string>, form: URLSearchParams | null, body: string | null, query: URLSearchParams }[]} */
   const calls = [];
   /** @type {Map<string, any>} */
   const subs = new Map();
@@ -127,7 +132,8 @@ export function upstream({ users = { [TOKEN]: { id: UID, email: 'ana@example.com
   o.fetch = async (url, init = {}) => {
     const u = new URL(String(url));
     const headers = Object.fromEntries(new Headers(init.headers).entries());
-    const call = { url: u.href, path: u.pathname, method: init.method || 'GET', headers, form: typeof init.body === 'string' ? new URLSearchParams(init.body) : null, query: u.searchParams };
+    const body = typeof init.body === 'string' ? init.body : null;
+    const call = { url: u.href, path: u.pathname, method: init.method || 'GET', headers, form: body === null ? null : new URLSearchParams(body), body, query: u.searchParams };
     calls.push(call);
     if (u.origin === SUPABASE) {
       const token = (headers.authorization || '').replace(/^Bearer /, '');
@@ -165,7 +171,12 @@ export function upstream({ users = { [TOKEN]: { id: UID, email: 'ana@example.com
       return first(c);
     }
     let m;
-    if (method === 'GET' && (m = /^\/v1\/prices\/(price_[A-Za-z0-9]+)$/.exec(p))) return prices.has(m[1]) ? reply(200, prices.get(m[1])) : missing();
+    if (method === 'GET' && (m = /^\/v1\/prices\/(price_[A-Za-z0-9]+)$/.exec(p))) {
+      if (!prices.has(m[1])) return missing();
+      // as Stripe: currency_options only when asked for (expand[]=currency_options), then with the default currency in it
+      const { currency_options: options, ...x } = prices.get(m[1]);
+      return reply(200, u.searchParams.getAll('expand[]').includes('currency_options') ? { ...x, currency_options: options || { [x.currency]: { unit_amount: x.unit_amount, tax_behavior: x.tax_behavior } } } : x);
+    }
     if (method === 'GET' && (m = /^\/v1\/checkout\/sessions\/(cs_[A-Za-z0-9_]+)$/.exec(p))) return sessions.has(m[1]) ? reply(200, sessions.get(m[1])) : missing();
     if (method === 'POST' && (m = /^\/v1\/checkout\/sessions\/(cs_[A-Za-z0-9_]+)\/expire$/.exec(p))) {
       const s = sessions.get(m[1]);

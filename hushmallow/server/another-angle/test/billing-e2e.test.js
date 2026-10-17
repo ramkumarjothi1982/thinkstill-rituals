@@ -145,8 +145,9 @@ test('the driver refuses anything but a test secret or restricted key, and an ac
 
 test('the driver refuses while staging still has placeholders (the repository today), and says which', async () => {
   const { problems } = await D.repoConfig();
-  assert.ok(problems.some((p) => /SUPABASE_PUBLISHABLE_KEY is still a placeholder/.test(p)));
-  for (const k of ['STRIPE_PRICE_PAID_MONTHLY', 'STRIPE_PRICE_PAID_YEARLY', 'STRIPE_PRICE_ULTRA_MONTHLY', 'STRIPE_PRICE_ULTRA_YEARLY']) assert.ok(problems.some((p) => p.includes(k)), k);
+  // the four price ids are the owner's now (wrangler.toml [env.staging.vars]), so only the staging project's key is
+  // left (here src/config.js has a staging project: test/staging-loader.js)
+  assert.deepEqual(problems, ['[env.staging.vars] SUPABASE_PUBLISHABLE_KEY is still a placeholder']);
   const w = world();
   assert.equal(await w.drive([], { config: undefined }), 2);
   assert.match(w.out.join('\n'), /^REFUSED {2}staging is not set up yet: .*Nothing was sent\.$/);
@@ -158,7 +159,24 @@ test('the driver refuses while staging still has placeholders (the repository to
   assert.equal(config.automaticTax, false);
   assert.deepEqual(config.billingPrices, BILLING_PRICES);
   assert.deepEqual(config.production, { mode: 'testing', liveApproved: false });
-  assert.deepEqual(Object.keys(D.SANDBOX_AMOUNTS).map((k) => [k, `A$${(D.SANDBOX_AMOUNTS[k] / 100).toFixed(2)}`]), Object.entries(BILLING_PRICES));
+  assert.deepEqual(config.prices, {
+    paid: { monthly: 'price_1URLbJL2iXNcXbZPceXTGXsH', yearly: 'price_1URLeGL2iXNcXbZPz31feM3V' },
+    ultra: { monthly: 'price_1URLlFL2iXNcXbZPGjBOF6zy', yearly: 'price_1URLv2L2iXNcXbZP6vLFoAtV' },
+  });
+  assert.deepEqual(Object.keys(D.SANDBOX_AMOUNTS).map((k) => [k, `US$${(D.SANDBOX_AMOUNTS[k] / 100).toFixed(2)}`]), Object.entries(BILLING_PRICES));
+});
+
+test('one price id in two staging slots: the driver refuses to start (the Worker sells neither), and P0 names it on a Worker that has it', async () => {
+  const t = F.varsTables(F.WRANGLER).staging;
+  const toml = F.WRANGLER.replace(`STRIPE_PRICE_PAID_MONTHLY = "${t.STRIPE_PRICE_PAID_MONTHLY}"`, `STRIPE_PRICE_PAID_MONTHLY = "${t.STRIPE_PRICE_ULTRA_MONTHLY}"`);
+  assert.notEqual(toml, F.WRANGLER);
+  const { problems } = await D.repoConfig(toml);
+  assert.ok(problems.includes('[env.staging.vars] the same price id is in more than one STRIPE_PRICE_* slot'), problems.join('; '));
+  assert.ok(!(await D.repoConfig()).problems.some((x) => /more than one/.test(x)), 'the four committed ids are four');
+  const w = world({ env: stagingEnv({ STRIPE_PRICE_PAID_MONTHLY: F.PRICES.ultraMonthly }) });
+  assert.equal(await w.drive(['--phases', 'P0']), 1);
+  assert.ok(w.out.some((l) => /^FAIL {2}P0 staging: no placeholder prices or sign-in values, no price id in two slots$/.test(l)), w.out.join('\n'));
+  assertQuiet(w.out);
 });
 
 // -------------------------------------------------------------- a full run --
@@ -172,9 +190,9 @@ test('a full run (P0, P1, S3-S9) against the Worker and a sandbox with test cloc
   const runId = /run (\d{8}[0-9a-f]{8}),/.exec(w.out[0])?.[1];
   assert.ok(runId);
   for (const want of [
-    'P0 staging: entitlement_mode billing+testing', 'P0 production: billing off (no approval, no key)', 'P0 price hushmallow.ultra.yearly: A$199.99',
+    'P0 staging: entitlement_mode billing+testing', 'P0 production: billing off (no approval, no key)', 'P0 price hushmallow.ultra.yearly: US$199.99',
     'P0 price hushmallow.paid.monthly: product "hushmallow Flow"', 'P0 webhook: exactly the 11 events', 'P0 portal: switching plans on, across all four prices',
-    'P0 tax: taxability_reason is not not_collecting', 'webhook: a stale signature → 400 bad_signature', 'checkout: Origin app.hushmallow.com → 403',
+    'P0 tax (AU): taxability_reason is not not_collecting', 'webhook: a stale signature → 400 bad_signature', 'checkout: Origin app.hushmallow.com → 403',
     'checkout: a token of igbxbfuaoybfzsroxuln → 401', 'S3: Stripe moved the period on by one month', 'S3: still active, and the Worker has the new period end',
     'S4: past_due, and Beyond still open while Stripe retries', 'S4: /v1/session still opens Another Angle (200, source billing)', 'S4: active again',
     'S5: once the retries ran out, Stripe cancelled the subscription', 'S5: /v1/session 403 subscription_required', 'S6: Flow → Beyond monthly: tier ultra',
@@ -229,9 +247,9 @@ test('a run longer than the account token\'s hour signs in again on the way, and
 // ---------------------------------------------------------------- livemode --
 test('livemode true on any Stripe object stops the run at once (exit 3): nothing more is made, and its own clocks are still deleted', async () => {
   // in P0's first read: nothing at all is made
-  const a = world({ box: { live: (method, path) => path === '/v1/prices' } });
+  const a = world({ box: { live: (method, path) => path.startsWith('/v1/prices/') } });
   assert.equal(await a.drive(), 3);
-  assert.match(a.out.join('\n'), /^ABORT a Stripe object read from GET \/v1\/prices has livemode true: stopped at once$/m);
+  assert.match(a.out.join('\n'), /^ABORT a Stripe object read from GET \/v1\/prices\/… has livemode true: stopped at once$/m);
   assert.deepEqual(a.box.s.calls.filter((c) => c.key === E2E_KEY && c.method !== 'GET'), []);
   assert.equal(a.worker.filter((r) => r.url !== '/v1/health').length, 0, 'no further step (P1 and the scenarios never ran)');
   // in the middle of S3 (the subscription it made reads livemode true): the clock is deleted, and nothing else is made
@@ -315,7 +333,9 @@ test('P0 names what the sandbox was set up wrong: a price, the endpoint\'s event
   const w = world({
     box: {
       edit: (/** @type {any} */ s) => {
-        s.prices.get(F.PRICES.paidYearly).tax_behavior = 'exclusive';
+        s.prices.get(F.PRICES.paidYearly).lookup_key = 'hushmallow.ultra.yearly';
+        s.prices.get(F.PRICES.ultraYearly).currency = 'aud';
+        s.prices.delete(F.PRICES.paidMonthly);
         s.prices.get(F.PRICES.ultraMonthly).unit_amount = 1499;
         s.products.ultra.name = 'Beyond';
         s.endpoints[0].enabled_events = s.endpoints[0].enabled_events.filter((/** @type {string} */ e) => e !== 'invoice.paid');
@@ -330,15 +350,107 @@ test('P0 names what the sandbox was set up wrong: a price, the endpoint\'s event
   assert.equal(await w.drive(['--phases', 'P0']), 1);
   const fails = w.out.filter((l) => l.startsWith('FAIL'));
   for (const want of [
-    /P0 price hushmallow\.paid\.yearly: AUD, recurring every 1 year, inclusive, active {2}breaks: tax_behavior/,
-    /P0 price hushmallow\.ultra\.monthly: A\$19\.99 {2}A\$14\.99/, /P0 price hushmallow\.ultra\.monthly: product "hushmallow Beyond" {2}"Beyond"/,
+    /P0 price hushmallow\.paid\.yearly: USD, recurring every 1 year, its slot's amount, active, lookup key its own or none {2}breaks: lookup_key/,
+    /P0 price hushmallow\.ultra\.yearly: USD, recurring every 1 year, its slot's amount, active, lookup key its own or none {2}breaks: currency/,
+    // the amount: the Worker's own rule (CHECKOUT_PRICE_RULES.unit_amount) and the driver's US$ check both say it
+    /P0 price hushmallow\.ultra\.monthly: USD, recurring every 1 month, its slot's amount, active, lookup key its own or none {2}breaks: unit_amount/,
+    /P0 price hushmallow\.paid\.monthly: the id in \[env\.staging\.vars\] is a price of this sandbox {2}404 resource_missing/,
+    /P0 price hushmallow\.ultra\.monthly: US\$19\.99 {2}US\$14\.99/, /P0 price hushmallow\.ultra\.monthly: product "hushmallow Beyond" {2}"Beyond"/,
     /P0 webhook: API version 2026-08-26\.dahlia {2}2025-03-31\.basil/, /P0 webhook: exactly the 11 events {2}missing invoice\.paid/,
     /P0 portal: cancellation on, at the end of the billing period \(D7\) {2}immediately/, /P0 portal: switching plans on/,
-    /P0 tax: default tax behaviour inclusive {2}exclusive/,
   ]) assert.ok(fails.some((l) => want.test(l)), String(want));
+  // automatic_tax off: the settings are only said, whatever their default tax behaviour
+  assert.ok(w.out.some((l) => /^INFO {2}P0 tax: settings status active, default tax behaviour exclusive \(automatic_tax is off\)$/.test(l)));
   // an active AU registration that collects nothing (a registration or tax code gap): said before the switch goes on
   assert.ok(w.out.some((l) => l.startsWith('FAIL') && l.includes('taxability_reason is not not_collecting')));
   assertQuiet(w.out);
+});
+
+test('P0 with the owner\'s kind of prices: no lookup keys and any tax behaviour pass with Stripe Tax off; with it on, a price needs inclusive or exclusive and the settings must be active', async () => {
+  const noKeys = (/** @type {any} */ s) => { for (const x of s.prices.values()) { x.lookup_key = null; x.tax_behavior = 'unspecified'; } };
+  // tax off (as [env.staging.vars] has it): every check passes, and each price without a lookup key is said
+  const off = world({ box: { edit: noKeys } });
+  assert.equal(await off.drive(['--phases', 'P0']), 0, off.out.join('\n'));
+  assert.ok(off.out.some((l) => l === 'PASS  P0 price hushmallow.paid.monthly: USD, recurring every 1 month, its slot\'s amount, active, lookup key its own or none'));
+  assert.equal(off.out.filter((l) => /^INFO {2}P0 price hushmallow\.(?:paid|ultra)\.(?:monthly|yearly): no lookup key, so the configured id decides its plan/.test(l)).length, 4);
+  // the price has no tax behaviour: the test calculation takes the settings' default (inclusive here)
+  assert.ok(off.out.includes('PASS  P0 tax (AU): the total stays US$19.99 (inclusive)  US$19.99'), off.out.join('\n'));
+  // …and a subscription on such a price is the plan of its configured id (S3 renews Beyond monthly)
+  const s3 = world({ box: { edit: noKeys } });
+  assert.equal(await s3.drive(['--phases', 'S3']), 0, s3.out.join('\n'));
+  // tax on (the Worker and the driver both): an unspecified tax behaviour is refused, inclusive and exclusive pass
+  const taxOn = { env: stagingEnv({ STRIPE_AUTOMATIC_TAX: 'true' }) };
+  const on = world({ ...taxOn, box: { edit: noKeys } });
+  assert.equal(await on.drive(['--phases', 'P0'], { config: { ...CONFIG, automaticTax: true } }), 1);
+  for (const k of Object.keys(D.SANDBOX_AMOUNTS)) {
+    const period = k.endsWith('monthly') ? 'month' : 'year';
+    assert.ok(on.out.includes(`FAIL  P0 price ${k}: USD, recurring every 1 ${period}, its slot's amount, active, lookup key its own or none, tax behaviour inclusive or exclusive  breaks: tax_behavior`), k);
+  }
+  const ok = world({ ...taxOn, box: { edit: (/** @type {any} */ s) => { noKeys(s); for (const x of s.prices.values()) x.tax_behavior = 'exclusive'; } } });
+  assert.equal(await ok.drive(['--phases', 'P0'], { config: { ...CONFIG, automaticTax: true } }), 0, ok.out.join('\n'));
+  assert.ok(ok.out.includes('PASS  P0 tax: settings status active (head office set) while automatic_tax is on  active'));
+  // an exclusive price: the calculation adds the tax on top (10% in the sandbox), and says the total
+  assert.ok(ok.out.includes('INFO  P0 tax (AU): tax behaviour exclusive: the tax is added on top of US$19.99, a total of US$21.99'), ok.out.join('\n'));
+  const pending = world({ ...taxOn, box: { edit: (/** @type {any} */ s) => { s.taxSettings.status = 'pending'; } } });
+  assert.equal(await pending.drive(['--phases', 'P0'], { config: { ...CONFIG, automaticTax: true } }), 1);
+  assert.ok(pending.out.includes('FAIL  P0 tax: settings status active (head office set) while automatic_tax is on  pending'));
+  assertQuiet([...off.out, ...s3.out, ...on.out, ...ok.out, ...pending.out]);
+});
+
+test('P0 tax: any jurisdiction\'s active registration will do (not Australia\'s alone); each gets a test calculation at an address it covers, or is said', async () => {
+  const taxOn = { env: stagingEnv({ STRIPE_AUTOMATIC_TAX: 'true' }) };
+  const config = { ...CONFIG, automaticTax: true };
+  /** @param {any[]} registrations */
+  const only = (registrations) => (/** @type {any} */ s) => { s.registrations = registrations; for (const x of s.prices.values()) x.tax_behavior = 'exclusive'; };
+  const reg = (country, type, extra = {}) => ({ id: `taxreg_Sbx${country}1`, object: 'tax.registration', country, status: 'active', country_options: { [country.toLowerCase()]: { type, ...extra } }, livemode: false });
+  /** the line, with or without what it found after it @param {{ out: string[] }} w @param {string} line */
+  const has = (w, line) => w.out.some((l) => l === line || l.startsWith(`${line}  `));
+  // the EU's One Stop Shop (non-Union scheme) in Ireland, verified Collecting, and no AU registration: P0 passes
+  const ie = world({ ...taxOn, box: { edit: only([reg('IE', 'oss_non_union')]) } });
+  assert.equal(await ie.drive(['--phases', 'P0'], { config }), 0, ie.out.join('\n'));
+  for (const want of ['PASS  P0 tax: an active (Collecting) registration while automatic_tax is on  IE', 'PASS  P0 tax (IE): a test calculation for an address in Dublin, IE', 'PASS  P0 tax (IE): taxability_reason is not not_collecting  standard_rated']) {
+    assert.ok(ie.out.includes(want), `${want}\n${ie.out.join('\n')}`);
+  }
+  // the Union scheme (in Germany) covers the other member states: the address is in France
+  const de = world({ ...taxOn, box: { edit: only([reg('DE', 'oss_union')]) } });
+  assert.equal(await de.drive(['--phases', 'P0'], { config }), 0, de.out.join('\n'));
+  assert.ok(has(de, 'PASS  P0 tax (DE): a test calculation for an address in Paris, FR'), de.out.join('\n'));
+  // two registrations: a calculation for each
+  const two = world({ ...taxOn, box: { edit: only([reg('AU', 'standard'), reg('GB', 'standard')]) } });
+  assert.equal(await two.drive(['--phases', 'P0'], { config }), 0, two.out.join('\n'));
+  for (const c of ['AU', 'GB']) assert.ok(has(two, `PASS  P0 tax (${c}): taxability_reason is not not_collecting`), c);
+  // a registration the driver has no address for (a US state): said, and its calculation left to the owner
+  const us = world({ ...taxOn, box: { edit: only([reg('US', 'state_sales_tax', { state: 'CA' })]) } });
+  assert.equal(await us.drive(['--phases', 'P0'], { config }), 0, us.out.join('\n'));
+  assert.ok(us.out.includes('INFO  P0 tax (US): no test address here for this registration (state_sales_tax): run its test calculation yourself (docs/PAYMENTS.md "Stripe Tax")'), us.out.join('\n'));
+  assert.ok(!us.box.s.calls.some((c) => c.path === '/v1/tax/calculations'));
+  // none at all, with automatic_tax on: fails
+  const none = world({ ...taxOn, box: { edit: only([]) } });
+  assert.equal(await none.drive(['--phases', 'P0'], { config }), 1);
+  assert.deepEqual(none.out.filter((l) => l.startsWith('FAIL')), ['FAIL  P0 tax: an active (Collecting) registration while automatic_tax is on']);
+  assert.ok(!none.box.s.calls.some((c) => c.path === '/v1/tax/calculations'));
+  // a registration that covers the address but collects nothing there: fails, whichever country
+  const gap = world({ ...taxOn, box: { edit: (/** @type {any} */ s) => { only([reg('NZ', 'standard')])(s); s.taxReason = 'not_collecting'; } } });
+  assert.equal(await gap.drive(['--phases', 'P0'], { config }), 1);
+  assert.ok(gap.out.includes('FAIL  P0 tax (NZ): taxability_reason is not not_collecting  not_collecting'), gap.out.join('\n'));
+  // the addresses
+  assert.equal(D.taxTestAddress(reg('AU', 'standard')), D.TAX_TEST_ADDRESSES.AU);
+  assert.equal(D.taxTestAddress(reg('FR', 'oss_union')), D.TAX_TEST_ADDRESSES.DE);
+  assert.equal(D.taxTestAddress(reg('NL', 'oss_non_union')), D.TAX_TEST_ADDRESSES.DE);
+  assert.equal(D.taxTestAddress(reg('IE', 'ioss')), null);
+  assert.equal(D.taxTestAddress(reg('JP', 'standard')), null);
+  assert.equal(D.taxTestAddress(null), null);
+  assertQuiet([...ie.out, ...de.out, ...two.out, ...us.out, ...none.out, ...gap.out]);
+});
+
+test('P0: a US-dollar price with another currency added (currency_options) fails, as the Worker refuses it; one with only USD passes', async () => {
+  const w = world({ box: { edit: (/** @type {any} */ s) => { s.prices.get(F.PRICES.paidMonthly).currency_options = { usd: { unit_amount: 999 }, aud: { unit_amount: 1499 } }; } } });
+  assert.equal(await w.drive(['--phases', 'P0']), 1);
+  // (the sandbox, as Stripe, sends currency_options only when the read expands it: the driver does)
+  assert.deepEqual(w.out.filter((l) => l.startsWith('FAIL')), ['FAIL  P0 price hushmallow.paid.monthly: USD, recurring every 1 month, its slot\'s amount, active, lookup key its own or none  breaks: currency_options']);
+  const u = world({ box: { edit: (/** @type {any} */ s) => { s.prices.get(F.PRICES.paidMonthly).currency_options = { usd: { unit_amount: 999 } }; } } });
+  assert.equal(await u.drive(['--phases', 'P0']), 0, u.out.join('\n'));
+  assertQuiet([...w.out, ...u.out]);
 });
 
 test('package.json runs the driver as npm run e2e:billing; the driver is never part of npm test or a workflow', async () => {

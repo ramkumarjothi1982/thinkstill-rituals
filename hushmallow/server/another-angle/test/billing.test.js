@@ -234,13 +234,17 @@ function checkWrangler(toml) {
   for (const [name, vars] of Object.entries(tables)) {
     for (const k of ['STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET']) assert.ok(!(k in vars), `${name}: ${k} is a secret (wrangler secret put), never a var`);
     const mode = vars.ENTITLEMENT_MODE;
+    // never one price id in two slots, in any table (src/config.js readBilling would sell neither: duplicateSlots)
+    const ids = Object.keys(PRICE_VARS).filter((k) => k in vars).map((k) => vars[k]);
+    assert.equal(new Set(ids).size, ids.length, `${name}: each STRIPE_PRICE_* holds its own price id, never one another slot also holds`);
     if (!BILLING_VARS.some((k) => k in vars)) {
       // billing off: a mode from before billing existed ("testing" as committed), never one that needs billing
       assert.ok(['testing', 'storekit', 'both'].includes(mode), `${name}: ENTITLEMENT_MODE "${mode}" without the billing vars`);
       continue;
     }
-    // [env.staging]: its billing values are the staging project's and the test prices, placeholders until the owner
-    // creates them (docs/STAGING.md); the staging tests below pin them, and staging never names hushmallow1
+    // [env.staging]: its billing values are the staging project's (placeholders until the owner creates it,
+    // docs/STAGING.md) and the owner's four US-dollar price ids; the staging tests below pin them, and staging never
+    // names hushmallow1
     if (name === 'staging') {
       assert.ok(['billing', 'billing+testing', 'testing'].includes(mode), `staging: ENTITLEMENT_MODE "${mode}"`);
       assert.ok(!String(vars.SUPABASE_URL || '').includes('igbxbfuaoybfzsroxuln'), 'staging never uses the production sign-in project');
@@ -313,6 +317,10 @@ test('wrangler.toml switched on exactly as docs/PAYMENTS.md says passes the same
   assert.throws(() => checkWrangler(switchedOn().replace('igbxbfuaoybfzsroxuln', 'abcdefghijklmnopqrst')), /complete, each with its shape|hushmallow1/);
   assert.throws(() => checkWrangler(switchedOn().replace('APP_ORIGIN = "https://app.hushmallow.com"', 'APP_ORIGIN = "https://hushmallow.com"')), /complete, each with its shape|APP_ORIGIN/);
   assert.throws(() => checkWrangler(switchedOn().replace('price_Rehearsal2', 'prod_Rehearsal2')), /price_ id/);
+  // one id in two slots (Beyond monthly's pasted into Flow monthly's too), in production's [vars] or staging's
+  assert.throws(() => checkWrangler(switchedOn().replace('"price_Rehearsal1"', '"price_Rehearsal3"')), /production: each STRIPE_PRICE_\* holds its own price id/);
+  const staging = varsTables(WRANGLER).staging;
+  assert.throws(() => checkWrangler(WRANGLER.replace(`STRIPE_PRICE_PAID_MONTHLY = "${staging.STRIPE_PRICE_PAID_MONTHLY}"`, `STRIPE_PRICE_PAID_MONTHLY = "${staging.STRIPE_PRICE_ULTRA_MONTHLY}"`)), /staging: each STRIPE_PRICE_\* holds its own price id/);
   // the secrets never as vars, nor anywhere in the file; a public value only on its own line
   assert.throws(() => checkWrangler(switchedOn().replace('APP_ORIGIN =', `STRIPE_SECRET_KEY = "${SK}"\nAPP_ORIGIN =`)), /never a var/);
   assert.throws(() => checkWrangler(`${switchedOn()}\n# whsec_${'q'.repeat(24)}\n`), /no secret/);
@@ -369,6 +377,9 @@ test('checkout: the account is checked with the sign-in project, then a subscrip
     mode: 'subscription', 'line_items[0][price]': PRICES.ultraYearly, 'line_items[0][quantity]': '1', customer: 'cus_New1abc', client_reference_id: UID,
     success_url: `${APP}/?billing=success&session_id={CHECKOUT_SESSION_ID}`, cancel_url: `${APP}/?billing=cancel`,
     'metadata[user_id]': UID, 'metadata[plan]': 'ultra', 'metadata[period]': 'yearly', 'metadata[price]': PRICES.ultraYearly, 'subscription_data[metadata][user_id]': UID,
+    // the owner's Checkout Studio settings (src/billing/routes.js CHECKOUT_STUDIO; test/billing-checkout.test.js has the rest)
+    ui_mode: 'hosted_page', billing_address_collection: 'auto', 'phone_number_collection[enabled]': 'false', 'automatic_tax[enabled]': 'false',
+    allow_promotion_codes: 'false', payment_method_collection: 'always', submit_type: 'auto', origin_context: 'web',
   });
   // Flow monthly maps to its own price
   await s.app.fetch(billingReq('/v1/billing/checkout', { body: { plan: 'paid', period: 'monthly' } }), s.env);
@@ -842,11 +853,17 @@ test('the Worker entry exports the Billing class and serves the billing routes',
 
 // ----------------------------------------------------------------- staging --
 // The staging rehearsal (docs/STAGING.md): [env.staging] alone has billing on, in Stripe TEST mode, for the
-// release branch's preview; its four price ids are placeholders until the owner pastes the real test ids.
+// release branch's preview, with the owner's four US-dollar price ids (2026-10-17; whether they are the sandbox's is
+// for the owner to verify: a live id fails "No such price" at the price check and in the driver's preflight).
 const PREVIEW = 'https://claude-launch-rc.hushmallow.pages.dev';
 const STAGING_PRICE_VARS = ['STRIPE_PRICE_PAID_MONTHLY', 'STRIPE_PRICE_PAID_YEARLY', 'STRIPE_PRICE_ULTRA_MONTHLY', 'STRIPE_PRICE_ULTRA_YEARLY'];
 const PLACEHOLDERS = Object.fromEntries(STAGING_PRICE_VARS.map((k) => [k, 'price_TODO_owner']));
 const REAL_PRICES = { STRIPE_PRICE_PAID_MONTHLY: PRICES.paidMonthly, STRIPE_PRICE_PAID_YEARLY: PRICES.paidYearly, STRIPE_PRICE_ULTRA_MONTHLY: PRICES.ultraMonthly, STRIPE_PRICE_ULTRA_YEARLY: PRICES.ultraYearly };
+/** The owner's four prices (2026-10-17): Flow (prod_VSG7mi9Err8Yxp) US$9.99 / US$99.99, Beyond (prod_VSGH3KuGjUAdQr) US$19.99 / US$199.99. */
+const OWNER_PRICES = {
+  STRIPE_PRICE_PAID_MONTHLY: 'price_1URLbJL2iXNcXbZPceXTGXsH', STRIPE_PRICE_PAID_YEARLY: 'price_1URLeGL2iXNcXbZPz31feM3V',
+  STRIPE_PRICE_ULTRA_MONTHLY: 'price_1URLlFL2iXNcXbZPGjBOF6zy', STRIPE_PRICE_ULTRA_YEARLY: 'price_1URLv2L2iXNcXbZP6vLFoAtV',
+};
 
 /** A made-up staging project (20-character ref) for the cases "once the owner has created hushmallow-staging". */
 const STAGING_SUPABASE = 'https://hmstagingtest0000000.supabase.co';
@@ -875,7 +892,7 @@ function tomlVars(toml, table) {
   return out;
 }
 
-test('wrangler.toml [env.staging]: billing+testing for staging only, the preview origin, its own placeholder sign-in project and four placeholder prices', async () => {
+test('wrangler.toml [env.staging]: billing+testing for staging only, the preview origin, its own placeholder sign-in project and the owner\'s four price ids; production unchanged', async () => {
   const toml = readFileSync(new URL('../wrangler.toml', import.meta.url), 'utf8');
   const prod = tomlVars(toml, 'vars'), dev = tomlVars(toml, 'env.dev.vars'), staging = tomlVars(toml, 'env.staging.vars');
   // production and dev exactly as before
@@ -895,11 +912,16 @@ test('wrangler.toml [env.staging]: billing+testing for staging only, the preview
   assert.equal(staging.SUPABASE_URL, 'https://STAGING_TODO.supabase.co');
   assert.equal(staging.SUPABASE_PUBLISHABLE_KEY, 'sb_publishable_TODO');
   assert.doesNotMatch(toml.split(/^\[env\.staging\]$/m)[1], /igbxbfuaoybfzsroxuln|sb_publishable_NSv1/, 'nothing of production\'s project in [env.staging]');
-  for (const k of STAGING_PRICE_VARS) assert.equal(staging[k], 'price_TODO_owner', `${k}: a marked placeholder`);
+  // the owner's four prices, each in its own slot, none a placeholder; and none of them anywhere in production or dev
+  for (const k of STAGING_PRICE_VARS) assert.equal(staging[k], OWNER_PRICES[k], k);
+  assert.equal(new Set(STAGING_PRICE_VARS.map((k) => staging[k])).size, 4, 'four different ids');
+  for (const id of Object.values(OWNER_PRICES)) assert.equal(toml.split(id).length, 2, `${id}: only in [env.staging.vars]`);
+  assert.ok(toml.indexOf(OWNER_PRICES.STRIPE_PRICE_PAID_MONTHLY) > toml.indexOf('[env.staging.vars]'));
   // secrets are never vars; the rest of staging is as it was (the real model, a $3 cap, https, browsers only)
   for (const k of ['STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET', 'ANTHROPIC_API_KEY', 'TOKEN_SIGNING_KEY', 'TESTER_INVITE_CODES']) assert.equal(staging[k], undefined, k);
   assert.deepEqual([staging.PROVIDER, staging.DAILY_SPEND_CAP_USD, staging.REQUIRE_HTTPS, staging.ALLOW_NO_ORIGIN], ['anthropic', '3', 'true', 'false']);
-  // as the staging Worker reads it once the owner's TEST secrets are set: still off while the prices and the accounts are placeholders
+  // as the staging Worker reads it once the owner's TEST secrets are set: the four prices taken as they are, still
+  // off while the accounts are placeholders
   const cfg = readConfig({ ...staging, STRIPE_SECRET_KEY: TEST_SK, STRIPE_WEBHOOK_SECRET: WHSEC });
   assert.equal(cfg.entitlementMode, 'billing+testing');
   assert.equal(cfg.billing.appOrigin, PREVIEW);
@@ -907,21 +929,27 @@ test('wrangler.toml [env.staging]: billing+testing for staging only, the preview
   assert.equal(cfg.billing.accountsPlaceholder, true);
   assert.equal(cfg.billing.supabaseUrl, '');
   assert.equal(cfg.billing.supabaseKey, '');
-  assert.deepEqual(cfg.billing.prices, { paid: { monthly: '', yearly: '' }, ultra: { monthly: '', yearly: '' } });
-  assert.equal(cfg.billing.placeholderPrices, 4);
+  assert.deepEqual(cfg.billing.prices, {
+    paid: { monthly: OWNER_PRICES.STRIPE_PRICE_PAID_MONTHLY, yearly: OWNER_PRICES.STRIPE_PRICE_PAID_YEARLY },
+    ultra: { monthly: OWNER_PRICES.STRIPE_PRICE_ULTRA_MONTHLY, yearly: OWNER_PRICES.STRIPE_PRICE_ULTRA_YEARLY },
+  });
+  assert.equal(cfg.billing.placeholderPrices, 0);
   assert.equal(cfg.billing.configured, false);
   // …still off with the four test price ids alone: the accounts are placeholders
   assert.equal(readConfig({ ...staging, ...REAL_PRICES, STRIPE_SECRET_KEY: TEST_SK, STRIPE_WEBHOOK_SECRET: WHSEC }).billing.configured, false);
-  // …and on, once the staging project exists too (its URL in src/config.js and in [env.staging.vars], and its key)
+  // …and on, once the staging project exists too (its URL in src/config.js and in [env.staging.vars], and its key),
+  // with the committed price ids as they are
   const { readConfig: readWithStaging } = await withStagingProject(STAGING_SUPABASE);
-  const on = readWithStaging({ ...staging, ...REAL_PRICES, SUPABASE_URL: STAGING_SUPABASE, SUPABASE_PUBLISHABLE_KEY: PK, STRIPE_SECRET_KEY: TEST_SK, STRIPE_WEBHOOK_SECRET: WHSEC }).billing;
+  const on = readWithStaging({ ...staging, SUPABASE_URL: STAGING_SUPABASE, SUPABASE_PUBLISHABLE_KEY: PK, STRIPE_SECRET_KEY: TEST_SK, STRIPE_WEBHOOK_SECRET: WHSEC }).billing;
   assert.equal(on.configured, true);
+  assert.equal(on.prices.ultra.monthly, OWNER_PRICES.STRIPE_PRICE_ULTRA_MONTHLY);
   assert.equal(on.supabaseUrl, STAGING_SUPABASE);
   assert.equal(on.placeholderPrices, 0);
   assert.equal(on.accountsPlaceholder, false);
-  // production's [vars] never turn billing on
+  // production's [vars] never turn billing on: no billing var at all (the live activation is its own commit, BILLING_LIVE)
   assert.equal(readConfig(prod).billing.configured, false);
   assert.equal(readConfig(prod).entitlementMode, 'testing');
+  assert.deepEqual(Object.keys(prod).filter((k) => /^(?:STRIPE_|BILLING_|SUPABASE_|APP_ORIGIN|ACCOUNTS_STAGE)/.test(k) && k !== 'BILLING_IP_LIMITER'), []);
 });
 
 test('the staging Worker\'s sign-in project: placeholders mean "accounts not configured" (503 accounts_not_configured), and nothing is asked', async () => {
@@ -953,7 +981,7 @@ test('the staging Worker\'s sign-in project: placeholders mean "accounts not con
   assert.equal(s.up.calls.length, 0);
   assert.ok(s.logs.some((l) => JSON.parse(l).err === 'accounts_not_configured'), 'the log line says why');
   assertClean(s.logs);
-  // with the price placeholders too (wrangler.toml [env.staging] as it is): the accounts are named first
+  // with the price placeholders too (as [env.staging] had them before the owner's ids): the accounts are named first
   const both = setup({ env: billingEnv({ ...ACCOUNTS, ...PLACEHOLDERS }) });
   assert.equal((await (await both.app.fetch(billingReq('/v1/billing/status'), both.env)).json()).error.code, 'accounts_not_configured');
   assert.deepEqual((await (await both.app.fetch(req('/v1/health'), both.env)).json()).billing, { configured: false, webhook: true, placeholder_prices: 4, accounts_configured: false, ...FLAGS.test });

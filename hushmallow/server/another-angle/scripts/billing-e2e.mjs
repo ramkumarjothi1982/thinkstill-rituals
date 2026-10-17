@@ -28,7 +28,7 @@
 import { realpathSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { STAGING_SUPABASE_PROJECT_URL, SUPABASE_PROJECT_URL, STRIPE_API_VERSION_EXPECTED } from '../src/config.js';
-import { EVENTS, priceFault } from '../src/billing/routes.js';
+import { EVENTS, priceFault, CHECKOUT_PRICE_RULES } from '../src/billing/routes.js';
 import { formEncode } from '../src/billing/stripe.js';
 import { uidOf } from '../src/billing/account.js';
 import { idOf, TERMINAL, PAST_DUE_GRACE_MS } from '../src/billing/store.js';
@@ -41,9 +41,14 @@ export const PRODUCTION_APP = 'https://app.hushmallow.com';
 /** Test keys only: a restricted key (recommended) or the sandbox's secret key. */
 export const E2E_KEY = /^(?:rk|sk)_test_[A-Za-z0-9]{8,}$/;
 export const PHASES = Object.freeze(['P0', 'P1', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8', 'S9']);
-/** The owner's provisional sandbox amounts in cents (decision D2, docs/STAGING.md): Stripe and BILLING_PRICES must both say these. */
-/** @type {Readonly<Record<string, number>>} */
-export const SANDBOX_AMOUNTS = Object.freeze({ 'hushmallow.paid.monthly': 999, 'hushmallow.paid.yearly': 9999, 'hushmallow.ultra.monthly': 1999, 'hushmallow.ultra.yearly': 19999 });
+/**
+ * The owner's amounts in US cents (decision D2, in US dollars since 2026-10-17, docs/STAGING.md), by product id: the
+ * Worker's own (CHECKOUT_PRICE_RULES.unit_amount, which checkout sells only), and Stripe and BILLING_PRICES must both say these.
+ * @type {Readonly<Record<string, number>>}
+ */
+export const SANDBOX_AMOUNTS = Object.freeze(Object.fromEntries((/** @type {const} */ (['paid', 'ultra'])).flatMap((plan) => (
+  (/** @type {const} */ (['monthly', 'yearly'])).map((period) => [`hushmallow.${plan}.${period}`, CHECKOUT_PRICE_RULES.unit_amount[plan][period]])
+))));
 export const PRODUCT_NAMES = Object.freeze({ paid: 'hushmallow Flow', ultra: 'hushmallow Beyond' });
 /** One status read per 5 s at most: the billing routes allow 20 a minute per network (BILLING_IP_LIMITER). */
 export const STATUS_POLL_MS = 5000;
@@ -63,6 +68,36 @@ export const MAX_ADVANCE_S = 50 * 86400;
 export const MAX_RETRY_ADVANCES = 12;
 const DAY_S = 86400;
 const SUB = /^sub_[A-Za-z0-9]{4,250}$/;
+/**
+ * Addresses for P0's test tax calculations, by country: a few jurisdictions the owner may register in (made-up street
+ * numbers in real cities). A registration elsewhere is said, and its calculation is the owner's to run.
+ */
+export const TAX_TEST_ADDRESSES = Object.freeze({
+  AU: Object.freeze({ line1: '1 Martin Place', city: 'Sydney', state: 'NSW', postal_code: '2000', country: 'AU' }),
+  NZ: Object.freeze({ line1: '1 Queen Street', city: 'Auckland', postal_code: '1010', country: 'NZ' }),
+  GB: Object.freeze({ line1: '1 Victoria Street', city: 'London', postal_code: 'SW1H 0ET', country: 'GB' }),
+  IE: Object.freeze({ line1: '1 Grafton Street', city: 'Dublin', country: 'IE' }),
+  DE: Object.freeze({ line1: 'Unter den Linden 1', city: 'Berlin', postal_code: '10117', country: 'DE' }),
+  FR: Object.freeze({ line1: '1 Rue de Rivoli', city: 'Paris', postal_code: '75001', country: 'FR' }),
+});
+/** A Stripe Tax registration's type in its own country (standard, oss_union, state_sales_tax…), or ''. @param {any} reg */
+const regType = (reg) => String(reg?.country_options?.[String(reg?.country || '').toLowerCase()]?.type || '');
+/**
+ * An address a Stripe Tax registration covers, for a test calculation, or null (none here). The EU's One Stop Shop: the
+ * Union scheme covers sales to the other member states (an address in one of them), the non-Union scheme all of them
+ * (its own country's address, or Germany's); the import scheme covers goods only, none of ours.
+ * @param {any} reg @returns {Readonly<Record<string, string>> | null}
+ */
+export function taxTestAddress(reg) {
+  const country = String(reg?.country || '').toUpperCase();
+  const type = regType(reg);
+  /** @type {Readonly<Record<string, Readonly<Record<string, string>>>>} */
+  const at = TAX_TEST_ADDRESSES;
+  if (type === 'ioss') return null;
+  if (type === 'oss_union') return at[country === 'DE' ? 'FR' : 'DE'];
+  if (type === 'oss_non_union') return at[country] || at.DE;
+  return at[country] || null;
+}
 
 /**
  * @typedef {{ paid: { monthly: string, yearly: string }, ultra: { monthly: string, yearly: string } }} Prices
@@ -95,11 +130,12 @@ export function refusal(env, needsAccount = true) {
 
 /**
  * The non-secret values, from the repository: wrangler.toml [env.staging.vars] and [vars], src/config.js and the app's
- * BILLING_PRICES. → { config } or { problems } (a placeholder still there).
+ * BILLING_PRICES. → { config } or { problems } (a placeholder still there, or one price id in two slots).
+ * @param {string} [toml] wrangler.toml's text (the repository's when left out)
  * @returns {Promise<{ config: Config, problems: string[] }>}
  */
-export async function repoConfig() {
-  const t = varsTables(readWrangler());
+export async function repoConfig(toml = readWrangler()) {
+  const t = varsTables(toml);
   const s = t.staging || {}, p = t.production || {};
   // not a literal import, so the app's own file is not type-checked as the server's
   const app = await import(new URL('../../../src/app/config.js', import.meta.url).href);
@@ -128,6 +164,9 @@ export async function repoConfig() {
     production: { mode: p.ENTITLEMENT_MODE || 'testing', liveApproved: p.BILLING_LIVE === 'approved' },
   };
   if (!config.appOrigin) problems.push('[env.staging.vars] APP_ORIGIN is not set');
+  // the Worker sells no slot whose id is also in another (src/config.js duplicateSlots)
+  const four = [config.prices.paid.monthly, config.prices.paid.yearly, config.prices.ultra.monthly, config.prices.ultra.yearly].filter(Boolean);
+  if (new Set(four).size !== four.length) problems.push('[env.staging.vars] the same price id is in more than one STRIPE_PRICE_* slot');
   return { config, problems };
 }
 
@@ -212,8 +251,8 @@ const subOf = (o) => (o?.object === 'subscription' ? idOf(o.id) : idOf(o?.subscr
 const periodEnd = (s) => Math.max(Number(s?.current_period_end) || 0, ...(Array.isArray(s?.items?.data) ? s.items.data : []).map((/** @type {any} */ i) => Number(i?.current_period_end) || 0));
 /** An ISO date within a day of `sec`. @param {unknown} isoDate @param {number} sec */
 const near = (isoDate, sec) => typeof isoDate === 'string' && Math.abs(Date.parse(isoDate) / 1000 - sec) <= DAY_S;
-/** @param {number} cents */
-const aud = (cents) => `A$${(cents / 100).toFixed(2)}`;
+/** An amount in US dollars as BILLING_PRICES writes it. @param {number} cents */
+const usd = (cents) => `US$${(cents / 100).toFixed(2)}`;
 /** @param {any} s */
 const desc = (s) => (s ? `${s.tier}/${s.status}${s.ends_at ? ` ends ${String(s.ends_at).slice(0, 10)}` : ''}` : 'no answer');
 
@@ -289,28 +328,29 @@ export async function run({ env = process.env, args = [], fetch: f = (input, ini
     check(b.api_version === cfg.apiVersion, `P0 staging: api_version ${cfg.apiVersion}`, String(b.api_version));
     check(b.live_approved === false, 'P0 staging: live_approved false', String(b.live_approved));
     check(b.automatic_tax === cfg.automaticTax, `P0 staging: automatic_tax ${cfg.automaticTax}, as [env.staging.vars] says`, String(b.automatic_tax));
-    check(!('placeholder_prices' in b) && b.accounts_configured !== false, 'P0 staging: no placeholder prices or sign-in values');
+    check(!('placeholder_prices' in b) && !('duplicate_prices' in b) && b.accounts_configured !== false, 'P0 staging: no placeholder prices or sign-in values, no price id in two slots');
     const p = await production('/v1/health', { method: 'GET' });
     const pb = p.json?.billing || {};
     check(p.status === 200 && p.json?.entitlement_mode === cfg.production.mode, `P0 production: entitlement_mode ${cfg.production.mode}, as [vars] says`, `${p.status} ${p.json?.entitlement_mode}`);
     if (!cfg.production.liveApproved) check(pb.configured === false && pb.live_approved === false && pb.stripe_mode === null, 'P0 production: billing off (no approval, no key)', JSON.stringify({ configured: pb.configured, stripe_mode: pb.stripe_mode }));
 
-    // the four prices, by lookup key: what the Worker sells (priceFault), at the sandbox amounts, under the products' names
-    const keys = Object.keys(SANDBOX_AMOUNTS);
-    const pr = await stripe.get('/v1/prices', { lookup_keys: keys, expand: ['data.product'], limit: 10 });
-    check(pr.ok, 'P0 prices: listed by lookup key', pr.ok ? '' : `${pr.status} ${pr.code}`);
-    /** @type {any[]} */
-    const list = pr.ok && Array.isArray(pr.data.data) ? pr.data.data : [];
-    for (const k of keys) {
+    // the four prices, by the ids in [env.staging.vars] (a lookup key is optional: the id is then the mapping): what the
+    // Worker sells (priceFault, its slot's amount included), under the products' names, so two ids swapped while pasting
+    // show here as the wrong amount or name. An id of the other mode (a live price) is not found with this test key.
+    /** @type {Record<string, any>} */
+    const read = {};
+    for (const k of Object.keys(SANDBOX_AMOUNTS)) {
       const [, plan, period] = /** @type {[string, 'paid' | 'ultra', 'monthly' | 'yearly']} */ (/** @type {unknown} */ (/^hushmallow\.(paid|ultra)\.(monthly|yearly)$/.exec(k)));
-      const x = list.find((y) => y?.lookup_key === k);
-      if (!check(!!x, `P0 price ${k}: exists`)) continue;
-      const fault = priceFault(x, plan, period);
-      check(!fault, `P0 price ${k}: AUD, recurring every 1 ${period === 'monthly' ? 'month' : 'year'}, inclusive, active`, fault ? `breaks: ${fault}` : '');
-      check(x.unit_amount === SANDBOX_AMOUNTS[k], `P0 price ${k}: ${aud(SANDBOX_AMOUNTS[k])}`, typeof x.unit_amount === 'number' ? aud(x.unit_amount) : '');
+      // with its product, and every currency it can be charged in (US dollars only: priceFault, as the Worker reads it)
+      const pr = await stripe.get(`/v1/prices/${encodeURIComponent(cfg.prices[plan][period])}`, { expand: ['product', 'currency_options'] });
+      if (!check(pr.ok, `P0 price ${k}: the id in [env.staging.vars] is a price of this sandbox`, pr.ok ? '' : `${pr.status} ${pr.code}`)) continue;
+      const x = read[k] = pr.data;
+      const fault = priceFault(x, plan, period, cfg.automaticTax);
+      check(!fault, `P0 price ${k}: USD, recurring every 1 ${period === 'monthly' ? 'month' : 'year'}, its slot's amount, active, lookup key its own or none${cfg.automaticTax ? ', tax behaviour inclusive or exclusive' : ''}`, fault ? `breaks: ${fault}` : '');
+      if (!x.lookup_key) info(`P0 price ${k}: no lookup key, so the configured id decides its plan (the Worker checks its amount; a lookup key of ${k} would also tie it to its slot)`);
+      check(x.unit_amount === SANDBOX_AMOUNTS[k], `P0 price ${k}: ${usd(SANDBOX_AMOUNTS[k])}`, typeof x.unit_amount === 'number' ? usd(x.unit_amount) : '');
       check(x.product?.name === PRODUCT_NAMES[plan], `P0 price ${k}: product "${PRODUCT_NAMES[plan]}"`, x.product?.name ? `"${x.product.name}"` : '');
-      check(x.id === cfg.prices[plan][period], `P0 price ${k}: the id in [env.staging.vars]`);
-      check(cfg.billingPrices[k] === aud(SANDBOX_AMOUNTS[k]), `P0 price ${k}: BILLING_PRICES says ${aud(SANDBOX_AMOUNTS[k])}`, String(cfg.billingPrices[k] || ''));
+      check(cfg.billingPrices[k] === usd(SANDBOX_AMOUNTS[k]), `P0 price ${k}: BILLING_PRICES says ${usd(SANDBOX_AMOUNTS[k])}`, String(cfg.billingPrices[k] || ''));
     }
 
     // the staging webhook endpoint: enabled, on the pinned version, with exactly the events the Worker handles
@@ -341,31 +381,44 @@ export async function run({ env = process.env, args = [], fetch: f = (input, ini
       info(`P0 portal: proration on plan changes: ${ft.subscription_update?.proration_behavior || 'not said'} (D8)`);
     }
 
-    // Stripe Tax: active settings with an inclusive default; automatic_tax only with an active AU registration
+    // Stripe Tax: automatic_tax only with active settings and an active registration, in whichever jurisdictions the
+    // owner and their adviser chose (D3; with prices in US dollars, not Australia's alone); while it is off, both are
+    // only said
     const ts = await stripe.get('/v1/tax/settings');
     if (check(ts.ok, 'P0 tax: settings read', ts.ok ? '' : `${ts.status} ${ts.code}`)) {
-      check(ts.data.status === 'active', 'P0 tax: settings status active (head office set)', String(ts.data.status));
-      check(ts.data.defaults?.tax_behavior === 'inclusive', 'P0 tax: default tax behaviour inclusive', String(ts.data.defaults?.tax_behavior));
+      if (cfg.automaticTax) check(ts.data.status === 'active', 'P0 tax: settings status active (head office set) while automatic_tax is on', String(ts.data.status));
+      else info(`P0 tax: settings status ${String(ts.data.status)}, default tax behaviour ${String(ts.data.defaults?.tax_behavior)} (automatic_tax is off)`);
     }
     const tr = await stripe.get('/v1/tax/registrations', { status: 'active', limit: 100 });
-    const au = tr.ok && Array.isArray(tr.data.data) ? tr.data.data.find((/** @type {any} */ r) => r?.country === 'AU' && r?.status === 'active') : null;
-    if (cfg.automaticTax) check(!!au, 'P0 tax: an active (Collecting) AU registration while automatic_tax is on', tr.ok ? '' : `${tr.status} ${tr.code}`);
-    else info(au ? 'P0 tax: the AU registration is active; STRIPE_AUTOMATIC_TAX may be turned on once the calculation below passes (D3)' : 'P0 tax: no active AU registration, and automatic_tax is off, as it must be');
-    if (au) {
-      const beyond = list.find((y) => y?.lookup_key === 'hushmallow.ultra.monthly');
+    /** @type {any[]} */
+    const regs = tr.ok && Array.isArray(tr.data.data) ? tr.data.data.filter((/** @type {any} */ r) => r?.status === 'active' && typeof r.country === 'string') : [];
+    const where = regs.map((r) => r.country).join(', ');
+    if (cfg.automaticTax) check(regs.length > 0, 'P0 tax: an active (Collecting) registration while automatic_tax is on', tr.ok ? where : `${tr.status} ${tr.code}`);
+    else info(regs.length ? `P0 tax: active registrations: ${where}; STRIPE_AUTOMATIC_TAX may be turned on once each calculation below passes (D3)` : 'P0 tax: no active registration, and automatic_tax is off, as it must be');
+    if (regs.length) {
+      const beyond = read['hushmallow.ultra.monthly'];
       const code = (typeof beyond?.product?.tax_code === 'string' ? beyond.product.tax_code : beyond?.product?.tax_code?.id) || (ts.ok ? ts.data.defaults?.tax_code : null);
       if (cfg.automaticTax) check(!!code, 'P0 tax: a product tax code is set (the owner\'s choice, D4)');
       else info(`P0 tax: a product tax code is ${code ? 'set' : 'not set yet (the owner\'s choice, D4)'}`);
       const amount = SANDBOX_AMOUNTS['hushmallow.ultra.monthly'];
-      const calc = await stripe.post('/v1/tax/calculations', {
-        currency: 'aud',
-        line_items: [{ amount, reference: `e2e-${runId}`, tax_behavior: 'inclusive', ...(code ? { tax_code: code } : {}) }],
-        customer_details: { address: { line1: '1 Martin Place', city: 'Sydney', state: 'NSW', postal_code: '2000', country: 'AU' }, address_source: 'billing' },
-      });
-      if (check(calc.ok, 'P0 tax: a test calculation for a Sydney address', calc.ok ? '' : `${calc.status} ${calc.code}`)) {
+      // the price's own tax behaviour (with automatic_tax on it must have one), else the settings' default, else exclusive
+      const behaviour = [beyond?.tax_behavior, ts.ok ? ts.data.defaults?.tax_behavior : null].find((x) => CHECKOUT_PRICE_RULES.tax_behavior.includes(x)) || 'exclusive';
+      // a test calculation for each registration, at an address it covers (TAX_TEST_ADDRESSES); one the driver has no
+      // address for is said, and that calculation is the owner's to run (docs/PAYMENTS.md "Stripe Tax")
+      for (const reg of regs.slice(0, 10)) {
+        const tag = `P0 tax (${String(reg.country).slice(0, 2)})`;
+        const address = taxTestAddress(reg);
+        if (!address) { info(`${tag}: no test address here for this registration${regType(reg) ? ` (${regType(reg)})` : ''}: run its test calculation yourself (docs/PAYMENTS.md "Stripe Tax")`); continue; }
+        const calc = await stripe.post('/v1/tax/calculations', {
+          currency: CHECKOUT_PRICE_RULES.currency,
+          line_items: [{ amount, reference: `e2e-${runId}`, tax_behavior: behaviour, ...(code ? { tax_code: code } : {}) }],
+          customer_details: { address, address_source: 'billing' },
+        });
+        if (!check(calc.ok, `${tag}: a test calculation for an address in ${address.city}, ${address.country}`, calc.ok ? '' : `${calc.status} ${calc.code}`)) continue;
         const reasons = (Array.isArray(calc.data.tax_breakdown) ? calc.data.tax_breakdown : []).map((/** @type {any} */ x) => String(x?.taxability_reason));
-        check(reasons.length > 0 && !reasons.includes('not_collecting'), 'P0 tax: taxability_reason is not not_collecting', reasons.join(',') || 'none');
-        check(calc.data.amount_total === amount, `P0 tax: the total stays ${aud(amount)} (inclusive)`, typeof calc.data.amount_total === 'number' ? aud(calc.data.amount_total) : '');
+        check(reasons.length > 0 && !reasons.includes('not_collecting'), `${tag}: taxability_reason is not not_collecting`, reasons.join(',') || 'none');
+        if (behaviour === 'inclusive') check(calc.data.amount_total === amount, `${tag}: the total stays ${usd(amount)} (inclusive)`, typeof calc.data.amount_total === 'number' ? usd(calc.data.amount_total) : '');
+        else info(`${tag}: tax behaviour exclusive: the tax is added on top of ${usd(amount)}, a total of ${typeof calc.data.amount_total === 'number' ? usd(calc.data.amount_total) : 'not said'}`);
       }
     }
     check(true, 'P0: every Stripe object read had livemode false');

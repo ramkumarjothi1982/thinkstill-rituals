@@ -1,21 +1,24 @@
 // Checkout, the return sync and the portal's plan change (src/billing/routes.js), against the fake Stripe of
 // test/billing-fixtures.js: the price check before selling, one customer and one subscription per account (checked
-// at Stripe), the previous Checkout Session settled first, the Stripe Tax switch and integration_identifier on the
-// session's form, POST /v1/billing/sync after Checkout, and the portal's intent 'switch'.
+// at Stripe), the previous Checkout Session settled first, the Checkout Studio settings, the Stripe Tax switch and
+// integration_identifier on the session's form (and STRIPE_INTEGRATION_TODO.md saying the same), POST /v1/billing/sync
+// after Checkout, and the portal's intent 'switch'.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { existsSync, readFileSync } from 'node:fs';
 import { req, denyAll, allowAll, clock, ORIGIN, CLOCK_START } from './helpers.js';
 import {
   createBilling, CHECKOUT_PRICE_RULES, CHECKOUT_PRICE_CACHE_MS, CHECKOUT_INTEGRATION_IDENTIFIER, CHECKOUT_INTEGRATION_IDENTIFIER_SINCE,
-  integrationIdentifierOn, priceFault, PATHS, HELD_STATUSES,
+  CHECKOUT_STUDIO, CHECKOUT_TAX, checkoutSettings, integrationIdentifierOn, priceFault, PATHS, HELD_STATUSES, EVENTS,
 } from '../src/billing/routes.js';
+import { formEncode } from '../src/billing/stripe.js';
 import { billingClient } from '../src/billing/store.js';
 import { createLogger } from '../src/log.js';
-import { STRIPE_API_VERSION_EXPECTED } from '../src/config.js';
+import { STRIPE_API_VERSION_EXPECTED, readConfig } from '../src/config.js';
 import {
   upstream, billingEnv, subscription, setup, billingReq, subscribe, status, lines, jwt, assertClean, withStagingProject, price, event, deliver,
-  UID, OTHER, TOKEN, PRICES, APP, DAY, SUPABASE, STAGING_SUPABASE,
+  UID, OTHER, TOKEN, PRICES, APP, DAY, SUPABASE, STAGING_SUPABASE, varsTables, WRANGLER,
 } from './billing-fixtures.js';
 
 const ULTRA_M = { plan: 'ultra', period: 'monthly' };
@@ -31,7 +34,7 @@ const allLogs = [];
 const track = (s) => { allLogs.push(s.logs); return s; };
 
 // ------------------------------------------------------------ the form --
-test('checkout form: the customer always; tax on adds automatic_tax, customer_update and billing_address_collection; a 2026-03-25+ pin adds integration_identifier; never payment_method_types', async () => {
+test('checkout form: the Studio\'s settings on every session and the account link kept; tax on replaces two of them and adds customer_update; a 2026-03-25+ pin adds integration_identifier; never payment_method_types', async () => {
   const formOf = async (over) => {
     const s = track(setup({ env: billingEnv(over) }));
     const res = await post(s, ULTRA_M);
@@ -45,8 +48,18 @@ test('checkout form: the customer always; tax on adds automatic_tax, customer_up
     success_url: `${APP}/?billing=success&session_id={CHECKOUT_SESSION_ID}`, cancel_url: `${APP}/?billing=cancel`,
     'metadata[user_id]': UID, 'metadata[plan]': 'ultra', 'metadata[period]': 'monthly', 'metadata[price]': PRICES.ultraMonthly,
     'subscription_data[metadata][user_id]': UID,
+    // the owner's Checkout Studio values, exactly
+    ui_mode: 'hosted_page', billing_address_collection: 'auto', 'phone_number_collection[enabled]': 'false', 'automatic_tax[enabled]': 'false',
+    allow_promotion_codes: 'false', payment_method_collection: 'always', submit_type: 'auto', origin_context: 'web',
   };
-  const tax = { 'automatic_tax[enabled]': 'true', 'customer_update[address]': 'auto', billing_address_collection: 'required' };
+  const tax = { 'automatic_tax[enabled]': 'true', billing_address_collection: 'required', 'customer_update[address]': 'auto' };
+  assert.deepEqual(CHECKOUT_STUDIO, {
+    ui_mode: 'hosted_page', billing_address_collection: 'auto', phone_number_collection: { enabled: false }, automatic_tax: { enabled: false },
+    allow_promotion_codes: false, payment_method_collection: 'always', submit_type: 'auto', origin_context: 'web',
+  });
+  assert.deepEqual(CHECKOUT_TAX, { automatic_tax: { enabled: true }, billing_address_collection: 'required', customer_update: { address: 'auto' } });
+  assert.deepEqual(checkoutSettings(false), { ...CHECKOUT_STUDIO });
+  assert.deepEqual(checkoutSettings(true), { ...CHECKOUT_STUDIO, ...CHECKOUT_TAX });
   // tax off (the default) and unpinned: the form, with the customer
   const off = await formOf({});
   assert.deepEqual(off.f, base);
@@ -54,6 +67,7 @@ test('checkout form: the customer always; tax on adds automatic_tax, customer_up
   // STRIPE_AUTOMATIC_TAX on: the customer is always passed, so the address typed at checkout is asked for and saved on it
   const on = await formOf({ STRIPE_AUTOMATIC_TAX: 'true' });
   assert.deepEqual(on.f, { ...base, ...tax });
+  assert.equal(on.f.ui_mode, 'hosted_page', 'the other Studio values stay with tax on');
   // pinned as wrangler.toml pins it: integration_identifier, and the Stripe-Version header
   const pinned = await formOf({ STRIPE_API_VERSION: STRIPE_API_VERSION_EXPECTED });
   assert.deepEqual(pinned.f, { ...base, integration_identifier: CHECKOUT_INTEGRATION_IDENTIFIER });
@@ -70,13 +84,32 @@ test('checkout form: the customer always; tax on adds automatic_tax, customer_up
   assert.equal(integrationIdentifierOn(''), false, 'unpinned');
   assert.equal(integrationIdentifierOn('2026-03-24.clover'), false);
   assert.equal(integrationIdentifierOn('2027-01-01.later'), true);
-  // the label: a fixed name and 8 letters, chosen once and committed
-  assert.match(CHECKOUT_INTEGRATION_IDENTIFIER, /^hushmallow_web_plans_[a-z]{8}$/);
+  // the label: the owner's Checkout Studio value
+  assert.equal(CHECKOUT_INTEGRATION_IDENTIFIER, 'hosted_web_0001');
   assert.equal(CHECKOUT_INTEGRATION_IDENTIFIER_SINCE, '2026-03-25');
   // never payment_method_types (dynamic payment methods), and no trial, promotion code or email (D10, D13, D14)
   for (const { f } of [off, on, pinned, both]) {
-    assert.deepEqual(Object.keys(f).filter((k) => /payment_method|trial|promotion|discounts|customer_email|email/.test(k)), []);
+    assert.deepEqual(Object.keys(f).filter((k) => /payment_method_(?:types|configuration)|trial|discounts|email/.test(k)), []);
+    assert.deepEqual([f.allow_promotion_codes, f.payment_method_collection], ['false', 'always']);
   }
+  // the exact body sent, pinned as wrangler.toml pins it: tax off (the default), then tax on
+  const enc = (pairs) => pairs.map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('&');
+  const sale = [
+    ['mode', 'subscription'], ['line_items[0][price]', PRICES.ultraMonthly], ['line_items[0][quantity]', '1'], ['customer', 'cus_New1abc'], ['client_reference_id', UID],
+    ['success_url', `${APP}/?billing=success&session_id={CHECKOUT_SESSION_ID}`], ['cancel_url', `${APP}/?billing=cancel`],
+    ['metadata[user_id]', UID], ['metadata[plan]', 'ultra'], ['metadata[period]', 'monthly'], ['metadata[price]', PRICES.ultraMonthly], ['subscription_data[metadata][user_id]', UID],
+  ];
+  assert.equal(pinned.c.body, enc([
+    ...sale, ['ui_mode', 'hosted_page'], ['billing_address_collection', 'auto'], ['phone_number_collection[enabled]', 'false'], ['automatic_tax[enabled]', 'false'],
+    ['allow_promotion_codes', 'false'], ['payment_method_collection', 'always'], ['submit_type', 'auto'], ['origin_context', 'web'], ['integration_identifier', 'hosted_web_0001'],
+  ]));
+  assert.equal(both.c.body, enc([
+    ...sale, ['ui_mode', 'hosted_page'], ['billing_address_collection', 'required'], ['phone_number_collection[enabled]', 'false'], ['automatic_tax[enabled]', 'true'],
+    ['allow_promotion_codes', 'false'], ['payment_method_collection', 'always'], ['submit_type', 'auto'], ['origin_context', 'web'], ['customer_update[address]', 'auto'],
+    ['integration_identifier', 'hosted_web_0001'],
+  ]));
+  assert.ok(pinned.c.body.startsWith('mode=subscription&line_items%5B0%5D%5Bprice%5D=price_BeyondMonthly1&line_items%5B0%5D%5Bquantity%5D=1&customer=cus_New1abc&'));
+  assert.ok(pinned.c.body.endsWith('&ui_mode=hosted_page&billing_address_collection=auto&phone_number_collection%5Benabled%5D=false&automatic_tax%5Benabled%5D=false&allow_promotion_codes=false&payment_method_collection=always&submit_type=auto&origin_context=web&integration_identifier=hosted_web_0001'));
   // the customer: the account id only, under customer:<account>
   const made = off.s.up.stripe().filter((c) => c.path === '/v1/customers');
   assert.equal(made.length, 1);
@@ -85,19 +118,66 @@ test('checkout form: the customer always; tax on adds automatic_tax, customer_up
   assertClean(allLogs.flat());
 });
 
+// ------------------------------------------------- the owner's status file --
+test('STRIPE_INTEGRATION_TODO.md says what the code sends: every Studio value, the account link kept and why, the tax switch\'s overrides, the 11 events, the staging ids; its links resolve; no key, account id or publishable key', () => {
+  const HM = new URL('../../../', import.meta.url);
+  const todo = readFileSync(new URL('STRIPE_INTEGRATION_TODO.md', HM), 'utf8');
+  const heads = todo.split('\n').filter((l) => l.startsWith('## '));
+  assert.deepEqual(heads.slice(0, 2), ['## Values to Replace', '## Configured Parameters']);
+  for (const h of ['## Setup', '## Project structure', '## Flow overview', '## Testing', '## Next steps', '## Live activation', '## Resources']) assert.ok(heads.includes(h), h);
+  const section = (h) => todo.split(`\n${h}\n`)[1].split('\n## ')[0];
+  // Values to Replace: none of mode/success_url/cancel_url is a placeholder; what is still unset is named
+  const values = section('## Values to Replace');
+  for (const k of ['mode', 'success_url', 'cancel_url']) assert.match(values, new RegExp(`^\\| \`${k}\` \\|[^\\n]*\\| Set: [^\\n]*\\| Nothing`, 'm'), k);
+  for (const x of [/live mode's own four prices/, /STAGING_TODO/, /STAGING_PROJECT_REF/, /sandbox or live\?[^\n]*\*\*To be verified\*\*/, /No such price/]) assert.match(values, x);
+  // Configured Parameters: each Studio value exactly as the form sends it (the test above), and the label
+  const configured = section('## Configured Parameters');
+  const row = (k, v) => new RegExp(`^\\| \`${k.replace(/[[\]]/g, '\\$&')}\` \\| \`${v}\` \\|`, 'm');
+  for (const [k, v] of [...new URLSearchParams(formEncode(CHECKOUT_STUDIO)), ['integration_identifier', CHECKOUT_INTEGRATION_IDENTIFIER]]) assert.match(configured, row(k, v), k);
+  assert.match(configured, /`hosted` is the older name/, 'the ui_mode version dependency');
+  // the account link kept, with why, as a recorded deviation; never payment_method_types
+  assert.match(configured, /deviation from "remove any parameters absent from the Field Intents"/);
+  for (const k of ['customer', 'client_reference_id', 'metadata\\[user_id\\]', 'subscription_data\\[metadata\\]\\[user_id\\]']) assert.match(configured, new RegExp(`^\\| \`${k}\`[^\\n]*\\| [^|\\n]{12,} \\|$`, 'm'), k);
+  assert.match(configured, /Never sent: `payment_method_types`/);
+  // the tax switch: off is the Studio's value; on overrides two of them and adds customer_update
+  for (const [k, v] of [...new URLSearchParams(formEncode(CHECKOUT_TAX))]) assert.ok(configured.includes(`\`${k}=${v}\``), `${k}=${v}`);
+  assert.match(configured, /deliberately overrides two Studio\s+values/);
+  // the webhook endpoint: exactly the Worker's events, on the pinned version
+  assert.match(todo, new RegExp(`exactly these ${EVENTS.length} events`));
+  for (const e of EVENTS) assert.ok(todo.includes(`\`${e}\``), e);
+  assert.ok(todo.includes(`\`${STRIPE_API_VERSION_EXPECTED}\``));
+  // the staging ids, as [env.staging.vars] has them; the cards; the resources
+  const staging = varsTables(WRANGLER).staging;
+  for (const k of ['STRIPE_PRICE_PAID_MONTHLY', 'STRIPE_PRICE_PAID_YEARLY', 'STRIPE_PRICE_ULTRA_MONTHLY', 'STRIPE_PRICE_ULTRA_YEARLY']) assert.ok(todo.includes(`\`${staging[k]}\``), k);
+  for (const c of ['4242 4242 4242 4242', '4000 0025 0000 3155', '4000 0000 0000 9995', '4000 0000 0000 0341']) assert.ok(todo.includes(c), c);
+  for (const u of ['https://support.stripe.com', 'https://docs.stripe.com/mcp']) assert.ok(todo.includes(u), u);
+  assert.match(todo, /restricted\*\* key, `rk_test_…`, from the \*\*same sandbox as the four prices\*\*/);
+  assert.match(todo, /\*\*No Stripe publishable key is needed\*\*/);
+  // every relative link resolves (from hushmallow/)
+  const links = [...todo.matchAll(/\]\(([^)]+)\)/g)].map((m) => m[1]).filter((l) => !/^https?:/.test(l));
+  assert.ok(links.length >= 8);
+  for (const l of links) assert.ok(existsSync(new URL(l, HM)), l);
+  // never a key, a signing secret, an account id or a publishable key (the secret scan lets publishable keys pass)
+  for (const x of [/\b(?:sk|rk|pk)_(?:test|live)_[A-Za-z0-9]/, /\bwhsec_[A-Za-z0-9]/, /\bacct_[A-Za-z0-9]/, /\bsb_(?:publishable|secret)_[A-Za-z0-9]/]) assert.doesNotMatch(todo, x);
+});
+
 // ------------------------------------------------------- the price check --
 test('price check: a price that is not what its slot says is not sold (503 price_misconfigured, no customer, no session), and says which rule', async () => {
   const cases = [
     // Flow's monthly price in Beyond's monthly slot (two ids swapped while pasting)
     ['lookup_key', (p) => ({ ...p, lookup_key: 'hushmallow.paid.monthly' })],
-    ['lookup_key', (p) => ({ ...p, lookup_key: null })],
-    ['currency', (p) => ({ ...p, currency: 'usd' })],
+    ['lookup_key', (p) => ({ ...p, lookup_key: 'another.app.monthly' })],
+    // the currency before the owner's USD decision, and any other
+    ['currency', (p) => ({ ...p, currency: 'aud' })],
+    ['currency', (p) => ({ ...p, currency: 'USD' })],
     ['type', (p) => ({ ...p, type: 'one_time', recurring: null })],
     ['interval', (p) => ({ ...p, recurring: { ...p.recurring, interval: 'week' } })],
     ['interval_count', (p) => ({ ...p, recurring: { ...p.recurring, interval_count: 3 } })],
+    // not the owner's amount for the slot (D2): Flow monthly's US$9.99, a changed price, none (tiered)
+    ['unit_amount', (p) => ({ ...p, unit_amount: 999 })],
+    ['unit_amount', (p) => ({ ...p, unit_amount: 2499 })],
+    ['unit_amount', (p) => ({ ...p, unit_amount: null, billing_scheme: 'tiered' })],
     ['inactive', (p) => ({ ...p, active: false })],
-    ['tax_behavior', (p) => ({ ...p, tax_behavior: 'exclusive' })],
-    ['tax_behavior', (p) => ({ ...p, tax_behavior: 'unspecified' })],
   ];
   for (const [fault, change] of cases) {
     const s = track(setup());
@@ -133,12 +213,181 @@ test('price check: a price that is not what its slot says is not sold (503 price
   assert.equal((await post(down, ULTRA_M)).status, 200);
   assert.deepEqual(priceReads(down), [PRICES.ultraMonthly, PRICES.ultraMonthly]);
   // the rules, and the check on its own
-  assert.deepEqual(CHECKOUT_PRICE_RULES, { currency: 'aud', tax_behavior: 'inclusive', interval: { monthly: 'month', yearly: 'year' } });
+  assert.deepEqual(CHECKOUT_PRICE_RULES, {
+    currency: 'usd', tax_behavior: ['inclusive', 'exclusive'], interval: { monthly: 'month', yearly: 'year' },
+    unit_amount: { paid: { monthly: 999, yearly: 9999 }, ultra: { monthly: 1999, yearly: 19999 } },
+  });
   for (const [id, plan, period] of [[PRICES.paidMonthly, 'paid', 'monthly'], [PRICES.paidYearly, 'paid', 'yearly'], [PRICES.ultraYearly, 'ultra', 'yearly']]) {
     assert.equal(priceFault(price(id, plan, period), plan, period), '', `${plan} ${period}`);
   }
-  assert.equal(priceFault(null, 'paid', 'monthly'), 'lookup_key');
+  assert.equal(priceFault(null, 'paid', 'monthly'), 'not_a_price');
   assert.equal(priceFault(price(PRICES.paidMonthly, 'paid', 'monthly'), 'paid', 'yearly'), 'lookup_key');
+  assertClean(allLogs.flat());
+});
+
+test('price check: US dollars only; a lookup key is optional (when set, its slot\'s own); any tax behaviour with Stripe Tax off, inclusive or exclusive with it on', async () => {
+  /** checkout of Beyond monthly with its price changed, on this env → [HTTP status, the fault logged or null] */
+  const sell = async (change, over = {}) => {
+    const s = track(setup({ env: billingEnv(over) }));
+    s.up.prices.set(PRICES.ultraMonthly, change(s.up.prices.get(PRICES.ultraMonthly)));
+    const res = await post(s, ULTRA_M);
+    const l = lastLog(s, 'checkout');
+    if (res.status !== 200) assertClean(s.logs, await res.json());
+    return [res.status, l.status === 'price_misconfigured' ? l.err : null, creates(s).length];
+  };
+  const TAX = { STRIPE_AUTOMATIC_TAX: 'true' };
+  // usd sells; the currency the prices had before (aud) does not, whatever else is right
+  assert.equal(CHECKOUT_PRICE_RULES.currency, 'usd');
+  assert.deepEqual(await sell((p) => p), [200, null, 1]);
+  assert.deepEqual(await sell((p) => ({ ...p, currency: 'aud' })), [503, 'currency', 0]);
+  assert.deepEqual(await sell((p) => ({ ...p, currency: 'aud' }), TAX), [503, 'currency', 0]);
+  // US dollars by default, with another currency added ("Add more currencies"): Checkout would charge an Australian
+  // customer A$, so it is not sold. Stripe sends currency_options only expanded, and the Worker asks for it
+  const usdOnly = { usd: { unit_amount: 1999, tax_behavior: 'inclusive' } };
+  assert.deepEqual(await sell((p) => ({ ...p, currency_options: { ...usdOnly, aud: { unit_amount: 2999, tax_behavior: 'inclusive' } } })), [503, 'currency_options', 0]);
+  assert.deepEqual(await sell((p) => ({ ...p, currency_options: { aud: { unit_amount: 2999 } } })), [503, 'currency_options', 0]);
+  assert.deepEqual(await sell((p) => ({ ...p, currency_options: usdOnly })), [200, null, 1]);
+  const read = track(setup());
+  assert.equal((await post(read, ULTRA_M)).status, 200);
+  const priceCall = read.up.stripe().find((c) => c.path === `/v1/prices/${PRICES.ultraMonthly}`);
+  assert.deepEqual([...priceCall.query], [['expand[]', 'currency_options']]);
+  assert.equal(priceFault(price(PRICES.paidMonthly, 'paid', 'monthly', { currency_options: { usd: {}, eur: {} } }), 'paid', 'monthly'), 'currency_options');
+  assert.equal(priceFault(price(PRICES.paidMonthly, 'paid', 'monthly', { currency_options: { usd: {} } }), 'paid', 'monthly'), '');
+  assert.equal(priceFault(price(PRICES.paidMonthly, 'paid', 'monthly', { currency_options: null }), 'paid', 'monthly'), '');
+  // no lookup key (Stripe sends null; '' or none at all): sold, with Stripe Tax off and on; the configured id is the mapping
+  for (const change of [(p) => ({ ...p, lookup_key: null }), (p) => ({ ...p, lookup_key: '' }), ({ lookup_key: _k, ...p }) => p]) {
+    assert.deepEqual(await sell(change), [200, null, 1]);
+    assert.deepEqual(await sell(change, TAX), [200, null, 1]);
+    assert.equal(priceFault(change(price(PRICES.paidYearly, 'paid', 'yearly')), 'paid', 'yearly'), '');
+  }
+  // a lookup key set: only its slot's own (another plan's, another period's, or not one of the app's are refused)
+  for (const key of ['hushmallow.paid.monthly', 'hushmallow.ultra.yearly', 'hushmallow.ultra.monthly.old', 'Hushmallow.ultra.monthly']) {
+    assert.deepEqual(await sell((p) => ({ ...p, lookup_key: key })), [503, 'lookup_key', 0], key);
+  }
+  // tax behaviour: Stripe Tax off (the default) sells any; on, only inclusive or exclusive
+  for (const tb of ['inclusive', 'exclusive', 'unspecified', null, undefined]) {
+    assert.deepEqual(await sell((p) => ({ ...p, tax_behavior: tb })), [200, null, 1], `tax off: ${tb}`);
+    assert.deepEqual(await sell((p) => ({ ...p, tax_behavior: tb }), TAX), ['inclusive', 'exclusive'].includes(tb) ? [200, null, 1] : [503, 'tax_behavior', 0], `tax on: ${tb}`);
+  }
+  assert.equal(priceFault(price(PRICES.paidMonthly, 'paid', 'monthly', { tax_behavior: 'unspecified' }), 'paid', 'monthly'), '');
+  assert.equal(priceFault(price(PRICES.paidMonthly, 'paid', 'monthly', { tax_behavior: 'unspecified' }), 'paid', 'monthly', false), '');
+  assert.equal(priceFault(price(PRICES.paidMonthly, 'paid', 'monthly', { tax_behavior: 'unspecified' }), 'paid', 'monthly', true), 'tax_behavior');
+  assert.equal(priceFault(price(PRICES.paidMonthly, 'paid', 'monthly', { tax_behavior: 'exclusive' }), 'paid', 'monthly', true), '');
+  // the earlier rules first: a wrong currency is named before the tax behaviour
+  assert.equal(priceFault(price(PRICES.paidMonthly, 'paid', 'monthly', { currency: 'aud', tax_behavior: 'unspecified' }), 'paid', 'monthly', true), 'currency');
+  // a price that sold with tax off is refused once the switch goes on (the fault is decided per request, not cached)
+  const s = track(setup({ env: billingEnv() }));
+  s.up.prices.set(PRICES.ultraMonthly, { ...s.up.prices.get(PRICES.ultraMonthly), tax_behavior: 'unspecified' });
+  assert.equal((await post(s, ULTRA_M)).status, 200);
+  s.env = { ...s.env, STRIPE_AUTOMATIC_TAX: 'true' };   // the same Worker (its price cache, its records), the switch on
+  assert.deepEqual(await code(await post(s, ULTRA_M)), [503, 'price_misconfigured']);
+  assert.equal(lastLog(s, 'checkout').err, 'tax_behavior');
+  assert.equal(priceReads(s).length, 1, 'the price read once (cached), judged again under the switch');
+  assertClean(allLogs.flat());
+});
+
+test('a price with no lookup key: its subscription maps to the slot of its configured id (store.js planForPrice), so the account gets that plan', async () => {
+  const s = track(setup());
+  for (const id of Object.values(PRICES)) s.up.prices.set(id, { ...s.up.prices.get(id), lookup_key: null });
+  assert.equal((await post(s, { plan: 'paid', period: 'yearly' })).status, 200);
+  await subscribe(s, subscription({ customer: await db(s).customerOf(UID) }, { price: PRICES.paidYearly, lookup: null }));
+  assert.deepEqual([(await status(s)).tier, (await status(s)).status], ['paid', 'active']);
+  // the same price under another plan's lookup key: the key decides (and is never sold in this slot)
+  const k = track(setup());
+  await subscribe(k, subscription({}, { price: PRICES.paidYearly, lookup: 'hushmallow.ultra.yearly' }));
+  assert.equal((await status(k)).tier, 'ultra');
+  assertClean(allLogs.flat());
+});
+
+test('one price id in two slots (pasted twice): neither slot sells or maps, /v1/health says how many, the log says why; the other slots sell', async () => {
+  // Beyond monthly's id pasted into Flow monthly's slot as well, the prices with no lookup key (the owner's kind)
+  const env = billingEnv({ STRIPE_PRICE_PAID_MONTHLY: PRICES.ultraMonthly });
+  const b = readConfig(env).billing;
+  assert.deepEqual(b.prices, { paid: { monthly: '', yearly: PRICES.paidYearly }, ultra: { monthly: '', yearly: PRICES.ultraYearly } });
+  assert.deepEqual([b.duplicateSlots, b.configured], [['paid.monthly', 'ultra.monthly'], true]);
+  const s = track(setup({ env }));
+  for (const id of Object.values(PRICES)) s.up.prices.set(id, { ...s.up.prices.get(id), lookup_key: null });
+  for (const body of [ULTRA_M, { plan: 'paid', period: 'monthly' }]) {
+    const res = await post(s, body);
+    assert.deepEqual(await code(res), [503, 'price_not_configured'], body.plan);
+    assert.deepEqual([lastLog(s, 'checkout').status, lastLog(s, 'checkout').err], ['no_price', 'duplicate_price']);
+    assertClean(s.logs, await res.json());
+  }
+  assert.equal(s.up.stripe().length, 0, 'the id is never sent to Stripe');
+  // a subscription on that price (made before it was pasted twice) gives no plan: never Flow for Beyond's price
+  await subscribe(s, subscription({}, { price: PRICES.ultraMonthly, lookup: null }));
+  assert.deepEqual([(await status(s)).tier, (await status(s)).status], ['none', 'active']);
+  // the slots holding their own ids sell (a fresh Worker and account: this one now has a subscription)
+  const ok = track(setup({ env: billingEnv({ STRIPE_PRICE_PAID_MONTHLY: PRICES.ultraMonthly }) }));
+  assert.equal((await post(ok, { plan: 'ultra', period: 'yearly' })).status, 200);
+  assert.equal(creates(ok)[0].form.get('line_items[0][price]'), PRICES.ultraYearly);
+  // /v1/health: how many slots, never an id
+  const h = await (await s.app.fetch(req('/v1/health'), s.env)).json();
+  assert.deepEqual([h.billing.configured, h.billing.duplicate_prices], [true, 2]);
+  assertClean([JSON.stringify(h)]);
+  // one id in all four: nothing to sell, billing off and saying why; Stripe's events wait (503)
+  const one = PRICES.paidMonthly;
+  const all = track(setup({ env: billingEnv({ STRIPE_PRICE_PAID_YEARLY: one, STRIPE_PRICE_ULTRA_MONTHLY: one, STRIPE_PRICE_ULTRA_YEARLY: one }) }));
+  const res = await post(all, ULTRA_M);
+  assert.equal(res.status, 503);
+  const e = (await res.json()).error;
+  assert.equal(e.code, 'billing_not_configured');
+  assert.match(e.message, /the same Stripe price id is in more than one of its price slots/);
+  assert.equal(lastLog(all, 'checkout').err, 'duplicate_prices');
+  const ha = await (await all.app.fetch(req('/v1/health'), all.env)).json();
+  assert.deepEqual([ha.billing.configured, ha.billing.duplicate_prices], [false, 4]);
+  all.up.subs.set('sub_Test123', subscription());
+  assert.equal((await deliver(all.app, all.env, event('customer.subscription.updated', subscription(), all.now))).status, 503);
+  assert.equal(all.up.calls.length, 0);
+  // four ids of their own: none refused (and a placeholder twice is not a duplicate: both are unset anyway)
+  assert.deepEqual(readConfig(billingEnv()).billing.duplicateSlots, []);
+  assert.deepEqual(readConfig(billingEnv({ STRIPE_PRICE_PAID_MONTHLY: 'price_TODO_owner', STRIPE_PRICE_ULTRA_MONTHLY: 'price_TODO_owner' })).billing.duplicateSlots, []);
+  assert.equal((await (await setup().app.fetch(req('/v1/health'), billingEnv())).json()).billing.duplicate_prices, undefined);
+  assertClean(allLogs.flat());
+});
+
+test('two ids swapped between plans, with no lookup keys (the owner\'s kind of prices): neither sells, by its amount (CHECKOUT_PRICE_RULES.unit_amount), in either Stripe mode', async () => {
+  const noKeys = (s) => { for (const id of Object.values(PRICES)) s.up.prices.set(id, { ...s.up.prices.get(id), lookup_key: null }); return s; };
+  // Flow monthly's id and Beyond monthly's swapped in the vars, on the production Worker (a live key)
+  const swapped = { STRIPE_PRICE_PAID_MONTHLY: PRICES.ultraMonthly, STRIPE_PRICE_ULTRA_MONTHLY: PRICES.paidMonthly };
+  const s = track(noKeys(setup({ env: billingEnv(swapped) })));
+  for (const body of [ULTRA_M, { plan: 'paid', period: 'monthly' }]) {
+    const res = await post(s, body);
+    assert.deepEqual(await code(res), [503, 'price_misconfigured'], body.plan);
+    assert.equal(lastLog(s, 'checkout').err, 'unit_amount');
+    assertClean(s.logs, await res.json());
+  }
+  assert.equal(creates(s).length, 0, 'Beyond is never sold at Flow\'s price, nor Flow at Beyond\'s');
+  // …and on the staging Worker (a test key): the rule is the same in both modes
+  const { readConfig: readWithStaging } = await withStagingProject(STAGING_SUPABASE);
+  const env = billingEnv({ ...swapped, ACCOUNTS_STAGE: 'staging', SUPABASE_URL: STAGING_SUPABASE });
+  const cfg = readWithStaging(env);
+  assert.equal(cfg.billing.keyMode, 'test');
+  const token = jwt(UID, { iss: `${STAGING_SUPABASE}/auth/v1` });
+  const up = upstream({ users: { [token]: { id: UID } } });
+  for (const id of Object.values(PRICES)) up.prices.set(id, { ...up.prices.get(id), lookup_key: null });
+  const logs = [];
+  const billing = createBilling({ logger: createLogger((l) => logs.push(l)), now: clock(), fetch: (u, i) => up.fetch(String(u).replace(STAGING_SUPABASE, SUPABASE), i), ipKey: async () => 'ip' });
+  for (const body of [ULTRA_M, { plan: 'paid', period: 'monthly' }]) {
+    assert.deepEqual(await code(await billing.checkout(billingReq('/v1/billing/checkout', { body, token }), env, cfg, {})), [503, 'price_misconfigured'], `staging ${body.plan}`);
+    assert.equal(lines(logs).at(-1).err, 'unit_amount');
+  }
+  assert.equal(up.stripe().filter((c) => c.method === 'POST').length, 0);
+  assertClean(logs);
+  // a whole plan swapped (both periods): the same
+  const both = track(noKeys(setup({ env: billingEnv({ STRIPE_PRICE_PAID_MONTHLY: PRICES.ultraMonthly, STRIPE_PRICE_PAID_YEARLY: PRICES.ultraYearly, STRIPE_PRICE_ULTRA_MONTHLY: PRICES.paidMonthly, STRIPE_PRICE_ULTRA_YEARLY: PRICES.paidYearly }) })));
+  for (const plan of ['paid', 'ultra']) for (const period of ['monthly', 'yearly']) {
+    assert.deepEqual(await code(await post(both, { plan, period })), [503, 'price_misconfigured'], `${plan} ${period}`);
+    assert.equal(lastLog(both, 'checkout').err, 'unit_amount');
+  }
+  // as configured, the same prices sell
+  const ok = track(noKeys(setup()));
+  assert.equal((await post(ok, ULTRA_M)).status, 200);
+  // the amounts are the ones the app shows (BILLING_PRICES, display only): one source per side, kept the same (D2)
+  const { BILLING_PRICES } = await import(new URL('../../../src/app/config.js', import.meta.url).href);
+  for (const plan of ['paid', 'ultra']) for (const period of ['monthly', 'yearly']) {
+    assert.equal(BILLING_PRICES[`hushmallow.${plan}.${period}`], `US$${(CHECKOUT_PRICE_RULES.unit_amount[plan][period] / 100).toFixed(2)}`, `${plan} ${period}`);
+  }
   assertClean(allLogs.flat());
 });
 
@@ -158,7 +407,7 @@ test('price check: one read per price id for CHECKOUT_PRICE_CACHE_MS (ten minute
   assert.deepEqual(priceReads(s), [PRICES.ultraMonthly, PRICES.ultraYearly, PRICES.ultraMonthly]);
   // a price fixed in Stripe sells once its read is that old
   const f = track(setup());
-  f.up.prices.set(PRICES.ultraMonthly, { ...f.up.prices.get(PRICES.ultraMonthly), tax_behavior: 'exclusive' });
+  f.up.prices.set(PRICES.ultraMonthly, { ...f.up.prices.get(PRICES.ultraMonthly), currency: 'aud' });
   assert.equal((await post(f, ULTRA_M)).status, 503);
   f.up.prices.set(PRICES.ultraMonthly, price(PRICES.ultraMonthly, 'ultra', 'monthly'));
   assert.equal((await post(f, ULTRA_M)).status, 503, 'still the read kept');

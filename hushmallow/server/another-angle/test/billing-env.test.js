@@ -167,7 +167,7 @@ test('pinned, every Stripe call (checkout\'s price read, customer and session, t
 });
 
 // ------------------------------------------------------------ Stripe Tax --
-test('STRIPE_AUTOMATIC_TAX: off unless switched on; staging says "false" until its AU registration is Collecting', () => {
+test('STRIPE_AUTOMATIC_TAX: off unless switched on; staging says "false" until a registration there is Collecting', () => {
   assert.equal(readConfig({}).billing.automaticTax, false, 'off by default');
   assert.equal(readConfig(billingEnv()).billing.automaticTax, false);
   for (const v of ['true', 'TRUE', '1', 'on', 'yes']) assert.equal(readConfig(billingEnv({ STRIPE_AUTOMATIC_TAX: v })).billing.automaticTax, true, v);
@@ -203,7 +203,7 @@ test('/v1/health says the Stripe mode, why a key is refused, the approval, the A
   const staging = { ...varsTables(WRANGLER).staging, BILLING: billingEnv().BILLING, STRIPE_WEBHOOK_SECRET: WHSEC };
   assert.deepEqual(await health(makeEnv({ ...staging, STRIPE_SECRET_KEY: TEST_KEY })), {
     configured: false, webhook: true, stripe_mode: 'test', live_approved: false, api_version: STRIPE_API_VERSION_EXPECTED, automatic_tax: false,
-    placeholder_prices: 4, accounts_configured: false,
+    accounts_configured: false,
   });
   const wrong = await health(makeEnv({ ...staging, STRIPE_SECRET_KEY: LIVE_KEY, BILLING_LIVE: 'approved' }));
   assert.deepEqual([wrong.stripe_mode, wrong.key_refused, wrong.live_approved], [null, 'live_key_on_staging', false]);

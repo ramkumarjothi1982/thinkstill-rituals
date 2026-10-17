@@ -6,8 +6,9 @@
 // nothing else on the server changes.
 //
 //   POST /v1/billing/checkout  { plan: 'paid'|'ultra', period: 'monthly'|'yearly' } with the account's
-//                              Supabase access token (Authorization: Bearer) → { url } (Stripe Checkout,
-//                              subscription mode, the account's one Stripe customer, client_reference_id = the
+//                              Supabase access token (Authorization: Bearer) → { url } (Stripe-hosted Checkout,
+//                              subscription mode, the owner's Checkout Studio settings (CHECKOUT_STUDIO), the
+//                              account's one Stripe customer, client_reference_id = the
 //                              account id; back to APP_ORIGIN, ?billing=success&session_id=cs_…). Only a price that
 //                              is what its slot says (CHECKOUT_PRICE_RULES) is sold, and only to an account with no
 //                              subscription at Stripe, unpaid ones included (409 already_subscribed | payment_pending)
@@ -31,7 +32,7 @@ import { json, error, readJson, readText } from '../http.js';
 import { allow, memoryRateLimiter } from '../limits/ratelimit.js';
 import { createStripe, verifyWebhookSignature } from './stripe.js';
 import { createAccountVerifier, uidOf } from './account.js';
-import { billingClient, summarise, effectiveTier, givesAccess, accessUntil, idOf, priceMismatch, bestOf, ACCESS, TERMINAL } from './store.js';
+import { billingClient, summarise, effectiveTier, givesAccess, accessUntil, idOf, priceMismatch, noLookupKey, bestOf, ACCESS, TERMINAL } from './store.js';
 
 export const PATHS = Object.freeze({ checkout: '/v1/billing/checkout', status: '/v1/billing/status', sync: '/v1/billing/sync', portal: '/v1/billing/portal', webhook: '/v1/billing/webhook' });
 /**
@@ -53,21 +54,59 @@ export const WEBHOOK_MAX_BYTES = 262144;
  */
 export const CHECKOUT_WINDOW_MS = 120000;
 /**
- * What a price must be in Stripe before checkout sells it (decisions D2, D3, D11). Its lookup key names the plan and
- * period of the slot it sits in, so two ids swapped while pasting never sell Beyond at Flow's price, or the reverse;
- * Australian dollars only (Adaptive Pricing off: the plans page and the terms say A$); GST-inclusive from day one,
- * whether or not Stripe Tax is on; recurring every one month or one year, as its period; and active.
+ * What a price must be in Stripe before checkout sells it (decisions D2, D3, D11, and the owner's USD decision of
+ * 2026-10-17). US dollars only (Adaptive Pricing off: the plans page and the terms say US$), its default currency and
+ * every other it carries (currency_options, read expanded: Checkout would charge some customers in one of those, as
+ * the session sends no currency); recurring every one month or one year, as its period; the owner's amount for its
+ * slot (unit_amount, in US cents: D2, the amounts the app's BILLING_PRICES shows); and active. Its lookup key, if it has one, names the plan and period of the slot it sits in; a
+ * price with no lookup key is sold, and its configured id is then what maps it to a plan (store.js planForPrice). The
+ * four amounts differ, so two ids swapped while pasting never sell Beyond at Flow's price, or the reverse, with lookup
+ * keys or without, in either Stripe mode (the sandbox driver cannot read live prices). Its tax behaviour: any while
+ * Stripe Tax is off; with STRIPE_AUTOMATIC_TAX on, one of tax_behavior (never 'unspecified': Stripe must know whether
+ * the amount includes the tax). A price the owner changes changes here, in BILLING_PRICES and in Stripe together (D2).
  */
-export const CHECKOUT_PRICE_RULES = Object.freeze({ currency: 'aud', tax_behavior: 'inclusive', interval: Object.freeze({ monthly: 'month', yearly: 'year' }) });
+export const CHECKOUT_PRICE_RULES = Object.freeze({
+  currency: 'usd',
+  tax_behavior: Object.freeze(['inclusive', 'exclusive']),
+  interval: Object.freeze({ monthly: 'month', yearly: 'year' }),
+  unit_amount: Object.freeze({ paid: Object.freeze({ monthly: 999, yearly: 9999 }), ultra: Object.freeze({ monthly: 1999, yearly: 19999 }) }),
+});
 /** How long a price read for that check is trusted in this isolate: one read per price id in that time, and a price fixed in Stripe sells within it. */
 export const CHECKOUT_PRICE_CACHE_MS = 600000;
 /**
- * Checkout's integration_identifier (Stripe's label for comparing checkout flows in the Dashboard): a fixed name and
- * 8 random letters, chosen once. Stripe takes it from API version CHECKOUT_INTEGRATION_IDENTIFIER_SINCE on, so it is
- * sent only when STRIPE_API_VERSION pins that or a later one: unpinned or older, Stripe would refuse the parameter.
+ * Checkout's integration_identifier (Stripe's label for comparing checkout flows in the Dashboard): the owner's Checkout
+ * Studio value. Stripe takes it from API version CHECKOUT_INTEGRATION_IDENTIFIER_SINCE on, so it is sent only when
+ * STRIPE_API_VERSION pins that or a later one (wrangler.toml pins 2026-08-26.dahlia): unpinned or older, Stripe would
+ * refuse the parameter.
  */
-export const CHECKOUT_INTEGRATION_IDENTIFIER = 'hushmallow_web_plans_xzwztwqy';
+export const CHECKOUT_INTEGRATION_IDENTIFIER = 'hosted_web_0001';
 export const CHECKOUT_INTEGRATION_IDENTIFIER_SINCE = '2026-03-25';
+/**
+ * The owner's Checkout Studio settings (docs/integration/DECISIONS.md, 2026-10-17), on every Checkout Session exactly as
+ * given. ui_mode 'hosted_page' is the Stripe-hosted page on the pinned API version (older versions name it 'hosted');
+ * submit_type 'auto' lets Checkout word the button; no payment_method_types, ever (dynamic payment methods, D10).
+ * With STRIPE_AUTOMATIC_TAX on, CHECKOUT_TAX replaces two of them (checkoutSettings).
+ */
+export const CHECKOUT_STUDIO = Object.freeze({
+  ui_mode: 'hosted_page',
+  billing_address_collection: 'auto',
+  phone_number_collection: Object.freeze({ enabled: false }),
+  automatic_tax: Object.freeze({ enabled: false }),
+  allow_promotion_codes: false,
+  payment_method_collection: 'always',
+  submit_type: 'auto',
+  origin_context: 'web',
+});
+/**
+ * Stripe Tax on (D3, only once an active registration is verified): automatic_tax on, and the address typed at checkout
+ * asked for (billing_address_collection 'required'), taxed and saved on the account's customer (customer_update), not a
+ * saved one. Deliberately overrides the Studio's automatic_tax and billing_address_collection.
+ */
+export const CHECKOUT_TAX = Object.freeze({
+  automatic_tax: Object.freeze({ enabled: true }),
+  billing_address_collection: 'required',
+  customer_update: Object.freeze({ address: 'auto' }),
+});
 /**
  * Statuses in which the account still has a subscription at Stripe, so checkout sells it no second one (409
  * already_subscribed: the portal pays or cancels it). Those giving access, and unpaid and paused: they give none but
@@ -110,16 +149,18 @@ export function createBilling({ logger, now, fetch: fetchImpl = (input, init) =>
   /**
    * Why billing is off (never a value): 'accounts_not_configured' while the sign-in project is a placeholder
    * (the staging Worker before its own project exists, docs/STAGING.md); the key's refusal (src/config.js:
-   * 'live_key_on_staging', 'test_key_on_production', 'live_not_approved'); 'placeholder_prices' when no price id is
-   * real and one is still a placeholder such as price_TODO_owner (staging before the owner's test ids); else
-   * 'not_configured'.
+   * 'live_key_on_staging', 'test_key_on_production', 'live_not_approved'); with no price left to sell,
+   * 'duplicate_prices' when one id sits in two slots (src/config.js duplicateSlots) and 'placeholder_prices' when one is
+   * still a placeholder such as price_TODO_owner (staging before the owner's test ids); else 'not_configured'.
    * @param {Config} cfg
    */
   const offReason = (cfg) => {
     if (cfg.billing.accountsPlaceholder) return 'accounts_not_configured';
     if (cfg.billing.keyRefused) return cfg.billing.keyRefused;
     const p = cfg.billing.prices;
-    return cfg.billing.placeholderPrices > 0 && ![p.paid, p.ultra].some((x) => !!(x.monthly || x.yearly)) ? 'placeholder_prices' : 'not_configured';
+    if ([p.paid, p.ultra].some((x) => !!(x.monthly || x.yearly))) return 'not_configured';
+    if (cfg.billing.duplicateSlots.length > 0) return 'duplicate_prices';
+    return cfg.billing.placeholderPrices > 0 ? 'placeholder_prices' : 'not_configured';
   };
   /** The 503's code for offReason(). @param {Config} cfg */
   const offCode = (cfg) => (offReason(cfg) === 'accounts_not_configured' ? 'accounts_not_configured' : 'billing_not_configured');
@@ -129,6 +170,7 @@ export function createBilling({ logger, now, fetch: fetchImpl = (input, init) =>
     if (r === 'accounts_not_configured') return 'Web subscriptions are not set up on this server: accounts are not configured (its sign-in project, SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY, is still a placeholder).';
     if (r === 'live_not_approved') return 'Web subscriptions are not set up on this server: live billing is not approved (BILLING_LIVE).';
     if (r === 'live_key_on_staging' || r === 'test_key_on_production') return 'Web subscriptions are not set up on this server: its Stripe key is not for this stage.';
+    if (r === 'duplicate_prices') return 'Web subscriptions are not set up on this server: the same Stripe price id is in more than one of its price slots.';
     return r === 'placeholder_prices'
       ? 'Web subscriptions are not set up on this server: its Stripe price ids are still placeholders (price_TODO…).'
       : 'Web subscriptions are not set up on this server.';
@@ -203,7 +245,7 @@ export function createBilling({ logger, now, fetch: fetchImpl = (input, init) =>
       hit = { at: now(), price: r.data };
       priceCache.set(key, hit);
     }
-    const fault = priceFault(hit.price, plan, period);
+    const fault = priceFault(hit.price, plan, period, cfg.billing.automaticTax);
     return fault ? { ok: false, fault } : { ok: true };
   }
 
@@ -311,7 +353,11 @@ export function createBilling({ logger, now, fetch: fetchImpl = (input, init) =>
     if (!PERIODS.includes(b.period)) return error(400, 'invalid_period', 'period must be "monthly" or "yearly".', cors, { field: 'period' });
     const plan = /** @type {'paid' | 'ultra'} */ (b.plan), period = /** @type {'monthly' | 'yearly'} */ (b.period);
     const price = cfg.billing.prices[plan][period];
-    if (!price) { log('checkout', t0, { status: 'no_price', http: 503, plan, period }); return error(503, 'price_not_configured', 'This plan is not on sale yet.', cors); }
+    if (!price) {
+      // a slot whose id is also in another slot is never sold (src/config.js duplicateSlots): the log says so
+      log('checkout', t0, { status: 'no_price', http: 503, plan, period, ...(cfg.billing.duplicateSlots.includes(`${plan}.${period}`) ? { err: 'duplicate_price' } : {}) });
+      return error(503, 'price_not_configured', 'This plan is not on sale yet.', cors);
+    }
     /** @param {string} err @param {number} [stripeHttp] */
     const unavailable = (err, stripeHttp) => {
       log('checkout', t0, { status: 'stripe_error', http: 502, plan, period, err: err.slice(0, 48), stripe_http: stripeHttp });
@@ -372,12 +418,13 @@ export function createBilling({ logger, now, fetch: fetchImpl = (input, init) =>
     const back = cfg.billing.appOrigin;
     // the session this one replaces is part of the key: Stripe never hands back the one just expired
     const idempotencyKey = `checkout:${who.uid}:${plan}:${period}:${Math.floor(now() / CHECKOUT_WINDOW_MS)}:${prev.prev ? prev.prev.slice(-24) : '-'}`;
-    // no payment_method_types (Stripe's dynamic payment methods; which ones is a Dashboard setting, D10), no trial and
-    // no promotion codes (D14), no email (D13)
+    // the Studio's settings (CHECKOUT_STUDIO: no payment_method_types, D10; no promotion codes, D14), no trial and no
+    // email (D13)
     /** @param {string} customer @param {string} key */
     const create = (customer, key) => stripe.createCheckoutSession({
       mode: 'subscription',
       line_items: [{ price, quantity: 1 }],
+      // kept although the Studio lists none of the four: they tie the payment to the account (webhook, sync, entitlement)
       customer,
       client_reference_id: who.uid,
       // Stripe puts the session's id in place of {CHECKOUT_SESSION_ID}: the app asks POST /v1/billing/sync with it
@@ -385,9 +432,8 @@ export function createBilling({ logger, now, fetch: fetchImpl = (input, init) =>
       cancel_url: `${back}/?billing=cancel`,
       metadata: { user_id: who.uid, plan, period, price },
       subscription_data: { metadata: { user_id: who.uid } },
-      // Stripe Tax (D3: STRIPE_AUTOMATIC_TAX, off until the AU registration is Collecting). The customer is always
-      // passed, so the address typed at checkout is asked for and saved on it; else Stripe taxes the saved one (none).
-      ...(cfg.billing.automaticTax ? { automatic_tax: { enabled: true }, customer_update: { address: 'auto' }, billing_address_collection: 'required' } : {}),
+      // the Studio's values; Stripe Tax on (D3: STRIPE_AUTOMATIC_TAX) replaces two of them (CHECKOUT_TAX)
+      ...checkoutSettings(cfg.billing.automaticTax),
       ...(integrationIdentifierOn(cfg.billing.apiVersion) ? { integration_identifier: CHECKOUT_INTEGRATION_IDENTIFIER } : {}),
     }, { idempotencyKey: key });
     let r = await create(customer, idempotencyKey);
@@ -641,16 +687,29 @@ export function createBilling({ logger, now, fetch: fetchImpl = (input, init) =>
 /**
  * Why a Stripe price may not be sold as this plan and period (CHECKOUT_PRICE_RULES): the first rule it breaks, or ''.
  * @param {any} p @param {'paid' | 'ultra'} plan @param {'monthly' | 'yearly'} period
+ * @param {boolean} [automaticTax] STRIPE_AUTOMATIC_TAX (cfg.billing.automaticTax): only then is the tax behaviour checked
  */
-export function priceFault(p, plan, period) {
-  if (p?.lookup_key !== `hushmallow.${plan}.${period}`) return 'lookup_key';
+export function priceFault(p, plan, period, automaticTax = false) {
+  if (!p || typeof p !== 'object') return 'not_a_price';
+  if (!noLookupKey(p.lookup_key) && p.lookup_key !== `hushmallow.${plan}.${period}`) return 'lookup_key';
   if (p.currency !== CHECKOUT_PRICE_RULES.currency) return 'currency';
+  if (p.currency_options && typeof p.currency_options === 'object' && Object.keys(p.currency_options).some((c) => c !== CHECKOUT_PRICE_RULES.currency)) return 'currency_options';
   if (p.type !== 'recurring') return 'type';
   if (p.recurring?.interval !== CHECKOUT_PRICE_RULES.interval[period]) return 'interval';
   if (p.recurring?.interval_count !== 1) return 'interval_count';
+  if (p.unit_amount !== CHECKOUT_PRICE_RULES.unit_amount[plan][period]) return 'unit_amount';
   if (p.active !== true) return 'inactive';
-  if (p.tax_behavior !== CHECKOUT_PRICE_RULES.tax_behavior) return 'tax_behavior';
+  if (automaticTax && !CHECKOUT_PRICE_RULES.tax_behavior.includes(p.tax_behavior)) return 'tax_behavior';
   return '';
+}
+
+/**
+ * A Checkout Session's settings besides the sale and the account link: the Studio's (CHECKOUT_STUDIO), with Stripe Tax's
+ * in place of two of them when it is on (CHECKOUT_TAX).
+ * @param {boolean} automaticTax @returns {Record<string, unknown>}
+ */
+export function checkoutSettings(automaticTax) {
+  return { ...CHECKOUT_STUDIO, ...(automaticTax ? CHECKOUT_TAX : {}) };
 }
 
 /** integration_identifier goes on a session: the pinned API version is CHECKOUT_INTEGRATION_IDENTIFIER_SINCE or later. @param {string} apiVersion */

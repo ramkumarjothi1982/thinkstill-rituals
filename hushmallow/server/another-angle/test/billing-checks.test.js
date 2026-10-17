@@ -61,6 +61,21 @@ test('key-free checks: the production Worker as committed (billing off) and the 
   }
 });
 
+test('key-free checks on a staging Worker with one price id in every slot: billing is off, and the off answers expected, saying why', async () => {
+  const one = F.PRICES.paidMonthly;
+  const env = stagingEnv({ STRIPE_PRICE_PAID_YEARLY: one, STRIPE_PRICE_ULTRA_MONTHLY: one, STRIPE_PRICE_ULTRA_YEARLY: one });
+  /** @type {string[]} */
+  const lines = [];
+  const app = createApp({ systemPrompt: SYSTEM_PROMPT, provider: createMockProvider({ mode: 'heuristic' }), log: () => {}, fetch: async () => { throw new TypeError('no network'); } });
+  const call = caller(app, env, STAGING_WORKER, PREVIEW);
+  const h = await health(call);
+  assert.deepEqual([h.billing.configured, h.billing.duplicate_prices], [false, 4]);
+  const r = await C.keyFreeChecks({ call, check: (ok, what, extra = '') => { lines.push(`${ok ? 'PASS' : 'FAIL'} ${what} ${extra}`); return ok; }, info: (x) => lines.push(`INFO ${x}`), health: h, stage: 'staging', foreignProject: F.SUPABASE });
+  assert.equal(r.on, false);
+  assert.deepEqual(lines.filter((l) => l.startsWith('FAIL')), [], lines.join('\n'));
+  assert.ok(lines.includes('INFO billing is off on this Worker (the same price id is in more than one price slot): the off answers are expected below'), lines.join('\n'));
+});
+
 test('key-free checks fail a Worker that takes an unsigned event, lets in another origin, or says the wrong flags', async () => {
   const env = stagingEnv();
   const real = createApp({ systemPrompt: SYSTEM_PROMPT, provider: createMockProvider({ mode: 'heuristic' }), log: () => {} });
