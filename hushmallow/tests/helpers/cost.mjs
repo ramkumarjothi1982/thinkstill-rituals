@@ -18,9 +18,15 @@
 // this module loads. That work shares no code with hushmallow and never runs in the test process, so a slower rule can
 // never make it slower, and nothing the test process does first (a cold first plan, a one-time set-up) is warmed by it.
 // Each kind's cost is the fastest of a few batches (anything else on the machine only adds), divided by what it costs
-// on the reference machine. The machine factor is the SMALLEST of the three kinds' ratios, never less than 1:
+// on the reference machine. The machine factor is the SMALLEST of the four kinds' ratios, never less than 1:
 //   - a machine as fast as the reference or faster is judged by the written budget, exactly as before;
-//   - a machine slower at every kind of work (a slower CPU) is credited with the slowdown all three show, and no more.
+//   - a machine slower at every kind of work (a slower CPU) is credited with the slowdown all four show, and no more.
+//     One kind, SCAN, allocates nothing (RegExp test() and lastIndex only), so the factor is bounded by the least
+//     GC-sensitive kind: a costlier GC alone never raises it, and the budgets' costliest cases (keepLocal and
+//     selfEnding on "i i i i ") are RegExp backtracking that allocates little. Under node --stress-compaction (GC costs
+//     more, the CPU is no slower) the allocating kinds read 1.4-4.7x their quiet cost and SCAN 0.98x: r4 whole read a
+//     factor of 1.19-1.32 from the three allocating kinds alone (timed in the test process, as they were) and 1.00 with
+//     SCAN, while those two cases slowed 1.02x and 1.18x.
 //     Where only some work is slower the factor stays near 1, because the rules then slow unevenly too and one number
 //     cannot follow them all: under node --jitless the reference RegExps read 4.7x and the loops 6.6x but the string
 //     built-ins 0.97x, while the budgets' cases slowed 0.8-8.5x case by case (r4's costliest, keepLocal and selfEnding
@@ -56,8 +62,14 @@ export function cpuPerCall(fn, n = 1) {
  * The slower machine's numbers are the ones kept, so neither machine's budgets are loosened, and a CI runner is credited
  * only its slowdown over the slower of the two. Re-measure them on such a machine, the same way, whenever this work or
  * its batch sizes change.
+ *
+ * scan is derived, not read on the reference machine (the session had left it when SCAN was added): in those 40 fresh
+ * processes on the second machine a batch of scan cost 1.036x a batch of regex, process by process (the median; the same
+ * engine, patterns and texts), and regex × 1.036 is 98.6 ms (scan over strings or loops gives 99.6 and 98.2). Adding a
+ * kind can only lower the smallest ratio, never raise it, so no machine is credited more than before scan was added. Read
+ * it on the reference machine when it is to hand.
  */
-export const REFERENCE_MS = Object.freeze({ regex: 95.1, strings: 100.3, loops: 103.4 });
+export const REFERENCE_MS = Object.freeze({ regex: 95.1, strings: 100.3, loops: 103.4, scan: 98.6 });
 /**
  * How far above REFERENCE_MS the reference machine itself can read: of those 60 processes the highest smallest-kind
  * ratio was 1.031 (the median 0.985). The factor counts only what is above it, so the reference machine is judged by the
@@ -116,7 +128,7 @@ export function measure(time = timeReference) {
 export const machine = measure();
 
 const fx = (v) => v.toFixed(2);
-/** "regex 1.02, strings 0.99, loops 1.01" — each kind's ratio to the reference, for a message. */
+/** "regex 1.02, strings 0.99, loops 1.01, scan 1.00" — each kind's ratio to the reference, for a message. */
 export const ratiosText = (m = machine) => Object.entries(m.ratios).map(([k, v]) => `${k} ${fx(v)}`).join(', ');
 /** What one timing of the reference work showed, for a message. */
 const told = (m) => (m.error ? `could not be timed (${m.error})` : `read ${ratiosText(m)} × the reference machine's`);

@@ -1,8 +1,9 @@
 // tests/helpers/cost.mjs: the speed budgets are judged at budget × this machine's factor, which only a machine slower
-// at every kind of reference work raises, never a slower rule.
+// at every kind of reference work raises, never a slower rule, and never a costlier GC alone.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { PerformanceObserver } from 'node:perf_hooks';
 import { machine, machineFactor, measure, nodeFlags, within, REFERENCE_MS, REFERENCE_NOISE, MAX_FACTOR } from './helpers/cost.mjs';
 
 const read = (p) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
@@ -12,7 +13,7 @@ const BUDGET_FILES = ['r4', 'r5', 'r6', 'risk-concepts', 'risk-screen', 'raindro
 const m = (factor) => ({ factor, ratios: Object.fromEntries(KINDS.map((k) => [k, factor])) });
 
 test('cost: the machine factor is the slowdown every kind of reference work shows, never below 1', () => {
-  assert.deepEqual(KINDS, ['regex', 'strings', 'loops']);
+  assert.deepEqual(KINDS, ['regex', 'strings', 'loops', 'scan']);
   // as fast as the reference machine, or faster: the written budget, exactly
   assert.equal(machineFactor(times(1)).factor, 1);
   assert.equal(machineFactor(times(0.4)).factor, 1);
@@ -21,11 +22,15 @@ test('cost: the machine factor is the slowdown every kind of reference work show
   // a machine twice as slow at everything: twice the budget (less the reference machine's spread)
   assert.ok(Math.abs(machineFactor(times(2)).factor - 2 / (1 + REFERENCE_NOISE)) < 1e-9);
   // slower at only some kinds (as under V8's --jitless): only what every kind shows is credited
-  const some = machineFactor(times({ regex: 3.7, strings: 1.02, loops: 6.1 }));
+  const some = machineFactor(times({ regex: 3.7, strings: 1.02, loops: 6.1, scan: 4.4 }));
   assert.equal(some.factor, 1);
-  const most = machineFactor(times({ regex: 3, strings: 2.2, loops: 2.6 }));
+  const most = machineFactor(times({ regex: 3, strings: 2.2, loops: 2.6, scan: 2.9 }));
   assert.ok(Math.abs(most.factor - 2.2 / (1 + REFERENCE_NOISE)) < 1e-9);
   assert.ok(Math.abs(most.ratios.regex - 3) < 1e-9);
+  // a costlier GC alone (as under node --stress-compaction: the allocating kinds 1.5-4.5x, SCAN 1.04x): nothing credited,
+  // and on a machine slower and GC-bound, only what the work that allocates nothing shows
+  assert.equal(machineFactor(times({ regex: 1.49, strings: 4.5, loops: 3.9, scan: 1.04 })).factor, 1);
+  assert.ok(Math.abs(machineFactor(times({ regex: 2.9, strings: 6, loops: 5, scan: 1.6 })).factor - 1.6 / (1 + REFERENCE_NOISE)) < 1e-9);
 });
 
 test('cost: a budget is judged at budget × factor, the message says how, and past MAX_FACTOR a reading that needs the factor is not judged', () => {
@@ -36,11 +41,11 @@ test('cost: a budget is judged at budget × factor, the message says how, and pa
   const miss = within(40, () => 40.1, 3, m(1), never);
   assert.equal(miss.ok, false);
   assert.deepEqual(miss.seen, [40.1, 40.1, 40.1]);
-  assert.match(miss.note, /^budget 40 ms × machine factor 1\.00 = 40\.0 ms \(the reference work read regex 1\.00, strings 1\.00, loops 1\.00 × the reference machine's as the file began\)$/);
+  assert.match(miss.note, /^budget 40 ms × machine factor 1\.00 = 40\.0 ms \(the reference work read regex 1\.00, strings 1\.00, loops 1\.00, scan 1\.00 × the reference machine's as the file began\)$/);
   // twice as slow a machine, still twice as slow when timed again: twice the budget, no more
   const pass = within(40, () => 79.9, 3, m(2), still(2));
   assert.equal(pass.ok, true);
-  assert.match(pass.note, /^budget 40 ms × machine factor 2\.00 = 80\.0 ms \(.* as the file began, read regex 2\.00, strings 2\.00, loops 2\.00 × the reference machine's just now\)$/);
+  assert.match(pass.note, /^budget 40 ms × machine factor 2\.00 = 80\.0 ms \(.* as the file began, read regex 2\.00, strings 2\.00, loops 2\.00, scan 2\.00 × the reference machine's just now\)$/);
   const r = within(40, () => 80.1, 3, m(2), never); // (over even the stretched budget: nothing to time again for)
   assert.equal(r.ok, false);
   assert.equal(r.limit, 80);
@@ -106,6 +111,23 @@ test('cost: the reference work is its own (no imports) and never runs in a test 
     // every CPU reading is judged through within(): no bare comparison of a reading with a number
     assert.match(t, /\bwithin\(/, f);
     assert.doesNotMatch(t, /\bms\s*<\s*\d/, `${f}: a reading compared without the machine factor`);
+  }
+});
+
+test('cost: SCAN allocates nothing (no GC in 300 runs, where each other kind sets off several in 100)', async () => {
+  const { WORK } = await import('./helpers/cost-work.mjs'); // (this file times no budget)
+  assert.deepEqual(Object.keys(WORK), KINDS);
+  let gcs = 0;
+  const obs = new PerformanceObserver((list) => { gcs += list.getEntries().length; });
+  obs.observe({ entryTypes: ['gc'] });
+  const settle = () => new Promise((r) => setTimeout(r, 20));
+  const gcsIn = async (f, n) => { await settle(); const g0 = gcs; for (let i = 0; i < n; i++) f(); await settle(); return gcs - g0; };
+  try {
+    await gcsIn(WORK.scan[0], 100); // (its one-time set-up: compiled, tiered up)
+    assert.equal(await gcsIn(WORK.scan[0], 300), 0, 'a GC while SCAN ran');
+    for (const k of ['regex', 'strings', 'loops']) assert.ok(await gcsIn(WORK[k][0], 100) >= 3, `${k} allocates`);
+  } finally {
+    obs.disconnect();
   }
 });
 

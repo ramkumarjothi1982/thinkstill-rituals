@@ -3,11 +3,19 @@
 // and reads back what calibrate() printed. So nothing in the test process is warmed or loaded by it (the layout's first
 // plan stays cold, as in the world), and nothing of hushmallow can ever run inside it: this module imports nothing.
 //
-// Three kinds of the work the budgets time, each read on that process's own thread CPU clock:
+// Four kinds of the work the budgets time, each read on that process's own thread CPU clock:
 //   - REGEX: word-list alternations with \b, the i and u flags and optional runs of words, over 2,000 and 600
 //     characters, including bounded but backtracking-prone patterns, clauses split and read one by one;
 //   - STRINGS: the string built-ins the rules lean on (normalize, case, replace, split, join, slice, indexOf);
-//   - LOOPS: plain JS (a hash over the characters, word counts in a Map, a sort, object fields).
+//   - LOOPS: plain JS (a hash over the characters, word counts in a Map, a sort, object fields);
+//   - SCAN: RegExp work that allocates nothing: the same patterns, texts and clauses (the clauses cut when this module
+//     loads), read with test() and lastIndex only: no match array, no replace, no split, no new string. The first three
+//     allocate as they go (match arrays, new strings, a Map), so a Node or a machine whose GC costs more reads them
+//     slower although it runs the rules' matching no slower, and the budgets' costliest cases are backtracking that
+//     allocates little (keepLocal and selfEnding on "i i i i "). SCAN reads the matching alone, so the smallest kind
+//     never credits a costlier GC. (Under node --stress-compaction, in fresh processes on the second machine: REGEX
+//     1.4-1.5x, STRINGS 4.5-4.7x, LOOPS 3.5-3.9x, SCAN 0.98-1.04x their quiet cost; tests/cost.test.mjs checks that
+//     SCAN sets off no GC.)
 const clock = typeof process.threadCpuUsage === 'function' ? () => process.threadCpuUsage() : () => process.cpuUsage();
 const nowMs = () => { const u = clock(); return (u.user + u.system) / 1000; };
 
@@ -91,8 +99,20 @@ function loopWork() {
   }
   return h;
 }
+// SCAN's own RegExp objects (their own lastIndex and tier-up), from the same sources; SCAN and BACK are all global and
+// none can match an empty string, so each test() moves lastIndex on
+const own = (re) => new RegExp(re.source, re.flags);
+const SCAN_G = [...SCAN, ...BACK].map(own);
+const CLAUSE_T = CLAUSE.map(own);
+const CLAUSES = TEXTS.flatMap((t) => t.split(CUT));
+function scanWork() {
+  let h = 0;
+  for (const t of TEXTS) for (const re of SCAN_G) { re.lastIndex = 0; while (re.test(t)) h = (h + re.lastIndex) | 0; }
+  for (const c of CLAUSES) for (const re of CLAUSE_T) if (re.test(c)) h = (h + c.length) | 0;
+  return h;
+}
 /** Each kind of work, and how many calls make one batch (~100 ms on the reference machine: many clock ticks). */
-export const WORK = { regex: [regexWork, 70], strings: [stringWork, 800], loops: [loopWork, 480] };
+export const WORK = { regex: [regexWork, 70], strings: [stringWork, 800], loops: [loopWork, 480], scan: [scanWork, 80] };
 export const RUNS = 3;
 
 /** The fastest of `runs` batches of each kind of work, in CPU ms per batch (anything else on the machine only adds). */
