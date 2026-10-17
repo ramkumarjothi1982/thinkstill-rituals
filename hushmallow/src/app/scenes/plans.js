@@ -14,7 +14,7 @@
 // The foot ends with small "Terms · Privacy Policy" links (src/app/legal.js).
 import { h, iconBtn, toast } from '../ui.js';
 import { PLANS } from '../entitlements.js';
-import { rememberPlan, CHANGE_PLAN, PAYMENT_PENDING, BILLING_SUPPORT } from '../billing.js';
+import { rememberPlan, outsideNote, CHANGE_PLAN, PAYMENT_PENDING, BILLING_SUPPORT } from '../billing.js';
 import { BRAND, brandName } from '../../brand.js';
 import { brandMark, logoImg, fitWhole } from '../../ui/type.js';
 import { openSupport } from './support.js';
@@ -189,6 +189,7 @@ export default function plans(app, params = {}) {
     } else if (r?.unavailable) toast('Subscriptions are handled in the App Store app.');
     else if (r?.cancelled) toast('No problem. Nothing was charged.');
     else if (r?.support) toast(BILLING_SUPPORT, 6000);   // the account's billing needs a person: where to write
+    else if (r?.framed) toast(outsideNote(h), 9000);   // inside the Framer site: Stripe opens only in a full window
     else toast('That didn’t go through. Nothing was charged.', 3200);
     pending = false;
     setBusy(false);

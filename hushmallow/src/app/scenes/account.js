@@ -55,7 +55,7 @@ import * as VM from '../../auth/view-model.js';
 import { NOTICE_TEXT } from '../../auth/boot.js';
 import { consentLabel, CONSENT_LINE } from '../legal.js';
 import { PLANS } from '../entitlements.js';
-import { plannedPlan, CHANGE_PLAN, PAYMENT_PENDING, BILLING_SUPPORT } from '../billing.js';
+import { plannedPlan, outsideNote, CHANGE_PLAN, PAYMENT_PENDING, BILLING_SUPPORT } from '../billing.js';
 
 const CSS = [new URL('../../auth/auth.css', import.meta.url).href, new URL('../../ui/account.css', import.meta.url).href];
 /** Both stylesheets; resolves when they have loaded (or after 1.2 s). */
@@ -212,6 +212,8 @@ export function deleteGuard(app, { submit = null, confirmed = () => false } = {}
     // leaving for the portal; Back from there can restore this page as it was, so the button wakes again
     if (r?.redirecting) { setTimeout(() => { manage.disabled = false; }, 4000); return; }
     manage.disabled = false;
+    // inside the Framer site: the portal opens only in a full window
+    if (r?.framed) { status.replaceChildren(outsideNote(h)); return; }
     status.textContent = r?.needsAccount ? 'Sign in again to manage your subscription.' : 'That didn’t open just now. Try again in a moment.';
   });
   const box = h('div', { class: 'hm-account-facts', 'data-cancel-first': '' },
@@ -295,8 +297,10 @@ export function continuePlan(app) {
       let m = null;
       try { m = await ent.manage({ intent: 'switch' }); } catch { m = null; }
       if (m?.redirecting) { setTimeout(() => { b.disabled = false; }, 4000); return; }
-      toast('That didn’t open just now. Try again in a moment.', 3200);
-    } else if (r?.pending) toast(PAYMENT_PENDING, 3600);   // its plan arrives with a later check, and the offer goes
+      if (m?.framed) status.replaceChildren(outsideNote(h));
+      else toast('That didn’t open just now. Try again in a moment.', 3200);
+    } else if (r?.framed) status.replaceChildren(outsideNote(h));   // inside the Framer site: Stripe needs a full window
+    else if (r?.pending) toast(PAYMENT_PENDING, 3600);   // its plan arrives with a later check, and the offer goes
     else if (r?.support) status.textContent = BILLING_SUPPORT;   // the account's billing needs a person: where to write
     else status.textContent = 'That didn’t go through. Nothing was charged.';
     b.disabled = false;

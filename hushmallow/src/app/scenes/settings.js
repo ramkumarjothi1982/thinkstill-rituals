@@ -11,6 +11,7 @@
 // Privacy Policy and About with "Terms · Privacy Policy" (src/app/legal.js).
 import { h, iconBtn, openSheet, toast } from '../ui.js';
 import { PLANS } from '../entitlements.js';
+import { outsideNote } from '../billing.js';
 import { openSupport } from './support.js';
 import { BUILD, deploySettings } from '../config.js';
 import { RUNNING } from '../update.js';
@@ -144,6 +145,8 @@ export default function settings(app) {
     // leaving for the portal; Back from there can restore this page as it was, so the button wakes again
     if (r?.redirecting) { setTimeout(() => { btn.disabled = false; }, 4000); return; }
     btn.disabled = false;
+    // inside the Framer site: the portal opens only in a full window
+    if (r?.framed) { toast(outsideNote(h), 9000); return; }
     if (r?.needsAccount) { app.go('account', { view: 'signin' }); return; }
     toast(r?.none ? 'There’s no subscription on this account yet.' : 'That didn’t open just now. Try again in a moment.', 3200);
   }
