@@ -395,17 +395,26 @@ there; if they are only in live mode, make them here and send the new ids (B10).
 
 * **Payment methods**: allow updates. **Invoice history**: on. **Customer information**: allow email and
   billing-address edits (Stripe Tax needs the address once it is on).
-* **Cancellations**: on, **At the end of the billing period**, no proration or refund on cancel (D7).
-* **Subscriptions** → **Customers can switch plans**: on, with hushmallow Flow (both prices) and hushmallow
-  Beyond (both prices); quantity changes off. Proration (D8): prorate and invoice upgrades immediately;
-  schedule downgrades (Beyond → Flow, yearly → monthly) at the end of the period if that option shows.
+* **Cancellations**: on, **At the end of the billing period**, no proration or refund on cancel (D7). This is
+  what Settings → Manage subscription opens (the portal's home, `?billing=portal`), unchanged: cancelling stays
+  there, one tap from Settings.
+* **Subscriptions** → **Customers can switch plans**: on, and under **products** both products with **all four
+  prices**: hushmallow Flow (monthly and yearly) and hushmallow Beyond (monthly and yearly); quantity changes
+  off. The plans page's upgrade opens Stripe's confirmation page for that one change
+  (`subscription_update_confirm`), and "choose a plan" the portal's plan choice (`subscription_update`); Stripe
+  refuses both for a price not listed here, and the app then says the change is not available (`503
+  plan_change_unavailable`). Neither ever shows the portal's home or its Cancel button. Proration (D8): prorate
+  and invoice upgrades immediately; schedule downgrades (Beyond → Flow, yearly → monthly) at the end of the
+  period if that option shows.
 * **Pause**: off.
 * **Business information**: the privacy policy and terms links. For the sandbox, the preview's drafts:
   `https://claude-launch-rc.hushmallow.pages.dev/legal/privacy.html` and
   `https://claude-launch-rc.hushmallow.pages.dev/legal/terms.html` (app.hushmallow.com's, in live mode, once
   they are approved).
 * **Default redirect link**: `https://claude-launch-rc.hushmallow.pages.dev/`. The server also sends its own
-  return address, `…/?billing=portal`.
+  return addresses, on the staging Worker's `APP_ORIGIN`: `…/?billing=portal` from Manage subscription, and from
+  a plan change `https://claude-launch-rc.hushmallow.pages.dev/?billing=changed` once done (`&to=ultra.yearly`
+  and so on for an upgrade) and `…/?billing=unchanged` by the portal's back link. Nothing to set for these.
 * **Customer portal link** (email login): **Activate**, and put the link on the support page.
 
 ### B7. Revenue recovery and emails (5 min)
