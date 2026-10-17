@@ -281,6 +281,33 @@ test('a reload mid-confirmation resumes it (for 15 minutes from the way back), t
   assert.equal(away.server.calls.length, 0);
 });
 
+test('a run still waiting when another run of the same change has confirmed and said it (a resumed one) stops without a word: the welcome once', async () => {
+  const { server, ent } = await account();
+  const session = memSession();
+  const at = Date.parse('2026-10-17T20:00:00Z');
+  let t = at;
+  server.answers = [plan('paid', 'monthly')];
+  let wake = null;
+  const ui = fakeUi();
+  const first = confirmChange({ ent }, { kind: 'changed', to: 'ultra.monthly' }, { before: planNow(ent), session, ui, now: () => t, sleep: () => new Promise((r) => { wake = r; }) });
+  while (!wake) await sleepFor(2);
+  assert.deepEqual(kinds(ui), ['confirming'], 'Flow still: only the calm note');
+  // that run is lost (the page reloaded); the new page resumes the same change and Stripe now says Beyond
+  resetPlanChange();
+  server.answers = [plan('ultra', 'monthly')];
+  const resumed = fakeUi();
+  t = at + 2000;
+  assert.equal(await resumeChange({ ent }, { session, ui: resumed, now: () => t, sleep: async () => {} }), 'confirmed');
+  assert.deepEqual(kinds(resumed), ['confirming', 'close', 'welcome']);
+  assert.equal(pendingChange({ session, now: t }).state, 'done');
+  // the old run wakes: nothing more is asked or said
+  const n = server.calls.length;
+  wake();
+  assert.equal(await first, 'stopped');
+  assert.deepEqual(kinds(ui), ['confirming', 'close'], 'its note closed, no second welcome');
+  assert.equal(server.calls.length, n);
+});
+
 test('Back onto the way back after the welcome: not said twice; a new trip to Stripe starts afresh', async () => {
   const { server, ent } = await account();
   server.answers = [plan('ultra', 'monthly')];

@@ -136,9 +136,10 @@ function run(app, rec, { waits, sleep, session, now, view, quiet }) {
     const note = quiet ? null : view.confirming();
     for (const ms of waits) {
       if (ms) await sleep(ms);
-      // forgotten meanwhile (a new trip to Stripe, or it ran out): no more asks, nothing said
+      // forgotten meanwhile (a new trip to Stripe, or it ran out), or already confirmed and said by another run of the
+      // same change (a resumed one): no more asks, nothing said, so the welcome is never said twice
       const still = pendingChange({ session, now: now() });
-      if (!still || still.at !== rec.at) { note?.close(); return 'stopped'; }
+      if (!still || still.at !== rec.at || still.state === 'done') { note?.close(); return 'stopped'; }
       if (!(await ask(ent))) continue;
       const plan = planOf(ent);
       const v = verdict(plan, rec);
