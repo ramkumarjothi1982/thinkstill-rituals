@@ -307,6 +307,12 @@ test('wrangler.toml switched on exactly as docs/PAYMENTS.md says passes the same
 });
 
 // -------------------------------------------------------------- not set up --
+/** /v1/health's key flags (test/billing-env.test.js): the production fixture's approved live key, the staging one's test key, none. */
+const FLAGS = {
+  live: { stripe_mode: 'live', live_approved: true, api_version: null, automatic_tax: false },
+  test: { stripe_mode: 'test', live_approved: false, api_version: null, automatic_tax: false },
+  none: { stripe_mode: null, live_approved: false, api_version: null, automatic_tax: false },
+};
 test('not configured: every billing route answers 503, health says so, and nothing is called', async () => {
   const up = upstream();
   const s = setup({ env: makeEnv({ PROVIDER: 'mock' }), up });
@@ -318,14 +324,14 @@ test('not configured: every billing route answers 503, health says so, and nothi
   const wh = await deliver(s.app, s.env, event('customer.subscription.updated', subscription(), s.now));
   assert.equal(wh.status, 503, 'no webhook secret: Stripe keeps retrying until it is set');
   const h = await (await s.app.fetch(req('/v1/health'), s.env)).json();
-  assert.deepEqual(h.billing, { configured: false, webhook: false });
+  assert.deepEqual(h.billing, { configured: false, webhook: false, ...FLAGS.none });
   assert.deepEqual(h.configured, { signing_key: true, provider_key: true }, 'the existing block is unchanged');
   assert.equal(up.calls.length, 0);
   // configured, but the Durable Object is not bound: still off (never an in-memory stand-in)
   const unbound = setup({ env: billingEnv({ BILLING: undefined }), up });
   assert.equal((await unbound.app.fetch(billingReq('/v1/billing/status'), unbound.env)).status, 503);
-  assert.deepEqual((await (await unbound.app.fetch(req('/v1/health'), unbound.env)).json()).billing, { configured: false, webhook: true });
-  assert.deepEqual((await (await s.app.fetch(req('/v1/health'), billingEnv())).json()).billing, { configured: true, webhook: true });
+  assert.deepEqual((await (await unbound.app.fetch(req('/v1/health'), unbound.env)).json()).billing, { configured: false, webhook: true, ...FLAGS.live });
+  assert.deepEqual((await (await s.app.fetch(req('/v1/health'), billingEnv())).json()).billing, { configured: true, webhook: true, ...FLAGS.live });
 });
 
 // ---------------------------------------------------------------- checkout --
@@ -914,7 +920,7 @@ test('the staging Worker\'s sign-in project: placeholders mean "accounts not con
   assert.equal((await acct.json()).error.code, 'accounts_not_configured');
   assert.equal((await (await session({ invite: 'MALLOW-ONE', device_id: 'device-aaaaaaaaaaaaaaaa' }, TOKEN)).json()).source, 'testing');
   // /v1/health says so (never a value)
-  assert.deepEqual((await (await s.app.fetch(req('/v1/health'), s.env)).json()).billing, { configured: false, webhook: true, accounts_configured: false });
+  assert.deepEqual((await (await s.app.fetch(req('/v1/health'), s.env)).json()).billing, { configured: false, webhook: true, accounts_configured: false, ...FLAGS.test });
   // no outbound call at all: neither Stripe nor any sign-in project
   assert.equal(s.up.calls.length, 0);
   assert.ok(s.logs.some((l) => JSON.parse(l).err === 'accounts_not_configured'), 'the log line says why');
@@ -922,7 +928,7 @@ test('the staging Worker\'s sign-in project: placeholders mean "accounts not con
   // with the price placeholders too (wrangler.toml [env.staging] as it is): the accounts are named first
   const both = setup({ env: billingEnv({ ...ACCOUNTS, ...PLACEHOLDERS }) });
   assert.equal((await (await both.app.fetch(billingReq('/v1/billing/status'), both.env)).json()).error.code, 'accounts_not_configured');
-  assert.deepEqual((await (await both.app.fetch(req('/v1/health'), both.env)).json()).billing, { configured: false, webhook: true, placeholder_prices: 4, accounts_configured: false });
+  assert.deepEqual((await (await both.app.fetch(req('/v1/health'), both.env)).json()).billing, { configured: false, webhook: true, placeholder_prices: 4, accounts_configured: false, ...FLAGS.test });
   assert.equal(both.up.calls.length, 0);
   // each placeholder alone is enough, on any Worker
   for (const over of [{ SUPABASE_URL: 'https://STAGING_TODO.supabase.co' }, { SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_TODO' }, { SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_TODO_owner_staging_key' }, { ACCOUNTS_STAGE: 'staging' }]) {
@@ -945,7 +951,7 @@ test('the staging Worker\'s sign-in project: placeholders mean "accounts not con
   const off = setup({ env: billingEnv({ SUPABASE_URL: '' }) });
   const r = await (await off.app.fetch(billingReq('/v1/billing/status'), off.env)).json();
   assert.deepEqual([r.error.code, r.error.message], ['billing_not_configured', 'Web subscriptions are not set up on this server.']);
-  assert.deepEqual((await (await off.app.fetch(req('/v1/health'), off.env)).json()).billing, { configured: false, webhook: true });
+  assert.deepEqual((await (await off.app.fetch(req('/v1/health'), off.env)).json()).billing, { configured: false, webhook: true, ...FLAGS.live });
 });
 
 test('once hushmallow-staging exists: the staging Worker accepts only its project, production only hushmallow1; the server and the app name the same project', async () => {
@@ -999,7 +1005,7 @@ test('placeholder price ids (price_TODO…) count as unset: billing answers "not
     assert.match(e.message, /Stripe price ids are still placeholders \(price_TODO…\)/, path);
   }
   const h = await (await s.app.fetch(req('/v1/health'), s.env)).json();
-  assert.deepEqual(h.billing, { configured: false, webhook: true, placeholder_prices: 4 });
+  assert.deepEqual(h.billing, { configured: false, webhook: true, placeholder_prices: 4, ...FLAGS.live });
   // Stripe's events wait (503: Stripe retries) until the ids are real
   assert.equal((await deliver(s.app, s.env, event('customer.subscription.updated', subscription(), s.now))).status, 503);
   // Another Angle: an account cannot get a billing session; a tester's code still opens a testing one
@@ -1014,7 +1020,7 @@ test('placeholder price ids (price_TODO…) count as unset: billing answers "not
   // one placeholder among real ids: only that plan is not on sale
   const m = setup({ env: billingEnv({ STRIPE_PRICE_ULTRA_YEARLY: 'price_TODO_owner' }) });
   assert.equal(readConfig(m.env).billing.configured, true);
-  assert.deepEqual((await (await m.app.fetch(req('/v1/health'), m.env)).json()).billing, { configured: true, webhook: true, placeholder_prices: 1 });
+  assert.deepEqual((await (await m.app.fetch(req('/v1/health'), m.env)).json()).billing, { configured: true, webhook: true, placeholder_prices: 1, ...FLAGS.live });
   const y = await m.app.fetch(billingReq('/v1/billing/checkout', { body: { plan: 'ultra', period: 'yearly' } }), m.env);
   assert.equal(y.status, 503);
   assert.equal((await y.json()).error.code, 'price_not_configured');

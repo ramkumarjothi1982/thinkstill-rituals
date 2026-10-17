@@ -29,9 +29,9 @@ All responses are JSON with `Cache-Control: no-store`. Errors look like `{ "stat
 
 ### `GET /v1/health`
 
-`{ ok, service, prompt_version, schema_version, provider, entitlement_mode, invite_required, configured: { signing_key, provider_key }, billing: { configured, webhook } }`
+`{ ok, service, prompt_version, schema_version, provider, entitlement_mode, invite_required, configured: { signing_key, provider_key }, billing: { configured, webhook, stripe_mode, key_refused?, live_approved, api_version, automatic_tax } }`
 
-`billing` says only whether web subscriptions are set up (all their values, and the `BILLING` Durable Object) and whether the webhook has its signing secret; never a key or a price.
+`billing` says only whether web subscriptions are set up (all their values, and the `BILLING` Durable Object) and whether the webhook has its signing secret; never a key or a price. The rest are enums and booleans: `stripe_mode` is the accepted key's mode (`"test"`, `"live"`, or `null` when unset or refused); `key_refused` appears only when a key was refused for this stage (`live_key_on_staging`, `test_key_on_production`, `live_not_approved`: the production Worker takes a live key only once `BILLING_LIVE = "approved"` is in its `[vars]`); `live_approved` is that approval; `api_version` is the pinned `STRIPE_API_VERSION` (or `null`); `automatic_tax` is the Stripe Tax switch.
 
 `invite_required` is `true` when a testing session needs one of `TESTER_INVITE_CODES` (only whether, never a code), so a deploy can be checked for invite mode without trying a session.
 

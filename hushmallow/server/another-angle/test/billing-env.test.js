@@ -5,7 +5,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { req } from './helpers.js';
+import { req, makeEnv } from './helpers.js';
 import { readConfig, BILLING_LIVE_APPROVED, STRIPE_API_VERSION_EXPECTED } from '../src/config.js';
 import {
   billingEnv, billingReq, setup, upstream, subscription, event, deliver, subscribe, status, lines, assertClean, stripeKey, withStagingProject,
@@ -177,4 +177,33 @@ test('STRIPE_AUTOMATIC_TAX: off unless switched on; staging says "false" until i
   // where it is set, it says exactly "true" or "false" (a typo would read as off without saying so)
   for (const [name, vars] of Object.entries(t)) if ('STRIPE_AUTOMATIC_TAX' in vars) assert.ok(['true', 'false'].includes(vars.STRIPE_AUTOMATIC_TAX), name);
   assert.match(WRANGLER, /^#.*STRIPE_AUTOMATIC_TAX/m, 'documented');
+});
+
+// -------------------------------------------------------------- /v1/health --
+test('/v1/health says the Stripe mode, why a key is refused, the approval, the API version and the tax switch; never a value', async () => {
+  const health = async (env) => {
+    const s = setup({ env });
+    const res = await s.app.fetch(req('/v1/health'), s.env);
+    assert.equal(res.status, 200);
+    const text = await res.text();
+    assertClean(s.logs, text);
+    for (const v of [LIVE_KEY, TEST_KEY, WHSEC, PK, 'price_', 'cus_', 'acct_']) assert.ok(!text.includes(v), `no ${v.slice(0, 12)}`);
+    return JSON.parse(text).billing;
+  };
+  // production today (nothing set): all off
+  assert.deepEqual(await health(makeEnv({ PROVIDER: 'mock' })), { configured: false, webhook: false, stripe_mode: null, live_approved: false, api_version: null, automatic_tax: false });
+  // production, approved, pinned
+  assert.deepEqual(await health(billingEnv({ STRIPE_API_VERSION: STRIPE_API_VERSION_EXPECTED })), { configured: true, webhook: true, stripe_mode: 'live', live_approved: true, api_version: STRIPE_API_VERSION_EXPECTED, automatic_tax: false });
+  // production with its live key but no approval yet: refused, and says why
+  assert.deepEqual(await health(billingEnv({ BILLING_LIVE: undefined })), { configured: false, webhook: true, stripe_mode: null, key_refused: 'live_not_approved', live_approved: false, api_version: null, automatic_tax: false });
+  assert.equal((await health(billingEnv({ STRIPE_SECRET_KEY: TEST_KEY }))).key_refused, 'test_key_on_production');
+  // the staging Worker as committed (its own vars), with a test key, and with a live one pasted by mistake
+  const staging = { ...varsTables(WRANGLER).staging, BILLING: billingEnv().BILLING, STRIPE_WEBHOOK_SECRET: WHSEC };
+  assert.deepEqual(await health(makeEnv({ ...staging, STRIPE_SECRET_KEY: TEST_KEY })), {
+    configured: false, webhook: true, stripe_mode: 'test', live_approved: false, api_version: STRIPE_API_VERSION_EXPECTED, automatic_tax: false,
+    placeholder_prices: 4, accounts_configured: false,
+  });
+  const wrong = await health(makeEnv({ ...staging, STRIPE_SECRET_KEY: LIVE_KEY, BILLING_LIVE: 'approved' }));
+  assert.deepEqual([wrong.stripe_mode, wrong.key_refused, wrong.live_approved], [null, 'live_key_on_staging', false]);
+  assert.equal((await health(billingEnv({ STRIPE_AUTOMATIC_TAX: 'true' }))).automatic_tax, true);
 });

@@ -115,9 +115,14 @@ export function createApp(options) {
         configured: { signing_key: cfg.signingKeys.length > 0, provider_key: cfg.provider === 'mock' || cfg.apiKey.length > 0 },
         // web subscriptions (src/billing/): only whether they are set up, never a key or a price (and, while any
         // price id is still a placeholder such as price_TODO_owner, how many; while the sign-in project is a
-        // placeholder, that it is: docs/STAGING.md)
+        // placeholder, that it is: docs/STAGING.md). Enums and booleans only: the accepted key's Stripe mode (null
+        // when unset or refused), why a key was refused, the owner's live approval, the pinned API version and the
+        // Stripe Tax switch, so a deploy can be checked without a key.
         billing: {
           configured: billing.ready(env, cfg), webhook: cfg.billing.webhookSecret.length > 0,
+          stripe_mode: cfg.billing.keyMode || null,
+          ...(cfg.billing.keyRefused ? { key_refused: cfg.billing.keyRefused } : {}),
+          live_approved: cfg.billing.liveApproved, api_version: cfg.billing.apiVersion || null, automatic_tax: cfg.billing.automaticTax,
           ...(cfg.billing.placeholderPrices ? { placeholder_prices: cfg.billing.placeholderPrices } : {}),
           ...(cfg.billing.accountsPlaceholder ? { accounts_configured: false } : {}),
         },
