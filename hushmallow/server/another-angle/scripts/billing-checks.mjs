@@ -87,7 +87,9 @@ export async function keyFreeChecks({ call, check, info = () => {}, health, stag
   const on = flags && b.configured === true;
   if (flags) {
     const table = stage === 'staging' ? '[env.staging.vars]' : '[vars]';
-    check(!b.key_refused, 'billing: no Stripe key refused for this stage', b.key_refused ? `key_refused ${b.key_refused}` : '');
+    // production's live key, set before the activation commit (docs/PAYMENTS.md section 4), is refused as intended
+    if (stage === 'production' && b.key_refused === 'live_not_approved') info('a live Stripe key is set and refused until BILLING_LIVE = "approved" (the activation commit)');
+    else check(!b.key_refused, 'billing: no Stripe key refused for this stage', b.key_refused ? `key_refused ${b.key_refused}` : '');
     check(b.live_approved === expected.live_approved, `billing: live_approved ${expected.live_approved}, as wrangler.toml ${table} says`, String(b.live_approved));
     // staging takes test keys only; production a live key only, and only once approved (src/config.js)
     const modes = stage === 'staging' ? ['test', null] : expected.live_approved ? ['live', null] : [null];

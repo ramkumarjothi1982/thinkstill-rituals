@@ -85,6 +85,16 @@ test('key-free checks fail a Worker that takes an unsigned event, lets in anothe
   const fails = [];
   await C.keyFreeChecks({ call, check: (k, what) => { if (!k) fails.push(what); return k; }, health: await health(call), stage: 'staging' });
   assert.deepEqual(fails, ['billing: no Stripe key refused for this stage']);
+  // production: a test key is refused and fails; its live key set before the activation commit is refused as intended
+  for (const [key, want] of /** @type {const} */ ([[F.TEST_KEY, ['billing: no Stripe key refused for this stage']], [F.LIVE_KEY, []]])) {
+    const prodEnv = makeEnv({ PROVIDER: 'mock', ALLOWED_ORIGINS: 'https://app.hushmallow.com', STRIPE_SECRET_KEY: key });
+    const p = caller(real, prodEnv, PRODUCTION_WORKER, 'https://app.hushmallow.com');
+    /** @type {string[]} */
+    const got = [], said = [];
+    await C.keyFreeChecks({ call: p, check: (k, what) => { if (!k) got.push(what); return k; }, info: (x) => said.push(x), health: await health(p), stage: 'production' });
+    assert.deepEqual(got, want, key.slice(0, 8));
+    if (key === F.LIVE_KEY) assert.ok(said.some((x) => x.includes('refused until BILLING_LIVE = "approved"')));
+  }
 });
 
 test('scripts/e2e.mjs runs the key-free checks against a Worker (here the app on this machine, the mock model): all pass; a webhook that takes anything fails it', async () => {
