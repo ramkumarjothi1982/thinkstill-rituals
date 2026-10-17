@@ -294,6 +294,16 @@ export class Billing {
         return Response.json({ ok: true, checkout: (await this.storage.get('checkout')) || null });
       case 'set_checkout': {
         if (!isCheckout(body?.checkout)) return bad();
+        // expect (checkout's compare-and-swap): the id the request read before it went to Stripe (null: none). Another
+        // checkout for the account stored its session since: nothing is written, and that request expires its own
+        // (src/billing/routes.js), so an account never has two sessions it could pay. The same session twice is no
+        // conflict (two taps that Stripe's idempotency key merged).
+        if (body && Object.prototype.hasOwnProperty.call(body, 'expect')) {
+          if (body.expect !== null && typeof body.expect !== 'string') return bad();
+          const cur = (await this.storage.get('checkout')) || null;
+          const curId = cur && typeof cur.id === 'string' ? cur.id : null;
+          if (curId !== body.expect && curId !== body.checkout.id) return Response.json({ ok: true, conflict: true });
+        }
         await this.storage.put('checkout', { id: body.checkout.id, expires_at: body.checkout.expires_at });
         return Response.json({ ok: true });
       }
@@ -367,8 +377,13 @@ export function billingClient(ns) {
     replaceCustomer: (uid, from, to) => call(`user:${uid}`, 'replace_customer', { from, to }),
     /** The last Checkout Session started for the account, or null. @param {string} uid @returns {Promise<{ id: string, expires_at: number } | null>} */
     lastCheckout: async (uid) => (await call(`user:${uid}`, 'checkout', {})).checkout || null,
-    /** @param {string} uid @param {{ id: string, expires_at: number }} checkout expires_at in ms @returns {Promise<{ ok: boolean }>} */
-    setCheckout: (uid, checkout) => call(`user:${uid}`, 'set_checkout', { checkout }),
+    /**
+     * @param {string} uid @param {{ id: string, expires_at: number }} checkout expires_at in ms
+     * @param {string | null} [expect] written only while the stored session is still this one (null: none); otherwise
+     *   { conflict: true } and nothing changes
+     * @returns {Promise<{ ok: boolean, conflict?: boolean }>}
+     */
+    setCheckout: (uid, checkout, expect) => call(`user:${uid}`, 'set_checkout', { checkout, ...(expect !== undefined ? { expect } : {}) }),
   };
 }
 
