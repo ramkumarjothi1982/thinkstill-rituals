@@ -162,8 +162,8 @@ Never needed at all: a Supabase secret key (`sb_secret_…`), the service_role k
 Stripe publishable key (`pk_…`: the app never loads Stripe.js, so the one sent earlier is not added
 anywhere). The Anthropic key (A6), the Stripe keys (B8, B12) and the webhook signing secret (B11) are secrets:
 they go only where a step puts them (a GitHub **New repository secret**, the staging Worker's **Variables and
-Secrets** in Cloudflare, or the cloud session's network secrets in B12), never into a chat, a file, a doc or a
-commit. The only values Claude needs are public: the staging project's URL and its publishable key (A4), and
+Secrets** in Cloudflare, or the private rehearsal environment's variables in B12), never into a chat, a file, a
+doc or a commit. The only values Claude needs are public: the staging project's URL and its publishable key (A4), and
 the Stripe price ids (B10: the owner's four of 2026-10-17 are already in; new ones only if those are live mode's).
 
 Dashboard labels move now and then; if one is not where this says, search the dashboard for the setting's
@@ -547,11 +547,19 @@ Only if Claude should run the sandbox driver from its cloud session; otherwise r
    * **Network access** → **Allowed domains**: `api.stripe.com`,
      `hushmallow-another-angle-staging.vibyfy-chat.workers.dev` and `<staging ref>.supabase.co`. Keep "Allow
      package managers" ticked.
-   * **Environment variables** (not Network secrets: the drivers read these values themselves, and a password
-     travels inside the sign-in request): `STRIPE_E2E_KEY` (the key from 1), `STAGING_E2E_EMAIL` and
-     `STAGING_E2E_PASSWORD` (the account from 2), and the rehearsal's `REHEARSAL_A_EMAIL` and
-     `REHEARSAL_A_PASSWORD` (E2E-A). Anyone who can edit the environment can read them: staging test values only,
-     never production's. A new session picks them up; Claude starts one to run the drivers.
+   * The drivers' values go in a **separate, private environment used only for the rehearsal**
+     (`hushmallow-rehearsal`: Add environment, the same allowed domains, not shared), as **Environment variables**:
+     `STRIPE_E2E_KEY` (the key from 1), `STAGING_E2E_EMAIL` and `STAGING_E2E_PASSWORD` (the account from 2), and the
+     rehearsal's `REHEARSAL_A_EMAIL` and `REHEARSAL_A_PASSWORD` (E2E-A). Not Network secrets: a password travels
+     inside the sign-in request, where the agent proxy cannot add it, and a key the proxy attached to every
+     `api.stripe.com` request would also reach the requests Stripe's own Checkout page makes from the rehearsal's
+     browser. Anyone who can edit an environment can read its variables, and every session started in it can, which
+     is why they are not in the everyday environment: Claude starts the one rehearsal session there, and the drivers
+     never print them. Staging test values only, never production's.
+   * Right after the last passing run: delete that environment (or its variables), roll or delete the
+     `hushmallow-e2e` key, and delete or re-password E2E-A and E2E-B.
+   * The alternative that stores nothing in the cloud: run both drivers on your own computer with the values in the
+     gitignored `hushmallow/server/another-angle/.dev.vars.rehearsal` (`node --env-file=…`, below).
 4. No Stripe key ever goes into GitHub Actions: the driver is not part of any workflow.
 
 ### B13. The custom domain checkout.hushmallow.com (10 min, only after Claude's go-ahead)
@@ -826,7 +834,7 @@ secret's text are masked in them).
 
 ```
 node --env-file=hushmallow/server/another-angle/.dev.vars.rehearsal hushmallow/tools/staging/rehearsal.cjs
-# or, from Claude's cloud session with the rehearsal's own values as environment variables (below, not B12's E2E-B);
+# or, from Claude's cloud session in the rehearsal's own environment (B12), its values as environment variables (not B12's E2E-B);
 # NODE_USE_ENV_PROXY=1 makes Node's own fetch use the session's HTTPS proxy (Node 22.21 or later):
 NODE_USE_ENV_PROXY=1 timeout 1800 node hushmallow/tools/staging/rehearsal.cjs [--steps R0,R2,R3,R3U,R7] [--out DIR] [--viewport 390x844]
 ```
@@ -834,8 +842,8 @@ NODE_USE_ENV_PROXY=1 timeout 1800 node hushmallow/tools/staging/rehearsal.cjs [-
 **What it needs.** The network to the preview, the staging Worker, the staging project
 (`oghzabvkrxsejkkjdsuc.supabase.co`) and Stripe (`checkout.stripe.com`, `billing.stripe.com`, `api.stripe.com` and the
 other Stripe hosts Checkout loads, from memory `*.stripe.com`, `*.stripe.network` and `*.stripecdn.com`). Its inputs come
-from the environment only, one `NAME=value` a line in that gitignored file (`.dev.vars.*`), or as network secrets, never
-on a command line; they are never printed or written anywhere:
+from the environment only, one `NAME=value` a line in that gitignored file (`.dev.vars.*`), or as the rehearsal environment's
+variables (B12), never on a command line; they are never printed or written anywhere:
 
 | Variable | What for |
 |---|---|
