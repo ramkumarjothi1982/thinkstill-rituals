@@ -52,6 +52,8 @@ const PERIODS = ['monthly', 'yearly'];
 /**
  * @typedef {import('../config.js').Config} Config
  * @typedef {{ ok: true, uid: string } | { ok: false, status: number, code: string }} AccountResult
+ * @typedef {{ http: number, outcome: string, tier?: string, subStatus?: string, duplicate?: boolean, err?: string, stripeHttp?: number }} Recorded
+ *   what recording a subscription did (err and stripeHttp: Stripe's code and HTTP status when a call failed; 0 = no answer)
  */
 
 /** The bearer token on a request, or null. @param {Request} request */
@@ -217,13 +219,16 @@ export function createBilling({ logger, now, fetch: fetchImpl = (input, init) =>
     if (request.method !== 'POST') return error(405, 'method_not_allowed', 'Method not allowed.', { allow: 'POST' });
     if (!cfg.billing.webhookSecret) { log('webhook', t0, { status: 'off', http: 503 }); return error(503, 'billing_not_configured', 'STRIPE_WEBHOOK_SECRET is not set.'); }
     const raw = await readText(request, WEBHOOK_MAX_BYTES);
-    if (!raw.ok) return error(raw.status, raw.code, raw.message);
+    if (!raw.ok) { log('webhook', t0, { status: 'invalid', http: raw.status, err: raw.code }); return error(raw.status, raw.code, raw.message); }
     const sig = await verifyWebhookSignature(raw.value, request.headers.get('stripe-signature'), cfg.billing.webhookSecret, now());
     if (!sig.ok) { log('webhook', t0, { status: 'bad_signature', http: 400, err: sig.code }); return error(400, 'bad_signature', 'The Stripe signature does not match.'); }
     /** @type {any} */
     let event;
-    try { event = JSON.parse(raw.value); } catch { return error(400, 'invalid_json', 'Body is not valid JSON.'); }
-    if (!event || typeof event !== 'object' || typeof event.id !== 'string' || !/^evt_[A-Za-z0-9]{1,250}$/.test(event.id) || typeof event.type !== 'string') return error(400, 'invalid_event', 'Not a Stripe event.');
+    try { event = JSON.parse(raw.value); } catch { log('webhook', t0, { status: 'invalid', http: 400, err: 'invalid_json' }); return error(400, 'invalid_json', 'Body is not valid JSON.'); }
+    if (!event || typeof event !== 'object' || typeof event.id !== 'string' || !/^evt_[A-Za-z0-9]{1,250}$/.test(event.id) || typeof event.type !== 'string') {
+      log('webhook', t0, { status: 'invalid', http: 400, err: 'invalid_event' });
+      return error(400, 'invalid_event', 'Not a Stripe event.');
+    }
     const type = event.type.slice(0, 48);
     if (!EVENTS.includes(type)) { log('webhook', t0, { status: 'ignored', http: 200, stripe_event: type }); return json(200, { received: true }); }
     if (!ready(env, cfg)) { log('webhook', t0, { status: 'off', http: 503, stripe_event: type, err: offReason(cfg) }); return error(503, offCode(cfg), offMessage(cfg)); }
@@ -231,13 +236,13 @@ export function createBilling({ logger, now, fetch: fetchImpl = (input, init) =>
     // checked once billing is on, so while it is off every event waits (503) instead of being dropped
     if (event.livemode !== (cfg.billing.keyMode === 'live')) { log('webhook', t0, { status: 'mode_mismatch', http: 200, stripe_event: type }); return json(200, { received: true }); }
     const r = await apply(event, env, cfg);
-    log('webhook', t0, { status: r.outcome, http: r.http, stripe_event: type, tier: r.tier, sub_status: r.subStatus, duplicate: r.duplicate });
+    log('webhook', t0, { status: r.outcome, http: r.http, stripe_event: type, tier: r.tier, sub_status: r.subStatus, duplicate: r.duplicate, err: r.err, stripe_http: r.stripeHttp });
     return r.http === 200 ? json(200, { received: true, ...(r.duplicate ? { duplicate: true } : {}) }) : error(r.http, 'retry_later', 'Could not record the event just now.');
   }
 
   /**
    * @param {any} event @param {Record<string, any>} env @param {Config} cfg
-   * @returns {Promise<{ http: number, outcome: string, tier?: string, subStatus?: string, duplicate?: boolean }>}
+   * @returns {Promise<Recorded>}
    */
   async function apply(event, env, cfg) {
     const obj = event.data?.object && typeof event.data.object === 'object' ? event.data.object : {};
@@ -267,7 +272,7 @@ export function createBilling({ logger, now, fetch: fetchImpl = (input, init) =>
    * @param {{ subId: string, uidHint: string | null, obj: any, eventType: string, created: number, eventId: string | null }} args
    *   obj: the event's object (a subscription event's own copy is the fallback on a 404); created: the event's, in seconds
    * @param {Record<string, any>} env @param {Config} cfg
-   * @returns {Promise<{ http: number, outcome: string, tier?: string, subStatus?: string, duplicate?: boolean }>}
+   * @returns {Promise<Recorded>}
    */
   async function recordSubscription({ subId, uidHint, obj, eventType, created, eventId }, env, cfg) {
     // as of when Stripe was asked, not when it answered: of two deliveries racing for the same subscription, the one
@@ -283,8 +288,8 @@ export function createBilling({ logger, now, fetch: fetchImpl = (input, init) =>
       if (!eventType.startsWith('customer.subscription.') || idOf(obj?.id) !== subId || ACCESS.has(obj?.status)) return { http: 200, outcome: 'not_found' };
       sub = obj;
       asOf = Number(created) * 1000 || 0;
-    } else return { http: 502, outcome: 'stripe_error' };
-    if (idOf(sub?.id) !== subId) return { http: 502, outcome: 'stripe_error' };
+    } else return { http: 502, outcome: 'stripe_error', err: got.code, stripeHttp: got.status };
+    if (idOf(sub?.id) !== subId) return { http: 502, outcome: 'stripe_error', err: 'id_mismatch' };
     const store = storeFor(env);
     const customer = idOf(sub.customer) || idOf(obj?.customer);
     const uid = uidOf(uidHint) || uidOf(sub.metadata?.user_id) || (customer ? uidOf(await store.owner(customer)) : null);

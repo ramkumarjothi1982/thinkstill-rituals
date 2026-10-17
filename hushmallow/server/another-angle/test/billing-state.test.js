@@ -295,3 +295,33 @@ test('a 404 from Stripe: the event\'s own copy may only take access away, never 
   assert.equal((await status(c)).tier, 'none');
   assertClean([...s.logs, ...c.logs]);
 });
+
+// ------------------------------------------------------------ diagnostics --
+test('diagnostics: a Stripe refusal is logged with its code and HTTP status (502, so Stripe retries); early refusals say why', async () => {
+  const s = setup();
+  // a restricted key without Subscriptions read: Stripe answers 403 (its message names the key and the account)
+  s.up.fail = { path: /^\/v1\/subscriptions\//, status: 403, error: { type: 'invalid_request_error', message: "The provided key 'rk_live_…' does not have the required permissions for this endpoint on account 'acct_1A'." } };
+  const r = await deliver(s.app, s.env, event('customer.subscription.updated', subscription(), s.now), { at: s.now() });
+  assert.equal(r.status, 502);
+  let line = lines(s.logs).find((l) => l.status === 'stripe_error');
+  assert.deepEqual([line.http, line.err, line.stripe_http, line.stripe_event], [502, 'invalid_request_error', 403, 'customer.subscription.updated']);
+  // Stripe unreachable: status 0, err network
+  s.up.fail = null;
+  const down = { ...s.up, fetch: async () => { throw new TypeError('offline'); } };
+  const d = setup({ up: down });
+  assert.equal((await deliver(d.app, d.env, event('invoice.paid', objectFor('invoice.paid'), d.now), { at: d.now() })).status, 502);
+  line = lines(d.logs).find((l) => l.status === 'stripe_error');
+  assert.deepEqual([line.err, line.stripe_http], ['network', 0]);
+  // the early refusals, each logged with its code (before: nothing at all)
+  const e = setup();
+  const post = (body, headers = {}) => e.app.fetch(new Request('https://angle.example.workers.dev/v1/billing/webhook', { method: 'POST', headers: { 'content-type': 'application/json', ...headers }, body }), e.env);
+  assert.equal((await post('{}', { 'content-type': 'text/plain' })).status, 415);
+  assert.equal((await post('{}', { 'content-length': String(300000) })).status, 413);
+  assert.equal((await deliver(e.app, e.env, null, { raw: 'not json', at: e.now() })).status, 400);
+  assert.equal((await deliver(e.app, e.env, null, { raw: JSON.stringify({ type: 'invoice.paid' }), at: e.now() })).status, 400);
+  assert.deepEqual(lines(e.logs).map((l) => [l.route, l.status, l.http, l.err]), [
+    ['webhook', 'invalid', 415, 'unsupported_media_type'], ['webhook', 'invalid', 413, 'too_large'],
+    ['webhook', 'invalid', 400, 'invalid_json'], ['webhook', 'invalid', 400, 'invalid_event'],
+  ]);
+  assertClean([...s.logs, ...d.logs, ...e.logs]);
+});

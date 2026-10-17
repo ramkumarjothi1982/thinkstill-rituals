@@ -12,8 +12,9 @@ const KEYS = new Set([
   'normalised', 'provider', 'provider_error', 'refusal_category', 'model', 'fallback_model', 'fallback_reason',
   'tokens_in', 'tokens_out', 'cache_read', 'cache_write', 'cost_micros', 'quota_left', 'source', 'err', 'prompt_version',
   'previous', 'intention', 'chosen_emotion', 'text_len_bucket', 'cap_left_micros', 'rating',
-  // web subscriptions (src/billing/routes.js): which plan and period, Stripe's event type and status; never an id
-  'plan', 'period', 'tier', 'stripe_event', 'sub_status', 'duplicate',
+  // web subscriptions (src/billing/routes.js): which plan and period, Stripe's event type and status, and the HTTP
+  // status of a Stripe call that failed (its code goes in err); never an id
+  'plan', 'period', 'tier', 'stripe_event', 'sub_status', 'duplicate', 'stripe_http',
 ]);
 const SAFE_STRING = /^[A-Za-z0-9_.:-]{0,48}$/;
 
