@@ -109,9 +109,10 @@ test('shipped code calls no remote service except Another Angle’s own server',
   assert.match(authSrc, /if \(u\.origin !== origin\) return Promise\.reject/);
   const { PROJECT_URL, STAGING_PROJECT_URL } = await import('../src/auth/config.js');
   assert.equal(PROJECT_URL, 'https://igbxbfuaoybfzsroxuln.supabase.co');
-  // the branch previews' own project (docs/STAGING.md): derived from STAGING_PROJECT_REF, '' while it is the placeholder
+  // the branch previews' own project (docs/STAGING.md): derived from STAGING_PROJECT_REF, the owner's staging project
   const STAGING_PROJECT_TEMPLATE = 'https://${STAGING_PROJECT_REF}.supabase.co';
-  assert.ok(STAGING_PROJECT_URL === '' || (/^https:\/\/[a-z0-9]{20}\.supabase\.co$/.test(STAGING_PROJECT_URL) && STAGING_PROJECT_URL !== PROJECT_URL), STAGING_PROJECT_URL);
+  assert.equal(STAGING_PROJECT_URL, 'https://oghzabvkrxsejkkjdsuc.supabase.co');
+  assert.notEqual(STAGING_PROJECT_URL, PROJECT_URL);
   // …and web subscriptions (src/app/billing.js; off unless src/app/config.js switches them on): one fetch, only to the
   // billing endpoint (the same Worker, one of ANGLE_ALLOWED_HOSTS) + one of its four paths, with the account's token
   const billingFetch = 'const netFetch = (url, init) => globalThis.fetch(url, init);';
