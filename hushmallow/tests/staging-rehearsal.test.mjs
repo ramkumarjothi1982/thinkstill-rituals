@@ -111,9 +111,10 @@ test('the local test flag only goes with a loopback base, and a loopback base on
   assert.ok(pre(['--base', 'http://127.0.0.1', '--allow-local-for-testing']).refuse, 'a port is part of it');
 });
 
-test('STRIPE_E2E_KEY: test keys only (rk_test_ or sk_test_); a live key, a publishable key or anything else is refused, never echoed', () => {
-  for (const k of [key('rk_test'), key('sk_test')]) assert.equal(pre([], { ...ACCOUNT, STRIPE_E2E_KEY: k }).refuse, null);
-  for (const [k, re] of [[key('rk_live'), /is a live key/], [key('sk_live'), /is a live key/], [key('pk_test'), /not a Stripe test secret/], ['rk_test_short', /not a Stripe test secret/], [`whsec_${'a'.repeat(32)}`, /not a Stripe test secret/]]) {
+test('STRIPE_E2E_KEY: a restricted Sandbox key only (rk_test_); a secret key, a live key, a publishable key or anything else is refused, never echoed', () => {
+  assert.equal(pre([], { ...ACCOUNT, STRIPE_E2E_KEY: key('rk_test') }).refuse, null);
+  assert.match(pre([], { ...ACCOUNT, STRIPE_E2E_KEY: key('sk_test') }).refuse, /not a restricted Stripe Sandbox key/);
+  for (const [k, re] of [[key('rk_live'), /is a live key/], [key('sk_live'), /is a live key/], [key('pk_test'), /not a restricted Stripe Sandbox key/], ['rk_test_short', /not a restricted Stripe Sandbox key/], [`whsec_${'a'.repeat(32)}`, /not a restricted Stripe Sandbox key/]]) {
     const why = pre([], { ...ACCOUNT, STRIPE_E2E_KEY: k }).refuse || '';
     assert.match(why, re);
     assert.ok(!why.includes(k), 'the key is never in the message');

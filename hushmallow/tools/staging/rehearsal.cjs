@@ -64,7 +64,7 @@
 // createLog) and never written to disk (screenshots, of failures only, mask every input, the address on the account
 // screens and any secret's text): REHEARSAL_A_EMAIL, REHEARSAL_A_PASSWORD (one confirmed hushmallow-staging account,
 // E2E-A), optional REHEARSAL_C_EMAIL, REHEARSAL_C_PASSWORD (E2E-C, for the declines), optional STRIPE_E2E_KEY
-// (rk_test_… or sk_test_…: read-only checks and the teardown), optional REHEARSAL_SIGNUP_EMAIL (+ optional
+// (a restricted Sandbox key, rk_test_… only: read-only checks and the teardown), optional REHEARSAL_SIGNUP_EMAIL (+ optional
 // REHEARSAL_SIGNUP_PASSWORD; a real inbox the owner controls: the driver only submits the form, the owner clicks the link).
 // The sandbox driver's STAGING_E2E_EMAIL / _PASSWORD (E2E-B, scripts/billing-e2e.mjs) are never used here (masked if set),
 // and an E2E-A or E2E-C that is that account is refused: the two drivers never share an account or its subscriptions.
@@ -255,7 +255,7 @@ function preflight({ opts, env = {}, repo }) {
   }
   const key = String(env.STRIPE_E2E_KEY || '').trim();
   if (key && /^[sr]k_live_/.test(key)) return refuse('STRIPE_E2E_KEY is a live key. This driver runs in Stripe test mode only. Nothing was sent.');
-  if (key && !repo.e2eKey.test(key)) return refuse('STRIPE_E2E_KEY is not a Stripe test secret or restricted key (rk_test_… or sk_test_…). Nothing was sent.');
+  if (key && !repo.e2eKey.test(key)) return refuse('STRIPE_E2E_KEY is not a restricted Stripe Sandbox key (rk_test_…; a secret key sk_… is refused too). Nothing was sent.');
   const A = { email: String(env.REHEARSAL_A_EMAIL || '').trim(), password: String(env.REHEARSAL_A_PASSWORD || '') };
   const C = { email: String(env.REHEARSAL_C_EMAIL || '').trim(), password: String(env.REHEARSAL_C_PASSWORD || '') };
   const signup = { email: String(env.REHEARSAL_SIGNUP_EMAIL || '').trim(), password: String(env.REHEARSAL_SIGNUP_PASSWORD || '') };

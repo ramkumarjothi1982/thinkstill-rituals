@@ -588,8 +588,8 @@ protection**: **Enable**.
 
 `server/another-angle/scripts/billing-e2e.mjs` runs the scripted parts of the rehearsal against the staging
 Worker and the sandbox, in test mode only. It reads three secrets from the environment and never prints them:
-`STRIPE_E2E_KEY` (B12's key; anything but `rk_test_…` or `sk_test_…`, a live key above all, is refused before
-any request), `STAGING_E2E_EMAIL` and `STAGING_E2E_PASSWORD` (E2E-B). Everything else (the Workers' addresses,
+`STRIPE_E2E_KEY` (B12's key, a restricted Sandbox key: anything but `rk_test_…`, the sandbox's secret key and
+a live key above all, is refused before any request), `STAGING_E2E_EMAIL` and `STAGING_E2E_PASSWORD` (E2E-B). Everything else (the Workers' addresses,
 the staging project, the price ids, the tax switch) it reads from the repository, and it refuses to start
 while any of it is still a placeholder.
 
@@ -823,8 +823,9 @@ secret's text are masked in them).
 
 ```
 node --env-file=hushmallow/server/another-angle/.dev.vars.rehearsal hushmallow/tools/staging/rehearsal.cjs
-# or, from Claude's cloud session with the rehearsal's own values as network secrets (below, not B12's E2E-B):
-timeout 1800 node hushmallow/tools/staging/rehearsal.cjs [--steps R0,R2,R3,R3U,R7] [--out DIR] [--viewport 390x844]
+# or, from Claude's cloud session with the rehearsal's own values as environment variables (below, not B12's E2E-B);
+# NODE_USE_ENV_PROXY=1 makes Node's own fetch use the session's HTTPS proxy (Node 22.21 or later):
+NODE_USE_ENV_PROXY=1 timeout 1800 node hushmallow/tools/staging/rehearsal.cjs [--steps R0,R2,R3,R3U,R7] [--out DIR] [--viewport 390x844]
 ```
 
 **What it needs.** The network to the preview, the staging Worker, the staging project

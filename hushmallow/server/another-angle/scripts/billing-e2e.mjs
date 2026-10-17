@@ -6,7 +6,7 @@
 //     node --env-file=.dev.vars.e2e scripts/billing-e2e.mjs
 //
 // Secrets come from the environment only, and are never printed:
-//   STRIPE_E2E_KEY        a restricted test key (rk_test_…; sk_test_… also works). Anything else, a live key above
+//   STRIPE_E2E_KEY        a restricted Sandbox key (rk_test_…) only: the sandbox's full secret key (sk_test_…) and, above all, a live key
 //                         all, is refused before any request is made.
 //   STAGING_E2E_EMAIL     one confirmed hushmallow-staging test account (E2E-B), signed in with the staging project's
 //   STAGING_E2E_PASSWORD  password grant and its public publishable key (wrangler.toml [env.staging.vars]).
@@ -42,7 +42,7 @@ export const PRODUCTION_WORKER = 'https://hushmallow-another-angle.vibyfy-chat.w
 /** Production's own app: never one of the staging Worker's origins, so P1 expects it refused there. */
 export const PRODUCTION_APP = 'https://app.hushmallow.com';
 /** Test keys only: a restricted key (recommended) or the sandbox's secret key. */
-export const E2E_KEY = /^(?:rk|sk)_test_[A-Za-z0-9]{8,}$/;
+export const E2E_KEY = /^rk_test_[A-Za-z0-9]{8,}$/;
 export const PHASES = Object.freeze(['P0', 'P1', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8', 'S9']);
 /**
  * The owner's amounts in US cents (decision D2, in US dollars since 2026-10-17, docs/STAGING.md), by product id: the
@@ -137,7 +137,7 @@ export function refusal(env, needsAccount = true) {
   const key = String(env.STRIPE_E2E_KEY || '').trim();
   if (!key) return 'STRIPE_E2E_KEY is not set (a restricted test key, rk_test_…). Nothing was sent.';
   if (/^[sr]k_live_/.test(key)) return 'STRIPE_E2E_KEY is a live key. This driver runs in test mode only. Nothing was sent.';
-  if (!E2E_KEY.test(key)) return 'STRIPE_E2E_KEY is not a Stripe test secret or restricted key (rk_test_… or sk_test_…). Nothing was sent.';
+  if (!E2E_KEY.test(key)) return 'STRIPE_E2E_KEY is not a restricted Stripe Sandbox key (rk_test_…; a secret key sk_… is refused too). Nothing was sent.';
   if (needsAccount && (!String(env.STAGING_E2E_EMAIL || '').trim() || !String(env.STAGING_E2E_PASSWORD || ''))) {
     return 'STAGING_E2E_EMAIL and STAGING_E2E_PASSWORD (one confirmed hushmallow-staging test account) are not set. Nothing was sent.';
   }

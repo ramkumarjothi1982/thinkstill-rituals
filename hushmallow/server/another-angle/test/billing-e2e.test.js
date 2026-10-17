@@ -129,7 +129,7 @@ test('the driver refuses anything but a test secret or restricted key, and an ac
     if (key) assert.ok(!w.out.join('\n').includes(key.trim()), 'the value is never echoed');
   }
   assert.match(D.refusal({ ...DRIVER_ENV, STRIPE_E2E_KEY: F.stripeKey('rk_live') }), /live key/);
-  assert.equal(D.refusal({ ...DRIVER_ENV, STRIPE_E2E_KEY: F.stripeKey('sk_test') }), '');
+  assert.match(D.refusal({ ...DRIVER_ENV, STRIPE_E2E_KEY: F.stripeKey('sk_test') }), /not a restricted Stripe Sandbox key/, 'the sandbox\'s full secret key: refused, restricted keys only');
   assert.equal(D.refusal(DRIVER_ENV), '');
   // the account is needed for the scenarios only
   const w = world();
