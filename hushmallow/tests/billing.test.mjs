@@ -14,7 +14,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-import { createBilling, resolveBilling, inNativeShell, takeReturn, welcomeBack, stripePage, PATHS, RETURN_LINES, STRIPE_PAGES } from '../src/app/billing.js';
+import { createBilling, resolveBilling, inNativeShell, takeReturn, welcomeBack, stripePage, PATHS, RETURN_LINES, STRIPE_PAGES, CHECKOUT_DOMAIN } from '../src/app/billing.js';
 import { createEntitlements, BILLING_GRACE_MS, BILLING_RECHECK_MS, BILLING_CLOCK_SKEW_MS, PLANS } from '../src/app/entitlements.js';
 import { BILLING_PROVIDER, BILLING_ENDPOINT, BILLING_PRICES, ANGLE_ENDPOINT, ANGLE_ALLOWED_HOSTS } from '../src/app/config.js';
 import { createStore } from '../src/engine/storage.js';
@@ -178,8 +178,32 @@ test('checkout: a guest is asked to sign in (nothing sent); signed in, only { pl
   s.auth.token = null;
   assert.deepEqual(await s.billing.checkout('ultra', 'monthly'), { needsAccount: true });
   assert.equal(s.server.calls.length, n);
-  assert.deepEqual([...STRIPE_PAGES], ['checkout.stripe.com', 'billing.stripe.com']);
+  assert.deepEqual([...STRIPE_PAGES], ['checkout.stripe.com', 'billing.stripe.com', 'checkout.hushmallow.com']);
   assert.equal(stripePage('https://billing.stripe.com/p/session/x'), 'https://billing.stripe.com/p/session/x');
+});
+
+test('our custom domain (D12): checkout and the portal open on checkout.hushmallow.com; its lookalikes never do', async () => {
+  assert.equal(CHECKOUT_DOMAIN, 'checkout.hushmallow.com');
+  assert.equal(stripePage('https://checkout.hushmallow.com/c/pay/cs_test_a1'), 'https://checkout.hushmallow.com/c/pay/cs_test_a1');
+  assert.equal(stripePage('https://checkout.hushmallow.com/p/session/test_1'), 'https://checkout.hushmallow.com/p/session/test_1');
+  for (const url of [
+    'https://checkout.hushmallow.com.evil.example/c/pay/x', 'https://xcheckout.hushmallow.com/c/pay/x', 'https://evil.checkout.hushmallow.com/c/pay/x',
+    'https://hushmallow.com/c/pay/x', 'https://checkout.hushmallow.co/c/pay/x', 'https://checkout.hushmallow.com./c/pay/x',
+    'http://checkout.hushmallow.com/c/pay/x', 'https://checkout.hushmallow.com:8443/c/pay/x', 'https://u@checkout.hushmallow.com/c/pay/x',
+    'https://u:p@checkout.hushmallow.com/c/pay/x',
+  ]) assert.equal(stripePage(url), null, url);
+  const s = setup();
+  s.server.checkout = { http: 200, body: { url: 'https://checkout.hushmallow.com/c/pay/cs_test_a1' } };
+  s.server.portal = { http: 200, body: { url: 'https://checkout.hushmallow.com/p/session/test_1' } };
+  assert.deepEqual(await s.billing.checkout('ultra', 'yearly'), { redirecting: true });
+  assert.deepEqual(await s.billing.portal(), { redirecting: true });
+  assert.deepEqual(s.navs, ['https://checkout.hushmallow.com/c/pay/cs_test_a1', 'https://checkout.hushmallow.com/p/session/test_1']);
+  // a lookalike in an answer: refused, nothing opened
+  s.server.checkout = { http: 200, body: { url: 'https://checkout.hushmallow.com.evil.example/c/pay/x' } };
+  assert.deepEqual(await s.billing.checkout('paid', 'monthly'), { failed: true, reason: 'not_stripe' });
+  s.server.portal = { http: 200, body: { url: 'https://checkout.hushmallow.com:8443/p/session/x' } };
+  assert.deepEqual(await s.billing.portal(), { failed: true, reason: 'not_stripe' });
+  assert.equal(s.navs.length, 2);
 });
 
 test('status and portal: the server\'s answer, read strictly; the portal opens only Stripe\'s page', async () => {

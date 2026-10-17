@@ -30,13 +30,21 @@
 //     moment) and said once
 //
 // Only Stripe's own pages are ever opened (STRIPE_PAGES: checkout.stripe.com,
-// billing.stripe.com), whatever an answer says.
+// billing.stripe.com, and our custom domain checkout.hushmallow.com, which Stripe
+// serves both from once it is activated), whatever an answer says.
 
 import { BILLING_PRICES, deploySettings } from './config.js';
 import { PLANS } from './entitlements.js';
 
 export const PATHS = Object.freeze({ checkout: '/v1/billing/checkout', status: '/v1/billing/status', portal: '/v1/billing/portal' });
-export const STRIPE_PAGES = Object.freeze(['checkout.stripe.com', 'billing.stripe.com']);
+/**
+ * Our custom domain for Checkout and the customer portal (decision D12). Stripe moves both pages there the moment the
+ * owner activates it, so this list must be live in production and staging before that, or every checkout and
+ * Manage subscription fails after the server has made the session.
+ */
+export const CHECKOUT_DOMAIN = 'checkout.hushmallow.com';
+/** Exact host names only: a subdomain, a lookalike, another port or credentials never pass (stripePage). */
+export const STRIPE_PAGES = Object.freeze(['checkout.stripe.com', 'billing.stripe.com', CHECKOUT_DOMAIN]);
 export const TIMEOUT_MS = 10000;
 /** Said after Stripe: a checkout let go, or a plan still on its way (the webhook can take a moment). */
 export const RETURN_LINES = Object.freeze({
