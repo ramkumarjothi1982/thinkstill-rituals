@@ -43,6 +43,8 @@ export const SIGN_IN_FIRST = 'Sign in or create an account first, so your plan s
 export const SIGN_IN_TO_RESTORE = 'Sign in to the account your plan is with.';
 /** Web subscriptions: the account has a plan already; a change of plan happens on the subscription page. */
 export const CHANGE_PLAN = 'You already have a plan. You can change it on the next page.';
+/** Web subscriptions: a payment for this account is still going through (its plan not here yet); nothing new was started. */
+export const PAYMENT_PENDING = 'Your payment is still going through. Nothing more was charged.';
 const SVG = 'http://www.w3.org/2000/svg';
 
 // Flow's sigil: three soft swells (Hushflow); Beyond reuses Zuzu's spiral
@@ -146,6 +148,13 @@ export default function plans(app, params = {}) {
       b.classList.toggle('is-busy', on && b === btn);
     }
   }
+  /** The plan is here: said once, then the Hushfold (the buttons stay quiet until it opens). */
+  function welcome(name, test = false) {
+    toast(test ? `Test purchase: ${name} unlocked (no charge)` : `Welcome to ${name}`);
+    app.haptic('success');
+    world.react('celebrate');
+    homeTimer = setTimeout(() => { if (!gone) app.go('home', {}, { replace: true }); }, 900);
+  }
   async function buy(id, btn) {
     if (pending) return;
     pending = true;
@@ -155,13 +164,7 @@ export default function plans(app, params = {}) {
     if (gone) return;
     // success only when the plan is really on this phone now (a bridge reply
     // after a cancel can carry the old tier)
-    if (r?.ok && ent.has(id)) {
-      toast(r.test ? `Test purchase: ${PLANS[id].name} unlocked (no charge)` : `Welcome to ${PLANS[id].name}`);
-      app.haptic('success');
-      world.react('celebrate');
-      homeTimer = setTimeout(() => { if (!gone) app.go('home', {}, { replace: true }); }, 900);
-      return;   // the buttons stay quiet until the Hushfold opens
-    }
+    if (r?.ok && ent.has(id)) { welcome(PLANS[id].name, r.test); return; }
     // web: on to the secure checkout page (the buttons stay quiet while the page leaves)
     if (r?.redirecting) return;
     if (r?.needsAccount) {
@@ -169,7 +172,13 @@ export default function plans(app, params = {}) {
       app.go('account', { view: 'welcome', notice: SIGN_IN_FIRST });
       return;
     }
-    if (r?.manage) {
+    // web: a payment still going through (a checkout just completed): asked for once more; here now, welcome
+    if (r?.pending) {
+      try { await ent.refresh({ force: true }); } catch { /* said below */ }
+      if (gone) return;
+      if (ent.source() === 'billing' && ent.has('paid')) { welcome(PLANS[ent.tier()].name); return; }
+      toast(PAYMENT_PENDING, 3600);
+    } else if (r?.manage) {
       toast(CHANGE_PLAN, 3200);
       // a plan already: the portal opens on changing it (Flow → Beyond, monthly → yearly), not on its front page
       let m = null;

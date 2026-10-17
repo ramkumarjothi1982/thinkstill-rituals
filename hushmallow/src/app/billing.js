@@ -21,7 +21,8 @@
 //     accountToken()         → its current access token, or null (Another Angle's session sends it too, src/beyond/angle-client.js)
 //     status()               → { ok: true, tier, status, periodEnd, endsAt, cancelAtPeriodEnd, manageable } | { ok: false, reason }
 //                              (periodEnd, endsAt: ms or null; the server sends ISO or ms, both are read)
-//     checkout(plan, period) → { redirecting } (on to Stripe Checkout) | { needsAccount } | { manage } (has a plan) | { failed, reason }
+//     checkout(plan, period) → { redirecting } (on to Stripe Checkout) | { needsAccount } | { manage } (has a plan)
+//                              | { pending } (a payment still going through) | { failed, reason }
 //     portal(intent?)        → { redirecting } (Stripe's customer portal) | { needsAccount } | { none } | { failed, reason };
 //                              intent 'switch' (the plans page, for a plan already held) opens it on changing the plan
 //     sync(sessionId)        → as status(): back from Checkout, the server reads that session from Stripe and records the
@@ -205,7 +206,9 @@ export function createBilling({
       if (!signedIn()) return { needsAccount: true };
       const r = await call(PATHS.checkout, { body: { plan, period } });
       if (r.signedOut || r.http === 401) return { needsAccount: true };
-      if (r.http === 409) return { manage: true };
+      // 409, nothing new made: a plan already (already_subscribed: changed in the portal), or a payment still going
+      // through (payment_pending: a checkout just completed whose plan is not here yet, or a first payment unfinished)
+      if (r.http === 409) return r.data?.error?.code === 'payment_pending' ? { pending: true } : { manage: true };
       if (r.http === 200 && open(r.data?.url)) return { redirecting: true };
       return { failed: true, reason: r.http === 200 ? 'not_stripe' : reasonOf(r) };
     },

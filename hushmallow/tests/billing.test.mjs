@@ -161,6 +161,13 @@ test('checkout: a guest is asked to sign in (nothing sent); signed in, only { pl
   // a plan already: the portal; a session the server refused: sign in again; failures say failed
   s.server.checkout = { http: 409, body: { error: { code: 'already_subscribed' } } };
   assert.deepEqual(await s.billing.checkout('paid', 'monthly'), { manage: true });
+  // a payment still going through (WS3: a just-completed checkout, or an unfinished first payment): not the portal
+  s.server.checkout = { http: 409, body: { status: 'error', error: { code: 'payment_pending', message: 'x' } } };
+  assert.deepEqual(await s.billing.checkout('paid', 'monthly'), { pending: true });
+  for (const body of [{}, null, { error: 'payment_pending' }, { error: { code: 'other' } }]) {
+    s.server.checkout = { http: 409, body };
+    assert.deepEqual(await s.billing.checkout('paid', 'monthly'), { manage: true }, JSON.stringify(body));
+  }
   s.server.checkout = { http: 401, body: {} };
   assert.deepEqual(await s.billing.checkout('paid', 'monthly'), { needsAccount: true });
   s.server.checkout = { http: 503, body: {} };
@@ -628,7 +635,7 @@ test('web billing copy: no App Store, no price written in, no plan word, no "ser
   const P = await import('../src/app/scenes/plans.js');
   const lines = [
     P.periodNote({ web: true, period: 'monthly' }), P.periodNote({ web: true, period: 'yearly' }),
-    P.WEB_NOTE, P.SIGN_IN_FIRST, P.SIGN_IN_TO_RESTORE, P.CHANGE_PLAN, ...Object.values(RETURN_LINES),
+    P.WEB_NOTE, P.SIGN_IN_FIRST, P.SIGN_IN_TO_RESTORE, P.CHANGE_PLAN, P.PAYMENT_PENDING, ...Object.values(RETURN_LINES),
   ];
   assert.equal(lines[0].replaceAll(NBSP, ' '), 'Billed monthly. Cancel any time in Settings.');
   assert.equal(lines[1].replaceAll(NBSP, ' '), 'Billed once a year. Cancel any time in Settings.');
@@ -772,6 +779,26 @@ test('plans page, web subscriptions on: a plan already goes to the portal; confi
   assert.deepEqual(s.server.calls[1].body, { intent: 'switch' }, 'the portal opens on changing the plan');
   assert.deepEqual(s.navs, ['https://billing.stripe.com/p/session/test_1']);
   assert.ok(all(p.body).some((n) => text(n) === 'You already have a plan. You can change it on the next page.'));
+  p.view.leave();
+});
+
+test('plans page, web subscriptions on: a payment still going through is said so (never the portal), and welcomed once it is here', async () => {
+  const s = setup();
+  s.server.checkout = { http: 409, body: { status: 'error', error: { code: 'payment_pending', message: 'x' } } };
+  const p = await plansPage(createEntitlements({ store: memStore(), billing: s.billing }));
+  const flow = p.buttons().find((b) => text(b) === 'Step into hushmallow Flow');
+  await click(flow);
+  assert.deepEqual(s.server.calls.map((c) => new URL(c.url).pathname), ['/v1/billing/checkout', '/v1/billing/status'], 'asked for once more, no portal');
+  const said = () => all(p.body).map(text);
+  assert.ok(said().includes('Your payment is still going through. Nothing more was charged.'));
+  assert.ok(!said().includes('You already have a plan. You can change it on the next page.'));
+  assert.equal(flow.disabled, false, 'the buttons wake again');
+  assert.deepEqual(s.navs, []);
+  // tapped again once its plan has arrived: welcome, then the Hushfold
+  s.server.status = { tier: 'paid', status: 'active', current_period_end: null, cancel_at_period_end: false, manageable: true };
+  await click(flow);
+  assert.ok(said().includes('Welcome to hushmallow Flow'));
+  assert.equal(flow.disabled, true, 'quiet until the Hushfold opens');
   p.view.leave();
 });
 
