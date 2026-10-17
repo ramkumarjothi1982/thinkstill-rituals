@@ -1,6 +1,10 @@
 # Sets the two public sign-in values on the Cloudflare Pages project
-# "hushmallow" for both Production and Preview, then reads them back. Run on
-# request (edit hushmallow/tools/infra/PAGES_ENV on a work branch).
+# "hushmallow" for Production, removes them from Preview, then reads both back.
+# Run on request (edit hushmallow/tools/infra/PAGES_ENV on a work branch).
+# Preview never holds production's values: every branch is built as a public
+# preview, and a branch cut before the release candidate has no guard against
+# them, so it would run unreviewed code against production's accounts
+# (security review, 17 Oct 2026; supabase/production/RUNBOOK.md step 10).
 #
 # Only SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY are touched. Both are public
 # by design (Supabase's publishable key is meant to ship in the browser; row
@@ -45,7 +49,7 @@ jobs:
             *) echo "::error::only a publishable key may be set here"; exit 1 ;;
           esac
 
-      - name: Set and verify (Production + Preview)
+      - name: Set and verify (Production set, Preview cleared)
         env:
           CF_TOKEN_RAW: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CF_ACCOUNT_RAW: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -67,18 +71,21 @@ jobs:
           body="$(jq -n --arg u "$SUPABASE_URL" --arg k "$SUPABASE_PUBLISHABLE_KEY" '
             { SUPABASE_URL: { type: "plain_text", value: $u },
               SUPABASE_PUBLISHABLE_KEY: { type: "plain_text", value: $k } } as $v
-            | { deployment_configs: { production: { env_vars: $v }, preview: { env_vars: $v } } }')"
+            | { deployment_configs: { production: { env_vars: $v },
+                preview: { env_vars: { SUPABASE_URL: null, SUPABASE_PUBLISHABLE_KEY: null } } } }')"
           curl -sS -m 30 -X PATCH -H "Authorization: Bearer $tok" -H 'Content-Type: application/json' --data "$body" "$base" > patch.json
           jq -e '.success == true' patch.json >/dev/null || { jq -c '{success, errors}' patch.json; echo "::error::Cloudflare refused the update (the token may lack Pages edit access)"; exit 1; }
 
           get > after.json
-          for envname in production preview; do
-            u="$(jq -r --arg e "$envname" '.result.deployment_configs[$e].env_vars.SUPABASE_URL.value // empty' after.json)"
-            k="$(jq -r --arg e "$envname" '.result.deployment_configs[$e].env_vars.SUPABASE_PUBLISHABLE_KEY.value // empty' after.json)"
-            [ "$u" = "$SUPABASE_URL" ] || { echo "::error::$envname SUPABASE_URL not set"; exit 1; }
-            [ "$k" = "$SUPABASE_PUBLISHABLE_KEY" ] || { echo "::error::$envname SUPABASE_PUBLISHABLE_KEY not set"; exit 1; }
-            echo "$envname: SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY set"
-          done
+          u="$(jq -r '.result.deployment_configs.production.env_vars.SUPABASE_URL.value // empty' after.json)"
+          k="$(jq -r '.result.deployment_configs.production.env_vars.SUPABASE_PUBLISHABLE_KEY.value // empty' after.json)"
+          [ "$u" = "$SUPABASE_URL" ] || { echo "::error::production SUPABASE_URL not set"; exit 1; }
+          [ "$k" = "$SUPABASE_PUBLISHABLE_KEY" ] || { echo "::error::production SUPABASE_PUBLISHABLE_KEY not set"; exit 1; }
+          echo "production: SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY set"
+          jq -e '(.result.deployment_configs.preview.env_vars // {}) | has("SUPABASE_URL") or has("SUPABASE_PUBLISHABLE_KEY") | not' after.json >/dev/null \
+            || { echo "::error::preview still has SUPABASE_URL or SUPABASE_PUBLISHABLE_KEY"; exit 1; }
+          echo "preview: no SUPABASE_URL and no SUPABASE_PUBLISHABLE_KEY"
+
           others < after.json > after-others.json
           if ! diff -u before-others.json after-others.json; then
             echo "::error::other deployment settings changed; review the diff above"; exit 1
