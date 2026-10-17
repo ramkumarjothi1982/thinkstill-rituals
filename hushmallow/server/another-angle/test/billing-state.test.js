@@ -7,7 +7,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { clock, req, CLOCK_START } from './helpers.js';
 import { createStripe, signWebhookPayload, SUBSCRIPTION_LIST_LIMIT } from '../src/billing/stripe.js';
-import { memoryBillingNamespace, billingClient, summarise, planForPrice, priceMismatch, effectiveTier, accessUntil, PAST_DUE_GRACE_MS } from '../src/billing/store.js';
+import { memoryBillingNamespace, billingClient, summarise, supersedes, planForPrice, priceMismatch, effectiveTier, accessUntil, PAST_DUE_GRACE_MS } from '../src/billing/store.js';
 import { createBilling, EVENTS } from '../src/billing/routes.js';
 import { readConfig, STRIPE_API_VERSION_EXPECTED } from '../src/config.js';
 import { createLogger } from '../src/log.js';
@@ -440,5 +440,78 @@ test('cancellation: a cancel_at further out is its own date (ends_at), not "at p
   const prices = readConfig(billingEnv()).billing.prices;
   assert.equal(summarise(subscription({ cancel_at: later / 1000 }), prices, 1).cancel_at, later);
   assert.equal(summarise(subscription(), prices, 1).cancel_at, null);
+  assertClean(s.logs);
+});
+
+// --------------------------------------------------- more than one subscription --
+test('two subscriptions: when one ends, the customer\'s list decides (Flow kept after a second, Beyond, is cancelled)', async () => {
+  const s = setup();
+  const A = subscription({ id: 'sub_FlowA1' }, { price: PRICES.paidMonthly });
+  const B = subscription({ id: 'sub_BeyondB2' }, { price: PRICES.ultraMonthly, end: (CLOCK_START + 20 * DAY) / 1000 });
+  await subscribe(s, A);
+  assert.equal((await status(s)).tier, 'paid');
+  // a second subscription on the same customer (made before checkout refused duplicates): the higher plan shows
+  s.now.advance(1000);
+  s.up.subs.set(B.id, B);
+  await deliver(s.app, s.env, event('customer.subscription.created', B, s.now), { at: s.now() });
+  assert.equal((await status(s)).tier, 'ultra');
+  assert.equal(s.up.stripe().filter((c) => c.path === '/v1/subscriptions').length, 0, 'no list while nothing ended');
+  // B is cancelled: A is still billing, so the account has Flow (before: none)
+  s.now.advance(1000);
+  s.up.subs.set(B.id, { ...B, status: 'canceled' });
+  await deliver(s.app, s.env, event('customer.subscription.deleted', { ...B, status: 'canceled' }, s.now), { at: s.now() });
+  let st = await status(s);
+  assert.deepEqual([st.tier, st.status], ['paid', 'active']);
+  const list = s.up.stripe().filter((c) => c.path === '/v1/subscriptions');
+  assert.equal(list.length, 1);
+  assert.deepEqual(Object.fromEntries(list[0].query), { customer: 'cus_Test123', status: 'all', limit: '20' });
+  // a late copy of B's end changes nothing now
+  s.now.advance(1000);
+  await deliver(s.app, s.env, event('customer.subscription.updated', { ...B, status: 'canceled' }, s.now), { at: s.now() });
+  assert.equal((await status(s)).tier, 'paid');
+  // then A ends too: nothing gives access, so the ended one just read is the record
+  s.now.advance(1000);
+  s.up.subs.set(A.id, { ...A, status: 'canceled' });
+  await deliver(s.app, s.env, event('customer.subscription.deleted', { ...A, status: 'canceled' }, s.now), { at: s.now() });
+  st = await status(s);
+  assert.deepEqual([st.tier, st.status], ['none', 'canceled']);
+  assertClean(s.logs);
+});
+
+test('two subscriptions: the list ranks access, then plan, then period end; a failed list is retried (502), nothing changes', async () => {
+  const s = setup();
+  const A = subscription({ id: 'sub_FlowA1' }, { price: PRICES.paidYearly, end: (CLOCK_START + 300 * DAY) / 1000 });
+  const C = subscription({ id: 'sub_BeyondC3' }, { price: PRICES.ultraMonthly, end: (CLOCK_START + 10 * DAY) / 1000 });
+  const D = subscription({ id: 'sub_BeyondD4' }, { price: PRICES.ultraYearly, end: (CLOCK_START + 200 * DAY) / 1000 });
+  const E = subscription({ id: 'sub_EndedE5', status: 'unpaid' }, { price: PRICES.ultraYearly });
+  for (const x of [A, C, D, E]) s.up.subs.set(x.id, x);
+  // unpaid is terminal too: the best of the rest is Beyond (the higher plan), the one running longest
+  await deliver(s.app, s.env, event('invoice.payment_failed', objectFor('invoice.payment_failed', { parent: { type: 'subscription_details', subscription_details: { subscription: E.id, metadata: { user_id: UID } } } }), s.now), { at: s.now() });
+  const rec = s.env.BILLING.instances.get(`user:${UID}`).map.get('sub');
+  assert.deepEqual([rec.subscription, rec.tier, rec.period], ['sub_BeyondD4', 'ultra', 'yearly']);
+  // the list refused (a key without the permission): 502 with Stripe's code, and the record stays
+  s.now.advance(1000);
+  s.up.subs.set(D.id, { ...D, status: 'canceled' });
+  s.up.fail = { path: /^\/v1\/subscriptions$/, status: 403, error: { type: 'invalid_request_error' } };
+  assert.equal((await deliver(s.app, s.env, event('customer.subscription.deleted', { ...D, status: 'canceled' }, s.now), { at: s.now() })).status, 502);
+  const line = lines(s.logs).find((l) => l.status === 'stripe_error');
+  assert.deepEqual([line.err, line.stripe_http], ['invalid_request_error', 403]);
+  assert.equal((await status(s)).tier, 'ultra');
+  // Stripe retries once the key can list: C (Beyond monthly) is the best left
+  s.up.fail = null;
+  s.now.advance(1000);
+  await deliver(s.app, s.env, event('customer.subscription.deleted', { ...D, status: 'canceled' }, s.now), { at: s.now() });
+  assert.equal(s.env.BILLING.instances.get(`user:${UID}`).map.get('sub').subscription, 'sub_BeyondC3');
+  // the rule on its own: a listing replaces the record it covers only when read later
+  const prices = readConfig(billingEnv()).billing.prices;
+  const cur = summarise(D, prices, 100), next = summarise(A, prices, 200);
+  assert.equal(supersedes(cur, next), false, 'without a listing a lower plan never replaces a higher one');
+  assert.equal(supersedes(cur, next, [A.id, D.id]), true);
+  assert.equal(supersedes(cur, { ...next, as_of: 50 }, [A.id, D.id]), false, 'an older listing does not');
+  assert.equal(supersedes(cur, next, [A.id]), false, 'a listing without the current one does not');
+  // covers is checked by the DO
+  const ns = memoryBillingNamespace();
+  const bad = await ns.get(ns.idFromName(`user:${UID}`)).fetch('https://billing/sync', { method: 'POST', body: JSON.stringify({ record: next, covers: ['cus_Nope1'] }) });
+  assert.equal(bad.status, 400);
   assertClean(s.logs);
 });

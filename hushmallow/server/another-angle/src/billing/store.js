@@ -22,7 +22,11 @@
 // older one is ignored; another subscription of the same account replaces
 // the record only when it gives access and the current one does not, or
 // gives more (a higher plan), so a late event about an old, cancelled
-// subscription never takes access away from the one that replaced it.
+// subscription never takes access away from the one that replaced it. The
+// exception is the best of a fresh list of the customer's subscriptions
+// (bestOf; `covers` names the ones listed): read later than the record and
+// including its subscription, it knows that one's state too, so it replaces
+// it (Flow still billing after a second subscription, Beyond, ended).
 //
 // Access (effectiveTier): Stripe's active, trialing or past_due (Stripe is
 // still retrying the card; docs/PAYMENTS.md), until a day after the period
@@ -53,6 +57,11 @@ const STATUSES = new Set(['incomplete', 'incomplete_expired', 'trialing', 'activ
 const RANK = { none: 0, paid: 1, ultra: 2 };
 const PRODUCT = /^hushmallow\.(paid|ultra)\.(monthly|yearly)$/;
 const CUSTOMER = /^cus_[A-Za-z0-9]{4,250}$/;
+const SUBSCRIPTION = /^sub_[A-Za-z0-9]{4,250}$/;
+/** Statuses after which a subscription never gives access again: the account may still have another one. */
+export const TERMINAL = new Set(['canceled', 'incomplete_expired', 'unpaid']);
+/** The most subscription ids a listing may name (stripe.js lists 20). */
+const COVERS_MAX = 32;
 const CHECKOUT_SESSION = /^cs_(?:test|live)_[A-Za-z0-9]{10,250}$/;
 /** A Checkout Session's expires_at in ms, never Stripe's seconds by mistake (any time after 1973 in ms is past 1e11). */
 const MS_TIME_MIN = 1e11;
@@ -162,15 +171,37 @@ export function withPastDue(cur, rec) {
   return { ...next, past_due_since: still ? Math.min(pastDueSince(/** @type {SubRecord} */ (cur)), next.as_of) : next.as_of };
 }
 
-/** Does `next` replace `cur`? (the state machine in the header) @param {SubRecord | null} cur @param {SubRecord} next */
-export function supersedes(cur, next) {
+/**
+ * Does `next` replace `cur`? (the state machine in the header)
+ * @param {SubRecord | null} cur @param {SubRecord} next @param {string[] | null} [covers] the subscriptions a listing named, when next is its best
+ */
+export function supersedes(cur, next, covers = null) {
   if (!cur) return true;
   if (cur.subscription === next.subscription) return next.as_of >= cur.as_of;
+  if (covers && covers.includes(cur.subscription) && next.as_of >= cur.as_of) return true;
   const a = ACCESS.has(cur.status), b = ACCESS.has(next.status);
   if (a !== b) return b;
   if (RANK[next.tier] !== RANK[cur.tier]) return RANK[next.tier] > RANK[cur.tier];
   return next.as_of >= cur.as_of;
 }
+
+/**
+ * The subscription a customer's listing gives the account: of those giving access now, the higher plan, then the one
+ * running longest; when none does, `fallback` (the ended one just read).
+ * @param {SubRecord[]} recs @param {number} now @param {SubRecord} fallback
+ */
+export function bestOf(recs, now, fallback) {
+  const live = recs.filter((r) => effectiveTier(r, now) !== 'none');
+  if (!live.length) return fallback;
+  const score = (/** @type {SubRecord} */ r) => [RANK[r.tier], r.current_period_end ?? 0];
+  return live.reduce((a, b) => {
+    const [ra, ea] = score(a), [rb, eb] = score(b);
+    return rb > ra || (rb === ra && eb > ea) ? b : a;
+  });
+}
+
+/** @param {unknown} c @returns {c is string[] | undefined} */
+const isCovers = (c) => c === undefined || (Array.isArray(c) && c.length <= COVERS_MAX && c.every((x) => typeof x === 'string' && SUBSCRIPTION.test(x)));
 
 /** @param {any} c @returns {c is { id: string, expires_at: number }} */
 function isCheckout(c) {
@@ -203,16 +234,16 @@ export class Billing {
         return Response.json({ ok: true, record: (await this.storage.get('sub')) || null });
       case 'apply': {
         const event = body?.event, record = body?.record;
-        if (typeof event !== 'string' || !/^evt_[A-Za-z0-9]{1,250}$/.test(event) || !isRecord(record)) return bad();
+        if (typeof event !== 'string' || !/^evt_[A-Za-z0-9]{1,250}$/.test(event) || !isRecord(record) || !isCovers(body?.covers)) return bad();
         if (await this.storage.get(`evt:${event}`)) return Response.json({ ok: true, applied: false, duplicate: true });
-        const applied = await this.write(record);
+        const applied = await this.write(record, body.covers);
         await this.storage.put(`evt:${event}`, this.now());
         await this.forgetOldEvents();
         return Response.json({ ok: true, applied, duplicate: false });
       }
       case 'sync': {
-        if (!isRecord(body?.record)) return bad();
-        return Response.json({ ok: true, applied: await this.write(body.record) });
+        if (!isRecord(body?.record) || !isCovers(body?.covers)) return bad();
+        return Response.json({ ok: true, applied: await this.write(body.record, body.covers) });
       }
       case 'customer':
         return Response.json({ ok: true, customer: (await this.storage.get('customer')) || null });
@@ -242,11 +273,11 @@ export class Billing {
     }
   }
 
-  /** The state machine's write (supersedes): true when `record` replaced the account's. @param {SubRecord} record */
-  async write(record) {
+  /** The state machine's write (supersedes): true when `record` replaced the account's. @param {SubRecord} record @param {string[]} [covers] */
+  async write(record, covers) {
     const cur = (await this.storage.get('sub')) || null;
     const next = withPastDue(cur, record);
-    const applied = supersedes(cur, next);
+    const applied = supersedes(cur, next, covers || null);
     if (applied) await this.storage.put('sub', next);
     return applied;
   }
@@ -274,14 +305,20 @@ export function billingClient(ns) {
   return {
     /** @param {string} uid @returns {Promise<SubRecord | null>} */
     get: async (uid) => (await call(`user:${uid}`, 'get', {})).record || null,
-    /** @param {string} uid @param {string} event @param {SubRecord} record @returns {Promise<{ ok: boolean, applied: boolean, duplicate: boolean }>} */
-    apply: (uid, event, record) => call(`user:${uid}`, 'apply', { event, record }),
+    /**
+     * @param {string} uid @param {string} event @param {SubRecord} record @param {string[] | null} [covers] when record is the best of a listing
+     * @returns {Promise<{ ok: boolean, applied: boolean, duplicate: boolean }>}
+     */
+    apply: (uid, event, record, covers = null) => call(`user:${uid}`, 'apply', { event, record, ...(covers ? { covers } : {}) }),
     /** @param {string} customer @param {string} uid @returns {Promise<{ ok: boolean, uid: string, conflict: boolean }>} */
     link: (customer, uid) => call(`customer:${customer}`, 'link', { uid }),
     /** @param {string} customer @returns {Promise<string | null>} */
     owner: async (customer) => (await call(`customer:${customer}`, 'owner', {})).uid || null,
-    /** A record the server read itself (no event id), through the same state machine. @param {string} uid @param {SubRecord} record @returns {Promise<{ ok: boolean, applied: boolean }>} */
-    sync: (uid, record) => call(`user:${uid}`, 'sync', { record }),
+    /**
+     * A record the server read itself (no event id), through the same state machine.
+     * @param {string} uid @param {SubRecord} record @param {string[] | null} [covers] @returns {Promise<{ ok: boolean, applied: boolean }>}
+     */
+    sync: (uid, record, covers = null) => call(`user:${uid}`, 'sync', { record, ...(covers ? { covers } : {}) }),
     /** The account's own Stripe customer, or null. @param {string} uid @returns {Promise<string | null>} */
     customerOf: async (uid) => (await call(`user:${uid}`, 'customer', {})).customer || null,
     /** Set once: a different customer later is a conflict and changes nothing. @param {string} uid @param {string} customer @returns {Promise<{ ok: boolean, customer: string, conflict: boolean }>} */

@@ -86,6 +86,8 @@ function upstream({ users = { [TOKEN]: { id: UID, email: 'ana@example.com' } } }
     if (call.method === 'POST' && u.pathname === '/v1/billing_portal/sessions') return reply(200, { id: 'bps_1', object: 'billing_portal.session', url: 'https://billing.stripe.com/p/session/test_1' });
     const m = /^\/v1\/subscriptions\/(sub_[A-Za-z0-9]+)$/.exec(u.pathname);
     if (call.method === 'GET' && m) return subs.has(m[1]) ? reply(200, subs.get(m[1])) : reply(404, { error: { code: 'resource_missing', type: 'invalid_request_error', message: `No such subscription: '${m[1]}'` } });
+    // a customer's subscriptions (the webhook lists them when one ends)
+    if (call.method === 'GET' && u.pathname === '/v1/subscriptions') return reply(200, { object: 'list', data: [...subs.values()].filter((x) => x.customer === u.searchParams.get('customer')), has_more: false });
     return reply(404, { error: { code: 'resource_missing' } });
   };
   o.stripe = () => calls.filter((c) => c.url.startsWith('https://api.stripe.com'));

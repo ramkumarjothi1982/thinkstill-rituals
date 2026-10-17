@@ -25,7 +25,7 @@ import { json, error, readJson, readText } from '../http.js';
 import { allow, memoryRateLimiter } from '../limits/ratelimit.js';
 import { createStripe, verifyWebhookSignature } from './stripe.js';
 import { createAccountVerifier, uidOf } from './account.js';
-import { billingClient, summarise, effectiveTier, accessUntil, idOf, priceMismatch, ACCESS } from './store.js';
+import { billingClient, summarise, effectiveTier, accessUntil, idOf, priceMismatch, bestOf, ACCESS, TERMINAL } from './store.js';
 
 export const PATHS = Object.freeze({ checkout: '/v1/billing/checkout', status: '/v1/billing/status', portal: '/v1/billing/portal', webhook: '/v1/billing/webhook' });
 /**
@@ -47,6 +47,7 @@ export const WEBHOOK_MAX_BYTES = 262144;
  */
 export const CHECKOUT_WINDOW_MS = 120000;
 const PLANS = ['paid', 'ultra'];
+const SUB = /^sub_/;
 const PERIODS = ['monthly', 'yearly'];
 
 /**
@@ -286,7 +287,8 @@ export function createBilling({ logger, now, fetch: fetchImpl = (input, init) =>
     // as of when Stripe was asked, not when it answered: of two deliveries racing for the same subscription, the one
     // that asked later read the later state, whichever answer comes back first
     let asOf = now();
-    const got = await stripeFor(cfg).retrieveSubscription(subId);
+    const stripe = stripeFor(cfg);
+    const got = await stripe.retrieveSubscription(subId);
     /** @type {any} */
     let sub;
     if (got.ok) sub = got.data;
@@ -307,13 +309,30 @@ export function createBilling({ logger, now, fetch: fetchImpl = (input, init) =>
       const l = await store.link(customer, uid);
       if (l.conflict) return { http: 200, outcome: 'customer_conflict' };
     }
-    const record = summarise(sub, cfg.billing.prices, asOf);
+    let record = summarise(sub, cfg.billing.prices, asOf);
+    /** @type {string[] | null} */
+    let covers = null;
+    // it ended: the account may still have another subscription running (Flow billing on after a second one, Beyond,
+    // was cancelled). The customer's list decides, and its best replaces the record (store.js supersedes).
+    if (TERMINAL.has(record.status) && customer) {
+      const listAsOf = now();
+      const listed = await stripe.listSubscriptions(customer);
+      if (!listed.ok) return { http: 502, outcome: 'stripe_error', err: listed.code, stripeHttp: listed.status };
+      /** @type {any[]} */
+      const subs = (Array.isArray(listed.data?.data) ? listed.data.data : []).filter((/** @type {any} */ x) => SUB.test(idOf(x?.id) || '') && idOf(x.customer) === customer);
+      /** @type {import('./store.js').SubRecord[]} */
+      const recs = subs.map((x) => summarise(x, cfg.billing.prices, listAsOf));
+      if (!recs.some((r) => r.subscription === subId)) { recs.push(record); subs.push(sub); }
+      record = bestOf(recs, now(), recs.find((r) => r.subscription === subId) || record);
+      sub = subs[recs.indexOf(record)] || sub;
+      covers = recs.map((r) => r.subscription);
+    }
     // a configured price id whose lookup key names another plan: the key decided; say so, so the slot gets fixed
     const items = Array.isArray(sub.items?.data) ? sub.items.data : [];
     if (items.some((/** @type {any} */ it) => priceMismatch((it?.price || it?.plan)?.id, (it?.price || it?.plan)?.lookup_key, cfg.billing.prices))) {
       logger.event({ evt: 'billing', route: eventId ? 'webhook' : 'sync', status: 'price_mismatch', stripe_event: eventType, tier: record.tier, period: record.period });
     }
-    const r = eventId ? await store.apply(uid, eventId, record) : { ...(await store.sync(uid, record)), duplicate: false };
+    const r = eventId ? await store.apply(uid, eventId, record, covers) : { ...(await store.sync(uid, record, covers)), duplicate: false };
     return { http: 200, outcome: r.duplicate ? 'duplicate' : r.applied ? 'applied' : 'stale', tier: effectiveTier(record, now()), subStatus: record.status, duplicate: r.duplicate };
   }
 
