@@ -191,3 +191,46 @@ test('plans page: the words for a change, calm and in full; its controls at leas
   assert.match(src, /h\('span', \{ class: 'nb' \}, CHANGE_LABELS\.upgrade\), ' ', h\('span', \{ class: 'nb' \}, p\.name\)/);
   assert.match(src, /if \(btn\) requestAnimationFrame\(\(\) => \{ if \(!gone\) fitWhole\(btn, BUY_FIT\); \}\);/);
 });
+
+// ---------------------------------------------------------- Settings --
+test('Settings: Manage subscription (Stripe\'s portal, cancelling included) stays exactly as reachable, with a line saying what it is for', async () => {
+  const { ent, server, navs } = await account({ held: plan('ultra', 'monthly') });
+  installDom();
+  const { default: settings, MANAGE_HINT } = await import('../src/app/scenes/settings.js');
+  assert.equal(MANAGE_HINT, 'Change plan, update your card or cancel.');
+  const prefs = { get: (k) => ({ textScale: 1, subtitleSpeed: 1, motion: 'system', volume: 0.6 })[k] ?? false, set() {} };
+  const app = { prefs, ent, world: {}, rec: {}, store: createStore({ backend: 'memory' }), auth: null, haptic() {}, go() {}, back() {} };
+  const view = settings(app);
+  const nodes = all(view.el);
+  const manage = nodes.find((n) => n.attrs?.['data-act'] === 'manage-subscription');
+  assert.equal(text(manage), 'Manage subscription');
+  assert.equal(manage.tagName, 'BUTTON');
+  const hint = nodes.find((n) => n.attrs && 'data-manage-hint' in n.attrs);
+  assert.equal(text(hint), MANAGE_HINT);
+  assert.equal(manage.attrs['aria-describedby'], hint.attrs.id);
+  assert.equal(manage.parentNode.children.indexOf(hint), manage.parentNode.children.indexOf(manage) + 1, 'right under it');
+  // under Plan, and it opens the portal's front page ({}): cancel, change plan, the card, receipts
+  const planHeading = nodes.find((n) => n.tagName === 'H2' && text(n) === 'Plan');
+  assert.ok(nodes.indexOf(planHeading) < nodes.indexOf(manage));
+  await click(manage);
+  assert.deepEqual(server.calls.map((c) => [c.path, c.body]), [['/v1/billing/portal', {}]]);
+  assert.equal(navs.at(-1), 'https://billing.stripe.com/p/session/test_portal');
+  // nothing to manage: neither the button nor the line
+  const none = await account({ held: plan('none', null, 'none', { manageable: false }) });
+  const quiet = all(settings({ ...app, ent: none.ent }).el);
+  assert.ok(!quiet.some((n) => n.attrs?.['data-act'] === 'manage-subscription' || (n.attrs && 'data-manage-hint' in n.attrs)));
+  // the source keeps it a plain button with its own words (legal-pages pins the same)
+  const src = read('src/app/scenes/settings.js');
+  assert.match(src, /'data-act': 'manage-subscription'[^\n]*\}, 'Manage subscription'\) : null,/);
+  assert.match(src, /try \{ r = await ent\.manage\(\); \}/, 'the front page, never a flow');
+});
+
+test('Settings: the line under Manage subscription is calm and names cancelling plainly', async () => {
+  installDom();
+  const { MANAGE_HINT } = await import('../src/app/scenes/settings.js');
+  assert.match(MANAGE_HINT, /\bcancel\b/);
+  assert.doesNotMatch(MANAGE_HINT, /\bAI\b|\b(Paid|Ultra|Premium)\b|!/);
+  // the plans page and the welcome send people to the same place to cancel
+  const W = await import('../src/app/scenes/beyond-welcome.js');
+  assert.match(W.WELCOME_LINES.manage, /cancel any time in Settings → Manage subscription\.$/);
+});

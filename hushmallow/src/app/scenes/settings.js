@@ -1,8 +1,10 @@
 // SETTINGS — reading, the Hushfold, feel, privacy, plan, about. Everything
 // lives on this device. With web subscriptions on (src/app/billing.js) and the
 // account signed in, Plan also has "Manage subscription": Stripe's customer
-// portal, where cancelling is as easy as subscribing was, and a line on when
-// the plan renews or ends. Builds with optional sign-in (src/auth/) add one
+// portal, where cancelling is as easy as subscribing was ("Change plan, update
+// your card or cancel." under it says so), and a line on when the plan renews
+// or ends. The plans page's upgrades never open that page (they open Stripe's
+// confirmation of the one change): this is the way to it, always here. Builds with optional sign-in (src/auth/) add one
 // account row at the top of Privacy; "Delete everything on this phone" then
 // says whose things it deletes (this account's, or the guest's when accounts
 // also live on this phone). About's first sentence (what is written in advance)
@@ -22,6 +24,9 @@ import { legalLink, legalLinks } from '../legal.js';
 
 const TEXT_SIZES = [[1, 'Standard'], [1.12, 'Larger'], [1.25, 'Largest']];
 const SPEEDS = [[0.75, '0.75×'], [1, '1×'], [1.25, '1.25×'], [1.5, '1.5×']];
+
+/** Under Settings → Manage subscription: what that page is for, cancelling included (never hidden or softened). */
+export const MANAGE_HINT = 'Change plan, update your card or cancel.';
 
 export default function settings(app) {
   const { prefs, ent, world, rec } = app;
@@ -118,7 +123,8 @@ export default function settings(app) {
       section('Plan'),
       h('div', { class: 'setting' }, rowLabel(tierName, planNote), h('button', { class: 'btn', style: { minHeight: '44px' }, onclick: () => app.go('plans') }, 'View plans')),
       ent.source() === 'test' ? h('button', { class: 'btn ghost block', onclick: () => { ent.cancelTest(); toast('Test plan removed'); app.go('home'); } }, 'Remove test plan') : null,
-      manageable ? h('button', { class: 'btn ghost block', 'data-act': 'manage-subscription', onclick: (e) => manageSubscription(e.currentTarget) }, 'Manage subscription') : null,
+      manageable ? h('button', { class: 'btn ghost block', 'data-act': 'manage-subscription', 'aria-describedby': 'manage-hint', onclick: (e) => manageSubscription(e.currentTarget) }, 'Manage subscription') : null,
+      manageable ? h('p', { id: 'manage-hint', 'data-manage-hint': '', style: type('caption', { color: 'var(--text-3)', textAlign: 'center', margin: '0 0 4px', textWrap: 'balance' }) }, MANAGE_HINT) : null,
 
       section('About'),
       // what is written in advance and what leaves this phone: the same source as the Plans page (src/app/privacy.js),
