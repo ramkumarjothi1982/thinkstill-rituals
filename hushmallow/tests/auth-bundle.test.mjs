@@ -1,7 +1,8 @@
 // The owner's one-paste SQL for production (16 Oct 2026): supabase/production/ALL_MIGRATIONS.sql and
-// RLS_CHECK.sql are supabase/migrations/0001 … 0009 and supabase/tests/rls_check.sql byte for byte under
-// comment-only headers, built by tools/auth/bundle-sql.mjs, so they can never drift. (Running them: the last
-// step of tools/auth/sql-check.sh, on a throwaway local PostgreSQL.)
+// RLS_CHECK.sql are supabase/migrations/0001 … 0010 and supabase/tests/rls_check.sql byte for byte under
+// comment-only headers, built by tools/auth/bundle-sql.mjs, so they can never drift. supabase/staging/ holds
+// the same two files under headers that name the staging project (17 Oct). (Running them: the last step of
+// tools/auth/sql-check.sh, on a throwaway local PostgreSQL.)
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, writeFileSync, mkdtempSync, rmSync } from 'node:fs';
@@ -11,7 +12,7 @@ import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { bundleSql, staleFiles, migrationFiles, countRlsChecks, OUT_DIR, MIGRATIONS_NAME, RLS_CHECK_NAME } from '../tools/auth/bundle-sql.mjs';
+import { bundleSql, staleFiles, migrationFiles, countRlsChecks, OUT_DIR, TARGETS, MIGRATIONS_NAME, RLS_CHECK_NAME } from '../tools/auth/bundle-sql.mjs';
 
 const run = promisify(execFile);
 const root = fileURLToPath(new URL('../', import.meta.url));
@@ -20,12 +21,27 @@ const commentsOnly = (text) => text.split('\n').every((l) => l === '' || l.start
 
 test('ALL_MIGRATIONS.sql and RLS_CHECK.sql are exactly what bundle-sql.mjs builds from the sources now', () => {
   assert.deepEqual(staleFiles(OUT_DIR), [], 'run: node hushmallow/tools/auth/bundle-sql.mjs');
+  assert.deepEqual(staleFiles(TARGETS.staging.dir, bundleSql({ target: 'staging' })), [], 'staging: run node hushmallow/tools/auth/bundle-sql.mjs');
 });
 
-test('ALL_MIGRATIONS.sql: migrations 0001 … 0009 byte for byte, in order, under comment-only lines and nothing else', () => {
+test('the staging files are the production files under headers that name the staging project, never production\'s ref', () => {
+  for (const name of [MIGRATIONS_NAME, RLS_CHECK_NAME]) {
+    const prod = read(`supabase/production/${name}`), stag = read(`supabase/staging/${name}`);
+    const body = (t) => t.slice(t.search(/\n(?!--|\n)/) + 1);
+    assert.ok(body(prod).length > 1000 && body(stag) === body(prod), `${name}: the same SQL after the header`);
+    const head = stag.slice(0, stag.length - body(stag).length);
+    assert.ok(commentsOnly(head), `${name}: the staging header is comments only`);
+    assert.match(head, /hushmallow · staging ·/);
+    assert.match(head, /the STAGING project \(ref oghzabvkrxsejkkjdsuc, Singapore\), never hushmallow1/);
+    assert.doesNotMatch(stag, /igbxbfuaoybfzsroxuln/, `${name}: production's ref nowhere in the staging file`);
+    assert.doesNotMatch(prod, /oghzabvkrxsejkkjdsuc/, `${name}: staging's ref nowhere in the production file`);
+  }
+});
+
+test('ALL_MIGRATIONS.sql: migrations 0001 … 0010 byte for byte, in order, under comment-only lines and nothing else', () => {
   const text = read(`supabase/production/${MIGRATIONS_NAME}`);
   const files = migrationFiles();
-  assert.deepEqual(files, ['0001_foundation.sql', '0002_profiles.sql', '0003_sync_consents.sql', '0004_preferences.sql', '0005_library.sql', '0006_consent_withdrawal.sql', '0007_delete_my_account.sql', '0008_backfill_profiles.sql', '0009_row_cap_upserts.sql']);
+  assert.deepEqual(files, ['0001_foundation.sql', '0002_profiles.sql', '0003_sync_consents.sql', '0004_preferences.sql', '0005_library.sql', '0006_consent_withdrawal.sql', '0007_delete_my_account.sql', '0008_backfill_profiles.sql', '0009_row_cap_upserts.sql', '0010_consent_withdrawal_owner_rights.sql']);
   let pos = text.indexOf('\n-- ======== supabase/migrations/');
   assert.ok(pos > 0 && commentsOnly(text.slice(0, pos)), 'the header is comments only');
   for (const f of files) {
@@ -36,7 +52,7 @@ test('ALL_MIGRATIONS.sql: migrations 0001 … 0009 byte for byte, in order, unde
     assert.ok(text.startsWith(src, pos), `${f}: byte for byte`);
     pos += src.length;
   }
-  assert.equal(pos, text.length, 'nothing after 0009');
+  assert.equal(pos, text.length, 'nothing after 0010');
   // and so, without comments, the bundle runs exactly the migrations' statements
   const strip = (s) => s.replace(/--[^\n]*/g, '').replace(/\s+/g, ' ').trim();
   assert.equal(strip(text), strip(files.map((f) => read(`supabase/migrations/${f}`)).join('\n')));
@@ -68,6 +84,10 @@ test('the headers say where and how to run them, and "35" is the check\'s own co
   assert.match(sh, /-c "\$\(cat "\$prod\/ALL_MIGRATIONS\.sql"\)"/);
   assert.match(sh, /grep -m1 -o 'ALL \[0-9\]\* CHECKS PASSED' "\$prod\/RLS_CHECK\.sql"/);
   assert.match(sh, /bundle-sql\.mjs" --check/);
+  // both targets' bundles, and a user deleted the way Supabase Auth does it, with both sync switches on (0010)
+  assert.match(sh, /for target in production staging; do/);
+  assert.match(sh, /set local role supabase_auth_admin;\ndelete from auth\.users where id = '\$u';/);
+  assert.match(sh, /insert into public\.sync_consents \(user_id, settings_sync, library_sync\) values \('\$u', true, true\);/);
 });
 
 test('countRlsChecks: a check in a foreach loop counts once per element; the early-stop handler does not count', () => {
@@ -97,7 +117,7 @@ test('bundle-sql.mjs: writes both files; --check exits 0 when up to date and 1 (
   const cli = join(root, 'tools/auth/bundle-sql.mjs');
   try {
     const w = await run(process.execPath, [cli, '--out', d]);
-    assert.match(w.stdout, /wrote ALL_MIGRATIONS\.sql, RLS_CHECK\.sql \(9 migrations, 35 RLS checks\)/);
+    assert.match(w.stdout, /wrote ALL_MIGRATIONS\.sql, RLS_CHECK\.sql \(10 migrations, 35 RLS checks\)/);
     assert.equal(readFileSync(join(d, MIGRATIONS_NAME), 'utf8'), read(`supabase/production/${MIGRATIONS_NAME}`));
     assert.match((await run(process.execPath, [cli, '--check', '--out', d])).stdout, /up to date/);
     const drifted = `${readFileSync(join(d, MIGRATIONS_NAME), 'utf8')}\n-- edited by hand\n`;
@@ -107,6 +127,12 @@ test('bundle-sql.mjs: writes both files; --check exits 0 when up to date and 1 (
     assert.match(e.stderr, /out of date: ALL_MIGRATIONS\.sql/);
     assert.equal(readFileSync(join(d, MIGRATIONS_NAME), 'utf8'), drifted, '--check writes nothing');
     // and the repository's own copy is up to date
-    assert.match((await run(process.execPath, [cli, '--check'])).stdout, /up to date \(9 migrations, 35 RLS checks\)/);
+    assert.match((await run(process.execPath, [cli, '--check'])).stdout, /up to date \(10 migrations, 35 RLS checks\)/);
+    // --target staging writes the staging headers
+    const st = mkdtempSync(join(tmpdir(), 'hm-bundle-staging-'));
+    try {
+      await run(process.execPath, [cli, '--out', st, '--target', 'staging']);
+      assert.equal(readFileSync(join(st, MIGRATIONS_NAME), 'utf8'), read(`supabase/staging/${MIGRATIONS_NAME}`));
+    } finally { rmSync(st, { recursive: true, force: true }); }
   } finally { rmSync(d, { recursive: true, force: true }); }
 });

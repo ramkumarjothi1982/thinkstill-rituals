@@ -143,7 +143,7 @@ check that every library file is listed and every module exists.
 | `src/auth/` | Optional sign-in: boot and local namespaces, the client, opt-in sync, the account Mallow, `/auth/callback` (`docs/AUTH.md`) |
 | `auth/callback/` | The page email links open (confirm, reset, change email) |
 | `legal/` | The Privacy Policy and the Terms of Use: static pages published at `/legal/`, linked from Settings, the plans page and the sign-up form (`src/app/legal.js`); drafts until the owner deletes the DRAFT SWITCH line in `src/ui/legal.css` |
-| `supabase/` | Migrations `0001`–`0009`, rollback, RLS check, email templates, `config.toml` for the CI stack |
+| `supabase/` | Migrations `0001`–`0010`, rollback, RLS check, email templates, `config.toml` for the CI stack |
 | `server/another-angle/` | Another Angle's server (a Cloudflare Worker) and its evaluation tools |
 | `vendor/` | Vendored supabase-js (loaded only for sign-in screens and signed-in sessions) |
 | `content/` | The V3 ritual workbook (source of the 1,000 rituals) and its corrected copy |

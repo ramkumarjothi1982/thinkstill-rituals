@@ -45,7 +45,7 @@ The two files are generated from `supabase/migrations/` and
 a test fails if they ever differ).
 
 - [ ] SQL Editor → **New query**. Paste the whole of
-      `supabase/production/ALL_MIGRATIONS.sql` (migrations 0001 … 0009, in
+      `supabase/production/ALL_MIGRATIONS.sql` (migrations 0001 … 0010, in
       order). The role next to Run must be `postgres` (the default).
 - [ ] **Run**. The editor warns about a "destructive operation" (the
       scripts replace their own policies and triggers; they never drop data):

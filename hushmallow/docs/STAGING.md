@@ -171,16 +171,17 @@ name.
 
 ### A2. Supabase: the database, the same SQL as production (5 min)
 
-The two files are the ones production uses; they are not tied to one project (their first lines name
-hushmallow1, but they are just as right for hushmallow-staging). Check the project name at the top of the
-dashboard says **hushmallow-staging** before you run anything.
+The two files in `supabase/staging/` are production's SQL byte for byte; only their comment lines at the
+top differ, and name the staging project. (The copies in `supabase/production/` would do the same.) Check
+the address bar shows the staging project's ref, never `igbxbfuaoybfzsroxuln`, before you run anything.
 
-1. **SQL Editor** → **New query**. Paste the whole of `supabase/production/ALL_MIGRATIONS.sql`. The role
+1. **SQL Editor** → **New query**. Paste the whole of `supabase/staging/ALL_MIGRATIONS.sql`. The role
    next to **Run** must be `postgres` (the default).
 2. Click **Run**. If the editor warns about a "destructive operation", choose **Run this query**. Expect
-   `Success. No rows returned`.
-3. **New query** again. Paste the whole of `supabase/production/RLS_CHECK.sql` (the production bundle's copy
-   of `supabase/tests/rls_check.sql`) → **Run**. The last row must read
+   `Success. No rows returned`. Already ran an older copy? Run the new one the same way: it is safe to
+   run again and adds only what is new.
+3. **New query** again. Paste the whole of `supabase/staging/RLS_CHECK.sql` (the staging bundle's copy
+   of `supabase/tests/rls_check.sql`) → **Run**. It may show the same warning. The last row must read
    **`ALL 35 CHECKS PASSED. Everything this script created was rolled back.`**
    Any `FAIL`, or another number: stop and tell Claude.
 4. **Project Settings** → **Data API**: **Exposed schemas** `public` only (never `hm_private`). Save.
