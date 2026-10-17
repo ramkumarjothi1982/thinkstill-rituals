@@ -7,16 +7,19 @@
 //   /v1/billing/*     web subscriptions through Stripe (src/billing/routes.js), off until configured
 //
 // Order of checks on /v1/angle: HTTPS → CORS allowlist → body size/type →
-// safety pre-check on the text (crisis/care get support straight away: no
-// token, no burst limit, no quota, no model) → per-network rate limit (IPv4
-// address or IPv6 /64, hashed) → bearer token → strict validation →
-// emoji-only text ("unclear", no quota) → per-device daily quota → global
-// daily spend reservation → pipeline → spend settled → metadata log.
+// safety pre-check on the text (the lexicon on the words as typed and on
+// their normalised spelling, and the risk screener: screenInput; crisis/care
+// get support straight away: no token, no burst limit, no quota, no model) →
+// per-network rate limit (IPv4 address or IPv6 /64, hashed) → bearer token →
+// strict validation → the same checks on the validated text and on earlier
+// angles' lines (support, no quota) → emoji-only text ("unclear", no quota) →
+// per-device daily quota → global daily spend reservation → pipeline → spend
+// settled → metadata log.
 
 import { readConfig } from './config.js';
 import { json, error, corsHeaders, preflight, readJson, nextUtcMidnight, utcDay } from './http.js';
 import { validateAngleRequest, validateSessionRequest, validateFeedbackRequest, cleanText, ANGLE_BODY_MAX_BYTES, SESSION_BODY_MAX_BYTES } from './validate.js';
-import { checkSafety, supportPayload } from './safety/index.js';
+import { screenInput, supportPayload } from './safety/index.js';
 import { runAngle, hasWords, PROMPT_VERSION, SCHEMA_VERSION } from './pipeline.js';
 import { signToken, verifyToken, keyedHash } from './auth/tokens.js';
 import { checkEntitlement } from './auth/entitlement.js';
@@ -236,18 +239,23 @@ export function createApp(options) {
 
     // The body is read first so the safety pre-check can run before anything
     // that could turn a person in crisis away (a burst limit, an expired
-    // token, a missing setting). The check is cheap, uses no quota and
-    // returns only the authored support copy. It reads at most the first
-    // EARLY_CHECK_CHARS characters (no token yet, so no unbounded CPU for
-    // anyone); a longer text is refused later anyway (TEXT_MAX), and the full
-    // checks run on the validated text after the token.
+    // token, a missing setting, a used-up quota, the spend cap). The check is
+    // the pipeline's own input screen (screenInput: the lexicon as typed and
+    // in its normalised spelling, then the risk screener), so what the
+    // pipeline would answer with support is answered here, before any of
+    // them; it uses no quota and returns only the authored support copy. It
+    // reads at most the first EARLY_CHECK_CHARS characters (no token yet, so
+    // no unbounded CPU for anyone); a longer text is refused later anyway
+    // (TEXT_MAX), and the full checks run on the validated text after the
+    // token.
     const body = await readJson(request, ANGLE_BODY_MAX_BYTES);
     const raw = body.ok && body.value && typeof body.value === 'object' ? /** @type {Record<string, unknown>} */ (body.value).text : null;
     if (typeof raw === 'string') {
-      const early = checkSafety(cleanText(raw.slice(0, EARLY_CHECK_CHARS)));
+      const early = screenInput(cleanText(raw.slice(0, EARLY_CHECK_CHARS)));
       if (early.level === 'crisis' || early.level === 'care') {
-        logEvt({ status: early.level, http: 200, safety_level: early.level, safety_source: 'lexicon', text_len_bucket: lengthBucket(raw.length) });
-        return json(200, { ...base, status: early.level, scene: null, support: supportPayload(early.level, early.category, 'lexicon'), fallback: null, keep_support_close: true }, cors);
+        const source = early.source || 'lexicon';
+        logEvt({ status: early.level, http: 200, safety_level: early.level, safety_source: source, text_len_bucket: lengthBucket(raw.length) });
+        return json(200, { ...base, status: early.level, scene: null, support: supportPayload(early.level, early.category, source), fallback: null, keep_support_close: true }, cors);
       }
     }
 
@@ -281,14 +289,28 @@ export function createApp(options) {
       chosen_emotion: input.emotion, intention: input.intention, previous: input.previous.length, text_len_bucket: lengthBucket(input.text.length),
     };
 
-    // Crisis and care never reach the model and never use quota (checked
-    // again on the validated text, which is what the model would see).
-    const safety = checkSafety(input.text);
-    if (safety.level === 'crisis' || safety.level === 'care') {
-      logEvt({ ...common, status: safety.level, http: 200, safety_level: safety.level, safety_source: 'lexicon' });
-      return json(200, { ...base, status: safety.level, scene: null, support: supportPayload(safety.level, safety.category, 'lexicon'), fallback: null, keep_support_close: true }, cors);
+    // Crisis and care never reach the model and never use quota or the spend
+    // cap (checked again on the validated text, which is what the model would
+    // see, and on the earlier angles' lines the device sent back: the
+    // pipeline's steps 1, 1b and 1c, before the quota is taken).
+    const safety = screenInput(input.text);
+    let support = safety.level === 'crisis' || safety.level === 'care' ? safety : null;
+    for (const p of input.previous) {
+      if (support) break;
+      for (const line of [p.subtitle_line_1, p.subtitle_line_2]) {
+        const r = screenInput(line);
+        if (r.level === 'crisis' || r.level === 'care') { support = r; break; }
+      }
+    }
+    if (support) {
+      const level = /** @type {'crisis' | 'care'} */ (support.level);
+      const source = support.source || 'lexicon';
+      logEvt({ ...common, status: level, http: 200, safety_level: level, safety_source: source });
+      return json(200, { ...base, status: level, scene: null, support: supportPayload(level, support.category, source), fallback: null, keep_support_close: true }, cors);
     }
 
+    // a fallback still keeps support close after a concern (or the screener's 'check'), as the pipeline does
+    const keepClose = safety.level === 'concern' || safety.check;
     const day = utcDay(now());
     const ledger = ledgerFor(env);
     const devName = `dev:${subject}`;
@@ -315,7 +337,7 @@ export function createApp(options) {
     if (cfg.provider === 'anthropic' && !cfg.apiKey) {
       await ledger.give(devName, 'angles', day);
       logEvt({ ...common, status: 'fallback', fallback_reason: 'provider', err: 'no_api_key', http: 200 });
-      return json(200, { ...base, status: 'fallback', scene: null, support: null, fallback: { reason: 'provider', hint: null }, keep_support_close: safety.level === 'concern', quota: { ...quotaOut, remaining: quotaOut.remaining + 1 } }, cors);
+      return json(200, { ...base, status: 'fallback', scene: null, support: null, fallback: { reason: 'provider', hint: null }, keep_support_close: keepClose, quota: { ...quotaOut, remaining: quotaOut.remaining + 1 } }, cors);
     }
 
     const reserve = worstCaseMicros({ model: cfg.model, attempts: 2, promptTokens: cfg.promptTokenEstimate, maxTokens: cfg.maxTokens });
@@ -323,7 +345,7 @@ export function createApp(options) {
     if (!spend.ok) {
       await ledger.give(devName, 'angles', day);
       logEvt({ ...common, status: 'fallback', fallback_reason: 'capacity', http: 200 });
-      return json(200, { ...base, status: 'fallback', scene: null, support: null, fallback: { reason: 'capacity', hint: null }, keep_support_close: safety.level === 'concern', quota: { ...quotaOut, remaining: quotaOut.remaining + 1 } }, cors);
+      return json(200, { ...base, status: 'fallback', scene: null, support: null, fallback: { reason: 'capacity', hint: null }, keep_support_close: keepClose, quota: { ...quotaOut, remaining: quotaOut.remaining + 1 } }, cors);
     }
 
     let result;
@@ -341,7 +363,7 @@ export function createApp(options) {
       await ledger.give(devName, 'angles', day);
       quotaOut.remaining += 1;
       logEvt({ ...common, status: 'fallback', fallback_reason: 'provider', err: 'exception', http: 200 });
-      return json(200, { ...base, status: 'fallback', scene: null, support: null, fallback: { reason: 'provider', hint: null }, keep_support_close: safety.level === 'concern', quota: quotaOut }, cors);
+      return json(200, { ...base, status: 'fallback', scene: null, support: null, fallback: { reason: 'provider', hint: null }, keep_support_close: keepClose, quota: quotaOut }, cors);
     }
 
     const actual = costMicros(result.meta.usage);
