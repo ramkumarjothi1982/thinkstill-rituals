@@ -30,6 +30,8 @@ the dashboard for the setting's name.
 - [ ] supabase.com/dashboard → project **hushmallow1**. The address bar must
       contain `/project/igbxbfuaoybfzsroxuln` and the region must be Sydney
       (ap-southeast-2). Not the old Singapore project: it is not used for anything.
+      Not the staging project either (`/project/oghzabvkrxsejkkjdsuc`, Singapore,
+      for the branch previews only: docs/STAGING.md).
 - [ ] Project Settings → API Keys → **Publishable key**: it must be
       `sb_publishable_NSv1Liou2yjKjauX09U5qQ_CxwzDuiw` (public by design; Row
       Level Security protects the data). Copy it for steps 9 and 10.

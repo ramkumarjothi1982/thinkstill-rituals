@@ -242,6 +242,15 @@ test('/auth/callback on a preview uses the staging project (its email links come
   const doc = read('docs/STAGING.md');
   assert.ok(doc.includes('**Site URL**: `https://claude-launch-rc.hushmallow.pages.dev`'), 'the staging Site URL is the preview origin');
   assert.ok(doc.includes('`https://claude-launch-rc.hushmallow.pages.dev/auth/callback`'));
+  assert.ok(doc.includes('`https://claude-launch-rc.hushmallow.pages.dev/auth/callback/`'));
+  // the owner's steps for this project: its facts, the production SQL run where the address bar shows its ref (35
+  // checks), the Email provider on, and Preview without production's values
+  for (const x of ['`https://oghzabvkrxsejkkjdsuc.supabase.co`', `\`${OWNER_KEY}\``, 'Singapore (`ap-southeast-1`)', '**`/project/oghzabvkrxsejkkjdsuc`**',
+    'Paste the whole of `supabase/production/ALL_MIGRATIONS.sql`', 'Paste the whole of `supabase/production/RLS_CHECK.sql`',
+    '**`ALL 35 CHECKS PASSED. Everything this script created was rolled back.`**', 'the Email provider **on**',
+    '**Delete** both `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY`']) assert.ok(doc.includes(x), x);
+  assert.ok(doc.indexOf('ALL_MIGRATIONS.sql`. The role') < doc.indexOf('RLS_CHECK.sql` (the production bundle'), 'the migrations first, then the check');
+  assert.doesNotMatch(doc, /STAGING_TODO|sb_publishable_TODO|STAGING_PROJECT_REF`, today the placeholder/);
 });
 
 // ---------------------------------------------------------- the build guard --

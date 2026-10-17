@@ -202,6 +202,20 @@ Kept although the Studio lists none of them (a deliberate deviation from "remove
 
 Status, what is still unset and the next steps: `hushmallow/STRIPE_INTEGRATION_TODO.md`.
 
+## 2026-10-17: The staging sign-in project, in Singapore (owner)
+
+The owner created the staging Supabase project on the Free plan: Project URL `https://oghzabvkrxsejkkjdsuc.supabase.co` (ref `oghzabvkrxsejkkjdsuc`), in **Singapore** (`ap-southeast-1`), not Sydney as `docs/STAGING.md` A1 asked, with a project name Supabase generated. The owner asked whether it can be used for staging without recreating it.
+
+Default taken on the owner's behalf: **accepted for staging, as it is; production stays in Sydney.**
+
+- Staging holds test data only: the rehearsal's test accounts (the owner's team, `docs/STAGING.md` A3) and Stripe test-mode subscriptions. The public's accounts and data are only ever in production's hushmallow1 (ref `igbxbfuaoybfzsroxuln`), which stays in **Sydney** (`ap-southeast-2`). Real people's data never goes into the staging project.
+- Nothing depends on the staging project's region or dashboard name: the build, the browser and the staging Worker accept it by its URL only. The code's label `hushmallow-staging` (`STAGING_PROJECT_NAME`) is display-only; the project may be renamed in the dashboard at any time.
+- The two stages never cross: a branch preview accepts only the staging project, every other host only hushmallow1, and the staging Worker only staging accounts (both test suites). A branch build with no sign-in variables publishes the committed staging project; a production build never does.
+- Sign-in calls from Australia to Singapore take a little longer; acceptable for a rehearsal, which measures behaviour, not speed.
+- It is a new project (17 Oct 2026), not the old Singapore project retired before hushmallow1, which stays unused.
+
+Its public values (the URL and the publishable key, public by design) are committed in `src/auth/config.js`, `server/another-angle/src/config.js` and `[env.staging.vars]`. The owner's remaining steps for it (its SQL, its sign-in settings, the Pages Preview variables) are `docs/STAGING.md` A2, A3 and A5.
+
 ## Still open for the owner
 
 - **Australian support lines**: sign-off of the numbers and their wording by someone with wellbeing or clinical experience (STATUS §4.2), and whether 1800RESPECT should lead after abuse in Australia.

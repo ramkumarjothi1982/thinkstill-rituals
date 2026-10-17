@@ -57,7 +57,7 @@ ever clears its own session (below, "Shared browsers").
 | Supabase project | **hushmallow1**, ref `igbxbfuaoybfzsroxuln`, Sydney (ap-southeast-2) |
 | URL | `https://igbxbfuaoybfzsroxuln.supabase.co` |
 | Publishable key | `sb_publishable_NSv1Liou2yjKjauX09U5qQ_CxwzDuiw` (public by design; RLS protects the data) |
-| Never used | the old Singapore project; any `sb_secret_…` key; any service_role key; `SUPABASE_ACCESS_TOKEN`. No migration is ever run against production by a tool: the owner pastes the SQL (see `supabase/README.md`). |
+| Never used | the old Singapore project (retired before hushmallow1; the staging project `oghzabvkrxsejkkjdsuc`, also in Singapore, is a new one, for branch previews only: `docs/STAGING.md`); any `sb_secret_…` key; any service_role key; `SUPABASE_ACCESS_TOKEN`. No migration is ever run against production by a tool: the owner pastes the SQL (see `supabase/README.md`). |
 
 ## Files
 

@@ -12,14 +12,17 @@ no key and no account id, and must never hold one.
 
 Files that still hold a placeholder or an unverified value:
 
-* [server/another-angle/wrangler.toml](server/another-angle/wrangler.toml): `[env.staging.vars]`
-  `SUPABASE_URL` (`https://STAGING_TODO.supabase.co`) and `SUPABASE_PUBLISHABLE_KEY` (a `TODO` placeholder);
-  the four staging price ids (the owner's sandbox ids, to be verified against Stripe); production's `[vars]` have no billing
-  var at all yet (by design, until the activation commit).
-* [src/auth/config.js](src/auth/config.js): `STAGING_PROJECT_REF = ''`.
-* [server/another-angle/src/config.js](server/another-angle/src/config.js): `STAGING_SUPABASE_PROJECT_URL = ''`.
+* [server/another-angle/wrangler.toml](server/another-angle/wrangler.toml): `[env.staging.vars]` the four
+  staging price ids (the owner's sandbox ids, to be verified against Stripe); production's `[vars]` have no
+  billing var at all yet (by design, until the activation commit).
 * [legal/terms.html](legal/terms.html): whether prices include GST or any other tax (an `[Owner: …]`
   placeholder, for the owner and their adviser).
+
+No longer a placeholder: the staging sign-in project is set (17 Oct 2026), the owner's
+`https://oghzabvkrxsejkkjdsuc.supabase.co` (Singapore), in [src/auth/config.js](src/auth/config.js)
+(`STAGING_PROJECT_REF`, `STAGING_PUBLISHABLE_KEY`),
+[server/another-angle/src/config.js](server/another-angle/src/config.js) (`STAGING_SUPABASE_PROJECT_URL`) and
+`[env.staging.vars]` (`SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`; the `STAGING_TODO` placeholders are gone).
 
 | Value | Where | State | What to do |
 |---|---|---|---|
@@ -28,7 +31,7 @@ Files that still hold a placeholder or an unverified value:
 | `cancel_url` | same | Set: `<APP_ORIGIN>/?billing=cancel` | Nothing |
 | `line_items[0][price]` | from configuration: `STRIPE_PRICE_PAID_MONTHLY`, `_PAID_YEARLY`, `_ULTRA_MONTHLY`, `_ULTRA_YEARLY` | Staging: the owner's four ids (below). Production: **unset** | Production needs **live mode's own four prices** (a sandbox id never works with a live key), added in the activation commit |
 | The four staging ids: sandbox or live? | `[env.staging.vars]` | The owner's sandbox ids (17 Oct). **To be verified** against Stripe (this environment cannot reach api.stripe.com yet) | At the first sandbox run, the price check and the driver's P0 read each one from Stripe with the sandbox key: amount, interval, currency and active must match its slot, else it is refused. An id from another account or mode answers the sandbox key "No such price" (`503 price_misconfigured`, `not_found` in the log) |
-| Staging sign-in project | `[env.staging.vars]` `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`; `STAGING_PROJECT_REF`; `STAGING_SUPABASE_PROJECT_URL` | Placeholders | Create hushmallow-staging and send Claude its URL and public key (STAGING.md A1 to A4). Until then every billing route answers `503 accounts_not_configured` |
+| Staging sign-in project | `[env.staging.vars]` `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`; `STAGING_PROJECT_REF`; `STAGING_SUPABASE_PROJECT_URL` | Set: `oghzabvkrxsejkkjdsuc` (Singapore, 17 Oct 2026) | Run its SQL and sign-in settings (STAGING.md A2, A3), delete production's values from Pages Preview (A5). Until the staging Worker is redeployed, its billing routes answer `503 accounts_not_configured` |
 | Worker secrets | Cloudflare (never a file) | Not set | See "Worker secrets" below |
 | `ui_mode = hosted_page` on the pin | routes.js `CHECKOUT_STUDIO` | Sent as given | Confirm at the first sandbox checkout (below) |
 
@@ -207,7 +210,8 @@ each slot's amount), the product names and `BILLING_PRICES`.
 
 1. Verify that the four price ids are the sandbox's (the table above). If not, make the sandbox's four.
 2. Optionally set the four lookup keys on the prices (`hushmallow.paid.monthly` and so on).
-3. Create hushmallow-staging (STAGING.md Part A) and send Claude its public values.
+3. The staging project (done: `oghzabvkrxsejkkjdsuc`): run its SQL and sign-in settings, then the Pages
+   Preview variables (STAGING.md A2, A3, A5).
 4. In the sandbox: the restricted key and the staging secrets (B8, B9), the portal (B6), revenue recovery
    (B7), then the webhook endpoint (B11) after Claude's go-ahead.
 5. Run the sandbox driver (P0, P1, S3 to S9) and the manual checklist (S1, S2, S10 to S14), including one
