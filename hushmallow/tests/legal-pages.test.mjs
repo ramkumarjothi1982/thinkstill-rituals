@@ -384,6 +384,20 @@ test('the Terms: "Subscriptions, renewal and cancellation" says what the code do
   assert.match(sub, new RegExp(`While the payment is being retried, you keep your plan for up to ${days} days\\. If the payment still hasn’t gone through by then, your plan stops\\.`));
   // no partial refunds, except where the law requires (the ACL and other consumer laws that can't be excluded)
   assert.match(sub, /We don’t give partial refunds[^.]*except where the law requires it: the Australian Consumer Law, and other consumer laws that cannot be excluded/);
+  // (review, 17 Oct 2026) and nowhere else do the terms promise one: a refund of the unused part of a period is only the
+  // law's (§12 quotes the Australian Consumer Law), or, after a change that takes away a large part of a plan (§8) or an
+  // end we choose (§14), an owner decision left as a placeholder. Once approved, whatever the owner writes there stands
+  const unplaced = (id) => textOf(sectionOf(html, id).replace(TODO, ' '));
+  const numbered = [...noComments(html).matchAll(/<h2 id="([^"]+)">\d+\./g)].map((m) => m[1]);
+  assert.ok(numbered.includes('changes-service') && numbered.includes('ending') && numbered.includes('acl'));
+  if (draft) for (const id of numbered.filter((x) => x !== 'acl')) assert.doesNotMatch(unplaced(id), /refund[^.]*unused|unused[^.]*refund|pro[- ]?rat/i, `§${id}: a refund promise the owner hasn't made`);
+  assert.match(textOf(sectionOf(html, 'acl')), /to a refund for the unused portion/, '§12: the law\'s own remedy stays');
+  assert.match(unplaced('changes-service'), /If we make a change that significantly reduces what your subscription includes, we’ll tell you first, and you can cancel: your plan then stays until the end of the billing period you’ve been charged for, and you won’t be charged again\./);
+  assert.match(unplaced('ending'), /If we end your subscription for any other reason, or stop offering hushmallow altogether, we’ll give you reasonable notice\./);
+  if (draft) {
+    assert.ok([...sectionOf(html, 'changes-service').matchAll(TODO)].some((m) => m[1] === 'refund-reduced' && /section 6/.test(m[2])), '§8: the owner\'s decision');
+    assert.ok([...sectionOf(html, 'ending').matchAll(TODO)].some((m) => m[1] === 'refund-ending' && /section 6/.test(m[2])), '§14: the owner\'s decision');
+  }
   // prices can change, with notice, from the next renewal; the notice period is the owner's
   const prices = textOf(sectionOf(html, 'prices'));
   assert.match(prices, /before a new price applies to you, and it starts only from your first renewal after that notice/);
