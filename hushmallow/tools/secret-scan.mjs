@@ -5,10 +5,11 @@
 //   node hushmallow/tools/secret-scan.mjs           every tracked file (git ls-files)
 //   node hushmallow/tools/secret-scan.mjs --staged  the lines a commit adds
 //
-// One list of patterns for three guards: tests/no-secrets.test.mjs (every
-// tracked file), tools/site/check.mjs (every file of the built site, with no
-// allow-list) and the pre-commit hook (tools/hooks/pre-commit at the repository
-// root; turn it on with git config core.hooksPath tools/hooks). Publishable
+// One list of patterns for every guard: tests/no-secrets.test.mjs (every
+// tracked file), tools/build-site.sh (every tracked file before each build,
+// whatever the push changed; then tools/site/check.mjs, every file of the
+// built site with no allow-list) and the pre-commit hook (tools/hooks/pre-commit
+// at the repository root; turn it on with git config core.hooksPath tools/hooks). Publishable
 // keys (pk_, sb_publishable_) and the anon JWT are public and are not flagged.
 // A test fixture is built at run time (`rk_live_${'a'.repeat(24)}`), so it
 // never matches; a fake that cannot be (a workflow line) goes in ALLOW, as

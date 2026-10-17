@@ -3,15 +3,15 @@
 // webhook signing secrets, Supabase secret keys, service_role JWTs and access
 // tokens, Anthropic keys and private keys (tools/secret-scan.mjs). Publishable
 // keys are public and pass. ALLOW holds only the two deliberate fakes, each by
-// its exact line. The site tools/build-site.sh assembles is scanned too, with
-// no allow-list (tools/site/check.mjs, section 7), and tools/hooks/pre-commit
-// (repository root) refuses a commit whose staged lines add one. .env files,
-// like .dev.vars, are never tracked.
+// its exact line. tools/build-site.sh scans every tracked file before each build
+// and the site it assembles after, with no allow-list (tools/site/check.mjs,
+// section 7), and tools/hooks/pre-commit (repository root) refuses a commit
+// whose staged lines add one. .env files, like .dev.vars, are never tracked.
 // Every fixture is built at run time, so this file holds no secret-shaped string.
 // Run: node --test hushmallow/tests/
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { appendFileSync, mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { appendFileSync, lstatSync, mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -117,6 +117,7 @@ test('the built site is scanned too, with no allow-list: a key in any published 
     const link = join(links, 'repo');
     symlinkSync(repo, link);
     const log = execFileSync('bash', [join(link, 'hushmallow/tools/build-site.sh'), out, 'sec1'], { env, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+    assert.match(log, /secret scan: no secrets in tracked files/, 'every tracked file is scanned before the build');
     assert.match(log, /\d{3,} files scanned for secrets/);
     assert.match(log, /check: ok/);
     const { checkSite } = await import('../tools/site/check.mjs');
@@ -144,6 +145,33 @@ test('the built site is scanned too, with no allow-list: a key in any published 
       for (const v of [rk, wh, allowedLine.match(/sb_secret_\w+/)[0]]) assert.ok(!cli.stderr.includes(v) && !cli.stdout.includes(v), 'a secret is never printed');
     }
   } finally { rmSync(out, { recursive: true, force: true }); rmSync(links, { recursive: true, force: true }); }
+});
+
+test('build-site.sh scans every tracked file first, published or not: a key in a doc, the server or the repository root fails the build', () => {
+  // Cloudflare Pages builds every push of every branch, whatever it changes; the workflows filter by path
+  const sh = readFileSync(join(root, 'tools/build-site.sh'), 'utf8');
+  const at = sh.indexOf('node "$here/tools/secret-scan.mjs"');
+  assert.ok(at > 0 && at < sh.indexOf('node "$here/tools/site/auth-config.mjs"'), 'scanned before anything is built');
+  const d = tempRepo();
+  try {
+    // the build's own tools in a repository whose root README holds a key: refused before anything is written
+    mkdirSync(join(d, 'hushmallow/tools'), { recursive: true });
+    writeFileSync(join(d, 'hushmallow/tools/build-site.sh'), readFileSync(join(root, 'tools/build-site.sh')));
+    writeFileSync(join(d, 'hushmallow/tools/secret-scan.mjs'), readFileSync(SCAN));
+    const sk = `sk_live_${'R'.repeat(24)}`;
+    writeFileSync(join(d, 'README.md'), `# notes\nSTRIPE_SECRET_KEY=${sk}\n`);
+    git(d, 'add', '-A');
+    const out = join(d, 'dist');
+    const r = spawnSync('bash', [join(d, 'hushmallow/tools/build-site.sh'), out, 'sec2'], { cwd: tmpdir(), env: gitEnv, encoding: 'utf8' });
+    assert.equal(r.status, 1, r.stdout + r.stderr);
+    assert.match(r.stderr, /README\.md:2: a Stripe secret or restricted key \(sk_live_…\)/);
+    assert.ok(!r.stderr.includes(sk) && !r.stdout.includes(sk), 'the key is never printed');
+    assert.throws(() => lstatSync(out), 'nothing was built');
+    // an exported copy (no git): it says so instead of skipping in silence (the build then fails here for want of the app)
+    rmSync(join(d, '.git'), { recursive: true, force: true });
+    const nogit = spawnSync('bash', [join(d, 'hushmallow/tools/build-site.sh'), out, 'sec2'], { cwd: tmpdir(), env: gitEnv, encoding: 'utf8' });
+    assert.match(nogit.stderr, /secret scan: not a git work tree, so only the built site is scanned/);
+  } finally { rmSync(d, { recursive: true, force: true }); }
 });
 
 test('tools/hooks/pre-commit: a commit whose staged lines add a secret is refused (ALLOW applied); a clean one goes through', () => {
