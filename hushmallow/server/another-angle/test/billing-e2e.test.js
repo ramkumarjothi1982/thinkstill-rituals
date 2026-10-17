@@ -160,8 +160,8 @@ test('the driver refuses while staging still has placeholders (the repository to
   assert.deepEqual(config.billingPrices, BILLING_PRICES);
   assert.deepEqual(config.production, { mode: 'testing', liveApproved: false });
   assert.deepEqual(config.prices, {
-    paid: { monthly: 'price_1URLbJL2iXNcXbZPceXTGXsH', yearly: 'price_1URLeGL2iXNcXbZPz31feM3V' },
-    ultra: { monthly: 'price_1URLlFL2iXNcXbZPGjBOF6zy', yearly: 'price_1URLv2L2iXNcXbZP6vLFoAtV' },
+    paid: { monthly: 'price_1URQs5L6VU7tTQ40MQxgK1On', yearly: 'price_1URQtXL6VU7tTQ40hf1mzuLd' },
+    ultra: { monthly: 'price_1URQyUL6VU7tTQ408wYz4vYP', yearly: 'price_1URQuYL6VU7tTQ403DSA9bfh' },
   });
   assert.deepEqual(Object.keys(D.SANDBOX_AMOUNTS).map((k) => [k, `US$${(D.SANDBOX_AMOUNTS[k] / 100).toFixed(2)}`]), Object.entries(BILLING_PRICES));
 });

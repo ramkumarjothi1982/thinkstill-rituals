@@ -859,10 +859,10 @@ const PREVIEW = 'https://claude-launch-rc.hushmallow.pages.dev';
 const STAGING_PRICE_VARS = ['STRIPE_PRICE_PAID_MONTHLY', 'STRIPE_PRICE_PAID_YEARLY', 'STRIPE_PRICE_ULTRA_MONTHLY', 'STRIPE_PRICE_ULTRA_YEARLY'];
 const PLACEHOLDERS = Object.fromEntries(STAGING_PRICE_VARS.map((k) => [k, 'price_TODO_owner']));
 const REAL_PRICES = { STRIPE_PRICE_PAID_MONTHLY: PRICES.paidMonthly, STRIPE_PRICE_PAID_YEARLY: PRICES.paidYearly, STRIPE_PRICE_ULTRA_MONTHLY: PRICES.ultraMonthly, STRIPE_PRICE_ULTRA_YEARLY: PRICES.ultraYearly };
-/** The owner's four prices (2026-10-17): Flow (prod_VSG7mi9Err8Yxp) US$9.99 / US$99.99, Beyond (prod_VSGH3KuGjUAdQr) US$19.99 / US$199.99. */
+/** The owner's four sandbox prices (2026-10-17): Flow US$9.99 / US$99.99, Beyond US$19.99 / US$199.99. */
 const OWNER_PRICES = {
-  STRIPE_PRICE_PAID_MONTHLY: 'price_1URLbJL2iXNcXbZPceXTGXsH', STRIPE_PRICE_PAID_YEARLY: 'price_1URLeGL2iXNcXbZPz31feM3V',
-  STRIPE_PRICE_ULTRA_MONTHLY: 'price_1URLlFL2iXNcXbZPGjBOF6zy', STRIPE_PRICE_ULTRA_YEARLY: 'price_1URLv2L2iXNcXbZP6vLFoAtV',
+  STRIPE_PRICE_PAID_MONTHLY: 'price_1URQs5L6VU7tTQ40MQxgK1On', STRIPE_PRICE_PAID_YEARLY: 'price_1URQtXL6VU7tTQ40hf1mzuLd',
+  STRIPE_PRICE_ULTRA_MONTHLY: 'price_1URQyUL6VU7tTQ408wYz4vYP', STRIPE_PRICE_ULTRA_YEARLY: 'price_1URQuYL6VU7tTQ403DSA9bfh',
 };
 
 /** A made-up staging project (20-character ref) for the cases "once the owner has created hushmallow-staging". */

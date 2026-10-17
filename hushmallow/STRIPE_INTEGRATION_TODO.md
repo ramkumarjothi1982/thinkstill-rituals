@@ -14,7 +14,7 @@ Files that still hold a placeholder or an unverified value:
 
 * [server/another-angle/wrangler.toml](server/another-angle/wrangler.toml): `[env.staging.vars]`
   `SUPABASE_URL` (`https://STAGING_TODO.supabase.co`) and `SUPABASE_PUBLISHABLE_KEY` (a `TODO` placeholder);
-  the four staging price ids (the owner's, environment not verified); production's `[vars]` have no billing
+  the four staging price ids (the owner's sandbox ids, to be verified against Stripe); production's `[vars]` have no billing
   var at all yet (by design, until the activation commit).
 * [src/auth/config.js](src/auth/config.js): `STAGING_PROJECT_REF = ''`.
 * [server/another-angle/src/config.js](server/another-angle/src/config.js): `STAGING_SUPABASE_PROJECT_URL = ''`.
@@ -27,7 +27,7 @@ Files that still hold a placeholder or an unverified value:
 | `success_url` | same | Set: `<APP_ORIGIN>/?billing=success&session_id={CHECKOUT_SESSION_ID}` | Nothing (`APP_ORIGIN` is per Worker in `wrangler.toml`) |
 | `cancel_url` | same | Set: `<APP_ORIGIN>/?billing=cancel` | Nothing |
 | `line_items[0][price]` | from configuration: `STRIPE_PRICE_PAID_MONTHLY`, `_PAID_YEARLY`, `_ULTRA_MONTHLY`, `_ULTRA_YEARLY` | Staging: the owner's four ids (below). Production: **unset** | Production needs **live mode's own four prices** (a sandbox id never works with a live key), added in the activation commit |
-| The four staging ids: sandbox or live? | `[env.staging.vars]` | **To be verified** (this environment cannot reach api.stripe.com) | Open each in the Stripe dashboard with the sandbox selected. A live id answers the staging Worker's test key "No such price": checkout refuses it (`503 price_misconfigured`, `not_found` in the log) and the sandbox driver's P0 names the slot. If they are live, make the same four in the sandbox and send Claude the new ids (STAGING.md B4, B10) |
+| The four staging ids: sandbox or live? | `[env.staging.vars]` | The owner's sandbox ids (17 Oct). **To be verified** against Stripe (this environment cannot reach api.stripe.com yet) | At the first sandbox run, the price check and the driver's P0 read each one from Stripe with the sandbox key: amount, interval, currency and active must match its slot, else it is refused. An id from another account or mode answers the sandbox key "No such price" (`503 price_misconfigured`, `not_found` in the log) |
 | Staging sign-in project | `[env.staging.vars]` `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`; `STAGING_PROJECT_REF`; `STAGING_SUPABASE_PROJECT_URL` | Placeholders | Create hushmallow-staging and send Claude its URL and public key (STAGING.md A1 to A4). Until then every billing route answers `503 accounts_not_configured` |
 | Worker secrets | Cloudflare (never a file) | Not set | See "Worker secrets" below |
 | `ui_mode = hosted_page` on the pin | routes.js `CHECKOUT_STUDIO` | Sent as given | Confirm at the first sandbox checkout (below) |
@@ -36,8 +36,17 @@ The owner's prices (2026-10-17):
 
 | Product | Plan id in the code | Monthly | Yearly |
 |---|---|---|---|
-| hushmallow Flow (`prod_VSG7mi9Err8Yxp`) | `paid` | US$9.99, `price_1URLbJL2iXNcXbZPceXTGXsH` | US$99.99, `price_1URLeGL2iXNcXbZPz31feM3V` |
-| hushmallow Beyond (`prod_VSGH3KuGjUAdQr`) | `ultra` | US$19.99, `price_1URLlFL2iXNcXbZPGjBOF6zy` | US$199.99, `price_1URLv2L2iXNcXbZP6vLFoAtV` |
+| hushmallow Flow | `paid` | US$9.99, `price_1URQs5L6VU7tTQ40MQxgK1On` | US$99.99, `price_1URQtXL6VU7tTQ40hf1mzuLd` |
+| hushmallow Beyond | `ultra` | US$19.99, `price_1URQyUL6VU7tTQ408wYz4vYP` | US$199.99, `price_1URQuYL6VU7tTQ403DSA9bfh` |
+
+These are the owner's **sandbox** prices, on staging (`[env.staging.vars]`). The owner supplied the Beyond yearly id
+separately: it is to be confirmed against Stripe at the first sandbox run (the price check refuses any id whose
+amount or interval does not match its slot).
+
+The owner's prices in the **original account** are reserved for production, after they are checked in live
+mode: Flow (`prod_VSG7mi9Err8Yxp`) `price_1URLbJL2iXNcXbZPceXTGXsH` monthly and `price_1URLeGL2iXNcXbZPz31feM3V`
+yearly; Beyond (`prod_VSGH3KuGjUAdQr`) `price_1URLlFL2iXNcXbZPGjBOF6zy` monthly and `price_1URLv2L2iXNcXbZP6vLFoAtV`
+yearly. Never mix them with the sandbox's ids, keys, customers or webhooks.
 
 What checkout requires of a price (`CHECKOUT_PRICE_RULES`): `usd`, and no other currency added to it
 (`currency_options`, which Checkout would otherwise charge some customers in), recurring every 1 month or 1
