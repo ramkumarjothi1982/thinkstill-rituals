@@ -1,4 +1,5 @@
-// A Stripe sandbox in memory, for test/billing-e2e.test.js: what scripts/billing-e2e.mjs reads and makes (prices with
+// A Stripe sandbox in memory, for test/billing-e2e.test.js (and test/billing-upgrade-app.test.js, the app's own billing
+// code against the staging Worker): what scripts/billing-e2e.mjs reads and makes (prices with
 // their products, the webhook endpoint, the default portal configuration, Stripe Tax, test clocks with their
 // customers, cards, subscriptions, invoices and events) and what the Worker reads back (a subscription, a customer's
 // list) or asks for (a customer-portal session, its flow checked against the portal configuration). Moving a clock renews, retries, fails and cancels in outline as Stripe does, and each event goes, signed, to
