@@ -63,13 +63,15 @@ export function createBilling({ logger, now, fetch: fetchImpl = (input, init) =>
   const ready = (env, cfg) => cfg.billing.configured && !!env.BILLING;
   /**
    * Why billing is off (never a value): 'accounts_not_configured' while the sign-in project is a placeholder
-   * (the staging Worker before its own project exists, docs/STAGING.md); 'placeholder_prices' when no price id is
+   * (the staging Worker before its own project exists, docs/STAGING.md); the key's refusal (src/config.js:
+   * 'live_key_on_staging', 'test_key_on_production', 'live_not_approved'); 'placeholder_prices' when no price id is
    * real and one is still a placeholder such as price_TODO_owner (staging before the owner's test ids); else
    * 'not_configured'.
    * @param {Config} cfg
    */
   const offReason = (cfg) => {
     if (cfg.billing.accountsPlaceholder) return 'accounts_not_configured';
+    if (cfg.billing.keyRefused) return cfg.billing.keyRefused;
     const p = cfg.billing.prices;
     return cfg.billing.placeholderPrices > 0 && ![p.paid, p.ultra].some((x) => !!(x.monthly || x.yearly)) ? 'placeholder_prices' : 'not_configured';
   };
@@ -79,6 +81,8 @@ export function createBilling({ logger, now, fetch: fetchImpl = (input, init) =>
   const offMessage = (cfg) => {
     const r = offReason(cfg);
     if (r === 'accounts_not_configured') return 'Web subscriptions are not set up on this server: accounts are not configured (its sign-in project, SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY, is still a placeholder).';
+    if (r === 'live_not_approved') return 'Web subscriptions are not set up on this server: live billing is not approved (BILLING_LIVE).';
+    if (r === 'live_key_on_staging' || r === 'test_key_on_production') return 'Web subscriptions are not set up on this server: its Stripe key is not for this stage.';
     return r === 'placeholder_prices'
       ? 'Web subscriptions are not set up on this server: its Stripe price ids are still placeholders (price_TODO…).'
       : 'Web subscriptions are not set up on this server.';

@@ -8,9 +8,11 @@
 #                       for the testing phase; without it anyone can get a session)
 # Web subscriptions (Stripe, src/billing/; off until set, see docs/PAYMENTS.md),
 # set by hand with `npx wrangler secret put <NAME>`:
-#   STRIPE_SECRET_KEY     the Stripe secret key (sk_live_… / sk_test_…, or a
-#                         restricted rk_ key with Checkout, Portal and
-#                         Subscriptions read access)
+#   STRIPE_SECRET_KEY     a restricted Stripe key (rk_…, recommended) or the
+#                         secret key (sk_…). This Worker takes a LIVE key only,
+#                         and only once BILLING_LIVE = "approved" (below); the
+#                         staging Worker a TEST key only. A key for the wrong
+#                         stage counts as unset (/v1/health "key_refused").
 #   STRIPE_WEBHOOK_SECRET the webhook endpoint's signing secret (whsec_…)
 name = "hushmallow-another-angle"
 main = "src/index.js"
@@ -57,6 +59,12 @@ APPLE_ENVIRONMENTS = "Production"
 #   STRIPE_PRICE_ULTRA_MONTHLY, STRIPE_PRICE_ULTRA_YEARLY   price_… ids (A$)
 #   BILLING_TOKEN_TTL_HOURS   optional, default 24: the longest a Beyond session lasts
 #   STRIPE_API_VERSION        optional: pins the API version of the server's own requests
+# Live billing needs one more line, in its own reviewed commit, which is the owner's
+# approval (decision D17):
+#   BILLING_LIVE = "approved"
+# Without it this Worker refuses a live key (and it never takes a test one), so no
+# card can be charged. Only in this table, never in [env.staging.vars] or
+# [env.dev.vars] (test/billing-env.test.js).
 # Then ENTITLEMENT_MODE = "billing" (a Beyond subscription for Another Angle),
 # or "billing+testing" (that, or one of TESTER_INVITE_CODES) while testers
 # keep their codes. "testing", "storekit" and "both" work as before.
@@ -201,8 +209,9 @@ enabled = false
 # rehearsal on the release branch's preview (docs/STAGING.md), with
 # ENTITLEMENT_MODE "billing+testing" (a test hushmallow Beyond subscription,
 # or one of TESTER_INVITE_CODES, opens Another Angle). Its secrets are the
-# staging Worker's own, set with `--env staging`: STRIPE_SECRET_KEY (sk_test_…
-# only) and STRIPE_WEBHOOK_SECRET (the staging webhook endpoint's whsec_…);
+# staging Worker's own, set with `--env staging`: STRIPE_SECRET_KEY (a TEST key
+# only, rk_test_… recommended: a live key turns staging billing off) and
+# STRIPE_WEBHOOK_SECRET (the staging webhook endpoint's whsec_…);
 # the deploy sets ANTHROPIC_API_KEY and TESTER_INVITE_CODES from the STAGING
 # repository secrets (ANTHROPIC_API_KEY_STAGING, TESTER_INVITE_CODES_STAGING),
 # never production's. Its accounts are those of its own sign-in project,

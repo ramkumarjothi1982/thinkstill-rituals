@@ -31,6 +31,15 @@ const MODES = ['testing', 'storekit', 'both', 'billing', 'billing+testing'];
  */
 const PRICE_PLACEHOLDER = /^price_todo/i;
 const PRICE_VARS = ['STRIPE_PRICE_PAID_MONTHLY', 'STRIPE_PRICE_PAID_YEARLY', 'STRIPE_PRICE_ULTRA_MONTHLY', 'STRIPE_PRICE_ULTRA_YEARLY'];
+/**
+ * The owner's approval of live billing (decision D17): a reviewed commit that sets BILLING_LIVE = "approved" in
+ * production's [vars]. Until then the production Worker refuses a live key, so no real card can be charged, whatever
+ * secrets are set. Read on the production stage only; test/billing-env.test.js keeps it out of [env.staging.vars] and
+ * [env.dev.vars]. Only this exact word approves.
+ */
+const BILLING_LIVE_APPROVED = 'approved';
+/** A Stripe secret or restricted key, and its mode (a publishable pk_ key is never one). */
+const STRIPE_KEY = /^(?:sk|rk)_(live|test)_[A-Za-z0-9]{8,}$/;
 
 /** @param {unknown} v @param {number} dflt @param {number} min @param {number} max */
 function int(v, dflt, min, max) {
@@ -70,11 +79,26 @@ function appOriginOf(v, allowed) {
  * (PRICE_PLACEHOLDER) or sign-in value (ACCOUNTS_*_PLACEHOLDER). `configured` needs the Stripe key,
  * this stage's sign-in project, APP_ORIGIN and at least one real price; the webhook also needs its own
  * secret. No value here is ever logged or returned (placeholderPrices is only a count, accountsPlaceholder
- * only a flag).
+ * only a flag, keyMode and keyRefused only codes).
+ *
+ * The key must fit the stage. The staging Worker (and any stage but production) takes test keys only, so the
+ * public preview never takes real money. Production takes live keys only, so card 4242 never opens a plan there, and
+ * only once BILLING_LIVE is "approved". A refused key counts as unset (keyRefused says why).
  * @param {Record<string, any>} env @param {string[]} allowedOrigins
  */
 function readBilling(env, allowedOrigins) {
-  const secretKey = /^(?:sk|rk)_(?:live|test)_[A-Za-z0-9]{8,}$/.test(str(env.STRIPE_SECRET_KEY)) ? str(env.STRIPE_SECRET_KEY) : '';
+  // the sign-in project of this Worker's stage (ACCOUNTS_STAGE): production's hushmallow1 (the default, as before) or,
+  // on the staging Worker, hushmallow-staging; never the other one.
+  const accountsStage = str(env.ACCOUNTS_STAGE) || 'production';
+  const liveApproved = accountsStage === 'production' && str(env.BILLING_LIVE) === BILLING_LIVE_APPROVED;
+  const shaped = STRIPE_KEY.exec(str(env.STRIPE_SECRET_KEY));
+  const mode = shaped ? /** @type {'live' | 'test'} */ (shaped[1]) : '';
+  /** @type {'' | 'live_key_on_staging' | 'test_key_on_production' | 'live_not_approved'} */
+  let keyRefused = '';
+  if (mode && accountsStage !== 'production') keyRefused = mode === 'live' ? 'live_key_on_staging' : '';
+  else if (mode) keyRefused = mode === 'test' ? 'test_key_on_production' : liveApproved ? '' : 'live_not_approved';
+  const secretKey = mode && !keyRefused ? str(env.STRIPE_SECRET_KEY) : '';
+  const keyMode = /** @type {'' | 'live' | 'test'} */ (secretKey ? mode : '');
   const webhookSecret = /^whsec_[A-Za-z0-9+/=_-]{8,}$/.test(str(env.STRIPE_WEBHOOK_SECRET)) ? str(env.STRIPE_WEBHOOK_SECRET) : '';
   /** @param {unknown} v */
   const price = (v) => (/^price_[A-Za-z0-9]{4,64}$/.test(str(v)) && !PRICE_PLACEHOLDER.test(str(v)) ? str(v) : '');
@@ -82,10 +106,8 @@ function readBilling(env, allowedOrigins) {
     paid: { monthly: price(env.STRIPE_PRICE_PAID_MONTHLY), yearly: price(env.STRIPE_PRICE_PAID_YEARLY) },
     ultra: { monthly: price(env.STRIPE_PRICE_ULTRA_MONTHLY), yearly: price(env.STRIPE_PRICE_ULTRA_YEARLY) },
   };
-  // the sign-in project of this Worker's stage (ACCOUNTS_STAGE): production's hushmallow1 (the default, as before) or,
-  // on the staging Worker, hushmallow-staging; never the other one. Only its publishable key (a secret key never
-  // belongs in a var). A placeholder (or a staging Worker with no staging project yet) is "accounts not configured".
-  const accountsStage = str(env.ACCOUNTS_STAGE) || 'production';
+  // Only the project's publishable key (a secret key never belongs in a var). A placeholder (or a staging Worker with
+  // no staging project yet) is "accounts not configured".
   const project = accountsStage === 'production' ? SUPABASE_PROJECT_URL : accountsStage === 'staging' ? STAGING_SUPABASE_PROJECT_URL : '';
   const accountsPlaceholder = ACCOUNTS_URL_PLACEHOLDER.test(str(env.SUPABASE_URL)) || ACCOUNTS_KEY_PLACEHOLDER.test(str(env.SUPABASE_PUBLISHABLE_KEY))
     || (accountsStage === 'staging' && !STAGING_SUPABASE_PROJECT_URL);
@@ -97,6 +119,8 @@ function readBilling(env, allowedOrigins) {
   const placeholderPrices = PRICE_VARS.filter((k) => PRICE_PLACEHOLDER.test(str(env[k]))).length;
   return {
     secretKey, webhookSecret, prices, supabaseUrl, supabaseKey, appOrigin, placeholderPrices, accountsStage, accountsPlaceholder,
+    // the accepted key's mode ('' when unset or refused), why a key was refused, and the owner's approval
+    keyMode, keyRefused, liveApproved,
     // optional: pins the Stripe API version of the server's own requests (the webhook's comes from its endpoint)
     apiVersion: /^\d{4}-\d{2}-\d{2}(?:\.[a-z]+)?$/.test(str(env.STRIPE_API_VERSION)) ? str(env.STRIPE_API_VERSION) : '',
     tokenTtlMs: int(env.BILLING_TOKEN_TTL_HOURS, 24, 1, 168) * 3600000,
@@ -149,4 +173,4 @@ export function readConfig(env) {
   };
 }
 
-export { APPLE_ROOT_CA_G3_SHA256, SUPABASE_PROJECT_URL, STAGING_SUPABASE_PROJECT_URL };
+export { APPLE_ROOT_CA_G3_SHA256, SUPABASE_PROJECT_URL, STAGING_SUPABASE_PROJECT_URL, BILLING_LIVE_APPROVED };

@@ -25,7 +25,10 @@ const APP = 'https://app.hushmallow.com';
 const UID = '0b0c3c1e-5f2a-4c1b-9a77-2d4e6f8a9b10';
 const OTHER = '7d1f2e3a-0b4c-4d5e-8f60-718293a4b5c6';
 const WHSEC = `whsec_${'b'.repeat(32)}`;
-const SK = `sk_test_${'a'.repeat(24)}`;
+// the production Worker's key is live, and taken only with BILLING_LIVE = "approved" (src/config.js); the staging
+// Worker's is a test key. Both built at runtime, so no key-shaped literal is ever committed.
+const SK = `rk_live_${'a'.repeat(24)}`;
+const TEST_SK = `sk_test_${'a'.repeat(24)}`;
 const PK = `sb_publishable_${'c'.repeat(24)}`;
 const PRICES = { paidMonthly: 'price_FlowMonthly1', paidYearly: 'price_FlowYearly1', ultraMonthly: 'price_BeyondMonthly1', ultraYearly: 'price_BeyondYearly1' };
 const DAY = 86400000;
@@ -37,11 +40,12 @@ function jwt(sub = UID, { exp = (CLOCK_START + 3600000) / 1000, iss = `${SUPABAS
 }
 const TOKEN = jwt(UID);
 
-/** The billing configuration, on. */
+/** The billing configuration, on: production with its live key and the owner's approval (staging: its test key). */
 function billingEnv(over = {}) {
+  const staging = over.ACCOUNTS_STAGE === 'staging';
   return makeEnv({
     ALLOWED_ORIGINS: `${ORIGIN},${APP},http://localhost:8000`,
-    STRIPE_SECRET_KEY: SK, STRIPE_WEBHOOK_SECRET: WHSEC,
+    STRIPE_SECRET_KEY: staging ? TEST_SK : SK, STRIPE_WEBHOOK_SECRET: WHSEC, ...(staging ? {} : { BILLING_LIVE: 'approved' }),
     STRIPE_PRICE_PAID_MONTHLY: PRICES.paidMonthly, STRIPE_PRICE_PAID_YEARLY: PRICES.paidYearly,
     STRIPE_PRICE_ULTRA_MONTHLY: PRICES.ultraMonthly, STRIPE_PRICE_ULTRA_YEARLY: PRICES.ultraYearly,
     SUPABASE_URL: SUPABASE, SUPABASE_PUBLISHABLE_KEY: PK, APP_ORIGIN: APP,
@@ -230,8 +234,8 @@ function checkWrangler(toml) {
       continue;
     }
     // switched on: complete, and every value has its shape (readConfig counts a misshapen one as unset), with
-    // stand-ins for the two secrets, which never live here
-    const b = readConfig({ ...vars, STRIPE_SECRET_KEY: SK, STRIPE_WEBHOOK_SECRET: WHSEC }).billing;
+    // stand-ins for the two secrets, which never live here, and for the approval until its own commit
+    const b = readConfig({ BILLING_LIVE: 'approved', ...vars, STRIPE_SECRET_KEY: SK, STRIPE_WEBHOOK_SECRET: WHSEC }).billing;
     assert.equal(b.configured, true, `${name}: the billing vars are complete, each with its shape`);
     assert.equal(b.supabaseUrl, String(vars.SUPABASE_URL).replace(/\/+$/, ''), `${name}: SUPABASE_URL is hushmallow1`);
     assert.equal(b.supabaseKey, vars.SUPABASE_PUBLISHABLE_KEY, `${name}: SUPABASE_PUBLISHABLE_KEY is a publishable key`);
@@ -862,7 +866,7 @@ test('wrangler.toml [env.staging]: billing+testing for staging only, the preview
   for (const k of ['STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET', 'ANTHROPIC_API_KEY', 'TOKEN_SIGNING_KEY', 'TESTER_INVITE_CODES']) assert.equal(staging[k], undefined, k);
   assert.deepEqual([staging.PROVIDER, staging.DAILY_SPEND_CAP_USD, staging.REQUIRE_HTTPS, staging.ALLOW_NO_ORIGIN], ['anthropic', '3', 'true', 'false']);
   // as the staging Worker reads it once the owner's TEST secrets are set: still off while the prices and the accounts are placeholders
-  const cfg = readConfig({ ...staging, STRIPE_SECRET_KEY: SK, STRIPE_WEBHOOK_SECRET: WHSEC });
+  const cfg = readConfig({ ...staging, STRIPE_SECRET_KEY: TEST_SK, STRIPE_WEBHOOK_SECRET: WHSEC });
   assert.equal(cfg.entitlementMode, 'billing+testing');
   assert.equal(cfg.billing.appOrigin, PREVIEW);
   assert.equal(cfg.billing.accountsStage, 'staging');
@@ -873,10 +877,10 @@ test('wrangler.toml [env.staging]: billing+testing for staging only, the preview
   assert.equal(cfg.billing.placeholderPrices, 4);
   assert.equal(cfg.billing.configured, false);
   // …still off with the four test price ids alone: the accounts are placeholders
-  assert.equal(readConfig({ ...staging, ...REAL_PRICES, STRIPE_SECRET_KEY: SK, STRIPE_WEBHOOK_SECRET: WHSEC }).billing.configured, false);
+  assert.equal(readConfig({ ...staging, ...REAL_PRICES, STRIPE_SECRET_KEY: TEST_SK, STRIPE_WEBHOOK_SECRET: WHSEC }).billing.configured, false);
   // …and on, once the staging project exists too (its URL in src/config.js and in [env.staging.vars], and its key)
   const { readConfig: readWithStaging } = await withStagingProject(STAGING_SUPABASE);
-  const on = readWithStaging({ ...staging, ...REAL_PRICES, SUPABASE_URL: STAGING_SUPABASE, SUPABASE_PUBLISHABLE_KEY: PK, STRIPE_SECRET_KEY: SK, STRIPE_WEBHOOK_SECRET: WHSEC }).billing;
+  const on = readWithStaging({ ...staging, ...REAL_PRICES, SUPABASE_URL: STAGING_SUPABASE, SUPABASE_PUBLISHABLE_KEY: PK, STRIPE_SECRET_KEY: TEST_SK, STRIPE_WEBHOOK_SECRET: WHSEC }).billing;
   assert.equal(on.configured, true);
   assert.equal(on.supabaseUrl, STAGING_SUPABASE);
   assert.equal(on.placeholderPrices, 0);
