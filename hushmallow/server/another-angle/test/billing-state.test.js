@@ -411,3 +411,34 @@ test('past_due cap on its own: a record without the mark counts from when it was
   await db.sync(UID, { ...r, status: 'active', as_of: t() + 1, past_due_since: 1 });
   assert.equal('past_due_since' in (await db.get(UID)), false);
 });
+
+// ------------------------------------------------------- cancellation date --
+test('cancellation: a cancel_at further out is its own date (ends_at), not "at period end"; the portal\'s period-end cancel ends then', async () => {
+  const s = setup();
+  await subscribe(s);
+  const end = CLOCK_START + 30 * DAY, later = CLOCK_START + 90 * DAY;
+  const update = async (over) => {
+    s.now.advance(1000);
+    s.up.subs.set('sub_Test123', subscription(over));
+    await deliver(s.app, s.env, event('customer.subscription.updated', subscription(over), s.now), { at: s.now() });
+    return status(s);
+  };
+  assert.equal((await status(s)).ends_at, null, 'renewing: no end date');
+  // cancel on a date 90 days out: it renews twice more, and Settings says that date
+  let st = await update({ cancel_at: later / 1000 });
+  assert.deepEqual([st.tier, st.cancel_at_period_end, st.ends_at, st.current_period_end], ['ultra', false, new Date(later).toISOString(), new Date(end).toISOString()]);
+  // the portal's cancel at period end (older API versions say it this way)
+  st = await update({ cancel_at_period_end: true });
+  assert.deepEqual([st.cancel_at_period_end, st.ends_at], [true, new Date(end).toISOString()]);
+  // newer API versions: a cancel_at on the period end (within a day of it) is the same thing
+  st = await update({ cancel_at: (end - 3600000) / 1000 });
+  assert.deepEqual([st.cancel_at_period_end, st.ends_at], [true, new Date(end - 3600000).toISOString()]);
+  // cancellation taken back: renewing again
+  st = await update({});
+  assert.deepEqual([st.cancel_at_period_end, st.ends_at], [false, null]);
+  // the record keeps cancel_at in ms
+  const prices = readConfig(billingEnv()).billing.prices;
+  assert.equal(summarise(subscription({ cancel_at: later / 1000 }), prices, 1).cancel_at, later);
+  assert.equal(summarise(subscription(), prices, 1).cancel_at, null);
+  assertClean(s.logs);
+});

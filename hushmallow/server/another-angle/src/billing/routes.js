@@ -8,7 +8,7 @@
 //   POST /v1/billing/checkout  { plan: 'paid'|'ultra', period: 'monthly'|'yearly' } with the account's
 //                              Supabase access token (Authorization: Bearer) → { url } (Stripe Checkout,
 //                              subscription mode, client_reference_id = the account id; back to APP_ORIGIN)
-//   GET  /v1/billing/status    the account's token → { tier, status, current_period_end, cancel_at_period_end, manageable }
+//   GET  /v1/billing/status    the account's token → { tier, status, current_period_end, cancel_at_period_end, ends_at, manageable }
 //   POST /v1/billing/portal    the account's token → { url } (Stripe's customer portal: cancel, change plan, card, receipts)
 //   POST /v1/billing/webhook   Stripe's events, signed (Stripe-Signature); no Origin, the signature is the check
 //                              (EVENTS: checkout.session.*, customer.subscription.*, invoice.*; each re-reads its subscription)
@@ -135,12 +135,20 @@ export function createBilling({ logger, now, fetch: fetchImpl = (input, init) =>
     return { uid: a.uid };
   }
 
-  /** @param {any} rec @returns {Record<string, unknown>} */
+  /** @param {number | null | undefined} ms */
+  const iso = (ms) => (typeof ms === 'number' ? new Date(ms).toISOString() : null);
+  /**
+   * The status body. ends_at: when the plan ends, if it is set to (the cancel_at date, else the period end when it
+   * cancels at period end), so Settings can say "Ends on …"; null while it renews.
+   * @param {any} rec @returns {Record<string, unknown>}
+   */
   const statusBody = (rec) => (rec ? {
     tier: effectiveTier(rec, now()), status: rec.status,
-    current_period_end: rec.current_period_end != null ? new Date(rec.current_period_end).toISOString() : null,
-    cancel_at_period_end: !!rec.cancel_at_period_end, manageable: !!rec.customer,
-  } : { tier: 'none', status: 'none', current_period_end: null, cancel_at_period_end: false, manageable: false });
+    current_period_end: iso(rec.current_period_end),
+    cancel_at_period_end: !!rec.cancel_at_period_end,
+    ends_at: rec.cancel_at != null ? iso(rec.cancel_at) : rec.cancel_at_period_end ? iso(rec.current_period_end) : null,
+    manageable: !!rec.customer,
+  } : { tier: 'none', status: 'none', current_period_end: null, cancel_at_period_end: false, ends_at: null, manageable: false });
 
   /** @param {Request} request @param {Record<string, any>} env @param {Config} cfg @param {Record<string, string>} cors */
   async function checkout(request, env, cfg, cors) {

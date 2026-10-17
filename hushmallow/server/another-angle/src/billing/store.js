@@ -13,8 +13,8 @@
 // id (a read the server made itself, such as checkout's return).
 //
 // The record: { v, subscription, customer, status, tier, period,
-// current_period_end (ms), cancel_at_period_end, as_of (ms), past_due_since
-// (ms, only while past_due) }. Stripe ids, Stripe's status and the plan only:
+// current_period_end (ms), cancel_at_period_end, cancel_at (ms or null),
+// as_of (ms), past_due_since (ms, only while past_due) }. Stripe ids, Stripe's status and the plan only:
 // never words, feelings, card details, names or emails.
 //
 // The state machine (supersedes): for the same subscription, a newer answer
@@ -32,8 +32,8 @@
 
 /**
  * @typedef {{ v: 1, subscription: string, customer: string | null, status: string, tier: 'none' | 'paid' | 'ultra',
- *   period: 'monthly' | 'yearly' | null, current_period_end: number | null, cancel_at_period_end: boolean, as_of: number,
- *   past_due_since?: number }} SubRecord
+ *   period: 'monthly' | 'yearly' | null, current_period_end: number | null, cancel_at_period_end: boolean,
+ *   cancel_at?: number | null, as_of: number, past_due_since?: number }} SubRecord
  * @typedef {{ get(key: string): Promise<any>, put(key: string, v: any): Promise<void>, delete(key: string | string[]): Promise<any>,
  *   list(opts?: { prefix?: string }): Promise<Map<string, any>> }} Storage
  */
@@ -119,11 +119,16 @@ export function summarise(sub, prices, asOf) {
     if (typeof it?.current_period_end === 'number') end = Math.max(end, it.current_period_end);
   }
   const status = STATUSES.has(sub?.status) ? sub.status : 'unknown';
+  const endMs = end > 0 ? end * 1000 : null;
+  const cancelAt = typeof sub?.cancel_at === 'number' && sub.cancel_at > 0 ? sub.cancel_at * 1000 : null;
   return {
     v: 1, subscription: String(idOf(sub?.id) || ''), customer: idOf(sub?.customer), status, tier, period,
-    current_period_end: end > 0 ? end * 1000 : null,
-    // the portal can cancel "at period end" either way, depending on the API version
-    cancel_at_period_end: sub?.cancel_at_period_end === true || (typeof sub?.cancel_at === 'number' && status !== 'canceled'),
+    current_period_end: endMs,
+    // the portal cancels "at period end" either way, depending on the API version: the flag, or a cancel_at on the
+    // period end (within a day of it). A cancel_at further out is a date of its own (cancel_at; ends_at in the status).
+    cancel_at_period_end: sub?.cancel_at_period_end === true
+      || (cancelAt != null && endMs != null && Math.abs(cancelAt - endMs) <= DAY_MS && status !== 'canceled'),
+    cancel_at: cancelAt,
     as_of: asOf,
   };
 }
