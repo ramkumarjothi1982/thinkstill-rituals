@@ -147,7 +147,7 @@ anywhere). The Anthropic key (A6), the Stripe keys (B8, B12) and the webhook sig
 they go only where a step puts them (a GitHub **New repository secret**, the staging Worker's **Variables and
 Secrets** in Cloudflare, or the cloud session's network secrets in B12), never into a chat, a file, a doc or a
 commit. The only values Claude needs are public: the staging project's URL and its publishable key (A4), and
-later the Stripe price ids (B10).
+the Stripe price ids (B10: the owner's four of 2026-10-17 are already in; new ones only if those are live mode's).
 
 Dashboard labels move now and then; if one is not where this says, search the dashboard for the setting's
 name.

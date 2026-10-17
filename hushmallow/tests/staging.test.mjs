@@ -2,7 +2,7 @@
 // (https, exactly one DNS label + ".hushmallow.pages.dev", e.g. the release
 // branch claude/launch-rc → claude-launch-rc.hushmallow.pages.dev) talks to the
 // STAGING Worker for Another Angle and billing, with billing ON (Stripe TEST
-// mode) and the owner's provisional prices on the plans page; Settings' version
+// mode) and the owner's US-dollar prices on the plans page; Settings' version
 // line says "staging". Everywhere else (app.hushmallow.com, the production alias
 // hushmallow.pages.dev, hushmallow.com, the GitHub Pages copy, localhost) nothing
 // changes. The _headers rule that lets a preview reach the staging Worker
@@ -186,7 +186,7 @@ function installDom(hostname) {
 }
 const world = { dim() {}, showMallow() {}, place() {}, setStage() {}, react() {}, fitBetween() {}, setMallow: async () => {}, mallowId: 'boppo' };
 
-test('the plans page on a preview shows the provisional prices under each plan, monthly and yearly', async () => {
+test('the plans page on a preview shows the owner\'s US-dollar prices under each plan, monthly and yearly', async () => {
   installDom(PREVIEW);
   const auth = { enabled: true, status: () => 'signed-in', load: async () => ({ accessToken: async () => 'tok.en.sig' }) };
   const billing = createBilling({ auth: () => auth, signIn: true, fetchImpl: async () => { throw new TypeError('offline'); } });

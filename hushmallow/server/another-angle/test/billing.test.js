@@ -239,8 +239,9 @@ function checkWrangler(toml) {
       assert.ok(['testing', 'storekit', 'both'].includes(mode), `${name}: ENTITLEMENT_MODE "${mode}" without the billing vars`);
       continue;
     }
-    // [env.staging]: its billing values are the staging project's and the test prices, placeholders until the owner
-    // creates them (docs/STAGING.md); the staging tests below pin them, and staging never names hushmallow1
+    // [env.staging]: its billing values are the staging project's (placeholders until the owner creates it,
+    // docs/STAGING.md) and the owner's four US-dollar price ids; the staging tests below pin them, and staging never
+    // names hushmallow1
     if (name === 'staging') {
       assert.ok(['billing', 'billing+testing', 'testing'].includes(mode), `staging: ENTITLEMENT_MODE "${mode}"`);
       assert.ok(!String(vars.SUPABASE_URL || '').includes('igbxbfuaoybfzsroxuln'), 'staging never uses the production sign-in project');
