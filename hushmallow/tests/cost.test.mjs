@@ -3,13 +3,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { machine, machineFactor, within, REFERENCE_MS, REFERENCE_NOISE, MAX_FACTOR } from './helpers/cost.mjs';
+import { machine, machineFactor, measure, nodeFlags, within, REFERENCE_MS, REFERENCE_NOISE, MAX_FACTOR } from './helpers/cost.mjs';
 
 const read = (p) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
-const times = (k) => Object.fromEntries(Object.entries(REFERENCE_MS).map(([kind, ms]) => [kind, ms * (typeof k === 'number' ? k : k[kind])]));
+const KINDS = Object.keys(REFERENCE_MS);
+const times = (k) => Object.fromEntries(KINDS.map((kind) => [kind, REFERENCE_MS[kind] * (typeof k === 'number' ? k : k[kind])]));
 const BUDGET_FILES = ['r4', 'r5', 'r6', 'risk-concepts', 'risk-screen', 'raindrop-lagoon', 'hushfold'];
+const m = (factor) => ({ factor, ratios: Object.fromEntries(KINDS.map((k) => [k, factor])) });
 
 test('cost: the machine factor is the slowdown every kind of reference work shows, never below 1', () => {
+  assert.deepEqual(KINDS, ['regex', 'strings', 'loops']);
   // as fast as the reference machine, or faster: the written budget, exactly
   assert.equal(machineFactor(times(1)).factor, 1);
   assert.equal(machineFactor(times(0.4)).factor, 1);
@@ -26,7 +29,6 @@ test('cost: the machine factor is the slowdown every kind of reference work show
 });
 
 test('cost: a budget is judged at budget × factor, the message says how, and past MAX_FACTOR a reading that needs the factor is not judged', () => {
-  const m = (factor) => ({ factor, ratios: { regex: factor, strings: factor, loops: factor } });
   const still = (factor) => () => m(factor); // the second timing: the machine as slow as that, right then
   const never = () => { throw new Error('timed again'); };
   // on the reference machine, the written budget: 39.9 passes, 40.1 fails all three readings (and nothing is timed again)
@@ -38,7 +40,7 @@ test('cost: a budget is judged at budget × factor, the message says how, and pa
   // twice as slow a machine, still twice as slow when timed again: twice the budget, no more
   const pass = within(40, () => 79.9, 3, m(2), still(2));
   assert.equal(pass.ok, true);
-  assert.match(pass.note, /^budget 40 ms × machine factor 2\.00 = 80\.0 ms \(.* as the file began, regex 2\.00, strings 2\.00, loops 2\.00 just now\)$/);
+  assert.match(pass.note, /^budget 40 ms × machine factor 2\.00 = 80\.0 ms \(.* as the file began, read regex 2\.00, strings 2\.00, loops 2\.00 × the reference machine's just now\)$/);
   const r = within(40, () => 80.1, 3, m(2), never); // (over even the stretched budget: nothing to time again for)
   assert.equal(r.ok, false);
   assert.equal(r.limit, 80);
@@ -61,7 +63,7 @@ test('cost: a budget is judged at budget × factor, the message says how, and pa
   // one over it: timed again first, and still past MAX_FACTOR, not judged: the test fails saying why, with the reading
   let reads = 0;
   assert.throws(() => within(40, () => { reads++; return 61; }, 3, m(5.6), still(5.5)),
-    /^Error: this machine is too slow to judge this budget: 61\.0 ms for a budget of 40 ms, at a factor of 5\.50 \(.* as the file began, regex 5\.50, strings 5\.50, loops 5\.50 just now; a budget stretches at most 4x: 40 ms would be 220\.0 ms\)$/);
+    /^Error: this machine is too slow to judge this budget: 61\.0 ms for a budget of 40 ms, at a factor of 5\.50 \(.* as the file began, read .* just now; a budget stretches at most 4x: 40 ms would be 220\.0 ms\)$/);
   assert.equal(reads, 1);
   // past it only as the file began (a slow start): judged at the second timing's factor
   timings = 0;
@@ -73,12 +75,32 @@ test('cost: a budget is judged at budget × factor, the message says how, and pa
   assert.throws(() => within(40, () => 41, 3, m(NaN), never), /too slow to judge this budget/);
 });
 
-test('cost: the reference work is its own (no imports), and every budget file loads it before any hushmallow module', () => {
-  const src = read('tests/helpers/cost.mjs').replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, ''); // (its code, not its comments)
-  assert.doesNotMatch(src, /^\s*import\b|\bimport\s*\(|\brequire\s*\(/m, 'cost.mjs imports nothing: a rule can never run inside the calibration');
+test('cost: the reference work runs in a Node process of its own, with this one\'s flags; if it cannot, the written budgets', () => {
+  const failed = measure(() => { throw new Error('spawnSync /usr/bin/node EAGAIN\n(more)'); });
+  assert.deepEqual([failed.factor, failed.error], [1, 'spawnSync /usr/bin/node EAGAIN']);
+  const r = within(40, () => 41, 3, failed, () => { throw new Error('timed again'); });
+  assert.equal(r.ok, false);
+  assert.equal(r.note, 'budget 40 ms × machine factor 1.00 = 40.0 ms (the reference work could not be timed (spawnSync /usr/bin/node EAGAIN) as the file began)');
+  // a slow machine whose second timing fails: the written budget, saying so
+  const again = within(40, () => 50, 3, m(2), () => failed);
+  assert.deepEqual([again.ok, again.factor], [false, 1]);
+  assert.match(again.note, /, could not be timed \(spawnSync \/usr\/bin\/node EAGAIN\) just now\)$/);
+  // V8's flags and --import reach it; a script, a test run, a debugger or a watch never do
+  assert.deepEqual(nodeFlags(['--stress-compaction', '-e', 'x()', '--import', './slow.mjs', '--test-reporter', 'tap', '--test-only', '--inspect-brk=0',
+    '--input-type=module', '-p', 'y', '--jitless', '--watch']), ['--stress-compaction', '--import', './slow.mjs', '--jitless']);
+});
+
+test('cost: the reference work is its own (no imports) and never runs in a test file\'s process; every budget file loads cost.mjs first', () => {
+  const code = (p) => read(p).replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, ''); // (its code, not its comments)
+  const work = code('tests/helpers/cost-work.mjs');
+  assert.doesNotMatch(work, /^\s*import\b|\bimport\s*\(|\brequire\s*\(/m, 'cost-work.mjs imports nothing: a rule can never run inside the calibration');
+  const cost = code('tests/helpers/cost.mjs');
+  assert.deepEqual([...cost.matchAll(/^\s*import\b[^;]*?from\s+'([^']+)'/gm)].map((x) => x[1]), ['node:child_process']);
+  assert.deepEqual(cost.match(/cost-work\.mjs/g), ['cost-work.mjs'], 'cost-work.mjs is only named for the timing process to load');
+  assert.match(cost, /const WORK_URL = new URL\('\.\/cost-work\.mjs', import\.meta\.url\)\.href;/);
   for (const f of BUDGET_FILES) {
     const t = read(`tests/${f}.test.mjs`);
-    const imports = [...t.matchAll(/^import\b[^;]*?from\s+'([^']+)'/gms)].map((m) => m[1]);
+    const imports = [...t.matchAll(/^import\b[^;]*?from\s+'([^']+)'/gms)].map((x) => x[1]);
     const own = imports.filter((p) => !p.startsWith('node:'));
     assert.equal(own[0], './helpers/cost.mjs', `${f}: cost.mjs is its first import after node's (${own.slice(0, 2).join(', ')})`);
     // every CPU reading is judged through within(): no bare comparison of a reading with a number
@@ -88,7 +110,8 @@ test('cost: the reference work is its own (no imports), and every budget file lo
 });
 
 test('cost: this machine was measured', () => {
-  for (const k of Object.keys(REFERENCE_MS)) assert.ok(machine.ms[k] > 0 && Number.isFinite(machine.ms[k]), k);
+  assert.equal(machine.error, undefined, machine.error);
+  for (const k of KINDS) assert.ok(machine.ms[k] > 0 && Number.isFinite(machine.ms[k]), k);
   assert.ok(machine.factor >= 1 && Number.isFinite(machine.factor));
   console.log(`  machine factor ${machine.factor.toFixed(2)} (min ratio ${machine.ratio.toFixed(3)}: ${Object.entries(machine.ratios).map(([k, v]) => `${k} ${v.toFixed(3)}`).join(', ')})`);
 });
