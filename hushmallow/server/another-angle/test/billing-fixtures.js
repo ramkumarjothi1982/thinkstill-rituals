@@ -84,7 +84,8 @@ export function price(id, plan, period, over = {}) {
  * expire), portal sessions, customers, prices (the four configured ones, sellable), subscriptions (retrieve, and list
  * by customer). A POST with an Idempotency-Key it has seen gets the first answer again, as Stripe does. Sessions are of
  * the key's mode (cs_live_… on a live key) and keep what checkout sent. `fail` makes every call whose path matches
- * answer with that status and error (a restricted key without a permission, Stripe down).
+ * answer with that status and error (a restricted key without a permission, Stripe down); `portalFlows: false`
+ * refuses a portal session with flow_data (the portal does not let customers switch plans).
  */
 export function upstream({ users = { [TOKEN]: { id: UID, email: 'ana@example.com' } } } = {}) {
   /** @type {{ url: string, path: string, method: string, headers: Record<string, string>, form: URLSearchParams | null, query: URLSearchParams }[]} */
@@ -104,6 +105,7 @@ export function upstream({ users = { [TOKEN]: { id: UID, email: 'ana@example.com
     calls, subs, prices, sessions, customers, users, checkoutUrl: 'https://checkout.stripe.com/c/pay/cs_test_a1',
     /** @type {{ path: RegExp, status: number, error: Record<string, string> } | null} */
     fail: null,
+    portalFlows: true,
     /** the clock sessions expire on (setup() gives it the app's) */
     clock: () => CLOCK_START,
     /** @type {(url: string | URL | Request, init?: RequestInit) => Promise<Response>} */
@@ -144,7 +146,10 @@ export function upstream({ users = { [TOKEN]: { id: UID, email: 'ana@example.com
       sessions.set(s.id, s);
       return first(s);
     }
-    if (method === 'POST' && p === '/v1/billing_portal/sessions') return reply(200, { id: 'bps_1', object: 'billing_portal.session', url: 'https://billing.stripe.com/p/session/test_1' });
+    if (method === 'POST' && p === '/v1/billing_portal/sessions') {
+      if (form.has('flow_data[type]') && !o.portalFlows) return reply(400, { error: { type: 'invalid_request_error', message: 'This feature is not enabled for the portal configuration of cus_x.' } });
+      return reply(200, { id: 'bps_1', object: 'billing_portal.session', url: 'https://billing.stripe.com/p/session/test_1' });
+    }
     if (method === 'POST' && p === '/v1/customers') {
       const c = { id: `cus_New${customers.size + 1}abc`, object: 'customer', metadata };
       customers.set(c.id, c);

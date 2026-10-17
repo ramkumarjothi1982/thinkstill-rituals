@@ -14,7 +14,8 @@
 //   GET  /v1/billing/status    the account's token → { tier, status, current_period_end, cancel_at_period_end, ends_at, manageable }
 //   POST /v1/billing/sync      { session_id: 'cs_…' } (back from Checkout) → the status body, once that session's
 //                              subscription is read from Stripe and recorded (the webhook may still be on its way)
-//   POST /v1/billing/portal    the account's token → { url } (Stripe's customer portal: cancel, change plan, card, receipts)
+//   POST /v1/billing/portal    {} | { intent: 'switch' } → { url } (Stripe's customer portal: cancel, change plan, card,
+//                              receipts); 'switch' opens the plan change itself → { url, flow: 'subscription_update' | 'portal' }
 //   POST /v1/billing/webhook   Stripe's events, signed (Stripe-Signature); no Origin, the signature is the check
 //                              (EVENTS: checkout.session.*, customer.subscription.*, invoice.*; each re-reads its subscription)
 //
@@ -407,18 +408,36 @@ export function createBilling({ logger, now, fetch: fetchImpl = (input, init) =>
     return json(200, statusBody(await storeFor(env).get(who.uid)), cors);
   }
 
-  /** @param {Request} request @param {Record<string, any>} env @param {Config} cfg @param {Record<string, string>} cors */
+  /**
+   * {} (or no body) opens the portal's home; { intent: 'switch' } (Flow → Beyond, monthly → yearly) opens the plan
+   * change of the account's subscription itself, while it gives access. Stripe refuses that flow when the portal does
+   * not let customers switch plans (a Dashboard setting): the home opens instead, and the log says so.
+   * @param {Request} request @param {Record<string, any>} env @param {Config} cfg @param {Record<string, string>} cors
+   */
   async function portal(request, env, cfg, cors) {
     const t0 = now();
     const who = await signedIn('portal', request, env, cfg, cors, t0);
     if (who instanceof Response) return who;
+    /** @type {Awaited<ReturnType<typeof readJson>>} */
+    const body = !request.body && !request.headers.get('content-type') ? { ok: true, value: {} } : await readJson(request, 256);
+    if (!body.ok) return error(body.status, body.code, body.message, cors);
+    const b = /** @type {any} */ (body.value);
+    if (!b || typeof b !== 'object' || Array.isArray(b) || Object.keys(b).some((k) => k !== 'intent')) return error(400, 'invalid_body', 'Send {} or { intent: "switch" } only.', cors);
+    if (b.intent !== undefined && b.intent !== 'switch') return error(400, 'invalid_intent', 'intent must be "switch".', cors, { field: 'intent' });
     const rec = await storeFor(env).get(who.uid);
     if (!rec?.customer) { log('portal', t0, { status: 'no_subscription', http: 404 }); return error(404, 'no_subscription', 'This account has no web subscription yet.', cors); }
-    const r = await stripeFor(cfg).createPortalSession({ customer: rec.customer, return_url: `${cfg.billing.appOrigin}/?billing=portal` });
+    const stripe = stripeFor(cfg);
+    const home = { customer: rec.customer, return_url: `${cfg.billing.appOrigin}/?billing=portal` };
+    const flow = b.intent === 'switch' && SUB.test(rec.subscription || '') && ACCESS.has(rec.status);
+    let r = await stripe.createPortalSession(flow ? { ...home, flow_data: { type: 'subscription_update', subscription_update: { subscription: rec.subscription } } } : home);
+    /** @type {{ code: string, status: number } | null} */
+    let refused = null;
+    if (flow && !r.ok && r.status === 400) { refused = { code: r.code, status: r.status }; r = await stripe.createPortalSession(home); }
     const url = r.ok ? httpsUrl(r.data?.url) : null;
-    if (!url) { log('portal', t0, { status: 'stripe_error', http: 502, err: r.ok ? 'no_url' : r.code }); return error(502, 'billing_unavailable', 'The portal could not be opened just now.', cors); }
-    log('portal', t0, { status: 'ok', http: 200 });
-    return json(200, { url }, cors);
+    if (!url) { log('portal', t0, { status: 'stripe_error', http: 502, err: r.ok ? 'no_url' : r.code, stripe_http: r.ok ? undefined : r.status }); return error(502, 'billing_unavailable', 'The portal could not be opened just now.', cors); }
+    log('portal', t0, refused ? { status: 'switch_fallback', http: 200, err: refused.code, stripe_http: refused.status } : { status: 'ok', http: 200 });
+    if (b.intent !== 'switch') return json(200, { url }, cors);
+    return json(200, { url, flow: flow && !refused ? 'subscription_update' : 'portal' }, cors);
   }
 
   /**

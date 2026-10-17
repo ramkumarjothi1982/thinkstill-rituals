@@ -1,7 +1,7 @@
-// Checkout and the return sync (src/billing/routes.js), against the fake Stripe of test/billing-fixtures.js: the
-// price check before selling, one customer and one subscription per account (checked at Stripe), the previous
-// Checkout Session settled first, the Stripe Tax switch and integration_identifier on the session's form, and
-// POST /v1/billing/sync after Checkout.
+// Checkout, the return sync and the portal's plan change (src/billing/routes.js), against the fake Stripe of
+// test/billing-fixtures.js: the price check before selling, one customer and one subscription per account (checked
+// at Stripe), the previous Checkout Session settled first, the Stripe Tax switch and integration_identifier on the
+// session's form, POST /v1/billing/sync after Checkout, and the portal's intent 'switch'.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -499,5 +499,51 @@ test('sync shares the billing rate limit (BILLING_IP_LIMITER, else the isolate\'
   const m = track(setup({ env: billingEnv({ BILLING_IP_LIMITER: undefined }) }));
   for (let i = 0; i < 20; i++) assert.equal((await m.app.fetch(billingReq('/v1/billing/status'), m.env)).status, 200);
   assert.deepEqual(await code(await sync(m, { session_id: `cs_live_A1${'x'.repeat(12)}` })), [429, 'rate_limited']);
+  assertClean(allLogs.flat());
+});
+
+// ------------------------------------------------------------ the portal --
+test('portal intent "switch": straight to the plan change of the account\'s subscription; Stripe refusing the flow (400) opens the portal\'s home; no customer is 404', async () => {
+  const s = track(setup());
+  const portal = (body, o = {}) => s.app.fetch(billingReq('/v1/billing/portal', { body, ...o }), s.env);
+  const portals = () => s.up.stripe().filter((c) => c.path === '/v1/billing_portal/sessions').map((c) => Object.fromEntries(c.form));
+  const home = { customer: 'cus_Test123', return_url: `${APP}/?billing=portal` };
+  const URL_ = 'https://billing.stripe.com/p/session/test_1';
+  assert.deepEqual(await code(await portal({ intent: 'switch' })), [404, 'no_subscription']);
+  await subscribe(s);
+  const res = await portal({ intent: 'switch' });
+  assert.equal(res.status, 200);
+  assert.deepEqual(await res.json(), { url: URL_, flow: 'subscription_update' });
+  assert.deepEqual(portals().at(-1), { ...home, 'flow_data[type]': 'subscription_update', 'flow_data[subscription_update][subscription]': 'sub_Test123' });
+  // {} (and no body at all): the home, as before
+  assert.deepEqual(await (await portal({})).json(), { url: URL_ });
+  assert.deepEqual(await (await portal(undefined, { method: 'POST' })).json(), { url: URL_ });
+  assert.deepEqual(portals().slice(-2), [home, home]);
+  // the portal not letting customers switch plans: once more without flow_data, and the log says so
+  s.up.portalFlows = false;
+  const fb = await portal({ intent: 'switch' });
+  assert.deepEqual(await fb.json(), { url: URL_, flow: 'portal' });
+  assert.deepEqual(portals().slice(-2).map((f) => f['flow_data[type]'] ?? null), ['subscription_update', null]);
+  const l = lastLog(s, 'portal');
+  assert.deepEqual([l.status, l.http, l.err, l.stripe_http], ['switch_fallback', 200, 'invalid_request_error', 400]);
+  // any other failure is not retried
+  s.up.portalFlows = true;
+  s.up.fail = { path: /^\/v1\/billing_portal\//, status: 500, error: { type: 'api_error' } };
+  const n = portals().length;
+  assert.deepEqual(await code(await portal({ intent: 'switch' })), [502, 'billing_unavailable']);
+  assert.equal(portals().length, n + 1);
+  s.up.fail = null;
+  // bodies other than {} or { intent: 'switch' }
+  for (const [b, want] of [[{ intent: 'cancel' }, 'invalid_intent'], [{ intent: 'switch', plan: 'ultra' }, 'invalid_body'], [[], 'invalid_body'], [null, 'invalid_body']]) {
+    assert.deepEqual(await code(await portal(b)), [400, want], JSON.stringify(b));
+  }
+  assert.deepEqual(await code(await s.app.fetch(req('/v1/billing/portal', { raw: 'nope', headers: { authorization: `Bearer ${TOKEN}` } }), s.env)), [400, 'invalid_json']);
+  // a subscription that has ended: no plan to change, the home opens
+  s.now.advance(60000);
+  s.up.subs.set('sub_Test123', subscription({ status: 'canceled' }));
+  await deliver(s.app, s.env, event('customer.subscription.deleted', subscription({ status: 'canceled' }), s.now), { at: s.now() });
+  assert.equal((await status(s)).status, 'canceled');
+  assert.deepEqual(await (await portal({ intent: 'switch' })).json(), { url: URL_, flow: 'portal' });
+  assert.deepEqual(portals().at(-1), home);
   assertClean(allLogs.flat());
 });

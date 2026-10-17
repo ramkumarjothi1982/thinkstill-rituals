@@ -74,7 +74,7 @@ export function createStripe({ secretKey, apiVersion = '', fetch: fetchImpl, tim
   return {
     /** POST /v1/checkout/sessions @param {Record<string, unknown>} params @param {{ idempotencyKey?: string }} [o] */
     createCheckoutSession: (params, o) => call('POST', '/v1/checkout/sessions', params, o),
-    /** POST /v1/billing_portal/sessions @param {{ customer: string, return_url: string }} params */
+    /** POST /v1/billing_portal/sessions (flow_data: straight to one task, such as a plan change) @param {{ customer: string, return_url: string, flow_data?: Record<string, unknown> }} params */
     createPortalSession: (params) => call('POST', '/v1/billing_portal/sessions', params),
     /** GET /v1/subscriptions/:id (the current truth, whatever order the events came in) @param {string} id */
     retrieveSubscription: (id) => call('GET', `/v1/subscriptions/${encodeURIComponent(id)}`),
