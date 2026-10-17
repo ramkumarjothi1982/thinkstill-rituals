@@ -6,8 +6,9 @@
 
 import { authBoot, createAuthHandle, NOTICE_TEXT, noticeText } from '../auth/boot.js';
 import { createPrefs } from './prefs.js';
-import { createEntitlements } from './entitlements.js';
+import { createEntitlements, PLANS } from './entitlements.js';
 import { createBilling, takeReturn, welcomeBack, planNow } from './billing.js';
+import { resumeChange } from './plan-change.js';
 import { createRecommender } from '../engine/recommend.js';
 import { createWorld } from './world.js';
 import { RITUALS } from '../data/rituals.js';
@@ -97,6 +98,21 @@ app.auth = createAuthHandle(AUTH, {
     } else if (kind) toast(NOTICE_TEXT[kind], 4200);   // say it now; the reload waits for a calm moment
   },
 });
+/**
+ * A plan Stripe has confirmed (src/app/plan-change.js, billing.js welcomeBack): its welcome (src/app/scenes/beyond-welcome.js)
+ * over the Hushfold or a quiet screen; mid-ritual or mid-conversation (a check when the app came back on screen) a line
+ * says it instead, so nothing covers what the person is in the middle of.
+ */
+const WELCOME_SCENES = ['home', 'plans', 'settings', 'account', 'mallows', 'library', 'journey', 'garden', 'landing', 'classic'];
+app.welcomePlan = async (result) => {
+  const top = stack[stack.length - 1]?.name;
+  if (!WELCOME_SCENES.includes(top)) {
+    toast(`Welcome to ${PLANS[result?.tier]?.name || 'your new plan'}`, 3200);
+    app.haptic('success');
+    return null;
+  }
+  return (await import('./scenes/beyond-welcome.js')).openPlanWelcome(app, result);
+};
 async function checkVersion() {
   newer = (await newerVersion()) || newer;
   if (newer && stack[stack.length - 1]?.name === 'home' && safeToUpdate()) moveTo(newer);
@@ -231,6 +247,8 @@ async function boot() {
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') checkVersion(); });
   // a web plan is checked again whenever the app comes back to the foreground (at most once a minute)
   if (billing) document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') ent.refresh().catch(() => {}); });
+  // a change of plan Stripe had not confirmed yet in time (src/app/plan-change.js): asked again quietly when the app is back
+  if (billing) document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') resumeChange(app, { quiet: true }).catch(() => {}); });
   // a page left open for hours still hears about a new deploy (only while it is on screen)
   setInterval(() => { if (document.visibilityState === 'visible') checkVersion(); }, 10 * 60 * 1000);
   app.world = createWorld({ prefs, audio: audioProxy, haptic: (k) => app.haptic(k) });
@@ -263,6 +281,8 @@ async function boot() {
   await app.go('home', { intro: !prefs.get('seenIntro') }, { replace: true });
   if (app.auth.enabled) afterAuthBoot();
   if (billingBack) welcomeBack(app, billingBack, { before: planBefore }).catch(() => {});
+  // a reload while a change of plan was being confirmed (kept in this tab for 15 minutes): it carries on
+  else if (billing) resumeChange(app).catch(() => {});
 }
 
 /** Sign-in on: the notice from before a reload, a deep link to the account, and the session check. */
