@@ -776,6 +776,66 @@ sandbox driver's (above). Use three hushmallow-staging test accounts: **E2E-A** 
       in hushmallow-staging only. Nothing is ever made in live mode.
 - [ ] Note anything that looked or felt wrong; it goes into the next round before production is switched on.
 
+### Automated rehearsal driver
+
+`tools/staging/rehearsal.cjs` runs sections 1 to 8 and S12 of the checklist above in Chromium, at a phone's size
+(390×844), through the app's own screens on the preview and Stripe's own hosted pages, in Stripe test mode only. It
+prints one PASS, FAIL or SKIP line a step, and screenshots only failures, to `--out` (a new folder in the system's
+temporary directory by default, never inside the repository; every field, the address on the account screens and any
+secret's text are masked in them).
+
+```
+node --env-file=hushmallow/server/another-angle/.dev.vars.rehearsal hushmallow/tools/staging/rehearsal.cjs
+# or, from Claude's cloud session with the values as network secrets (B12):
+timeout 1200 node hushmallow/tools/staging/rehearsal.cjs [--steps R0,R1,R3] [--out DIR] [--viewport 390x844]
+```
+
+**What it needs.** The network to the preview, the staging Worker, the staging project
+(`oghzabvkrxsejkkjdsuc.supabase.co`) and Stripe (`checkout.stripe.com`, `billing.stripe.com`, `api.stripe.com` and the
+other Stripe hosts Checkout loads, from memory `*.stripe.com`, `*.stripe.network` and `*.stripecdn.com`). Its inputs come
+from the environment only, one `NAME=value` a line in that gitignored file (`.dev.vars.*`), never on a command line;
+they are never printed or written anywhere:
+
+| Variable | What for |
+|---|---|
+| `STAGING_E2E_EMAIL`, `STAGING_E2E_PASSWORD` | the confirmed account the browser signs in and pays with (E2E-A; not the sandbox driver's account while that runs) |
+| `STAGING_E2E_C_EMAIL`, `STAGING_E2E_C_PASSWORD` | optional: E2E-C, for the declines (R4 is skipped without it) |
+| `STRIPE_E2E_KEY` | optional: B12's `rk_test_…` key, read-only (the customer of R3) and for the teardown; anything but a test key is refused |
+| `REHEARSAL_SIGNUP_EMAIL` | optional: a real inbox you control; R2 submits the sign-up form there and checks "Check your email" (optional `REHEARSAL_SIGNUP_PASSWORD`; else a made-up one, not kept: use Forgot your password) |
+
+The defaults are the staging ones, read from the repository: the preview of the staging Worker's `APP_ORIGIN` and the
+staging Worker itself (`--base`, `--worker`). It refuses to start (exit 2) before anything is sent with any other host
+(`app.hushmallow.com` and every host that is not a branch preview), the production Worker, a Stripe key that is not a
+test key, a Worker whose `/v1/health` shows a Stripe mode other than test or `live_approved` true, or a preview that
+publishes production's sign-in project. Exit 0: nothing failed; 1: a step failed; 2: refused to start; 3: stopped at once on a
+live-mode object or page.
+
+| Step | Checklist | What it does |
+|---|---|---|
+| R0 | Before you start | `/v1/health` (test mode, `live_approved` false, configured, webhook, accounts); the preview's published sign-in is the staging project; the version line says `staging` |
+| R1 | 1 | as a guest: nothing asks to sign in; the four US-dollar prices; "Step into hushmallow Beyond" → "Sign in or create an account first…" |
+| R2 | 2 | signs in by password on the account screen; the Settings → Privacy row; with `REHEARSAL_SIGNUP_EMAIL`, a sign-up (18+ tick) up to "Check your email" |
+| R3 | 3, 4 (S1) | Monthly → Beyond → Checkout (only `checkout.stripe.com` or `checkout.hushmallow.com` and a `cs_test_…` session, else it stops), US$19.99, no phone or promotion code field; `4242…`; "Welcome to hushmallow Beyond", `?billing=success` gone; Settings → Plan; the customer (with the key); a second browser that has not heard of the plan yet → "Step into hushmallow Flow" → `409 already_subscribed` → the portal |
+| R4 | 3 (S2) | with E2E-C: `…9995` declined, the back link → "No problem. Nothing was charged."; `…3155` Fail, then Complete authentication |
+| R5 | 5 | Another Angle with the real model: the consent card, a made-up everyday situation, an angle and "Show me another angle"; the crisis test sentence of `tests/safety-qa.probes.mjs` gets the support response, and nothing is sent for it |
+| R6 | 6, 7 | both "Keep with my account" switches, a favourite world (sent by the app's own sync); a new page: still signed in, still Beyond, the favourite and the switches kept |
+| R7 | 8 | Manage subscription → the portal (test mode): switch to Flow, back: Flow; cancel at the period end, back: "Ends on …" |
+| R8 | 9 (S12) | the delete screen's "Not touched" line and "Cancel your subscription first" while the plan renews; deletes nothing unless `--delete-account` |
+| teardown | Afterwards | with the key: cancels at once every subscription of the test accounts' customers made since the run started and still running (only ids printed); without it, lists the run's Checkout Sessions to cancel by hand |
+
+**Still by hand:** clicking the email links (the sign-up confirmation and a reset), S10 (tax), S13 (the custom domain),
+S14 (the Worker's log search), and the parts of the checklist it does not drive: the Stripe dashboard's webhook deliveries,
+the two-tab expiry (S2), Flow's rituals and worlds, the paused Hushflow and the Memory Garden in 6 and 7, a second device,
+and S11's Flow-only account and `ENTITLEMENT_MODE` switch. Stripe's hosted pages are driven by their labels as remembered:
+watch its first run; a changed label fails with a screenshot.
+
+**Offline.** `node hushmallow/tools/staging/rehearsal-dryrun.mjs` builds the site with its sign-in on the local fake
+(`tools/auth/fake-supabase.mjs`), serves it as Pages does and runs R0, R1, R2 and R6 against it with
+`--base http://127.0.0.1:PORT --allow-local-for-testing` (a flag refused with any other base). Stripe and the real model
+cannot be reached there and nothing of theirs is faked: R3, R4, R5 and R7 only ever run against the preview, and until
+their first run there they have been checked only by `tests/staging-rehearsal.test.mjs` (the refusals, the checks of
+Stripe's addresses and of `/v1/health`, the teardown's choice, the masking).
+
 ## What staging does not change, and what is still open
 
 * Production: no change to `app.hushmallow.com`, its Worker (`ENTITLEMENT_MODE = "testing"`, no billing
