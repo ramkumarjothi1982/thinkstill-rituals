@@ -68,6 +68,36 @@ export const MAX_ADVANCE_S = 50 * 86400;
 export const MAX_RETRY_ADVANCES = 12;
 const DAY_S = 86400;
 const SUB = /^sub_[A-Za-z0-9]{4,250}$/;
+/**
+ * Addresses for P0's test tax calculations, by country: a few jurisdictions the owner may register in (made-up street
+ * numbers in real cities). A registration elsewhere is said, and its calculation is the owner's to run.
+ */
+export const TAX_TEST_ADDRESSES = Object.freeze({
+  AU: Object.freeze({ line1: '1 Martin Place', city: 'Sydney', state: 'NSW', postal_code: '2000', country: 'AU' }),
+  NZ: Object.freeze({ line1: '1 Queen Street', city: 'Auckland', postal_code: '1010', country: 'NZ' }),
+  GB: Object.freeze({ line1: '1 Victoria Street', city: 'London', postal_code: 'SW1H 0ET', country: 'GB' }),
+  IE: Object.freeze({ line1: '1 Grafton Street', city: 'Dublin', country: 'IE' }),
+  DE: Object.freeze({ line1: 'Unter den Linden 1', city: 'Berlin', postal_code: '10117', country: 'DE' }),
+  FR: Object.freeze({ line1: '1 Rue de Rivoli', city: 'Paris', postal_code: '75001', country: 'FR' }),
+});
+/** A Stripe Tax registration's type in its own country (standard, oss_union, state_sales_tax…), or ''. @param {any} reg */
+const regType = (reg) => String(reg?.country_options?.[String(reg?.country || '').toLowerCase()]?.type || '');
+/**
+ * An address a Stripe Tax registration covers, for a test calculation, or null (none here). The EU's One Stop Shop: the
+ * Union scheme covers sales to the other member states (an address in one of them), the non-Union scheme all of them
+ * (its own country's address, or Germany's); the import scheme covers goods only, none of ours.
+ * @param {any} reg @returns {Readonly<Record<string, string>> | null}
+ */
+export function taxTestAddress(reg) {
+  const country = String(reg?.country || '').toUpperCase();
+  const type = regType(reg);
+  /** @type {Readonly<Record<string, Readonly<Record<string, string>>>>} */
+  const at = TAX_TEST_ADDRESSES;
+  if (type === 'ioss') return null;
+  if (type === 'oss_union') return at[country === 'DE' ? 'FR' : 'DE'];
+  if (type === 'oss_non_union') return at[country] || at.DE;
+  return at[country] || null;
+}
 
 /**
  * @typedef {{ paid: { monthly: string, yearly: string }, ultra: { monthly: string, yearly: string } }} Prices
@@ -351,17 +381,21 @@ export async function run({ env = process.env, args = [], fetch: f = (input, ini
       info(`P0 portal: proration on plan changes: ${ft.subscription_update?.proration_behavior || 'not said'} (D8)`);
     }
 
-    // Stripe Tax: automatic_tax only with active settings and an active AU registration; while it is off, both are only said
+    // Stripe Tax: automatic_tax only with active settings and an active registration, in whichever jurisdictions the
+    // owner and their adviser chose (D3; with prices in US dollars, not Australia's alone); while it is off, both are
+    // only said
     const ts = await stripe.get('/v1/tax/settings');
     if (check(ts.ok, 'P0 tax: settings read', ts.ok ? '' : `${ts.status} ${ts.code}`)) {
       if (cfg.automaticTax) check(ts.data.status === 'active', 'P0 tax: settings status active (head office set) while automatic_tax is on', String(ts.data.status));
       else info(`P0 tax: settings status ${String(ts.data.status)}, default tax behaviour ${String(ts.data.defaults?.tax_behavior)} (automatic_tax is off)`);
     }
     const tr = await stripe.get('/v1/tax/registrations', { status: 'active', limit: 100 });
-    const au = tr.ok && Array.isArray(tr.data.data) ? tr.data.data.find((/** @type {any} */ r) => r?.country === 'AU' && r?.status === 'active') : null;
-    if (cfg.automaticTax) check(!!au, 'P0 tax: an active (Collecting) AU registration while automatic_tax is on', tr.ok ? '' : `${tr.status} ${tr.code}`);
-    else info(au ? 'P0 tax: the AU registration is active; STRIPE_AUTOMATIC_TAX may be turned on once the calculation below passes (D3)' : 'P0 tax: no active AU registration, and automatic_tax is off, as it must be');
-    if (au) {
+    /** @type {any[]} */
+    const regs = tr.ok && Array.isArray(tr.data.data) ? tr.data.data.filter((/** @type {any} */ r) => r?.status === 'active' && typeof r.country === 'string') : [];
+    const where = regs.map((r) => r.country).join(', ');
+    if (cfg.automaticTax) check(regs.length > 0, 'P0 tax: an active (Collecting) registration while automatic_tax is on', tr.ok ? where : `${tr.status} ${tr.code}`);
+    else info(regs.length ? `P0 tax: active registrations: ${where}; STRIPE_AUTOMATIC_TAX may be turned on once each calculation below passes (D3)` : 'P0 tax: no active registration, and automatic_tax is off, as it must be');
+    if (regs.length) {
       const beyond = read['hushmallow.ultra.monthly'];
       const code = (typeof beyond?.product?.tax_code === 'string' ? beyond.product.tax_code : beyond?.product?.tax_code?.id) || (ts.ok ? ts.data.defaults?.tax_code : null);
       if (cfg.automaticTax) check(!!code, 'P0 tax: a product tax code is set (the owner\'s choice, D4)');
@@ -369,16 +403,22 @@ export async function run({ env = process.env, args = [], fetch: f = (input, ini
       const amount = SANDBOX_AMOUNTS['hushmallow.ultra.monthly'];
       // the price's own tax behaviour (with automatic_tax on it must have one), else the settings' default, else exclusive
       const behaviour = [beyond?.tax_behavior, ts.ok ? ts.data.defaults?.tax_behavior : null].find((x) => CHECKOUT_PRICE_RULES.tax_behavior.includes(x)) || 'exclusive';
-      const calc = await stripe.post('/v1/tax/calculations', {
-        currency: CHECKOUT_PRICE_RULES.currency,
-        line_items: [{ amount, reference: `e2e-${runId}`, tax_behavior: behaviour, ...(code ? { tax_code: code } : {}) }],
-        customer_details: { address: { line1: '1 Martin Place', city: 'Sydney', state: 'NSW', postal_code: '2000', country: 'AU' }, address_source: 'billing' },
-      });
-      if (check(calc.ok, 'P0 tax: a test calculation for a Sydney address', calc.ok ? '' : `${calc.status} ${calc.code}`)) {
+      // a test calculation for each registration, at an address it covers (TAX_TEST_ADDRESSES); one the driver has no
+      // address for is said, and that calculation is the owner's to run (docs/PAYMENTS.md "Stripe Tax")
+      for (const reg of regs.slice(0, 10)) {
+        const tag = `P0 tax (${String(reg.country).slice(0, 2)})`;
+        const address = taxTestAddress(reg);
+        if (!address) { info(`${tag}: no test address here for this registration${regType(reg) ? ` (${regType(reg)})` : ''}: run its test calculation yourself (docs/PAYMENTS.md "Stripe Tax")`); continue; }
+        const calc = await stripe.post('/v1/tax/calculations', {
+          currency: CHECKOUT_PRICE_RULES.currency,
+          line_items: [{ amount, reference: `e2e-${runId}`, tax_behavior: behaviour, ...(code ? { tax_code: code } : {}) }],
+          customer_details: { address, address_source: 'billing' },
+        });
+        if (!check(calc.ok, `${tag}: a test calculation for an address in ${address.city}, ${address.country}`, calc.ok ? '' : `${calc.status} ${calc.code}`)) continue;
         const reasons = (Array.isArray(calc.data.tax_breakdown) ? calc.data.tax_breakdown : []).map((/** @type {any} */ x) => String(x?.taxability_reason));
-        check(reasons.length > 0 && !reasons.includes('not_collecting'), 'P0 tax: taxability_reason is not not_collecting', reasons.join(',') || 'none');
-        if (behaviour === 'inclusive') check(calc.data.amount_total === amount, `P0 tax: the total stays ${usd(amount)} (inclusive)`, typeof calc.data.amount_total === 'number' ? usd(calc.data.amount_total) : '');
-        else info(`P0 tax: tax behaviour exclusive: the tax is added on top of ${usd(amount)}, a total of ${typeof calc.data.amount_total === 'number' ? usd(calc.data.amount_total) : 'not said'}`);
+        check(reasons.length > 0 && !reasons.includes('not_collecting'), `${tag}: taxability_reason is not not_collecting`, reasons.join(',') || 'none');
+        if (behaviour === 'inclusive') check(calc.data.amount_total === amount, `${tag}: the total stays ${usd(amount)} (inclusive)`, typeof calc.data.amount_total === 'number' ? usd(calc.data.amount_total) : '');
+        else info(`${tag}: tax behaviour exclusive: the tax is added on top of ${usd(amount)}, a total of ${typeof calc.data.amount_total === 'number' ? usd(calc.data.amount_total) : 'not said'}`);
       }
     }
     check(true, 'P0: every Stripe object read had livemode false');

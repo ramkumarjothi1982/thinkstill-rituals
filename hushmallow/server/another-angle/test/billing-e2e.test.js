@@ -192,7 +192,7 @@ test('a full run (P0, P1, S3-S9) against the Worker and a sandbox with test cloc
   for (const want of [
     'P0 staging: entitlement_mode billing+testing', 'P0 production: billing off (no approval, no key)', 'P0 price hushmallow.ultra.yearly: US$199.99',
     'P0 price hushmallow.paid.monthly: product "hushmallow Flow"', 'P0 webhook: exactly the 11 events', 'P0 portal: switching plans on, across all four prices',
-    'P0 tax: taxability_reason is not not_collecting', 'webhook: a stale signature → 400 bad_signature', 'checkout: Origin app.hushmallow.com → 403',
+    'P0 tax (AU): taxability_reason is not not_collecting', 'webhook: a stale signature → 400 bad_signature', 'checkout: Origin app.hushmallow.com → 403',
     'checkout: a token of igbxbfuaoybfzsroxuln → 401', 'S3: Stripe moved the period on by one month', 'S3: still active, and the Worker has the new period end',
     'S4: past_due, and Beyond still open while Stripe retries', 'S4: /v1/session still opens Another Angle (200, source billing)', 'S4: active again',
     'S5: once the retries ran out, Stripe cancelled the subscription', 'S5: /v1/session 403 subscription_required', 'S6: Flow → Beyond monthly: tier ultra',
@@ -374,7 +374,7 @@ test('P0 with the owner\'s kind of prices: no lookup keys and any tax behaviour 
   assert.ok(off.out.some((l) => l === 'PASS  P0 price hushmallow.paid.monthly: USD, recurring every 1 month, its slot\'s amount, active, lookup key its own or none'));
   assert.equal(off.out.filter((l) => /^INFO {2}P0 price hushmallow\.(?:paid|ultra)\.(?:monthly|yearly): no lookup key, so the configured id decides its plan/.test(l)).length, 4);
   // the price has no tax behaviour: the test calculation takes the settings' default (inclusive here)
-  assert.ok(off.out.includes('PASS  P0 tax: the total stays US$19.99 (inclusive)  US$19.99'), off.out.join('\n'));
+  assert.ok(off.out.includes('PASS  P0 tax (AU): the total stays US$19.99 (inclusive)  US$19.99'), off.out.join('\n'));
   // …and a subscription on such a price is the plan of its configured id (S3 renews Beyond monthly)
   const s3 = world({ box: { edit: noKeys } });
   assert.equal(await s3.drive(['--phases', 'S3']), 0, s3.out.join('\n'));
@@ -390,11 +390,57 @@ test('P0 with the owner\'s kind of prices: no lookup keys and any tax behaviour 
   assert.equal(await ok.drive(['--phases', 'P0'], { config: { ...CONFIG, automaticTax: true } }), 0, ok.out.join('\n'));
   assert.ok(ok.out.includes('PASS  P0 tax: settings status active (head office set) while automatic_tax is on  active'));
   // an exclusive price: the calculation adds the tax on top (10% in the sandbox), and says the total
-  assert.ok(ok.out.includes('INFO  P0 tax: tax behaviour exclusive: the tax is added on top of US$19.99, a total of US$21.99'), ok.out.join('\n'));
+  assert.ok(ok.out.includes('INFO  P0 tax (AU): tax behaviour exclusive: the tax is added on top of US$19.99, a total of US$21.99'), ok.out.join('\n'));
   const pending = world({ ...taxOn, box: { edit: (/** @type {any} */ s) => { s.taxSettings.status = 'pending'; } } });
   assert.equal(await pending.drive(['--phases', 'P0'], { config: { ...CONFIG, automaticTax: true } }), 1);
   assert.ok(pending.out.includes('FAIL  P0 tax: settings status active (head office set) while automatic_tax is on  pending'));
   assertQuiet([...off.out, ...s3.out, ...on.out, ...ok.out, ...pending.out]);
+});
+
+test('P0 tax: any jurisdiction\'s active registration will do (not Australia\'s alone); each gets a test calculation at an address it covers, or is said', async () => {
+  const taxOn = { env: stagingEnv({ STRIPE_AUTOMATIC_TAX: 'true' }) };
+  const config = { ...CONFIG, automaticTax: true };
+  /** @param {any[]} registrations */
+  const only = (registrations) => (/** @type {any} */ s) => { s.registrations = registrations; for (const x of s.prices.values()) x.tax_behavior = 'exclusive'; };
+  const reg = (country, type, extra = {}) => ({ id: `taxreg_Sbx${country}1`, object: 'tax.registration', country, status: 'active', country_options: { [country.toLowerCase()]: { type, ...extra } }, livemode: false });
+  /** the line, with or without what it found after it @param {{ out: string[] }} w @param {string} line */
+  const has = (w, line) => w.out.some((l) => l === line || l.startsWith(`${line}  `));
+  // the EU's One Stop Shop (non-Union scheme) in Ireland, verified Collecting, and no AU registration: P0 passes
+  const ie = world({ ...taxOn, box: { edit: only([reg('IE', 'oss_non_union')]) } });
+  assert.equal(await ie.drive(['--phases', 'P0'], { config }), 0, ie.out.join('\n'));
+  for (const want of ['PASS  P0 tax: an active (Collecting) registration while automatic_tax is on  IE', 'PASS  P0 tax (IE): a test calculation for an address in Dublin, IE', 'PASS  P0 tax (IE): taxability_reason is not not_collecting  standard_rated']) {
+    assert.ok(ie.out.includes(want), `${want}\n${ie.out.join('\n')}`);
+  }
+  // the Union scheme (in Germany) covers the other member states: the address is in France
+  const de = world({ ...taxOn, box: { edit: only([reg('DE', 'oss_union')]) } });
+  assert.equal(await de.drive(['--phases', 'P0'], { config }), 0, de.out.join('\n'));
+  assert.ok(has(de, 'PASS  P0 tax (DE): a test calculation for an address in Paris, FR'), de.out.join('\n'));
+  // two registrations: a calculation for each
+  const two = world({ ...taxOn, box: { edit: only([reg('AU', 'standard'), reg('GB', 'standard')]) } });
+  assert.equal(await two.drive(['--phases', 'P0'], { config }), 0, two.out.join('\n'));
+  for (const c of ['AU', 'GB']) assert.ok(has(two, `PASS  P0 tax (${c}): taxability_reason is not not_collecting`), c);
+  // a registration the driver has no address for (a US state): said, and its calculation left to the owner
+  const us = world({ ...taxOn, box: { edit: only([reg('US', 'state_sales_tax', { state: 'CA' })]) } });
+  assert.equal(await us.drive(['--phases', 'P0'], { config }), 0, us.out.join('\n'));
+  assert.ok(us.out.includes('INFO  P0 tax (US): no test address here for this registration (state_sales_tax): run its test calculation yourself (docs/PAYMENTS.md "Stripe Tax")'), us.out.join('\n'));
+  assert.ok(!us.box.s.calls.some((c) => c.path === '/v1/tax/calculations'));
+  // none at all, with automatic_tax on: fails
+  const none = world({ ...taxOn, box: { edit: only([]) } });
+  assert.equal(await none.drive(['--phases', 'P0'], { config }), 1);
+  assert.deepEqual(none.out.filter((l) => l.startsWith('FAIL')), ['FAIL  P0 tax: an active (Collecting) registration while automatic_tax is on']);
+  assert.ok(!none.box.s.calls.some((c) => c.path === '/v1/tax/calculations'));
+  // a registration that covers the address but collects nothing there: fails, whichever country
+  const gap = world({ ...taxOn, box: { edit: (/** @type {any} */ s) => { only([reg('NZ', 'standard')])(s); s.taxReason = 'not_collecting'; } } });
+  assert.equal(await gap.drive(['--phases', 'P0'], { config }), 1);
+  assert.ok(gap.out.includes('FAIL  P0 tax (NZ): taxability_reason is not not_collecting  not_collecting'), gap.out.join('\n'));
+  // the addresses
+  assert.equal(D.taxTestAddress(reg('AU', 'standard')), D.TAX_TEST_ADDRESSES.AU);
+  assert.equal(D.taxTestAddress(reg('FR', 'oss_union')), D.TAX_TEST_ADDRESSES.DE);
+  assert.equal(D.taxTestAddress(reg('NL', 'oss_non_union')), D.TAX_TEST_ADDRESSES.DE);
+  assert.equal(D.taxTestAddress(reg('IE', 'ioss')), null);
+  assert.equal(D.taxTestAddress(reg('JP', 'standard')), null);
+  assert.equal(D.taxTestAddress(null), null);
+  assertQuiet([...ie.out, ...de.out, ...two.out, ...us.out, ...none.out, ...gap.out]);
 });
 
 test('P0: a US-dollar price with another currency added (currency_options) fails, as the Worker refuses it; one with only USD passes', async () => {

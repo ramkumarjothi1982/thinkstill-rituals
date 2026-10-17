@@ -565,7 +565,7 @@ while any of it is still a placeholder.
 
 | Phase | What it does |
 |---|---|
-| P0 | Reads only. Staging `/v1/health`: `billing+testing`, configured, webhook, `stripe_mode` test, `api_version` 2026-08-26.dahlia, `live_approved` false, `automatic_tax` as `[env.staging.vars]` says, no placeholders. Production's: billing off, `testing`. The four prices by the ids in `[env.staging.vars]` (a live-mode id fails here: not found with the test key): what the Worker sells (USD with no other currency, every 1 month or year, its slot's amount, active, a lookup key of their own or none: none is said), a tax behaviour of inclusive or exclusive only if `automatic_tax` is on, US$9.99/99.99/19.99/199.99, the products' names, the same amounts in `BILLING_PRICES`. The webhook endpoint: enabled, 2026-08-26.dahlia, exactly the 11 events. The default portal configuration (B6). Tax: with `automatic_tax` on, settings Active and an active AU registration (off, both are only said); with one, a test calculation in USD for a Sydney address (`taxability_reason` not `not_collecting`; for an inclusive price, the total unchanged). |
+| P0 | Reads only. Staging `/v1/health`: `billing+testing`, configured, webhook, `stripe_mode` test, `api_version` 2026-08-26.dahlia, `live_approved` false, `automatic_tax` as `[env.staging.vars]` says, no placeholders. Production's: billing off, `testing`. The four prices by the ids in `[env.staging.vars]` (a live-mode id fails here: not found with the test key): what the Worker sells (USD with no other currency, every 1 month or year, its slot's amount, active, a lookup key of their own or none: none is said), a tax behaviour of inclusive or exclusive only if `automatic_tax` is on, US$9.99/99.99/19.99/199.99, the products' names, the same amounts in `BILLING_PRICES`. The webhook endpoint: enabled, 2026-08-26.dahlia, exactly the 11 events. The default portal configuration (B6). Tax: with `automatic_tax` on, settings Active and an active registration in any jurisdiction (off, both are only said); for each active registration, a test calculation in USD at an address it covers (Australia, New Zealand, the UK, Ireland, Germany and France are known to the driver, the EU's One Stop Shop too; any other is said, and that calculation is yours): `taxability_reason` not `not_collecting`, and for an inclusive price the total unchanged. |
 | P1 | The key-free checks (below), plus: `Origin: https://app.hushmallow.com` refused on staging (403), and a hushmallow1 token refused (401). |
 | S3 | Renewal: a test clock, a customer on it with `metadata.user_id`, a card, Flow monthly (tier `paid`); the clock past the period end; `invoice.paid` delivered (200); the period a month on, at the Worker too. |
 | S4 | A failed renewal, then recovery: Beyond monthly, the `…0341` card (`pm_card_chargeCustomerFail`); `invoice.payment_failed`, `past_due` with Beyond still open (`/v1/session` 200); a good card, the open invoice paid; `active` again. |
@@ -729,11 +729,11 @@ sandbox driver's (above). Use three hushmallow-staging test accounts: **E2E-A** 
 **9. The rest by hand** (S10, S12 to S14)
 
 - [ ] (S10, only once B3's registration is Collecting and staging has `STRIPE_AUTOMATIC_TAX = "true"`) Check
-      out with an Australian address. In the dashboard (or the API, with `expand[]=line_items.data.taxes`)
+      out with an address that registration covers (an Australian one for an AU registration). In the dashboard (or the API, with `expand[]=line_items.data.taxes`)
       the session's `taxability_reason` is not `not_collecting`; with an inclusive price the total is still
       US$19.99 (with an exclusive one the tax is added on top), and the invoice shows the tax. Checkout asks for
-      the billing address (the tax switch replaces the Studio's `auto`). Note what a non-Australian address
-      gives, for the owner to judge.
+      the billing address (the tax switch replaces the Studio's `auto`). Note what an address outside the
+      registered jurisdictions gives, for the owner to judge.
 - [ ] (S12) With E2E-A's Beyond still renewing, the delete screen's "Not touched" list says to cancel it
       first in Settings → Manage subscription (and, from the client release with the deletion guard (D9), a
       "Cancel your subscription first" step comes before Delete). After a cancel at the period end, deleting

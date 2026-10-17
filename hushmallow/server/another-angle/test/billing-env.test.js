@@ -167,7 +167,7 @@ test('pinned, every Stripe call (checkout\'s price read, customer and session, t
 });
 
 // ------------------------------------------------------------ Stripe Tax --
-test('STRIPE_AUTOMATIC_TAX: off unless switched on; staging says "false" until its AU registration is Collecting', () => {
+test('STRIPE_AUTOMATIC_TAX: off unless switched on; staging says "false" until a registration there is Collecting', () => {
   assert.equal(readConfig({}).billing.automaticTax, false, 'off by default');
   assert.equal(readConfig(billingEnv()).billing.automaticTax, false);
   for (const v of ['true', 'TRUE', '1', 'on', 'yes']) assert.equal(readConfig(billingEnv({ STRIPE_AUTOMATIC_TAX: v })).billing.automaticTax, true, v);

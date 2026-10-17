@@ -17,6 +17,8 @@ const DAY = 86400;
 const CARDS = { pm_card_visa: 'ok', pm_card_chargeCustomerFail: 'fail', pm_card_authenticationRequired: 'auth' };
 export const AMOUNTS = { [PRICES.paidMonthly]: 999, [PRICES.paidYearly]: 9999, [PRICES.ultraMonthly]: 1999, [PRICES.ultraYearly]: 19999 };
 const SLOTS = { [PRICES.paidMonthly]: ['paid', 'monthly'], [PRICES.paidYearly]: ['paid', 'yearly'], [PRICES.ultraMonthly]: ['ultra', 'monthly'], [PRICES.ultraYearly]: ['ultra', 'yearly'] };
+/** The EU's member states, for the One Stop Shop registrations. */
+const EU = new Set(['AT', 'BE', 'BG', 'HR', 'CY', 'CZ', 'DK', 'EE', 'FI', 'FR', 'DE', 'GR', 'HU', 'IE', 'IT', 'LV', 'LT', 'LU', 'MT', 'NL', 'PL', 'PT', 'RO', 'SK', 'SI', 'ES', 'SE']);
 /** A made-up product tax code (not one of Stripe's): the owner chooses the real one (D4). */
 const FAKE_TAX_CODE = 'txcd_99999999';
 
@@ -193,8 +195,17 @@ export function sandbox({ now, deliver, worker, afterRetries = 'cancel', retries
     if (method === 'GET' && p === '/v1/tax/registrations') return reply(200, listOf(s.registrations.filter((r) => !q.get('status') || r.status === q.get('status'))));
     if (method === 'POST' && p === '/v1/tax/calculations') {
       const amount = Number(form.get('line_items[0][amount]'));
-      const au = form.get('customer_details[address][country]') === 'AU' && s.registrations.some((r) => r.country === 'AU' && r.status === 'active');
-      const reason = au ? s.taxReason : 'not_collecting';
+      // collected where an active registration covers the address: its own country, or (the EU's One Stop Shop) the
+      // other member states (Union scheme) or all of them (non-Union scheme)
+      const to = form.get('customer_details[address][country]') || '';
+      const covered = s.registrations.some((/** @type {any} */ r) => {
+        if (r.status !== 'active') return false;
+        const type = r.country_options?.[String(r.country).toLowerCase()]?.type;
+        if (type === 'oss_union') return EU.has(to) && to !== r.country;
+        if (type === 'oss_non_union') return EU.has(to);
+        return type !== 'ioss' && r.country === to;
+      });
+      const reason = covered ? s.taxReason : 'not_collecting';
       // a 10% rate: inside an inclusive amount (1/11 of it), or on top of an exclusive one
       const inclusive = form.get('line_items[0][tax_behavior]') === 'inclusive';
       const tax = reason === 'standard_rated' ? Math.round(inclusive ? amount / 11 : amount / 10) : 0;
