@@ -114,7 +114,8 @@ Only the staging environment changed:
   checkout's price check refuses it (`503 price_misconfigured`, `"err":"not_found"` in the log line) and the
   sandbox driver's preflight (P0) names the slot. If they are live mode's, make the same four in the sandbox
   (B4) and send Claude their ids (B10). A `price_TODO…` value would still count as unset (never sent to
-  Stripe; `/v1/health` then says `"placeholder_prices"`). While the accounts are placeholders, every billing
+  Stripe; `/v1/health` then says `"placeholder_prices"`), and so would one id pasted into two slots (neither
+  slot is sold; `/v1/health` says `"duplicate_prices"`, and the tests refuse it in `wrangler.toml`). While the accounts are placeholders, every billing
   route answers `accounts_not_configured`; Another Angle still works for testers with an invite code.
 * `STRIPE_API_VERSION = "2026-08-26.dahlia"`: the API version of the Worker's own Stripe requests, and the one
   the staging webhook endpoint is created on (B11). `STRIPE_AUTOMATIC_TAX = "false"` (the Checkout Studio's

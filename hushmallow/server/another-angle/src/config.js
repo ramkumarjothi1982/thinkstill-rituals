@@ -31,6 +31,8 @@ const MODES = ['testing', 'storekit', 'both', 'billing', 'billing+testing'];
  */
 const PRICE_PLACEHOLDER = /^price_todo/i;
 const PRICE_VARS = ['STRIPE_PRICE_PAID_MONTHLY', 'STRIPE_PRICE_PAID_YEARLY', 'STRIPE_PRICE_ULTRA_MONTHLY', 'STRIPE_PRICE_ULTRA_YEARLY'];
+/** The slot (plan.period) each of PRICE_VARS fills, in the same order. */
+const PRICE_SLOTS = ['paid.monthly', 'paid.yearly', 'ultra.monthly', 'ultra.yearly'];
 /**
  * The owner's approval of live billing (decision D17): a reviewed commit that sets BILLING_LIVE = "approved" in
  * production's [vars]. Until then the production Worker refuses a live key, so no real card can be charged, whatever
@@ -89,10 +91,11 @@ function appOriginOf(v, allowed) {
 /**
  * Web subscriptions (src/billing/, docs/PAYMENTS.md). Every value is checked for its
  * shape; one that does not fit counts as unset, and so does a placeholder price id
- * (PRICE_PLACEHOLDER) or sign-in value (ACCOUNTS_*_PLACEHOLDER). `configured` needs the Stripe key,
+ * (PRICE_PLACEHOLDER), a price id in two slots (duplicateSlots) or a placeholder sign-in
+ * value (ACCOUNTS_*_PLACEHOLDER). `configured` needs the Stripe key,
  * this stage's sign-in project, APP_ORIGIN and at least one real price; the webhook also needs its own
- * secret. No value here is ever logged or returned (placeholderPrices is only a count, accountsPlaceholder
- * only a flag, keyMode and keyRefused only codes).
+ * secret. No value here is ever logged or returned (placeholderPrices is only a count, duplicateSlots only slot
+ * names, accountsPlaceholder only a flag, keyMode and keyRefused only codes).
  *
  * The key must fit the stage. The staging Worker (and any stage but production) takes test keys only, so the
  * public preview never takes real money. Production takes live keys only, so card 4242 never opens a plan there, and
@@ -114,10 +117,17 @@ function readBilling(env, allowedOrigins) {
   const keyMode = /** @type {'' | 'live' | 'test'} */ (secretKey ? mode : '');
   const webhookSecret = /^whsec_[A-Za-z0-9+/=_-]{8,}$/.test(str(env.STRIPE_WEBHOOK_SECRET)) ? str(env.STRIPE_WEBHOOK_SECRET) : '';
   /** @param {unknown} v */
-  const price = (v) => (/^price_[A-Za-z0-9]{4,64}$/.test(str(v)) && !PRICE_PLACEHOLDER.test(str(v)) ? str(v) : '');
+  const shapedPrice = (v) => (/^price_[A-Za-z0-9]{4,64}$/.test(str(v)) && !PRICE_PLACEHOLDER.test(str(v)) ? str(v) : '');
+  const ids = PRICE_VARS.map((k) => shapedPrice(env[k]));
+  // One price id in two slots or more: which plan it is cannot be told (a price with no lookup key maps by its slot,
+  // store.js planForPrice, and the first slot found would win, so Beyond could be paid for and Flow given). Every slot
+  // holding it counts as unset, so it is never sold; duplicateSlots names those slots, never the id.
+  const duplicateSlots = PRICE_SLOTS.filter((_, i) => !!ids[i] && ids.indexOf(ids[i]) !== ids.lastIndexOf(ids[i]));
+  /** @param {number} i */
+  const price = (i) => (duplicateSlots.includes(PRICE_SLOTS[i]) ? '' : ids[i]);
   const prices = {
-    paid: { monthly: price(env.STRIPE_PRICE_PAID_MONTHLY), yearly: price(env.STRIPE_PRICE_PAID_YEARLY) },
-    ultra: { monthly: price(env.STRIPE_PRICE_ULTRA_MONTHLY), yearly: price(env.STRIPE_PRICE_ULTRA_YEARLY) },
+    paid: { monthly: price(0), yearly: price(1) },
+    ultra: { monthly: price(2), yearly: price(3) },
   };
   // Only the project's publishable key (a secret key never belongs in a var). A placeholder (or a staging Worker with
   // no staging project yet) is "accounts not configured".
@@ -131,7 +141,7 @@ function readBilling(env, allowedOrigins) {
   // how many price vars still hold a placeholder (never their values): /v1/health and the 503 say so
   const placeholderPrices = PRICE_VARS.filter((k) => PRICE_PLACEHOLDER.test(str(env[k]))).length;
   return {
-    secretKey, webhookSecret, prices, supabaseUrl, supabaseKey, appOrigin, placeholderPrices, accountsStage, accountsPlaceholder,
+    secretKey, webhookSecret, prices, supabaseUrl, supabaseKey, appOrigin, placeholderPrices, duplicateSlots, accountsStage, accountsPlaceholder,
     // the accepted key's mode ('' when unset or refused), why a key was refused, and the owner's approval
     keyMode, keyRefused, liveApproved,
     // pins the Stripe API version of the server's own requests (the webhook's comes from its endpoint, created on the

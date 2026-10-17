@@ -131,7 +131,7 @@ curl -s -H 'origin: https://app.hushmallow.com' https://hushmallow-another-angle
 # … "billing":{"configured":true,"webhook":true,"stripe_mode":"live","live_approved":true,"api_version":"2026-08-26.dahlia","automatic_tax":false}
 ```
 
-Every value is checked for its shape. If one is wrong, that value counts as unset and `/v1/health` keeps saying `"configured": false`. `npm test` checks the same shapes in `wrangler.toml` itself. `test/billing.test.js` and `test/billing-env.test.js` build the file exactly as this section and section 4 describe, then run the guards on it. A secret (`sk_…`, `rk_…`, `whsec_…`) anywhere in the file fails the tests, comments included. All the existing limits stay as they are:
+Every value is checked for its shape. If one is wrong, that value counts as unset and `/v1/health` keeps saying `"configured": false`. The four price ids must also be four different ids: one id in two slots makes both slots unset (neither is sold, and a subscription on it maps to no plan), and `/v1/health` says how many slots (`"duplicate_prices"`). `npm test` checks the same shapes in `wrangler.toml` itself, and that no id is in two slots. `test/billing.test.js` and `test/billing-env.test.js` build the file exactly as this section and section 4 describe, then run the guards on it. A secret (`sk_…`, `rk_…`, `whsec_…`) anywhere in the file fails the tests, comments included. All the existing limits stay as they are:
 
 * the rate limits, plus `BILLING_IP_LIMITER`: 20 billing requests a minute per network (checkout, status, sync and portal together);
 * 20 angles a day per subscriber;

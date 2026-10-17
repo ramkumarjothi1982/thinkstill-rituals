@@ -145,16 +145,18 @@ export function createBilling({ logger, now, fetch: fetchImpl = (input, init) =>
   /**
    * Why billing is off (never a value): 'accounts_not_configured' while the sign-in project is a placeholder
    * (the staging Worker before its own project exists, docs/STAGING.md); the key's refusal (src/config.js:
-   * 'live_key_on_staging', 'test_key_on_production', 'live_not_approved'); 'placeholder_prices' when no price id is
-   * real and one is still a placeholder such as price_TODO_owner (staging before the owner's test ids); else
-   * 'not_configured'.
+   * 'live_key_on_staging', 'test_key_on_production', 'live_not_approved'); with no price left to sell,
+   * 'duplicate_prices' when one id sits in two slots (src/config.js duplicateSlots) and 'placeholder_prices' when one is
+   * still a placeholder such as price_TODO_owner (staging before the owner's test ids); else 'not_configured'.
    * @param {Config} cfg
    */
   const offReason = (cfg) => {
     if (cfg.billing.accountsPlaceholder) return 'accounts_not_configured';
     if (cfg.billing.keyRefused) return cfg.billing.keyRefused;
     const p = cfg.billing.prices;
-    return cfg.billing.placeholderPrices > 0 && ![p.paid, p.ultra].some((x) => !!(x.monthly || x.yearly)) ? 'placeholder_prices' : 'not_configured';
+    if ([p.paid, p.ultra].some((x) => !!(x.monthly || x.yearly))) return 'not_configured';
+    if (cfg.billing.duplicateSlots.length > 0) return 'duplicate_prices';
+    return cfg.billing.placeholderPrices > 0 ? 'placeholder_prices' : 'not_configured';
   };
   /** The 503's code for offReason(). @param {Config} cfg */
   const offCode = (cfg) => (offReason(cfg) === 'accounts_not_configured' ? 'accounts_not_configured' : 'billing_not_configured');
@@ -164,6 +166,7 @@ export function createBilling({ logger, now, fetch: fetchImpl = (input, init) =>
     if (r === 'accounts_not_configured') return 'Web subscriptions are not set up on this server: accounts are not configured (its sign-in project, SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY, is still a placeholder).';
     if (r === 'live_not_approved') return 'Web subscriptions are not set up on this server: live billing is not approved (BILLING_LIVE).';
     if (r === 'live_key_on_staging' || r === 'test_key_on_production') return 'Web subscriptions are not set up on this server: its Stripe key is not for this stage.';
+    if (r === 'duplicate_prices') return 'Web subscriptions are not set up on this server: the same Stripe price id is in more than one of its price slots.';
     return r === 'placeholder_prices'
       ? 'Web subscriptions are not set up on this server: its Stripe price ids are still placeholders (price_TODO…).'
       : 'Web subscriptions are not set up on this server.';
@@ -346,7 +349,11 @@ export function createBilling({ logger, now, fetch: fetchImpl = (input, init) =>
     if (!PERIODS.includes(b.period)) return error(400, 'invalid_period', 'period must be "monthly" or "yearly".', cors, { field: 'period' });
     const plan = /** @type {'paid' | 'ultra'} */ (b.plan), period = /** @type {'monthly' | 'yearly'} */ (b.period);
     const price = cfg.billing.prices[plan][period];
-    if (!price) { log('checkout', t0, { status: 'no_price', http: 503, plan, period }); return error(503, 'price_not_configured', 'This plan is not on sale yet.', cors); }
+    if (!price) {
+      // a slot whose id is also in another slot is never sold (src/config.js duplicateSlots): the log says so
+      log('checkout', t0, { status: 'no_price', http: 503, plan, period, ...(cfg.billing.duplicateSlots.includes(`${plan}.${period}`) ? { err: 'duplicate_price' } : {}) });
+      return error(503, 'price_not_configured', 'This plan is not on sale yet.', cors);
+    }
     /** @param {string} err @param {number} [stripeHttp] */
     const unavailable = (err, stripeHttp) => {
       log('checkout', t0, { status: 'stripe_error', http: 502, plan, period, err: err.slice(0, 48), stripe_http: stripeHttp });

@@ -15,7 +15,7 @@ import {
 import { formEncode } from '../src/billing/stripe.js';
 import { billingClient } from '../src/billing/store.js';
 import { createLogger } from '../src/log.js';
-import { STRIPE_API_VERSION_EXPECTED } from '../src/config.js';
+import { STRIPE_API_VERSION_EXPECTED, readConfig } from '../src/config.js';
 import {
   upstream, billingEnv, subscription, setup, billingReq, subscribe, status, lines, jwt, assertClean, withStagingProject, price, event, deliver,
   UID, OTHER, TOKEN, PRICES, APP, DAY, SUPABASE, STAGING_SUPABASE, varsTables, WRANGLER,
@@ -276,6 +276,53 @@ test('a price with no lookup key: its subscription maps to the slot of its confi
   const k = track(setup());
   await subscribe(k, subscription({}, { price: PRICES.paidYearly, lookup: 'hushmallow.ultra.yearly' }));
   assert.equal((await status(k)).tier, 'ultra');
+  assertClean(allLogs.flat());
+});
+
+test('one price id in two slots (pasted twice): neither slot sells or maps, /v1/health says how many, the log says why; the other slots sell', async () => {
+  // Beyond monthly's id pasted into Flow monthly's slot as well, the prices with no lookup key (the owner's kind)
+  const env = billingEnv({ STRIPE_PRICE_PAID_MONTHLY: PRICES.ultraMonthly });
+  const b = readConfig(env).billing;
+  assert.deepEqual(b.prices, { paid: { monthly: '', yearly: PRICES.paidYearly }, ultra: { monthly: '', yearly: PRICES.ultraYearly } });
+  assert.deepEqual([b.duplicateSlots, b.configured], [['paid.monthly', 'ultra.monthly'], true]);
+  const s = track(setup({ env }));
+  for (const id of Object.values(PRICES)) s.up.prices.set(id, { ...s.up.prices.get(id), lookup_key: null });
+  for (const body of [ULTRA_M, { plan: 'paid', period: 'monthly' }]) {
+    const res = await post(s, body);
+    assert.deepEqual(await code(res), [503, 'price_not_configured'], body.plan);
+    assert.deepEqual([lastLog(s, 'checkout').status, lastLog(s, 'checkout').err], ['no_price', 'duplicate_price']);
+    assertClean(s.logs, await res.json());
+  }
+  assert.equal(s.up.stripe().length, 0, 'the id is never sent to Stripe');
+  // a subscription on that price (made before it was pasted twice) gives no plan: never Flow for Beyond's price
+  await subscribe(s, subscription({}, { price: PRICES.ultraMonthly, lookup: null }));
+  assert.deepEqual([(await status(s)).tier, (await status(s)).status], ['none', 'active']);
+  // the slots holding their own ids sell (a fresh Worker and account: this one now has a subscription)
+  const ok = track(setup({ env: billingEnv({ STRIPE_PRICE_PAID_MONTHLY: PRICES.ultraMonthly }) }));
+  assert.equal((await post(ok, { plan: 'ultra', period: 'yearly' })).status, 200);
+  assert.equal(creates(ok)[0].form.get('line_items[0][price]'), PRICES.ultraYearly);
+  // /v1/health: how many slots, never an id
+  const h = await (await s.app.fetch(req('/v1/health'), s.env)).json();
+  assert.deepEqual([h.billing.configured, h.billing.duplicate_prices], [true, 2]);
+  assertClean([JSON.stringify(h)]);
+  // one id in all four: nothing to sell, billing off and saying why; Stripe's events wait (503)
+  const one = PRICES.paidMonthly;
+  const all = track(setup({ env: billingEnv({ STRIPE_PRICE_PAID_YEARLY: one, STRIPE_PRICE_ULTRA_MONTHLY: one, STRIPE_PRICE_ULTRA_YEARLY: one }) }));
+  const res = await post(all, ULTRA_M);
+  assert.equal(res.status, 503);
+  const e = (await res.json()).error;
+  assert.equal(e.code, 'billing_not_configured');
+  assert.match(e.message, /the same Stripe price id is in more than one of its price slots/);
+  assert.equal(lastLog(all, 'checkout').err, 'duplicate_prices');
+  const ha = await (await all.app.fetch(req('/v1/health'), all.env)).json();
+  assert.deepEqual([ha.billing.configured, ha.billing.duplicate_prices], [false, 4]);
+  all.up.subs.set('sub_Test123', subscription());
+  assert.equal((await deliver(all.app, all.env, event('customer.subscription.updated', subscription(), all.now))).status, 503);
+  assert.equal(all.up.calls.length, 0);
+  // four ids of their own: none refused (and a placeholder twice is not a duplicate: both are unset anyway)
+  assert.deepEqual(readConfig(billingEnv()).billing.duplicateSlots, []);
+  assert.deepEqual(readConfig(billingEnv({ STRIPE_PRICE_PAID_MONTHLY: 'price_TODO_owner', STRIPE_PRICE_ULTRA_MONTHLY: 'price_TODO_owner' })).billing.duplicateSlots, []);
+  assert.equal((await (await setup().app.fetch(req('/v1/health'), billingEnv())).json()).billing.duplicate_prices, undefined);
   assertClean(allLogs.flat());
 });
 

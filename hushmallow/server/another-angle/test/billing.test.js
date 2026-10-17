@@ -234,6 +234,9 @@ function checkWrangler(toml) {
   for (const [name, vars] of Object.entries(tables)) {
     for (const k of ['STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET']) assert.ok(!(k in vars), `${name}: ${k} is a secret (wrangler secret put), never a var`);
     const mode = vars.ENTITLEMENT_MODE;
+    // never one price id in two slots, in any table (src/config.js readBilling would sell neither: duplicateSlots)
+    const ids = Object.keys(PRICE_VARS).filter((k) => k in vars).map((k) => vars[k]);
+    assert.equal(new Set(ids).size, ids.length, `${name}: each STRIPE_PRICE_* holds its own price id, never one another slot also holds`);
     if (!BILLING_VARS.some((k) => k in vars)) {
       // billing off: a mode from before billing existed ("testing" as committed), never one that needs billing
       assert.ok(['testing', 'storekit', 'both'].includes(mode), `${name}: ENTITLEMENT_MODE "${mode}" without the billing vars`);
@@ -314,6 +317,10 @@ test('wrangler.toml switched on exactly as docs/PAYMENTS.md says passes the same
   assert.throws(() => checkWrangler(switchedOn().replace('igbxbfuaoybfzsroxuln', 'abcdefghijklmnopqrst')), /complete, each with its shape|hushmallow1/);
   assert.throws(() => checkWrangler(switchedOn().replace('APP_ORIGIN = "https://app.hushmallow.com"', 'APP_ORIGIN = "https://hushmallow.com"')), /complete, each with its shape|APP_ORIGIN/);
   assert.throws(() => checkWrangler(switchedOn().replace('price_Rehearsal2', 'prod_Rehearsal2')), /price_ id/);
+  // one id in two slots (Beyond monthly's pasted into Flow monthly's too), in production's [vars] or staging's
+  assert.throws(() => checkWrangler(switchedOn().replace('"price_Rehearsal1"', '"price_Rehearsal3"')), /production: each STRIPE_PRICE_\* holds its own price id/);
+  const staging = varsTables(WRANGLER).staging;
+  assert.throws(() => checkWrangler(WRANGLER.replace(`STRIPE_PRICE_PAID_MONTHLY = "${staging.STRIPE_PRICE_PAID_MONTHLY}"`, `STRIPE_PRICE_PAID_MONTHLY = "${staging.STRIPE_PRICE_ULTRA_MONTHLY}"`)), /staging: each STRIPE_PRICE_\* holds its own price id/);
   // the secrets never as vars, nor anywhere in the file; a public value only on its own line
   assert.throws(() => checkWrangler(switchedOn().replace('APP_ORIGIN =', `STRIPE_SECRET_KEY = "${SK}"\nAPP_ORIGIN =`)), /never a var/);
   assert.throws(() => checkWrangler(`${switchedOn()}\n# whsec_${'q'.repeat(24)}\n`), /no secret/);

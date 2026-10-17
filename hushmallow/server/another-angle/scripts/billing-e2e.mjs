@@ -95,11 +95,12 @@ export function refusal(env, needsAccount = true) {
 
 /**
  * The non-secret values, from the repository: wrangler.toml [env.staging.vars] and [vars], src/config.js and the app's
- * BILLING_PRICES. → { config } or { problems } (a placeholder still there).
+ * BILLING_PRICES. → { config } or { problems } (a placeholder still there, or one price id in two slots).
+ * @param {string} [toml] wrangler.toml's text (the repository's when left out)
  * @returns {Promise<{ config: Config, problems: string[] }>}
  */
-export async function repoConfig() {
-  const t = varsTables(readWrangler());
+export async function repoConfig(toml = readWrangler()) {
+  const t = varsTables(toml);
   const s = t.staging || {}, p = t.production || {};
   // not a literal import, so the app's own file is not type-checked as the server's
   const app = await import(new URL('../../../src/app/config.js', import.meta.url).href);
@@ -128,6 +129,9 @@ export async function repoConfig() {
     production: { mode: p.ENTITLEMENT_MODE || 'testing', liveApproved: p.BILLING_LIVE === 'approved' },
   };
   if (!config.appOrigin) problems.push('[env.staging.vars] APP_ORIGIN is not set');
+  // the Worker sells no slot whose id is also in another (src/config.js duplicateSlots)
+  const four = [config.prices.paid.monthly, config.prices.paid.yearly, config.prices.ultra.monthly, config.prices.ultra.yearly].filter(Boolean);
+  if (new Set(four).size !== four.length) problems.push('[env.staging.vars] the same price id is in more than one STRIPE_PRICE_* slot');
   return { config, problems };
 }
 
@@ -289,7 +293,7 @@ export async function run({ env = process.env, args = [], fetch: f = (input, ini
     check(b.api_version === cfg.apiVersion, `P0 staging: api_version ${cfg.apiVersion}`, String(b.api_version));
     check(b.live_approved === false, 'P0 staging: live_approved false', String(b.live_approved));
     check(b.automatic_tax === cfg.automaticTax, `P0 staging: automatic_tax ${cfg.automaticTax}, as [env.staging.vars] says`, String(b.automatic_tax));
-    check(!('placeholder_prices' in b) && b.accounts_configured !== false, 'P0 staging: no placeholder prices or sign-in values');
+    check(!('placeholder_prices' in b) && !('duplicate_prices' in b) && b.accounts_configured !== false, 'P0 staging: no placeholder prices or sign-in values, no price id in two slots');
     const p = await production('/v1/health', { method: 'GET' });
     const pb = p.json?.billing || {};
     check(p.status === 200 && p.json?.entitlement_mode === cfg.production.mode, `P0 production: entitlement_mode ${cfg.production.mode}, as [vars] says`, `${p.status} ${p.json?.entitlement_mode}`);

@@ -166,6 +166,19 @@ test('the driver refuses while staging still has placeholders (the repository to
   assert.deepEqual(Object.keys(D.SANDBOX_AMOUNTS).map((k) => [k, `US$${(D.SANDBOX_AMOUNTS[k] / 100).toFixed(2)}`]), Object.entries(BILLING_PRICES));
 });
 
+test('one price id in two staging slots: the driver refuses to start (the Worker sells neither), and P0 names it on a Worker that has it', async () => {
+  const t = F.varsTables(F.WRANGLER).staging;
+  const toml = F.WRANGLER.replace(`STRIPE_PRICE_PAID_MONTHLY = "${t.STRIPE_PRICE_PAID_MONTHLY}"`, `STRIPE_PRICE_PAID_MONTHLY = "${t.STRIPE_PRICE_ULTRA_MONTHLY}"`);
+  assert.notEqual(toml, F.WRANGLER);
+  const { problems } = await D.repoConfig(toml);
+  assert.ok(problems.includes('[env.staging.vars] the same price id is in more than one STRIPE_PRICE_* slot'), problems.join('; '));
+  assert.ok(!(await D.repoConfig()).problems.some((x) => /more than one/.test(x)), 'the four committed ids are four');
+  const w = world({ env: stagingEnv({ STRIPE_PRICE_PAID_MONTHLY: F.PRICES.ultraMonthly }) });
+  assert.equal(await w.drive(['--phases', 'P0']), 1);
+  assert.ok(w.out.some((l) => /^FAIL {2}P0 staging: no placeholder prices or sign-in values, no price id in two slots$/.test(l)), w.out.join('\n'));
+  assertQuiet(w.out);
+});
+
 // -------------------------------------------------------------- a full run --
 test('a full run (P0, P1, S3-S9) against the Worker and a sandbox with test clocks: every check passes; every object is tagged and its clocks deleted', async () => {
   const w = world();
