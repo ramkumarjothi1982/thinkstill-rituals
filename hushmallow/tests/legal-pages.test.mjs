@@ -431,6 +431,16 @@ test('the Privacy Policy: "AI and sensitive information" says what Another Angle
   // the server checks again before the model (its README: "Safety first — before any limit"; the model is never called)
   assert.match(readFileSync(resolve(root, 'server/another-angle/README.md'), 'utf8'), /and the model is never called and no quota is used/);
   assert.match(ai, /Our server checks the words it receives again, before anything goes to Anthropic\./);
+  // (review, 17 Oct 2026) support lines can also come after the words have left the phone: the server's own check, or the
+  // model's safety_status on its answer (angle-client.js read() honours both). Only the device's check sends nothing, and
+  // the Terms (§9) say exactly that, as this policy does
+  const reader = read('src/beyond/angle-client.js');
+  assert.match(reader, /if \(d\.status === 'crisis' \|\| d\.status === 'care'\) return \{ status: d\.status, keepSupportClose: true/);
+  assert.match(reader, /if \(flagged === 'crisis' \|\| flagged === 'care'\) return \{ status: flagged, keepSupportClose: true/);
+  assert.match(ai, /Anthropic’s model can also judge that what you wrote calls for support: then the app shows support lines instead of that perspective\. By then your words have been sent, as this section describes\./);
+  const termsAngle = textOf(sectionOf(read(PAGES[1]), 'another-angle'));
+  assert.doesNotMatch(termsAngle, /and then it sends nothing/, 'the Terms: not for every support answer');
+  assert.match(termsAngle, /If what you write suggests you may need support, the app may offer support lines instead of a perspective\. When the app’s own check on your device does this, nothing is sent\. Our server checks again, and the AI model can also answer with support lines: by then your words have been sent \(to our server, and in the model’s case to Anthropic\), as our Privacy Policy explains\./);
   // what is sent: angle-client.js's own list, and the account's token only with web subscriptions (consent.js ACCOUNT_CHECK)
   const client = read('src/beyond/angle-client.js');
   assert.match(client, /What is sent: POST \/v1\/session \{ device_id, platform, app_version, invite\? \}/);
