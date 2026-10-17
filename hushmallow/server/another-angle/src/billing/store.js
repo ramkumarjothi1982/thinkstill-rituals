@@ -23,7 +23,8 @@
 // (as_of: when the server asked Stripe for it) replaces an older one and an
 // older one is ignored; another subscription of the same account replaces
 // the record only when it gives access and the current one does not (its
-// status, or its period over: periodOver), or gives more (a higher plan), so
+// status, its period over or past_due past its cap: givesAccess), or gives
+// more (a higher plan), so
 // a late event about an old, cancelled subscription never takes access away
 // from the one that replaced it. The exception is the best of a fresh list
 // of the customer's subscriptions (bestOf; `covers` names the ones listed):
@@ -159,12 +160,19 @@ const pastDueSince = (rec) => (typeof rec.past_due_since === 'number' ? rec.past
  */
 export const periodOver = (rec, t) => rec.current_period_end != null && rec.current_period_end + PERIOD_GRACE_MS <= t;
 
+/**
+ * The record gives access at `t`, whatever plan its price is (an unmapped one included): Stripe's status is one of
+ * ACCESS, its period is not over (periodOver), and past_due has not run past its cap (PAST_DUE_GRACE_MS).
+ * @param {SubRecord} rec @param {number} t
+ */
+export function givesAccess(rec, t) {
+  if (!ACCESS.has(rec.status) || periodOver(rec, t)) return false;
+  return !(rec.status === 'past_due' && t > pastDueSince(rec) + PAST_DUE_GRACE_MS);
+}
+
 /** The plan this record gives right now. @param {SubRecord | null | undefined} rec @param {number} now */
 export function effectiveTier(rec, now) {
-  if (!rec || !ACCESS.has(rec.status)) return 'none';
-  if (periodOver(rec, now)) return 'none';
-  if (rec.status === 'past_due' && now > pastDueSince(rec) + PAST_DUE_GRACE_MS) return 'none';
-  return rec.tier;
+  return rec && givesAccess(rec, now) ? rec.tier : 'none';
 }
 
 /** Until when this record gives access (for session tokens). @param {SubRecord} rec @param {number} now @param {number} fallbackMs */
@@ -193,9 +201,9 @@ export function supersedes(cur, next, covers = null) {
   if (!cur) return true;
   if (cur.subscription === next.subscription) return next.as_of >= cur.as_of;
   if (covers && covers.includes(cur.subscription) && next.as_of >= cur.as_of) return true;
-  // a record whose period was over when `next` was read gives nothing, whatever its status: a lower plan bought
-  // after it (its own end lost) replaces it
-  const a = ACCESS.has(cur.status) && !periodOver(cur, next.as_of), b = ACCESS.has(next.status) && !periodOver(next, next.as_of);
+  // a record that gave no access when `next` was read gives nothing, whatever its status says (its period over, or
+  // past_due past its cap): a lower plan bought after it (its own end lost) replaces it
+  const a = givesAccess(cur, next.as_of), b = givesAccess(next, next.as_of);
   if (a !== b) return b;
   if (RANK[next.tier] !== RANK[cur.tier]) return RANK[next.tier] > RANK[cur.tier];
   return next.as_of >= cur.as_of;

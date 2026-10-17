@@ -31,7 +31,7 @@ import { json, error, readJson, readText } from '../http.js';
 import { allow, memoryRateLimiter } from '../limits/ratelimit.js';
 import { createStripe, verifyWebhookSignature } from './stripe.js';
 import { createAccountVerifier, uidOf } from './account.js';
-import { billingClient, summarise, effectiveTier, accessUntil, idOf, priceMismatch, bestOf, periodOver, ACCESS, TERMINAL } from './store.js';
+import { billingClient, summarise, effectiveTier, givesAccess, accessUntil, idOf, priceMismatch, bestOf, ACCESS, TERMINAL } from './store.js';
 
 export const PATHS = Object.freeze({ checkout: '/v1/billing/checkout', status: '/v1/billing/status', sync: '/v1/billing/sync', portal: '/v1/billing/portal', webhook: '/v1/billing/webhook' });
 /**
@@ -327,9 +327,11 @@ export function createBilling({ logger, now, fetch: fetchImpl = (input, init) =>
     const store = storeFor(env);
     const rec = await store.get(who.uid);
     // one subscription per account, whatever plan it maps to (an unmapped price included), unpaid or not (HELD_STATUSES):
-    // a change of plan (Flow → Beyond) or period, or paying what is owed, happens in the portal. A record whose period
-    // is over is out of date (its last events lost): Stripe's list below decides instead, so it never blocks for good.
-    if (rec && HELD_STATUSES.has(rec.status) && !periodOver(rec, now())) return taken('already_subscribed', 'record');
+    // a change of plan (Flow → Beyond) or period, or paying what is owed, happens in the portal. The record decides
+    // alone only while it gives access (givesAccess). One that gives none (unpaid, paused, past_due past its cap, its
+    // period over) may be out of date (its last events lost, a year ahead on a yearly plan): Stripe's list below decides
+    // instead, and still stops one held there, so a lost end never blocks checkout.
+    if (rec && givesAccess(rec, now())) return taken('already_subscribed', 'record');
     // the price is what its slot says, or nothing is sold (and no customer made)
     const checked = await checkPrice(cfg, plan, period, price);
     if (!checked.ok && checked.fault) {

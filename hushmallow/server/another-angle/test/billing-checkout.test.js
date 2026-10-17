@@ -179,12 +179,13 @@ test('one subscription per account: the record whatever its plan, then Stripe\'s
   assert.equal(calls(a).length, n, 'Stripe not asked');
   assert.deepEqual([lastLog(a, 'checkout').status, lastLog(a, 'checkout').err], ['already_subscribed', 'record']);
   assertClean(a.logs, await res.json());
-  // past_due long after its grace: no plan, still a subscription (pay or cancel it in the portal)
+  // past_due long after its grace: no plan, still a subscription (pay or cancel it in the portal), as Stripe's list says
   const p = track(setup());
   await subscribe(p, subscription({ status: 'past_due' }));
   p.now.advance(20 * DAY);
   assert.equal((await status(p)).tier, 'none');
   assert.deepEqual(await code(await post(p, ULTRA_M)), [409, 'already_subscribed']);
+  assert.equal(lastLog(p, 'checkout').err, 'listed');
   // nothing in the record yet, but Stripe has one (its webhook still on its way)
   for (const [st, want, err] of [['active', 'already_subscribed', 'listed'], ['trialing', 'already_subscribed', 'listed'], ['past_due', 'already_subscribed', 'listed'], ['incomplete', 'payment_pending', 'incomplete']]) {
     const s = track(setup());
@@ -216,9 +217,10 @@ test('one subscription per account: the record whatever its plan, then Stripe\'s
   assertClean(allLogs.flat());
 });
 
-test('a subscription Stripe keeps unpaid or paused is still the account\'s: 409 already_subscribed, from the record and from Stripe\'s list, so paying its open invoice later never makes two', async () => {
+test('a subscription Stripe keeps unpaid or paused is still the account\'s: 409 already_subscribed, from Stripe\'s list, so paying its open invoice later never makes two', async () => {
   for (const st of ['unpaid', 'paused']) {
-    // the record says so (retries ran out and Stripe marked it unpaid): no plan, and no second subscription
+    // the record says so (retries ran out and Stripe marked it unpaid): no plan, and no second subscription. A record
+    // giving no access decides nothing alone: Stripe's list, which still has it, does
     const r = track(setup());
     assert.equal((await post(r, ULTRA_M)).status, 200);
     const customer = await db(r).customerOf(UID);
@@ -229,7 +231,7 @@ test('a subscription Stripe keeps unpaid or paused is still the account\'s: 409 
     r.now.advance(DAY + 3600000);   // the first session has expired
     const res = await post(r, ULTRA_M);
     assert.deepEqual(await code(res), [409, 'already_subscribed'], `${st}: record`);
-    assert.deepEqual([lastLog(r, 'checkout').status, lastLog(r, 'checkout').err], ['already_subscribed', 'record']);
+    assert.deepEqual([lastLog(r, 'checkout').status, lastLog(r, 'checkout').err], ['already_subscribed', 'listed']);
     assert.equal(creates(r).length, 1, `${st}: no second session`);
     // the portal is where it is paid or cancelled
     assert.equal((await r.app.fetch(billingReq('/v1/billing/portal', { body: {} }), r.env)).status, 200);
@@ -287,6 +289,59 @@ test('a record whose period ended over a day ago (its last events lost) does not
   assert.deepEqual(await code(await post(r, ULTRA_M, LONG)), [409, 'already_subscribed']);
   assert.equal(lastLog(r, 'checkout').err, 'listed');
   assert.equal(creates(r).length, 0);
+  assertClean(allLogs.flat());
+});
+
+test('a record that gives no access while its period runs (past_due beyond its 14-day cap, unpaid) does not decide alone: Stripe\'s list does, and a plan bought then is recorded', async () => {
+  const YEAR = { price: PRICES.ultraYearly, end: (CLOCK_START + 365 * DAY) / 1000 };
+  // a Beyond yearly renewal fails: Stripe moves the period a year on and marks it past_due
+  const s = track(setup());
+  const year = subscription({ id: 'sub_Year1', customer: 'cus_Year1' }, YEAR);
+  await subscribe(s, year);
+  s.now.advance(60000);
+  s.up.subs.set(year.id, { ...year, status: 'past_due' });
+  await deliver(s.app, s.env, event('customer.subscription.updated', { ...year, status: 'past_due' }, s.now), { at: s.now() });
+  // within the cap it gives access: the record decides, Stripe not asked
+  s.now.advance(10 * DAY);
+  assert.deepEqual([(await status(s)).tier, (await status(s)).status], ['ultra', 'past_due']);
+  let n = calls(s).length;
+  assert.deepEqual(await code(await post(s, { plan: 'paid', period: 'monthly' })), [409, 'already_subscribed']);
+  assert.deepEqual([calls(s).length, lastLog(s, 'checkout').err], [n, 'record']);
+  // the retries ran out and Stripe cancelled it (D6), but customer.subscription.deleted was lost: no plan, and
+  // Stripe's list (canceled) lets the account subscribe again, though the record's period has 11 months to run
+  s.up.subs.set(year.id, { ...year, status: 'canceled' });
+  s.now.advance(5 * DAY);
+  assert.deepEqual([(await status(s)).tier, (await status(s)).status], ['none', 'past_due']);
+  n = calls(s).length;
+  const res = await post(s, { plan: 'paid', period: 'monthly' });
+  assert.equal(res.status, 200, await res.clone().text());
+  assert.deepEqual(calls(s).slice(n), [`GET /v1/prices/${PRICES.paidMonthly}`, 'GET /v1/subscriptions', 'POST /v1/checkout/sessions']);
+  // Flow, a lower plan than the record's Beyond, is recorded all the same: the record past its cap gives nothing
+  const flow = subscription({ id: 'sub_Flow1', customer: 'cus_Year1' }, { price: PRICES.paidMonthly, end: (s.now() + 30 * DAY) / 1000 });
+  s.up.subs.set(flow.id, flow);
+  await deliver(s.app, s.env, event('checkout.session.completed', { id: sessionIds(s).at(-1), object: 'checkout.session', mode: 'subscription', status: 'complete', client_reference_id: UID, customer: 'cus_Year1', subscription: flow.id }, s.now), { at: s.now() });
+  assert.deepEqual([(await status(s)).tier, (await status(s)).status], ['paid', 'active']);
+  assert.equal((await db(s).get(UID)).subscription, 'sub_Flow1');
+  // the same record while Stripe still has it past_due (the retries left running): the list stops a second one
+  const p = track(setup());
+  await subscribe(p, year);
+  p.now.advance(60000);
+  p.up.subs.set(year.id, { ...year, status: 'past_due' });
+  await deliver(p.app, p.env, event('customer.subscription.updated', { ...year, status: 'past_due' }, p.now), { at: p.now() });
+  p.now.advance(15 * DAY);
+  assert.deepEqual(await code(await post(p, ULTRA_M)), [409, 'already_subscribed']);
+  assert.equal(lastLog(p, 'checkout').err, 'listed');
+  assert.equal(creates(p).length, 0);
+  // unpaid in the record, cancelled at Stripe since (its event lost): sold, from Stripe's list
+  const u = track(setup());
+  await subscribe(u, year);
+  u.now.advance(60000);
+  u.up.subs.set(year.id, { ...year, status: 'unpaid' });
+  await deliver(u.app, u.env, event('customer.subscription.updated', { ...year, status: 'unpaid' }, u.now), { at: u.now() });
+  u.up.subs.set(year.id, { ...year, status: 'canceled' });
+  u.now.advance(DAY);
+  assert.equal((await status(u)).status, 'unpaid');
+  assert.equal((await post(u, ULTRA_M)).status, 200);
   assertClean(allLogs.flat());
 });
 

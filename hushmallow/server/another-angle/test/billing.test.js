@@ -13,7 +13,7 @@ import { makeEnv, req, angleReq, clock, allowAll, denyAll, ORIGIN, CLOCK_START, 
 import { createApp } from '../src/app.js';
 import { createMockProvider } from '../src/providers/mock.js';
 import { verifyWebhookSignature, signWebhookPayload, formEncode, SIGNATURE_TOLERANCE_SEC } from '../src/billing/stripe.js';
-import { memoryBillingNamespace, billingClient, summarise, supersedes, effectiveTier, planForPrice, PERIOD_GRACE_MS, EVENT_KEEP_MS, Billing } from '../src/billing/store.js';
+import { memoryBillingNamespace, billingClient, summarise, supersedes, effectiveTier, planForPrice, PERIOD_GRACE_MS, PAST_DUE_GRACE_MS, EVENT_KEEP_MS, Billing } from '../src/billing/store.js';
 import { createAccountVerifier } from '../src/billing/account.js';
 import { CHECKOUT_WINDOW_MS } from '../src/billing/routes.js';
 import { price as sellable, PRICE_SLOTS } from './billing-fixtures.js';
@@ -678,6 +678,11 @@ test('Billing Durable Object: the state machine, one apply per event, old events
   assert.equal(supersedes(stale, { ...flow(), as_of: after - 1 }), false, 'within the grace it still counts');
   assert.equal(supersedes(stale, flow()), true);
   assert.equal(supersedes(stale, flow({ status: 'canceled' })), false, 'neither gives anything: the higher plan stays, as before');
+  // a past_due record past its cap (its end never recorded; its period a year long) gives nothing too: a lower plan replaces it
+  const owed = rec({ tier: 'ultra', status: 'past_due', past_due_since: a.as_of, current_period_end: a.as_of + 365 * DAY });
+  const flowAt = (at) => ({ ...other({ tier: 'paid', current_period_end: at + 30 * DAY }), as_of: at });
+  assert.equal(supersedes(owed, flowAt(a.as_of + PAST_DUE_GRACE_MS)), false, 'within the cap it still counts');
+  assert.equal(supersedes(owed, flowAt(a.as_of + PAST_DUE_GRACE_MS + 1)), true);
   assert.equal(typeof Billing, 'function');
 });
 
