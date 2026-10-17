@@ -135,7 +135,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     console.error(`secret scan: ${found.length} secret${found.length === 1 ? '' : 's'} in ${staged ? 'the staged changes (commit refused)' : 'tracked files'}:`);
     for (const f of found) console.error(`  ${describe(f)}`);
     if (staged) console.error('Take the value out of the file and git add it again.');
-    console.error('A secret belongs in a Worker secret or a gitignored .dev.vars, never in git. If it was ever pushed or shared, roll it (Stripe: Developers → API keys).');
+    console.error('A secret belongs in a Worker secret or a gitignored .dev.vars, never in git. If it was ever pushed or shared, roll it in that provider\'s dashboard.');
     console.error('A deliberate fake: build it at run time in a test, or add its exact line to ALLOW in hushmallow/tools/secret-scan.mjs.');
     process.exit(1);
   }
