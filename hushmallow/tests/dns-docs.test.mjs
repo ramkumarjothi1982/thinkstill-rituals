@@ -3,7 +3,8 @@
 // name or host, value, TTL default), never to change or delete the existing website, email, Stripe checkout or
 // ThinkStill records, and never to change the nameservers:
 //   docs/STAGING.md B13 and docs/PAYMENTS.md section 1 step 10: Stripe's custom domain checkout.hushmallow.com
-//     (a CNAME with the host `checkout`, and the TXT exactly as Stripe shows it);
+//     (a CNAME with the host `checkout`, and the TXT exactly as Stripe shows it; a `checkout` record already there with
+//     another value: stop and ask, never edit it);
 //   supabase/production/RUNBOOK.md step 7: Brevo's records (a check in Brevo first: Authenticated) and the
 //     Supabase SMTP settings (tests/auth-runbook.test.mjs has those).
 import { test } from 'node:test';
@@ -37,6 +38,11 @@ test('checkout.hushmallow.com: a CNAME with the host `checkout`, the TXT exactly
     assert.match(t, /Type `TXT` · Name exactly as Stripe shows it, without the `\.hushmallow\.com` ending/, `${p}: the TXT's name`);
     assert.match(t, /Value exactly as Stripe shows it/, `${p}: the TXT's value`);
     assert.match(t, /already (?:there|in the list)[^.]*leave them as they are/, `${p}: records already there stay as they are`);
+    // (review, 17 Oct 2026) a `checkout` record already there with another value (the owner reports Stripe checkout records
+    // exist): GoDaddy refuses a second CNAME of that name, and the existing records are never changed, so the step stops
+    assert.match(t, /If a `checkout` record \(of any type\), or a TXT record with Stripe's name, is already there with a different value, stop: don't add, change or delete anything/, `${p}: a conflicting record: stop`);
+    assert.match(t, /GoDaddy refuses a second record named `checkout`, and the one there may be serving checkout today/, `${p}: why`);
+    assert.match(t, /send Claude a screenshot of that record and of the two values Stripe shows, and wait/, `${p}: then ask`);
   }
   // the order stays: the client release, then DNS, then activation (server/another-angle/test/billing-docs.test.js)
   assert.match(read('docs/STAGING.md'), /The order is: that client release, then DNS, then activation/);

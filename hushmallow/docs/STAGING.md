@@ -526,7 +526,10 @@ open, here and in production. The order is: that client release, then DNS, then 
    there, not in Cloudflare.
    1. **godaddy.com** → sign in → **My Products** → next to **hushmallow.com**, **DNS** (it may read **Manage DNS**).
    2. Look through the list first. If a `checkout` CNAME and Stripe's TXT are already there with exactly the values
-      Stripe shows, leave them as they are and go on to step 3.
+      Stripe shows, leave them as they are and go on to step 3. If a `checkout` record (of any type), or a TXT
+      record with Stripe's name, is already there with a different value, stop: don't add, change or delete
+      anything. GoDaddy refuses a second record named `checkout`, and the one there may be serving checkout today.
+      Instead, send Claude a screenshot of that record and of the two values Stripe shows, and wait.
    3. **Add New Record** → **Type** `CNAME` · **Name** (GoDaddy may call it Host) `checkout` · **Value** (it may read
       Points to) exactly the target Stripe shows · **TTL** the default → **Save**.
    4. **Add New Record** → **Type** `TXT` · **Name** exactly as Stripe shows it, without the `.hushmallow.com`
