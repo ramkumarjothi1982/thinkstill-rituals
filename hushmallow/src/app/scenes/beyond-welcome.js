@@ -12,7 +12,8 @@
 // moved in (to the heading) and given back on close, Escape and Back close them, what is behind is out of reach.
 // Every picture is the app's own (img-src 'self'); nothing is fetched from anywhere else.
 //
-//   openPlanWelcome(app, { tier, period, from, fromUnknown? }) → Promise<sheet handle>
+//   openPlanWelcome(app, { tier, period, from, fromUnknown? }, { onClose? }) → Promise<sheet handle>   (onClose: once it
+//     closes, by Continue, Try Another Angle (before it moves on), Escape or Back: main.js draws a plan scene under it again)
 //   welcomeKind({ tier, from, fromUnknown? }) → 'beyond' | 'plan'   (fromUnknown: the plan before is not known, so the
 //     smaller one, which says only the plan as it is now: never "Welcome to hushmallow Beyond" to someone already on it)
 //   beyondLines() → the lines on what Beyond opens;  planLine({ tier, period }) → "You're on hushmallow Flow, yearly"
@@ -83,7 +84,7 @@ function gathering(ids, spots, { label }) {
 
 let uid = 0;
 /** The welcome for a plan Stripe has confirmed (the CSS first, so it never shows unstyled). */
-export async function openPlanWelcome(app, { tier, period = null, from = null, fromUnknown = false } = {}) {
+export async function openPlanWelcome(app, { tier, period = null, from = null, fromUnknown = false } = {}, { onClose = null } = {}) {
   await ensurePlanCss();
   const kind = welcomeKind({ tier, from, fromUnknown });
   const still = stillFor(app);
@@ -114,7 +115,7 @@ export async function openPlanWelcome(app, { tier, period = null, from = null, f
     foot = h('div', { class: 'pw-actions' },
       h('button', { class: 'btn primary block', 'data-act': 'continue', onclick: () => done() }, WELCOME_LINES.continue));
   }
-  const s = openSheet({ title: null, label: kind === 'beyond' ? WELCOME_LINES.beyondTitle : planLine({ tier, period }), body, foot, full: kind === 'beyond' });
+  const s = openSheet({ title: null, label: kind === 'beyond' ? WELCOME_LINES.beyondTitle : planLine({ tier, period }), body, foot, full: kind === 'beyond', onClose: typeof onClose === 'function' ? () => { try { onClose(); } catch { /* the welcome is closed all the same */ } } : undefined });
   // labelled by its own heading, described by the line under it
   s.el.removeAttribute('aria-label');
   s.el.setAttribute('aria-labelledby', id);

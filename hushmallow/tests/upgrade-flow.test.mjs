@@ -643,7 +643,7 @@ test('main.js: the way back first, else a change kept in this tab carries on; a 
   assert.ok(main.indexOf('const planBefore = billing') < main.indexOf('ent.refresh().catch'), 'taken before the first check');
   assert.match(main, /if \(billing\) document\.addEventListener\('visibilitychange', \(\) => \{ if \(document\.visibilityState === 'visible'\) resumeChange\(app, \{ quiet: true \}\)\.catch\(\(\) => \{\}\); \}\);/);
   assert.match(main, /app\.welcomePlan = async \(result\) => \{/);
-  assert.match(main, /\(await import\('\.\/scenes\/beyond-welcome\.js'\)\)\.openPlanWelcome\(app, result\)/);
+  assert.match(main, /\(await import\('\.\/scenes\/beyond-welcome\.js'\)\)\.openPlanWelcome\(app, result, /);
   // (never over a ritual or a conversation: a line there instead)
   assert.match(main, /const WELCOME_SCENES = \['home', 'plans', 'settings', 'account'/);
   assert.doesNotMatch(main.match(/const WELCOME_SCENES = \[[^\]]*\]/)[0], /ritual|angle|encounter|express/);
@@ -709,6 +709,33 @@ test('the Beyond welcome: the seven Mallows, a labelled modal dialog, focus in a
   assert.equal(third.open, false);
   assert.deepEqual(log.went, ['angle']);
   await sleepFor(500);
+});
+
+test('the welcome over Plans or Settings: once it closes, that scene is drawn again under it, so it shows the plan Stripe has just confirmed', async () => {
+  const { doc } = installDom();
+  const { openPlanWelcome } = await import('../src/app/scenes/beyond-welcome.js');
+  const { app, log } = welcomeApp();
+  // every way it closes says so, once: Continue, Escape, and Try Another Angle (before it moves on to Another Angle)
+  for (const how of ['continue', 'escape', 'try-angle']) {
+    const order = [];
+    app.go = (n) => order.push(`go:${n}`);
+    const s = await openPlanWelcome(app, { tier: 'ultra', period: 'monthly', from: { tier: 'paid', period: 'monthly' } }, { onClose: () => order.push('closed') });
+    if (how === 'escape') doc.key('Escape'); else await click(all(s.el).find((n) => n.attrs?.['data-act'] === how));
+    assert.equal(s.open, false, how);
+    assert.deepEqual(order, how === 'try-angle' ? ['closed', 'go:angle'] : ['closed'], how);
+    await sleepFor(480);
+  }
+  // the smaller one too; and an onClose that throws never keeps it open
+  const small = await openPlanWelcome(app, { tier: 'paid', period: 'yearly', from: { tier: 'paid', period: 'monthly' } }, { onClose: () => { throw new Error('x'); } });
+  await click(all(small.el).find((n) => n.attrs?.['data-act'] === 'continue'));
+  assert.equal(small.open, false);
+  void log;
+  // main.js: Plans and Settings (the scenes that show the plan) are drawn again in place, only while still under it
+  const main = read('src/app/main.js');
+  assert.match(main, /const PLAN_SCENES = \['plans', 'settings'\];/);
+  assert.match(main, /const redraw = PLAN_SCENES\.includes\(top\.name\) \? \(\) => \{ if \(stack\[stack\.length - 1\] === top\) app\.go\(top\.name, top\.params, \{ replace: true \}\)\.catch\(\(\) => \{\}\); \} : null;/);
+  assert.match(main, /openPlanWelcome\(app, result, \{ onClose: redraw \}\)/);
+  await sleepFor(480);
 });
 
 test('the welcome is still with reduced motion or low stimulation; a yearly move or a move to Flow gets the smaller one', async () => {

@@ -104,14 +104,19 @@ app.auth = createAuthHandle(AUTH, {
  * says it instead, so nothing covers what the person is in the middle of.
  */
 const WELCOME_SCENES = ['home', 'plans', 'settings', 'account', 'mallows', 'library', 'journey', 'garden', 'landing', 'classic'];
+/** The scenes that show the plan itself (its cards, the Plan row): drawn again once the welcome over them closes, so
+ *  what is behind it is the plan Stripe has just confirmed, never the one before. */
+const PLAN_SCENES = ['plans', 'settings'];
 app.welcomePlan = async (result) => {
-  const top = stack[stack.length - 1]?.name;
-  if (!WELCOME_SCENES.includes(top)) {
+  const top = stack[stack.length - 1];
+  if (!WELCOME_SCENES.includes(top?.name)) {
     toast(`Welcome to ${PLANS[result?.tier]?.name || 'your new plan'}`, 3200);
     app.haptic('success');
     return null;
   }
-  return (await import('./scenes/beyond-welcome.js')).openPlanWelcome(app, result);
+  // (only while that scene is still the one under it: "Try Another Angle" moves on, and the newest go() wins)
+  const redraw = PLAN_SCENES.includes(top.name) ? () => { if (stack[stack.length - 1] === top) app.go(top.name, top.params, { replace: true }).catch(() => {}); } : null;
+  return (await import('./scenes/beyond-welcome.js')).openPlanWelcome(app, result, { onClose: redraw });
 };
 async function checkVersion() {
   newer = (await newerVersion()) || newer;
