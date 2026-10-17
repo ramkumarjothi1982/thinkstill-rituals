@@ -4,10 +4,13 @@
 // One instance per name (env.BILLING.idFromName(name)):
 //   "user:<supabase user id>"  sub       the account's subscription record (below)
 //                              evt:<id>  Stripe events already applied (kept 30 days)
+//                              customer  the account's own Stripe customer, set once (checkout creates it)
+//                              checkout  the last Checkout Session started: { id, expires_at (ms) }
 //   "customer:<cus_…>"         uid       which account a Stripe customer belongs to
 // A Durable Object handles one request at a time, so each apply (seen? →
 // decide → write → mark seen) is atomic: the same event delivered twice, or
-// two events racing, can never both write.
+// two events racing, can never both write. sync is apply without an event
+// id (a read the server made itself, such as checkout's return).
 //
 // The record: { v, subscription, customer, status, tier, period,
 // current_period_end (ms), cancel_at_period_end, as_of (ms) }. Stripe ids,
@@ -40,6 +43,10 @@ export const ACCESS = new Set(['active', 'trialing', 'past_due']);
 const STATUSES = new Set(['incomplete', 'incomplete_expired', 'trialing', 'active', 'past_due', 'canceled', 'unpaid', 'paused']);
 const RANK = { none: 0, paid: 1, ultra: 2 };
 const PRODUCT = /^hushmallow\.(paid|ultra)\.(monthly|yearly)$/;
+const CUSTOMER = /^cus_[A-Za-z0-9]{4,250}$/;
+const CHECKOUT_SESSION = /^cs_(?:test|live)_[A-Za-z0-9]{10,250}$/;
+/** A Checkout Session's expires_at in ms, never Stripe's seconds by mistake (any time after 1973 in ms is past 1e11). */
+const MS_TIME_MIN = 1e11;
 
 /**
  * Which plan a Stripe price is: one of the configured price ids, else a lookup
@@ -110,6 +117,12 @@ export function supersedes(cur, next) {
   return next.as_of >= cur.as_of;
 }
 
+/** @param {any} c @returns {c is { id: string, expires_at: number }} */
+function isCheckout(c) {
+  return !!c && typeof c === 'object' && Object.keys(c).every((k) => k === 'id' || k === 'expires_at')
+    && typeof c.id === 'string' && CHECKOUT_SESSION.test(c.id) && Number.isFinite(c.expires_at) && c.expires_at > MS_TIME_MIN;
+}
+
 /** @param {any} r @returns {r is SubRecord} */
 function isRecord(r) {
   return !!r && typeof r === 'object' && typeof r.subscription === 'string' && /^sub_/.test(r.subscription)
@@ -129,19 +142,37 @@ export class Billing {
     let body;
     try { body = await request.json(); } catch { return Response.json({ ok: false, error: 'bad_request' }, { status: 400 }); }
     const op = new URL(request.url).pathname.slice(1);
+    const bad = () => Response.json({ ok: false, error: 'bad_request' }, { status: 400 });
     switch (op) {
       case 'get':
         return Response.json({ ok: true, record: (await this.storage.get('sub')) || null });
       case 'apply': {
         const event = body?.event, record = body?.record;
-        if (typeof event !== 'string' || !/^evt_[A-Za-z0-9]{1,250}$/.test(event) || !isRecord(record)) return Response.json({ ok: false, error: 'bad_request' }, { status: 400 });
+        if (typeof event !== 'string' || !/^evt_[A-Za-z0-9]{1,250}$/.test(event) || !isRecord(record)) return bad();
         if (await this.storage.get(`evt:${event}`)) return Response.json({ ok: true, applied: false, duplicate: true });
-        const cur = (await this.storage.get('sub')) || null;
-        const applied = supersedes(cur, record);
-        if (applied) await this.storage.put('sub', record);
+        const applied = await this.write(record);
         await this.storage.put(`evt:${event}`, this.now());
         await this.forgetOldEvents();
         return Response.json({ ok: true, applied, duplicate: false });
+      }
+      case 'sync': {
+        if (!isRecord(body?.record)) return bad();
+        return Response.json({ ok: true, applied: await this.write(body.record) });
+      }
+      case 'customer':
+        return Response.json({ ok: true, customer: (await this.storage.get('customer')) || null });
+      case 'set_customer': {
+        if (typeof body?.customer !== 'string' || !CUSTOMER.test(body.customer)) return bad();
+        const cur = await this.storage.get('customer');
+        if (!cur) await this.storage.put('customer', body.customer);
+        return Response.json({ ok: true, customer: cur || body.customer, conflict: !!cur && cur !== body.customer });
+      }
+      case 'checkout':
+        return Response.json({ ok: true, checkout: (await this.storage.get('checkout')) || null });
+      case 'set_checkout': {
+        if (!isCheckout(body?.checkout)) return bad();
+        await this.storage.put('checkout', { id: body.checkout.id, expires_at: body.checkout.expires_at });
+        return Response.json({ ok: true });
       }
       case 'link': {
         if (typeof body?.uid !== 'string') return Response.json({ ok: false, error: 'bad_request' }, { status: 400 });
@@ -154,6 +185,14 @@ export class Billing {
       default:
         return Response.json({ ok: false, error: 'unknown_op' }, { status: 404 });
     }
+  }
+
+  /** The state machine's write (supersedes): true when `record` replaced the account's. @param {SubRecord} record */
+  async write(record) {
+    const cur = (await this.storage.get('sub')) || null;
+    const applied = supersedes(cur, record);
+    if (applied) await this.storage.put('sub', record);
+    return applied;
   }
 
   /** Events applied more than EVENT_KEEP_MS ago (Stripe stops retrying after three days). */
@@ -185,6 +224,16 @@ export function billingClient(ns) {
     link: (customer, uid) => call(`customer:${customer}`, 'link', { uid }),
     /** @param {string} customer @returns {Promise<string | null>} */
     owner: async (customer) => (await call(`customer:${customer}`, 'owner', {})).uid || null,
+    /** A record the server read itself (no event id), through the same state machine. @param {string} uid @param {SubRecord} record @returns {Promise<{ ok: boolean, applied: boolean }>} */
+    sync: (uid, record) => call(`user:${uid}`, 'sync', { record }),
+    /** The account's own Stripe customer, or null. @param {string} uid @returns {Promise<string | null>} */
+    customerOf: async (uid) => (await call(`user:${uid}`, 'customer', {})).customer || null,
+    /** Set once: a different customer later is a conflict and changes nothing. @param {string} uid @param {string} customer @returns {Promise<{ ok: boolean, customer: string, conflict: boolean }>} */
+    setCustomer: (uid, customer) => call(`user:${uid}`, 'set_customer', { customer }),
+    /** The last Checkout Session started for the account, or null. @param {string} uid @returns {Promise<{ id: string, expires_at: number } | null>} */
+    lastCheckout: async (uid) => (await call(`user:${uid}`, 'checkout', {})).checkout || null,
+    /** @param {string} uid @param {{ id: string, expires_at: number }} checkout expires_at in ms @returns {Promise<{ ok: boolean }>} */
+    setCheckout: (uid, checkout) => call(`user:${uid}`, 'set_checkout', { checkout }),
   };
 }
 

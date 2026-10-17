@@ -5,9 +5,11 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { clock } from './helpers.js';
 import { createStripe, SUBSCRIPTION_LIST_LIMIT } from '../src/billing/stripe.js';
-import { STRIPE_API_VERSION_EXPECTED } from '../src/config.js';
-import { upstream, UID, TEST_KEY } from './billing-fixtures.js';
+import { memoryBillingNamespace, billingClient, summarise } from '../src/billing/store.js';
+import { readConfig, STRIPE_API_VERSION_EXPECTED } from '../src/config.js';
+import { upstream, billingEnv, subscription, UID, OTHER, TEST_KEY } from './billing-fixtures.js';
 
 // ---------------------------------------------------------- Stripe client --
 test('Stripe client: customer create, price, subscriptions of a customer, checkout session read and expire; pinned version on each', async () => {
@@ -48,4 +50,67 @@ test('Stripe client: customer create, price, subscriptions of a customer, checko
       if (k !== calls[0]) assert.equal(k.headers['idempotency-key'], undefined);
     }
   }
+});
+
+// ------------------------------------------------------- Durable Object --
+test('Billing DO: the customer is set once per account; the last checkout is kept; sync applies through supersedes with no event id', async () => {
+  const t = clock();
+  const ns = memoryBillingNamespace({ now: t });
+  const db = billingClient(ns);
+  const prices = readConfig(billingEnv()).billing.prices;
+  // one Stripe customer per account, set once (a second, different one is a conflict and changes nothing)
+  assert.equal(await db.customerOf(UID), null);
+  assert.deepEqual(await db.setCustomer(UID, 'cus_First1'), { ok: true, customer: 'cus_First1', conflict: false });
+  assert.deepEqual(await db.setCustomer(UID, 'cus_First1'), { ok: true, customer: 'cus_First1', conflict: false }, 'idempotent');
+  assert.deepEqual(await db.setCustomer(UID, 'cus_Second2'), { ok: true, customer: 'cus_First1', conflict: true });
+  assert.equal(await db.customerOf(UID), 'cus_First1');
+  assert.equal(await db.customerOf(OTHER), null, 'per account');
+  // the last Checkout Session started: its id and when it expires (ms)
+  assert.equal(await db.lastCheckout(UID), null);
+  const exp = t() + 3600000;
+  assert.deepEqual(await db.setCheckout(UID, { id: 'cs_test_a1b2c3d4e5f6g7', expires_at: exp }), { ok: true });
+  assert.deepEqual(await db.setCheckout(UID, { id: 'cs_test_a1b2c3d4e5f6g7', expires_at: exp }), { ok: true }, 'idempotent');
+  assert.deepEqual(await db.lastCheckout(UID), { id: 'cs_test_a1b2c3d4e5f6g7', expires_at: exp });
+  await db.setCheckout(UID, { id: 'cs_live_z9y8x7w6v5u4t3', expires_at: exp + 1 });
+  assert.deepEqual(await db.lastCheckout(UID), { id: 'cs_live_z9y8x7w6v5u4t3', expires_at: exp + 1 }, 'the newer one replaces it');
+  // shapes are checked: never anything but a cus_ id, a cs_ id and a time in ms
+  const raw = (op, body) => ns.get(ns.idFromName(`user:${UID}`)).fetch(`https://billing/${op}`, { method: 'POST', body: JSON.stringify(body) });
+  for (const [op, body] of [
+    ['set_customer', { customer: 'ana@example.com' }], ['set_customer', {}],
+    ['set_checkout', { checkout: { id: 'pi_123456789012', expires_at: exp } }], ['set_checkout', { checkout: { id: 'cs_test_a1b2c3d4e5f6g7', expires_at: Math.floor(exp / 1000) } }],
+    ['set_checkout', { checkout: { id: 'cs_test_a1b2c3d4e5f6g7', expires_at: exp, url: 'https://checkout.stripe.com/x' } }],
+    ['sync', { record: { tier: 'ultra' } }],
+  ]) assert.equal((await raw(op, body)).status, 400, `${op} ${JSON.stringify(body)}`);
+  // sync: the same state machine as apply, without an event id (nothing is marked seen)
+  const rec = (over = {}, asOf = t()) => ({ ...summarise(subscription(), prices, asOf), ...over });
+  assert.deepEqual(await db.sync(UID, rec()), { ok: true, applied: true });
+  assert.deepEqual(await db.sync(UID, rec({ status: 'canceled' }, t() - 1000)), { ok: true, applied: false }, 'an older read changes nothing');
+  assert.equal((await db.get(UID)).status, 'active');
+  t.advance(1000);
+  assert.deepEqual(await db.sync(UID, rec({ status: 'past_due' })), { ok: true, applied: true });
+  assert.deepEqual(await db.sync(UID, rec({ status: 'past_due' })), { ok: true, applied: true }, 'the same read again: the same record');
+  assert.equal((await db.get(UID)).status, 'past_due');
+  assert.deepEqual([...ns.instances.get(`user:${UID}`).map.keys()].filter((k) => k.startsWith('evt:')), []);
+  // and an apply after a sync still dedupes by event id
+  t.advance(1000);
+  assert.deepEqual(await db.apply(UID, 'evt_S1', rec()), { ok: true, applied: true, duplicate: false });
+  assert.deepEqual(await db.apply(UID, 'evt_S1', rec({ status: 'canceled' })), { ok: true, applied: false, duplicate: true });
+});
+
+test('Billing DO: the new ops stay atomic when calls race (one customer wins; the later read wins whatever the order)', async () => {
+  const t = clock();
+  const ns = memoryBillingNamespace({ now: t });
+  const db = billingClient(ns);
+  const prices = readConfig(billingEnv()).billing.prices;
+  const tries = Array.from({ length: 8 }, (_, i) => `cus_Race${i}abc`);
+  const answers = await Promise.all(tries.map((c) => db.setCustomer(UID, c)));
+  const winner = await db.customerOf(UID);
+  assert.ok(tries.includes(winner));
+  assert.deepEqual(answers.map((a) => a.customer), tries.map(() => winner), 'every caller is told the same customer');
+  assert.equal(answers.filter((a) => !a.conflict).length, 1, 'exactly one set it');
+  // syncs and applies of one subscription, sent at once in any order: the latest as_of is kept
+  const reads = [0, 3, 1, 4, 2].map((n) => ({ ...summarise(subscription({ status: n === 4 ? 'canceled' : 'active' }), prices, t() + n * 1000) }));
+  await Promise.all(reads.map((r, i) => (i % 2 ? db.sync(UID, r) : db.apply(UID, `evt_Race${i}`, r))));
+  const kept = await db.get(UID);
+  assert.deepEqual([kept.status, kept.as_of], ['canceled', t() + 4000]);
 });
