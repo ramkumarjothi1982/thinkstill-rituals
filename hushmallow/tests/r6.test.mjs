@@ -11,6 +11,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { cpuPerCall, within, readings } from './helpers/cost.mjs'; // (before any hushmallow module: its calibration runs first)
 import { checkText } from '../src/engine/safety.js';
 import { readSafety, loadGrief } from '../src/hushfold/input-overlay.js';
 import { noteShape, deathCare } from '../src/beyond/grief.js';
@@ -18,7 +19,6 @@ import { DEATH_CARE } from '../src/app/scenes/hushfold.js';
 import { SAFETY } from '../src/beyond/lines.js';
 import { visit, STUBS } from './probes/r10-replay.mjs';
 import * as P from './probes/r6.mjs';
-import { cpuPerCall, within, readings } from './helpers/cost.mjs';
 
 await loadGrief();
 const read = (p) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
@@ -168,6 +168,6 @@ test('cheap: noteShape on 600 characters (the Tell\'s limit) of its own worst re
     const t = s.repeat(Math.ceil(600 / s.length)).slice(0, 600);
     noteShape(t);
     const r = within(50, () => cpuPerCall(() => noteShape(t), 5));
-    assert.ok(r.ok, `${JSON.stringify(s)}: ${readings(r.seen)} ms of CPU per run (5 runs a reading)`);
+    assert.ok(r.ok, `${JSON.stringify(s)}: ${readings(r.seen)} ms of CPU per run (5 runs a reading); ${r.note}`);
   }
 });

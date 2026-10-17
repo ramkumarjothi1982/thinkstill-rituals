@@ -6,6 +6,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { cpuPerCall, within, readings } from './helpers/cost.mjs'; // (before any hushmallow module: its calibration runs first)
 import { normalise, canonical, frames, riskScreen, CARE_AT, CHECK_AT, HISTORY } from '../src/beyond/risk-screen.js';
 import { checkText } from '../src/engine/safety.js';
 import { readSafety, loadGrief } from '../src/hushfold/input-overlay.js';
@@ -17,7 +18,6 @@ import { visit, STUBS } from './probes/r10-replay.mjs';
 import * as D from './probes/risk-dev.mjs';
 import { EVERYDAY, GRIEF } from './probes/risk-sets.mjs';
 import * as H from './probes/risk-holdout.mjs';
-import { cpuPerCall, within, readings } from './helpers/cost.mjs';
 
 await loadGrief();
 const read = (p) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
@@ -308,6 +308,6 @@ test('cheap: under 10 ms at 600 characters (seven reads, its own worst repeats)'
     let next = 0;
     const seven = () => Array.from({ length: 7 }, () => { const i = letters[next++]; return t.slice(0, i) + t[i].toUpperCase() + t.slice(i + 1); });
     const r = within(10, () => { const ts = seven(); return cpuPerCall((k) => riskScreen(ts[k]), ts.length); });
-    assert.ok(r.ok, `${JSON.stringify(s)}: ${readings(r.seen, 2)} ms of CPU per read (7 reads a reading)`);
+    assert.ok(r.ok, `${JSON.stringify(s)}: ${readings(r.seen, 2)} ms of CPU per read (7 reads a reading); ${r.note}`);
   }
 });

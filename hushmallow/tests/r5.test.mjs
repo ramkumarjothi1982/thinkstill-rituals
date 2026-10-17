@@ -13,6 +13,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { cpuPerCall, within, readings } from './helpers/cost.mjs'; // (before any hushmallow module: its calibration runs first)
 import { checkText } from '../src/engine/safety.js';
 import { readSafety, loadGrief } from '../src/hushfold/input-overlay.js';
 import * as GR from '../src/beyond/grief.js';
@@ -22,7 +23,6 @@ import { DEATH_CARE } from '../src/app/scenes/hushfold.js';
 import { visit, STUBS } from './probes/r10-replay.mjs';
 import { literals } from '../tools/beyond/detection-gate.mjs';
 import * as P from './probes/r5.mjs';
-import { cpuPerCall, within, readings } from './helpers/cost.mjs';
 
 await loadGrief();
 const read = (p) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
@@ -200,7 +200,7 @@ test('the new rules stay cheap: 2,000 characters built to make them work hard', 
     for (const f of [GR.keepLocal, GR.selfEnding, GR.wantsToFollow, GR.deathCare]) {
       f(t);
       const r = within(120, () => cpuPerCall(() => f(t), 7));
-      assert.ok(r.ok, `${f.name} ${seed}: ${readings(r.seen)} ms of CPU per run (7 runs a reading)`);
+      assert.ok(r.ok, `${f.name} ${seed}: ${readings(r.seen)} ms of CPU per run (7 runs a reading); ${r.note}`);
     }
   }
 });

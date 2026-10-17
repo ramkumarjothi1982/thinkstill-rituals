@@ -7,12 +7,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
+import { cpuPerCall, within } from './helpers/cost.mjs'; // (before any hushmallow module: its calibration runs first)
 import { LAGOON, TIP, VOCAB, UNSURE, feelingWords, tagRows, planLagoon, defaultMallowBox, createFocus, createNaming, createNamingDetector, createLagoonProgress } from '../src/hushfold/flow/worlds/raindrop-lagoon-core.js';
 import { RAINDROP_LAGOON } from '../src/hushfold/flow/worlds/raindrop-lagoon.js';
 import { createRegistry, WORLDS, STATUS, REQUIRED_FIELDS, missingFields, isPlayable } from '../src/hushfold/flow/registry.js';
 import { REALM_HORIZON } from '../src/world/realm.js';
 import { SKILLS } from '../src/hushfold/skills.js';
-import { cpuPerCall } from './helpers/cost.mjs';
 
 const DT = 1 / 60;
 const SIZES = [[390, 844], [360, 780], [320, 568], [375, 667], [430, 932], [1280, 800], [844, 390], [768, 1024]];
@@ -83,10 +83,11 @@ test('layout: on every screen the drops, the thought, its words and its tag neve
       let p = null;
       const plan = () => { p = null; for (let n = 6; n >= 4 && !p?.fit; n--) p = planLagoon({ W, H, band, mallow, n, photos: nPh, thought: !!text, plate: text ? platePx(text) : null }); };
       // still one plan, read once (each screen's first plan is cold, as the world's is), but on this thread's CPU clock
-      // (tests/helpers/cost.mjs): another test file's turn on a busy runner's core no longer lands in it (one read 253.6 ms)
-      const ms = cpuPerCall(plan);
+      // (tests/helpers/cost.mjs): another test file's turn on a busy runner's core no longer lands in it (one read 253.6 ms).
+      // One reading, never re-read, judged at the budget × this machine's factor
+      const r = within(120, () => cpuPerCall(plan), 1);
       const tag = `${W}×${H} "${text.slice(0, 12)}" ${nPh}`;
-      assert.ok(ms < 120, `${tag}: planned in ${ms.toFixed(1)} ms of CPU`);
+      assert.ok(r.ok, `${tag}: planned in ${r.ms.toFixed(1)} ms of CPU; ${r.note}`);
       assert.ok(p.drops.length >= 4, `${tag}: at least four drops (${p.drops.length})`);
       assert.ok(p.D >= LAGOON.DROP_MIN && p.D <= LAGOON.DROP_MAX, `${tag}: D ${p.D} (≥ 44 px targets)`);
       const bandB = band.y + band.h;
