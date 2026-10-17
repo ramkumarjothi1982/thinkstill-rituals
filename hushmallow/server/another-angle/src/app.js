@@ -33,6 +33,21 @@ import { createBilling, bearerOf, PATHS as BILLING } from './billing/routes.js';
 export const EARLY_CHECK_CHARS = 2000;
 
 /**
+ * A session issued under rules this mode no longer has: after the switch to "billing", any session but a billing one;
+ * under "billing+testing", a testing one not minted there with a tester code (inv: 1), and any testing one while it has
+ * no TESTER_INVITE_CODES. A testing session from testing mode does not say whether a code was asked for (production
+ * may have had none: open to anyone), so without this it would keep reaching the model without Beyond for up to 30
+ * days after the switch. The client asks for a new session on a 401 (src/beyond/angle-client.js), with its saved code,
+ * and that one follows the current rules. Other modes are unchanged.
+ * @param {import('./config.js').Config} cfg @param {{ src?: string, inv?: number }} payload
+ */
+export function sessionSuperseded(cfg, payload) {
+  if (cfg.entitlementMode === 'billing') return payload.src !== 'billing';
+  if (cfg.entitlementMode === 'billing+testing') return payload.src === 'testing' && (cfg.inviteCodes.length === 0 || payload.inv !== 1);
+  return false;
+}
+
+/**
  * @typedef {import('./providers/anthropic.js').Provider} Provider
  * @typedef {{ waitUntil?(p: Promise<unknown>): void }} Ctx
  */
@@ -115,9 +130,14 @@ export function createApp(options) {
         configured: { signing_key: cfg.signingKeys.length > 0, provider_key: cfg.provider === 'mock' || cfg.apiKey.length > 0 },
         // web subscriptions (src/billing/): only whether they are set up, never a key or a price (and, while any
         // price id is still a placeholder such as price_TODO_owner, how many; while the sign-in project is a
-        // placeholder, that it is: docs/STAGING.md)
+        // placeholder, that it is: docs/STAGING.md). Enums and booleans only: the accepted key's Stripe mode (null
+        // when unset or refused), why a key was refused, the owner's live approval, the pinned API version and the
+        // Stripe Tax switch, so a deploy can be checked without a key.
         billing: {
           configured: billing.ready(env, cfg), webhook: cfg.billing.webhookSecret.length > 0,
+          stripe_mode: cfg.billing.keyMode || null,
+          ...(cfg.billing.keyRefused ? { key_refused: cfg.billing.keyRefused } : {}),
+          live_approved: cfg.billing.liveApproved, api_version: cfg.billing.apiVersion || null, automatic_tax: cfg.billing.automaticTax,
           ...(cfg.billing.placeholderPrices ? { placeholder_prices: cfg.billing.placeholderPrices } : {}),
           ...(cfg.billing.accountsPlaceholder ? { accounts_configured: false } : {}),
         },
@@ -128,8 +148,9 @@ export function createApp(options) {
     if (route === 'POST /v1/feedback') return feedback(request, env, cfg, cors);
     if (route === `POST ${BILLING.checkout}`) return billing.checkout(request, env, cfg, cors);
     if (route === `GET ${BILLING.status}`) return billing.status(request, env, cfg, cors);
+    if (route === `POST ${BILLING.sync}`) return billing.sync(request, env, cfg, cors);
     if (route === `POST ${BILLING.portal}`) return billing.portal(request, env, cfg, cors);
-    if (['/v1/health', '/v1/session', '/v1/angle', '/v1/feedback', BILLING.checkout, BILLING.status, BILLING.portal].includes(url.pathname)) return error(405, 'method_not_allowed', 'Method not allowed.', { ...cors, allow: ['/v1/health', BILLING.status].includes(url.pathname) ? 'GET, OPTIONS' : 'POST, OPTIONS' });
+    if (['/v1/health', '/v1/session', '/v1/angle', '/v1/feedback', BILLING.checkout, BILLING.status, BILLING.sync, BILLING.portal].includes(url.pathname)) return error(405, 'method_not_allowed', 'Method not allowed.', { ...cors, allow: ['/v1/health', BILLING.status].includes(url.pathname) ? 'GET, OPTIONS' : 'POST, OPTIONS' });
     return error(404, 'not_found', 'Not found.', cors);
   }
 
@@ -191,7 +212,7 @@ export function createApp(options) {
       }
     }
     const iat = Math.floor(now() / 1000) * 1000;
-    const token = await signToken({ sub: ent.subject, ent: 'beyond', src: ent.source, iat, exp: ent.expiresAt }, cfg.signingKeys[0]);
+    const token = await signToken({ sub: ent.subject, ent: 'beyond', src: ent.source, ...(ent.invited ? { inv: 1 } : {}), iat, exp: ent.expiresAt }, cfg.signingKeys[0]);
     const used = await ledger.peek(`dev:${ent.subject}`, 'angles', day);
     logger.event({ evt: 'session', status: 'ok', http: 200, source: ent.source, latency_ms: now() - t0 });
     return json(200, {
@@ -242,7 +263,12 @@ export function createApp(options) {
       logEvt({ status: 'unauthorised', http: 401, err: /** @type {any} */ (verified).code });
       return error(401, 'unauthorised', 'A valid session token is required.', { ...cors, 'www-authenticate': 'Bearer realm="another-angle"' });
     }
-    const subject = /** @type {any} */ (verified).payload.sub;
+    const payload = /** @type {any} */ (verified).payload;
+    if (sessionSuperseded(cfg, payload)) {
+      logEvt({ status: 'unauthorised', http: 401, err: 'session_superseded' });
+      return error(401, 'session_superseded', 'This session is from before the current rules; start a new one.', { ...cors, 'www-authenticate': 'Bearer realm="another-angle"' });
+    }
+    const subject = payload.sub;
 
     if (!body.ok) { logEvt({ status: 'invalid', http: body.status, err: body.code }); return error(body.status, body.code, body.message, cors); }
     const v = validateAngleRequest(body.value);
@@ -353,7 +379,9 @@ export function createApp(options) {
     if (!cfg.signingKeys.length) return error(503, 'not_configured', 'TOKEN_SIGNING_KEY is not set.', cors);
     if (!(await allow(env.FEEDBACK_IP_LIMITER, fallbackFeedbackLimiter, await ipKey(request, cfg)))) return error(429, 'rate_limited', 'Too many requests. Try again in a minute.', { ...cors, 'retry-after': '60' });
     const m = /^Bearer ([A-Za-z0-9._-]{10,2048})$/.exec(request.headers.get('authorization') || '');
-    if (!m || !(await verifyToken(m[1], cfg.signingKeys, now())).ok) return error(401, 'unauthorised', 'A valid session token is required.', { ...cors, 'www-authenticate': 'Bearer realm="another-angle"' });
+    const verified = m ? await verifyToken(m[1], cfg.signingKeys, now()) : null;
+    if (!verified?.ok) return error(401, 'unauthorised', 'A valid session token is required.', { ...cors, 'www-authenticate': 'Bearer realm="another-angle"' });
+    if (sessionSuperseded(cfg, verified.payload)) return error(401, 'session_superseded', 'This session is from before the current rules; start a new one.', { ...cors, 'www-authenticate': 'Bearer realm="another-angle"' });
     const body = await readJson(request, 2048);
     if (!body.ok) return error(body.status, body.code, body.message, cors);
     const v = validateFeedbackRequest(body.value);

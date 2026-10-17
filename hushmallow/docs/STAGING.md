@@ -3,7 +3,8 @@
 The release branch `claude/launch-rc` is built by Cloudflare Pages as a branch preview at
 **https://claude-launch-rc.hushmallow.pages.dev**. That preview is the staging app: it talks to the
 **staging** Another Angle Worker, **https://hushmallow-another-angle-staging.vibyfy-chat.workers.dev**,
-for Another Angle (the real model) and for web subscriptions. Billing is on there, in **Stripe test mode**.
+for Another Angle (the real model) and for web subscriptions. Billing is on there, in the **Stripe sandbox
+hushmallow-staging** (test mode).
 It is the place to rehearse the whole path before anything reaches production:
 
 visit → sign up → log in → choose a plan → pay (Stripe test card) → use the plan → Another Angle with
@@ -23,7 +24,7 @@ step, in `docs/PAYMENTS.md`.
 | Server (Cloudflare Worker) | `hushmallow-another-angle-staging` | `hushmallow-another-angle` |
 | Model key (Anthropic) | its own key **hushmallow-staging**, with its own low monthly limit (GitHub secret `ANTHROPIC_API_KEY_STAGING`) | `ANTHROPIC_API_KEY` |
 | Tester codes | `TESTER_INVITE_CODES_STAGING` | `TESTER_INVITE_CODES` |
-| Stripe | **test mode** keys and its own test webhook endpoint | live mode, later (`docs/PAYMENTS.md`) |
+| Stripe | its own **sandbox, hushmallow-staging** (test mode): its own keys, products, portal, tax settings and webhook endpoint | live mode, later (`docs/PAYMENTS.md`) |
 
 Until the owner has done Part A below, the staging project does not exist yet: the preview then has **no
 sign-in** (and so no billing), exactly like a build without sign-in values. It never falls back to
@@ -34,7 +35,7 @@ production's accounts.
 | | A branch preview (`<one label>.hushmallow.pages.dev`) | Everywhere else |
 |---|---|---|
 | Another Angle | the staging Worker (`STAGING_ANGLE_ENDPOINT`), allowed only on `STAGING_ALLOWED_HOSTS` | the production Worker (`ANGLE_ENDPOINT` on `ANGLE_ALLOWED_HOSTS`), as before |
-| Web subscriptions | **on**: Stripe through the staging Worker | **off** (`BILLING_PROVIDER = ''`) until the owner switches production on |
+| Web subscriptions | **on**: the Stripe sandbox, through the staging Worker | **off** (`BILLING_PROVIDER = ''`) until the owner switches production on |
 | Prices on the plans page | the provisional test prices below | none (they show only where billing is on) |
 | Settings → version line | `Version … · staging` | `Version …`, as before |
 | Sign-in (accounts) | **only** the staging project hushmallow-staging; off until it exists (`STAGING_PROJECT_REF` is still `''`) | **only** hushmallow1, as before |
@@ -79,7 +80,7 @@ production's accounts.
   | hushmallow Beyond | A$19.99 | A$199.99 |
 
   The plans page shows "A$9.99 a month" and so on under each button. The amount Stripe charges is always
-  the one set in Stripe, so set the same amounts there (step 1).
+  the one set in Stripe, so set the same amounts there (B4). The sandbox driver compares the two (P0).
 
 ## The staging Worker (`[env.staging]` in `server/another-angle/wrangler.toml`)
 
@@ -112,6 +113,13 @@ Only the staging environment changed:
   and `/v1/health` shows `"billing": { "configured": false, …, "placeholder_prices": 4 }` (while the
   accounts are placeholders too, the answer is `accounts_not_configured`). Nothing else breaks: Another
   Angle still works for testers with an invite code.
+* `STRIPE_API_VERSION = "2026-08-26.dahlia"`: the API version of the Worker's own Stripe requests, and the one
+  the staging webhook endpoint is created on (B11). `STRIPE_AUTOMATIC_TAX = "false"`: Stripe Tax at Checkout
+  stays off until the sandbox's AU registration shows Collecting and a test calculation passes (B3,
+  `docs/PAYMENTS.md` "Stripe Tax").
+* Its Stripe key must be a **test** key (`rk_test_…`, B8). The staging Worker refuses a live key: billing stays
+  off and `/v1/health` says `"key_refused": "live_key_on_staging"`. `BILLING_LIVE` never goes in
+  `[env.staging.vars]` (the tests refuse it).
 
 The staging Worker keeps its own limits: the real model, a **$3 a day** spending cap, 20 angles a day per
 device or subscriber, 100 sessions a day in all, 10 new testing sessions a day per network.
@@ -125,14 +133,18 @@ Two parts:
   (before that, a preview build given the new values stops with "there is no staging project yet"). A6 and
   A7 can be done at any time, the sooner the better: until A6 is done, the staging Worker still holds a
   copy of production's model key.
-* **Part B (steps 1 to 5): Stripe test mode**, as before. Step 6 says where the staging project's email
-  links land.
+* **Part B (B1 to B14): the Stripe sandbox hushmallow-staging**, click by click. B11 (the webhook endpoint)
+  comes only after Claude says the staging Worker is deployed with the price ids, and B12 only if Claude should
+  run the sandbox driver from its cloud session. "Where email links land" says where the staging project's
+  email links open.
 
-Never needed at all: a Supabase secret key (`sb_secret_…`), the service_role key, a database password.
-The Anthropic key (A6) and the Stripe keys (step 4) are secrets: they go only where a step puts them (a
-GitHub **New repository secret**, or the staging Worker's **Variables and Secrets** in Cloudflare), never into
-a chat, a file or a commit. The only values Claude needs are public: the staging project's URL and its
-publishable key (A4), and later the Stripe price ids (step 5).
+Never needed at all: a Supabase secret key (`sb_secret_…`), the service_role key, a database password, a
+Stripe publishable key (`pk_…`: the app never loads Stripe.js, so the one sent earlier is not added
+anywhere). The Anthropic key (A6), the Stripe keys (B8, B12) and the webhook signing secret (B11) are secrets:
+they go only where a step puts them (a GitHub **New repository secret**, the staging Worker's **Variables and
+Secrets** in Cloudflare, or the cloud session's network secrets in B12), never into a chat, a file, a doc or a
+commit. The only values Claude needs are public: the staging project's URL and its publishable key (A4), and
+later the Stripe price ids (B10).
 
 Dashboard labels move now and then; if one is not where this says, search the dashboard for the setting's
 name.
@@ -286,89 +298,143 @@ curl -s -H 'origin: https://claude-launch-rc.hushmallow.pages.dev' \
 `"accounts_configured":false` in the answer means the staging Worker's sign-in values are still the
 placeholders. `"provider_key":true` means the Worker has a model key (it cannot tell whose: that is A6).
 
-### Part B: Stripe test mode
+### Part B: the Stripe sandbox hushmallow-staging
 
-Do everything in Stripe's **test mode**: the "Test mode" toggle (or the sandbox) at the top of the Stripe
-dashboard must be on for every step. Test mode has its own products, prices, webhooks, keys and portal
-settings, separate from live mode.
+Staging uses a Stripe **sandbox**, not the live account's test mode: test mode shares branding, public details
+and (for a standard account) Tax settings with live mode, a sandbox shares nothing (decision D1). Every step
+below happens in that sandbox: check its name in the account switcher (top left) before each one. The labels
+are from memory; follow what the page shows.
 
-### 1. Stripe test mode: two products, four prices
+### B1. Choose the sandbox (2 min)
 
-Product catalogue → **Add product**, twice. Customers see these names on Checkout, receipts and the portal.
+1. Open the Stripe dashboard → the account switcher (top left) → **Sandboxes**.
+2. If the earlier `pk_test_…` key came from a sandbox (for example one already named hushmallow-staging), use
+   that one for every step below. If it came from the live account's test mode, **Create sandbox**, name it
+   `hushmallow-staging`, and use the new one.
+3. A cross-check, from memory: the keys of one environment share the segment after their prefix, so the
+   staging restricted key (B8) should start like the publishable key of the same environment, `rk_test_`
+   instead of `pk_test_`.
 
-| Product name | Price | Billing period | Currency | Lookup key (advanced options) |
-|---|---|---|---|---|
-| **hushmallow Flow** | 9.99 | Monthly | AUD | `hushmallow.paid.monthly` |
-| **hushmallow Flow** | 99.99 | Yearly | AUD | `hushmallow.paid.yearly` |
-| **hushmallow Beyond** | 19.99 | Monthly | AUD | `hushmallow.ultra.monthly` |
-| **hushmallow Beyond** | 199.99 | Yearly | AUD | `hushmallow.ultra.yearly` |
+### B2. Public details and branding (5 min)
 
-* Each price is **recurring**. Name the products exactly as above (lowercase `hushmallow`; never "Paid",
-  "Ultra" or "Premium").
-* Tax behaviour: **inclusive**, so the amount on Checkout is the amount on the plans page. Whether GST
-  applies, and Stripe Tax, are decisions for later (`docs/PAYMENTS.md`, "Before launch"). The server does
-  not switch Stripe Tax on.
-* These amounts are **provisional, for the rehearsal**. Before launch the final amounts go into live-mode
-  prices and into `BILLING_PRICES` together.
+1. **Settings** → **Business** → **Public details**: business name `hushmallow`, a support email and a support
+   URL → **Save**.
+2. **Settings** → **Branding**: upload the logo and the icon from `hushmallow/assets/brand/` → **Save**.
 
-Open each price and copy its id (`price_…`). That makes four ids.
+### B3. Stripe Tax settings (5 min)
 
-### 2. Stripe test mode: the customer portal
+1. **Tax** → **Settings**:
+   * **Head office address**: your Australian business address. The status must then read **Active**.
+   * **Default tax behaviour**: **Inclusive**.
+   * **Preset product tax code**: the code you or your accountant choose from Stripe's list
+     (https://docs.stripe.com/tax/tax-codes). Stripe's reference names `txcd_10103001` (SaaS) and
+     `txcd_10000000` (General – Electronically Supplied Services) only as candidates; Claude does not choose
+     one (decision D4).
+2. **Tax** → **Registrations** → **Add registration** → Australia → GST. In the sandbox, add it so the
+   rehearsal can test tax. (In live mode, only once you actually hold an ATO GST registration: Stripe records
+   registrations, it does not register you.)
+3. Tell Claude when the sandbox's AU registration shows **Collecting**. The sandbox driver then runs a test
+   calculation (P0), and once its `taxability_reason` is not `not_collecting`, `STRIPE_AUTOMATIC_TAX` can be
+   turned on for staging (`docs/PAYMENTS.md` "Stripe Tax"). Until then it stays `"false"`.
 
-Settings → Billing → **Customer portal** (test mode):
+### B4. Two products, four prices (10 min)
 
-* Cancel subscriptions: on, "at the end of the billing period".
-* Update payment methods: on. Invoice history: on.
-* Switch plans: on, with both products and all four prices. An account that already has a plan is sent
-  here instead of a second Checkout.
-* Default redirect link: `https://claude-launch-rc.hushmallow.pages.dev/`. The server also sends its own
+**Product catalogue** → **Create product**, twice. Customers see these names on Checkout, receipts and the
+portal.
+
+| Product name | Price | Billing period | Currency | Include tax in price | Lookup key (More options) |
+|---|---|---|---|---|---|
+| **hushmallow Flow** | 9.99 | Monthly | AUD | Yes (inclusive) | `hushmallow.paid.monthly` |
+| **hushmallow Flow** | 99.99 | Yearly | AUD | Yes (inclusive) | `hushmallow.paid.yearly` |
+| **hushmallow Beyond** | 19.99 | Monthly | AUD | Yes (inclusive) | `hushmallow.ultra.monthly` |
+| **hushmallow Beyond** | 199.99 | Yearly | AUD | Yes (inclusive) | `hushmallow.ultra.yearly` |
+
+* Each price is **recurring**, every 1 month or every 1 year. Make the second price of each product with
+  **Add another price** on the same product. Name the products exactly as above (lowercase `hushmallow`; never
+  "Paid", "Ultra" or "Premium"); their tax code is the preset (B3) or the one you chose.
+* **Every price must have its lookup key**: checkout refuses to sell a price whose lookup key is not its
+  slot's (`503 price_misconfigured`), and the key is what decides the plan.
+* Tax behaviour **inclusive** on every price, whether or not tax is collected yet: it cannot be changed later
+  (from memory), so set it now.
+* No trials and no other prices (D14). These amounts are **provisional, for the rehearsal** (D2). Before launch
+  the final amounts go into live-mode prices and into `BILLING_PRICES` together.
+
+### B5. Payment methods and Checkout settings (3 min)
+
+1. **Settings** → **Payments** → **Payment methods** (the default configuration): keep **Cards**, **Apple Pay**
+   and **Google Pay** (Link is your call). Turn **off BECS Direct Debit** and every other delayed method
+   (D10). Nothing in the code sends `payment_method_types`, so this page decides.
+2. **Settings** → **Checkout and Payment Links**: **Adaptive Pricing off** (D11). If the page offers "Limit
+   customers to one subscription", turn it on (it works because the Worker always passes the customer).
+
+### B6. The customer portal (5 min)
+
+**Settings** → **Billing** → **Customer portal**:
+
+* **Payment methods**: allow updates. **Invoice history**: on. **Customer information**: allow email and
+  billing-address edits (GST needs the address).
+* **Cancellations**: on, **At the end of the billing period**, no proration or refund on cancel (D7).
+* **Subscriptions** → **Customers can switch plans**: on, with hushmallow Flow (both prices) and hushmallow
+  Beyond (both prices); quantity changes off. Proration (D8): prorate and invoice upgrades immediately;
+  schedule downgrades (Beyond → Flow, yearly → monthly) at the end of the period if that option shows.
+* **Pause**: off.
+* **Business information**: the privacy policy and terms links. For the sandbox, the preview's drafts:
+  `https://claude-launch-rc.hushmallow.pages.dev/legal/privacy.html` and
+  `https://claude-launch-rc.hushmallow.pages.dev/legal/terms.html` (app.hushmallow.com's, in live mode, once
+  they are approved).
+* **Default redirect link**: `https://claude-launch-rc.hushmallow.pages.dev/`. The server also sends its own
   return address, `…/?billing=portal`.
-* Privacy policy and terms links: neither document exists yet for the main app. Leave them empty for the
-  rehearsal if Stripe allows it (they are needed before launch).
+* **Customer portal link** (email login): **Activate**, and put the link on the support page.
 
-### 3. Stripe test mode: the webhook endpoint
+### B7. Revenue recovery and emails (5 min)
 
-Developers → **Webhooks** → Add endpoint (test mode):
+1. **Settings** → **Billing** → **Revenue recovery**:
+   * **Retries**: Smart Retries on, with a window of about **2 weeks**, to match the Worker's 14-day
+     `past_due` cap (D5).
+   * **If all retries for a payment fail**: **Cancel the subscription** (D6). Not "mark as unpaid" (the
+     subscription stays in place with its invoice open, and S5 fails), and never "leave the subscription past due".
+   * **Emails**: failed card payment emails on (linking to Stripe's page or the portal); expiring-card reminders
+     on; for 3-D Secure, send a Stripe-hosted link to confirm payments when required.
+2. **Settings** → **Customer emails** (or **Subscriptions and emails**): successful payments and refunds on,
+   finalized invoices on, upcoming-renewal reminders on, at least for yearly plans (D15).
 
-* Endpoint URL: **`https://hushmallow-another-angle-staging.vibyfy-chat.workers.dev/v1/billing/webhook`**
-* Events, exactly these five (any other event is acknowledged and ignored):
-  * `checkout.session.completed`
-  * `customer.subscription.created`
-  * `customer.subscription.updated`
-  * `customer.subscription.deleted`
-  * `invoice.payment_failed`
-* Any API version works.
-* After saving, reveal and copy the endpoint's **signing secret** (`whsec_…`).
+### B8. The Worker's restricted key (5 min)
 
-This is a separate endpoint from production's (`hushmallow-another-angle.vibyfy-chat.workers.dev`, which
-is not set up now). Never point the test endpoint at the production Worker.
+**Developers** → **API keys** → **Create restricted key** → **Building your own integration**. Name it
+`hushmallow-worker-staging`, and set these permissions, everything else **None**:
 
-### 4. The staging Worker's two secrets
+| Resource | Permission |
+|---|---|
+| Checkout Sessions | Write |
+| Customer portal | Write |
+| Subscriptions | Read |
+| Customers | Write |
+| Prices | Read (and Products: Read, if the page ties them together) |
 
-Use the **test** secret key, `sk_test_…` (Developers → API keys, test mode). A restricted test key
-(`rk_test_…`) that can create Checkout Sessions and portal sessions and read subscriptions also works.
-**Never put a live key (`sk_live_…`) on the staging Worker.**
+Copy the key once (`rk_test_…`) and paste it only into Cloudflare (B9). The permission names are from memory: a
+missing one shows up as `"stripe_http":403` in the staging Worker's log line (with the step in `err`) and in
+`stripe logs tail` on the first sandbox run; add what it names. The sandbox's full secret key (`sk_test_…`) is
+not needed.
 
-Either from a terminal, in `hushmallow/server/another-angle`:
+### B9. The staging Worker's Stripe key (2 min)
+
+**Cloudflare** → **Workers & Pages** → **hushmallow-another-angle-staging** → **Settings** → **Variables and
+Secrets** → **Add** → type **Secret** (not Text) → name `STRIPE_SECRET_KEY`, value the `rk_test_…` key from B8
+→ **Deploy**. Or, on your own machine, in `hushmallow/server/another-angle`:
 
 ```
-npx wrangler secret put STRIPE_SECRET_KEY --env staging       # paste sk_test_…
-npx wrangler secret put STRIPE_WEBHOOK_SECRET --env staging   # paste whsec_… from step 3
+npx wrangler secret put STRIPE_SECRET_KEY --env staging       # paste the rk_test_… key
 ```
 
-Or in the Cloudflare dashboard: **Workers & Pages → hushmallow-another-angle-staging → Settings →
-Variables and Secrets → Add**. Choose type **Secret** (not Text), name `STRIPE_SECRET_KEY`, paste the
-value, and deploy. Then the same for `STRIPE_WEBHOOK_SECRET`.
-
+**Never put a live key on the staging Worker** (it is refused anyway), and set nothing on the production Worker.
 Secrets set this way stay through later deploys: the staging workflow adds only its own (the model key from
-`ANTHROPIC_API_KEY_STAGING`, the signing keys, and `TESTER_INVITE_CODES` from `TESTER_INVITE_CODES_STAGING`;
-a staging secret that is missing is left as the Worker has it). Never commit them, paste them in a chat or
-put them in `wrangler.toml`.
+`ANTHROPIC_API_KEY_STAGING`, the signing keys, and `TESTER_INVITE_CODES` from `TESTER_INVITE_CODES_STAGING`; a
+staging secret that is missing is left as the Worker has it).
 
-### 5. Send Claude the four test price ids
+### B10. Send Claude the four price ids
 
-The price ids are **not secret**. Paste the four `price_…` ids from step 1 into the chat (or the pull
-request), labelled like this:
+The price ids are **not secret**. Paste the four `price_…` ids from B4 into the chat (or the pull request),
+labelled like this:
 
 ```
 hushmallow Flow monthly    price_…
@@ -380,24 +446,141 @@ hushmallow Beyond yearly   price_…
 Claude puts them into `[env.staging.vars]` in place of the four `price_TODO_owner` lines and commits the
 change. The coordinator then deploys the staging Worker (it appends a line to
 `server/another-angle/deploy/STAGING` on the release branch). The deploy runs the server's tests, deploys,
-and runs `scripts/e2e.mjs` against it. In `billing+testing` mode that end-to-end check gets its session
-with the first of `TESTER_INVITE_CODES_STAGING` (the GitHub repository secret, A7). If that secret is empty,
-the check fails at "session" even though the deploy itself worked: set at least one tester code first.
+and runs `scripts/e2e.mjs` against it, which includes the key-free billing checks (below). In
+`billing+testing` mode that end-to-end check gets its session with the first of `TESTER_INVITE_CODES_STAGING`
+(the GitHub repository secret, A7). If that secret is empty, the check fails at "session" even though the
+deploy itself worked: set at least one tester code first.
+
+### B11. The webhook endpoint (5 min, only after Claude's go-ahead)
+
+Do this only after Claude says the staging Worker is deployed with the price ids (B10) and the staging
+project's values (A4). Until then the Worker answers every event `503`, Stripe retries each one for days, and
+it may warn about or switch off the endpoint.
+
+1. **Developers** (or **Workbench**) → **Webhooks** → **Add destination** → **Your account** → API version
+   **`2026-08-26.dahlia`** (the version the Worker pins; not the default if the page offers another).
+2. Events, exactly these 11 (any other event is acknowledged and ignored):
+   * `checkout.session.completed`
+   * `checkout.session.async_payment_succeeded`
+   * `checkout.session.async_payment_failed`
+   * `customer.subscription.created`
+   * `customer.subscription.updated`
+   * `customer.subscription.deleted`
+   * `customer.subscription.paused`
+   * `customer.subscription.resumed`
+   * `invoice.paid`
+   * `invoice.payment_failed`
+   * `invoice.payment_action_required`
+3. Endpoint URL: **`https://hushmallow-another-angle-staging.vibyfy-chat.workers.dev/v1/billing/webhook`**
+4. After saving, reveal the endpoint's **signing secret** (`whsec_…`) and set it on the staging Worker as B9
+   does, as the Secret `STRIPE_WEBHOOK_SECRET` (or `npx wrangler secret put STRIPE_WEBHOOK_SECRET --env
+   staging`).
+
+This is a separate endpoint from production's (`hushmallow-another-angle.vibyfy-chat.workers.dev`, which is
+not set up now). Never point the sandbox's endpoint at the production Worker, and keep no other endpoint in
+the sandbox: the driver reads `pending_webhooks 0` as "the Worker answered 200".
 
 Check it afterwards (from any terminal):
 
 ```
 curl -s -H 'origin: https://claude-launch-rc.hushmallow.pages.dev' \
   https://hushmallow-another-angle-staging.vibyfy-chat.workers.dev/v1/health
-# … "entitlement_mode":"billing+testing" … "billing":{"configured":true,"webhook":true}
+# … "entitlement_mode":"billing+testing" … "billing":{"configured":true,"webhook":true,"stripe_mode":"test","live_approved":false,"api_version":"2026-08-26.dahlia","automatic_tax":false}
 ```
 
 `"placeholder_prices"` in the answer means a `price_TODO…` line is still there, and
-`"accounts_configured": false` that the staging project's values are not in yet (A4). `"configured": false`
-without either means a secret is missing or has the wrong shape. Every value is checked; a wrong one counts
-as unset.
+`"accounts_configured": false` that the staging project's values are not in yet (A4). `"key_refused"` means the
+key is not a test key. `"configured": false` without any of these means a secret is missing or has the wrong
+shape. Every value is checked; a wrong one counts as unset.
 
-### 6. Where email links land (nothing to set in hushmallow1)
+### B12. (Optional) Let Claude run the sandbox driver (5 min)
+
+Only if Claude should run the sandbox driver from its cloud session; otherwise run it on your own machine
+(below).
+
+1. A second restricted key, for the driver only (B8's page): name `hushmallow-e2e-staging`; **Write**:
+   Customers, Subscriptions, Invoices, PaymentMethods, Test clocks and Tax calculations; **Read**: Checkout
+   Sessions, Prices, Products, Events, Webhook endpoints, Customer portal, Tax settings and Tax registrations
+   (names from memory; S8's resend may also need Events: Write, and without it the driver says SKIP and the
+   resend is done by hand).
+2. A third test account in hushmallow-staging for the driver (E2E-B), confirmed, with a password of its own.
+3. The cloud environment menu in the session's title bar → **Edit**:
+   * **Network access** → **Allowed domains**: `api.stripe.com`,
+     `hushmallow-another-angle-staging.vibyfy-chat.workers.dev` and `<staging ref>.supabase.co`. Keep "Allow
+     package managers" ticked.
+   * **Network secrets** (or environment variables): `STRIPE_E2E_KEY` (the key from 1), `STAGING_E2E_EMAIL`
+     and `STAGING_E2E_PASSWORD` (the account from 2). A new session picks them up.
+4. No Stripe key ever goes into GitHub Actions: the driver is not part of any workflow.
+
+### B13. The custom domain checkout.hushmallow.com (10 min, only after Claude's go-ahead)
+
+Do this only after Claude confirms the app release that allows `checkout.hushmallow.com` is live on
+app.hushmallow.com **and** on the staging preview. The app today opens only `checkout.stripe.com` and
+`billing.stripe.com`: a custom domain activated before that release breaks every checkout and every portal
+open, here and in production. The order is: that client release, then DNS, then activation (D12).
+
+1. Stripe → **Settings** → **Custom domains** (from memory, under Business) → **Add** →
+   `checkout.hushmallow.com`.
+2. Stripe shows a CNAME and a TXT record. In **Cloudflare** → **hushmallow.com** → **DNS** → **Records**, add
+   each exactly as Stripe shows it, with **Proxy status: DNS only** (the grey cloud).
+3. Back in Stripe, **Verify**, and wait for **Active**. Stripe bills custom domains as an add-on (from memory).
+4. Tell Claude, who checks the host of the next session URL (S13).
+
+### B14. GitHub secret scanning (2 min)
+
+GitHub → the repository → **Settings** → **Code security** → **Secret scanning**: **Enable**, and **Push
+protection**: **Enable**.
+
+### The sandbox driver (`npm run e2e:billing`)
+
+`server/another-angle/scripts/billing-e2e.mjs` runs the scripted parts of the rehearsal against the staging
+Worker and the sandbox, in test mode only. It reads three secrets from the environment and never prints them:
+`STRIPE_E2E_KEY` (B12's key; anything but `rk_test_…` or `sk_test_…`, a live key above all, is refused before
+any request), `STAGING_E2E_EMAIL` and `STAGING_E2E_PASSWORD` (E2E-B). Everything else (the Workers' addresses,
+the staging project, the price ids, the tax switch) it reads from the repository, and it refuses to start
+while any of it is still a placeholder.
+
+* From Claude's cloud session (B12): `cd hushmallow/server/another-angle && npm run e2e:billing`.
+* On your own machine: put the three in a gitignored file (`server/another-angle/.dev.vars.e2e`, one
+  `NAME=value` a line; `.gitignore` covers `.dev.vars.*`), never on a command line, then
+  `node --env-file=.dev.vars.e2e scripts/billing-e2e.mjs`.
+* One phase or a few: `-- --phases P0,P1` (P0, P1 and S3 to S9; S5 starts with S4's steps).
+
+| Phase | What it does |
+|---|---|
+| P0 | Reads only. Staging `/v1/health`: `billing+testing`, configured, webhook, `stripe_mode` test, `api_version` 2026-08-26.dahlia, `live_approved` false, `automatic_tax` as `[env.staging.vars]` says, no placeholders. Production's: billing off, `testing`. The four prices by lookup key: AUD, inclusive, every 1 month or year, active, A$9.99/99.99/19.99/199.99, the products' names, the ids in `[env.staging.vars]`, the same amounts in `BILLING_PRICES`. The webhook endpoint: enabled, 2026-08-26.dahlia, exactly the 11 events. The default portal configuration (B6). Tax: settings Active and inclusive; an active AU registration if `automatic_tax` is on; with one, a test calculation for a Sydney address (`taxability_reason` not `not_collecting`, the total unchanged). |
+| P1 | The key-free checks (below), plus: `Origin: https://app.hushmallow.com` refused on staging (403), and a hushmallow1 token refused (401). |
+| S3 | Renewal: a test clock, a customer on it with `metadata.user_id`, a card, Flow monthly (tier `paid`); the clock past the period end; `invoice.paid` delivered (200); the period a month on, at the Worker too. |
+| S4 | A failed renewal, then recovery: Beyond monthly, the `…0341` card (`pm_card_chargeCustomerFail`); `invoice.payment_failed`, `past_due` with Beyond still open (`/v1/session` 200); a good card, the open invoice paid; `active` again. |
+| S5 | Retries running out: fails again, then the clock follows each retry until Stripe cancels the subscription (`canceled`; never `unpaid` or left `past_due`: B7); tier `none`, `/v1/session` 403 `subscription_required`. The 14-day `past_due` cap runs on the Worker's own clock, which a test clock does not move: the server's tests cover it. |
+| S6 | Plan changes through the API: Flow (403 for Another Angle) → Beyond monthly (tier `ultra`, 200) → Flow yearly (tier `paid`, a year-long period, 403). |
+| S7 | Cancellations: at the period end (`ends_at` the period end, tier unchanged), `cancel_at` 90 days on (`ends_at` that date), past it (tier `none`); a cancel at once (`none` at the next check). |
+| S8 | A resend of an applied event (status unchanged; the Worker's log says `"duplicate":true`); a second, higher subscription for the same customer, then cancelled (the remaining Flow one is recorded). |
+| S9 | A renewal that needs authentication (`pm_card_authenticationRequired`): `invoice.payment_action_required` delivered, `past_due`. |
+
+Each scenario starts with E2E-B on no plan and ends there; each object it makes carries `metadata[e2e_run]`
+(the clocks, the run in their name), only those ids are printed, and its test clocks are deleted at the end
+(which deletes their customers and subscriptions). Any of its subscriptions still running then (a run stopped
+half way, Ctrl-C) is cancelled first, so Stripe tells the Worker and E2E-B is on no plan for the next run.
+It asks `/v1/billing/status` every 5 s at most (the limit is
+20 a minute) and `/v1/session` every 21 s at most. It never makes prices, products, registrations, settings or
+webhook endpoints, and any Stripe object read with `livemode: true` stops it at once. Exit `0`: every check
+passed; `1`: a check failed; `2`: refused to start; `3`: stopped on a live object. The test-clock limits it
+keeps to (3 customers a clock; two intervals an advance) and the test card tokens are from memory: watch
+`stripe logs tail` on its first run. It has been run only offline so far (`test/billing-e2e.test.js`, an
+in-memory sandbox).
+
+### The key-free checks (every deploy)
+
+`scripts/e2e.mjs` runs after every staging and production deploy, and `scripts/billing-checks.mjs` gives it
+these checks, which need no Stripe key or account: the webhook refuses GET (405) and an event with no, a bad or
+a stale signature (400; 503 while there is no signing secret); checkout refuses no token (401; 503 while
+billing is off) and a foreign origin (403); on staging, a hushmallow1 token (401). `/v1/health`'s
+`live_approved`, `api_version` and `automatic_tax` must be what that stage's table in `wrangler.toml` gives,
+`stripe_mode` only `test` on staging (or nothing yet), and a refused key fails the check (except production's
+live key waiting for the approval commit).
+
+### Where email links land (nothing to set in hushmallow1)
 
 The staging project's **Site URL** is the preview (A3), and every email template builds its link on
 `{{ .SiteURL }}`. So the "Confirm your hushmallow account" and "Reset your hushmallow password" emails from
@@ -417,21 +600,27 @@ the preview**. Production's emails keep opening `https://app.hushmallow.com/auth
 ## The rehearsal checklist
 
 On a phone (or a phone-sized window), at **https://claude-launch-rc.hushmallow.pages.dev** once Pages has
-built the branch's latest commit. Stripe test cards take any future expiry date, any 3-digit CVC and any
-postcode:
+built the branch's latest commit. The steps marked S1, S2 and S10 to S14 are by hand; S3 to S9 are the
+sandbox driver's (above). Use three hushmallow-staging test accounts: **E2E-A** for the purchase by hand,
+**E2E-B** for the driver, **E2E-C** for the declines. Stripe test cards take any future expiry date, any
+3-digit CVC and any postcode:
 
 | Card | Result |
 |---|---|
 | `4242 4242 4242 4242` | succeeds |
 | `4000 0000 0000 9995` | declined (insufficient funds) |
 | `4000 0025 0000 3155` | asks for 3-D Secure ("Complete authentication" passes, "Fail authentication" declines) |
+| `4000 0000 0000 0341` | saved, then the next charge fails (the driver's `pm_card_chargeCustomerFail`) |
+| `4000 0027 6000 3184` | every charge needs authentication (the driver's `pm_card_authenticationRequired`) |
 
 **Before you start**
 
 - [ ] Part A is done: the preview's build log says `sign-in on: … (the staging project
       hushmallow-staging)` (A5), and the account screen is there on the preview.
-- [ ] `/v1/health` (step 5) shows `billing+testing` and `"configured": true, "webhook": true` (and no
-      `"accounts_configured": false`).
+- [ ] `/v1/health` (B11) shows `billing+testing`, `"configured": true, "webhook": true`, `"stripe_mode":
+      "test"`, `"api_version": "2026-08-26.dahlia"` and `"live_approved": false` (and no
+      `"accounts_configured": false`, `"placeholder_prices"` or `"key_refused"`).
+- [ ] The sandbox driver's P0 and P1 pass (`npm run e2e:billing -- --phases P0,P1`).
 - [ ] Settings → the bottom line reads `Version 2026-10-13 · Hushfold pilot + optional sign-in · staging · <commit>`.
       On app.hushmallow.com the same line has no "staging".
 
@@ -440,39 +629,47 @@ postcode:
 - [ ] The home screen opens, and nothing asks you to sign in.
 - [ ] Plans: hushmallow Flow shows "A$9.99 a month", hushmallow Beyond "A$19.99 a month". Yearly shows
       "A$99.99 a year" and "A$199.99 a year".
-- [ ] "Step into hushmallow Flow" as a guest opens the account screen: "Sign in or create an account first,
-      so your plan stays with you."
+- [ ] (S1) "Step into hushmallow Beyond" as a guest opens the account screen: "Sign in or create an account
+      first, so your plan stays with you."
 
 **2. Sign up and log in**
 
-- [ ] Create an account on the preview, with an address that can receive the staging project's emails
-      (A3, 5). The confirmation email arrives.
+- [ ] Create an account on the preview (E2E-A), with an address that can receive the staging project's
+      emails (A3, 5). The confirmation email arrives.
 - [ ] The email's button opens the **preview's** `/auth/callback` page
-      (`https://claude-launch-rc.hushmallow.pages.dev/auth/callback?…`, step 6), confirms, and signs you in
-      there ("You're in").
+      (`https://claude-launch-rc.hushmallow.pages.dev/auth/callback?…`, "Where email links land"), confirms,
+      and signs you in there ("You're in").
 - [ ] Settings → Privacy shows the account row.
 - [ ] (Optional) Supabase → **hushmallow-staging** → Authentication → **Users** lists the account;
       **hushmallow1** does not.
 
-**3. Choose a plan and pay**
+**3. Choose a plan and pay** (S1, S2)
 
-- [ ] Plans → Monthly → "Step into hushmallow Beyond" opens Stripe Checkout on `checkout.stripe.com`, in
-      test mode, for **hushmallow Beyond, A$19.99 a month**.
-- [ ] Pay with `4000 0000 0000 9995`: Stripe declines it on its own page, and nothing is charged. Use
-      Checkout's back link: the app says "No problem. Nothing was charged."
-- [ ] Try again with `4000 0025 0000 3155`: the 3-D Secure screen appears. "Fail authentication" declines; try
-      once more and choose "Complete authentication".
-- [ ] (or) Pay with `4242 4242 4242 4242`.
+- [ ] (S1, E2E-A) Plans → Monthly → "Step into hushmallow Beyond" opens Stripe Checkout on
+      `checkout.stripe.com` (on `checkout.hushmallow.com` once B13 is done), in test mode, for **hushmallow
+      Beyond, A$19.99 a month**. Pay with `4242 4242 4242 4242`.
 - [ ] Back on the preview, the address loses `?billing=success`, and within about 30 seconds the app says
-      "Welcome to hushmallow Beyond".
-- [ ] Stripe (test mode) → Webhooks → the staging endpoint: the events were delivered with `200`.
+      "Welcome to hushmallow Beyond". (The server records the plan at once through `POST /v1/billing/sync`;
+      the app calls it, and takes `session_id` out of the address, from the client release that follows
+      these server changes. Until then `session_id` stays in the address and the app waits for the webhook.)
+- [ ] Stripe → Webhooks → the staging endpoint: every event was delivered with `200`. Customers: the account
+      has **one** customer, with `metadata.user_id` and the email typed at Checkout (D13: the Worker sends no
+      email).
+- [ ] (S1) Then "Step into hushmallow Flow": the server answers `409 already_subscribed`, and the app opens
+      the portal instead of a second Checkout.
+- [ ] (S2, E2E-C) Pay with `4000 0000 0000 9995`: Stripe declines it on its own page, and nothing is charged.
+      Use Checkout's back link: the app says "No problem. Nothing was charged." No plan.
+- [ ] (S2) `4000 0025 0000 3155` with "Fail authentication": no plan; again with "Complete authentication":
+      active.
+- [ ] (S2) Two tabs, before paying: Flow monthly in tab 1, then Beyond monthly in tab 2. Tab 1's Checkout
+      page now says it has expired; only one subscription is possible.
 
 **4. Use the plan**
 
 - [ ] Flow's rituals and worlds open; Beyond's do too.
 - [ ] Settings → Plan shows hushmallow Beyond and "Renews on …", and a "Manage subscription" button.
 
-**5. Another Angle, the real model**
+**5. Another Angle, the real model** (S11)
 
 - [ ] Open Another Angle: the consent card shows (its "What's kept" line mentions the sign-in token used to
       check the plan). Accept.
@@ -482,8 +679,11 @@ postcode:
 - [ ] A crisis-sounding test sentence gets the support response, not an angle.
 - [ ] (Optional) the Worker's logs (Workers & Pages → hushmallow-another-angle-staging → Logs) show
       `source: "billing"` for the session, and no email, account id, `cus_`/`sub_` id or token.
-- [ ] (Optional) an account with **hushmallow Flow** only: Another Angle stays with Zuzu's authored angles
-      (the server answers `subscription_required`), unless a tester code is entered in Settings.
+- [ ] (S11) An account with **hushmallow Flow** only: Another Angle stays with Zuzu's authored angles (the
+      server answers `subscription_required`), unless a tester code is entered in Settings; a tester code
+      still works under `billing+testing`.
+- [ ] (S11, optional) Set staging to `ENTITLEMENT_MODE = "billing"` for a moment: an old testing session gets
+      `401 session_superseded`, and a new session needs Beyond. Set it back to `billing+testing` afterwards.
 
 **6. Save progress**
 
@@ -498,29 +698,50 @@ postcode:
 - [ ] (Optional) On a second device or browser, sign in on the preview: the plan and the synced
       favourites and progress follow the account.
 
-**8. Manage the subscription**
+**8. Manage the subscription** (S6, S7 by hand)
 
-- [ ] Settings → **Manage subscription** opens Stripe's portal on `billing.stripe.com` (test mode).
+- [ ] Settings → **Manage subscription** opens Stripe's portal on `billing.stripe.com` (test mode; from
+      memory, on the custom domain once B13 is done).
 - [ ] Switch to hushmallow Flow (or yearly) there and return: the app shows the new plan.
 - [ ] Cancel (at the period end) and return: Settings shows "Ends on …. Nothing more is charged."
 - [ ] (Optional) Cancel a test subscription **immediately** in the Stripe dashboard: at the next check (open
       the app again) the plan goes, and Another Angle stays with the authored angles.
 
-**Afterwards**
+**9. The rest by hand** (S10, S12 to S14)
 
-- [ ] Cancel any test subscriptions still running. Deleting a hushmallow account does **not** cancel its
-      Stripe subscription (`docs/PAYMENTS.md`, Known limits).
+- [ ] (S10, only once B3's registration is Collecting and staging has `STRIPE_AUTOMATIC_TAX = "true"`) Check
+      out with an Australian address. In the dashboard (or the API, with `expand[]=line_items.data.taxes`)
+      the session's `taxability_reason` is not `not_collecting`, the total is still A$19.99 (inclusive), and
+      the invoice shows GST included. Note what a non-Australian address gives, for the owner to judge.
+- [ ] (S12) With E2E-A's Beyond still renewing, the delete screen's "Not touched" list says to cancel it
+      first in Settings → Manage subscription (and, from the client release with the deletion guard (D9), a
+      "Cancel your subscription first" step comes before Delete). After a cancel at the period end, deleting
+      goes ahead, and the Stripe subscription still ends at its period end.
+- [ ] (S13, after B13) A new checkout's address is on `checkout.hushmallow.com`, the app opens it, and the
+      payment completes; the portal opens too.
+- [ ] (S14) The staging Worker's logs (Workers & Pages → hushmallow-another-angle-staging → Logs): search for
+      `cus_`, `sub_`, `cs_`, `sk_`, `rk_`, `whsec_`, `@` and `eyJ`; none is there. No `mode_mismatch`
+      outcome; any `"stripe_http":403` is a missing key permission (B8).
+
+**Afterwards (teardown)**
+
+- [ ] The driver deletes its own test clocks (and with them their customers and subscriptions). If a run was
+      stopped, delete any `hushmallow-e2e …` clock left in Billing → Test clocks.
+- [ ] Cancel E2E-A's subscription and any other test subscription still running. Deleting a hushmallow
+      account does **not** cancel its Stripe subscription (`docs/PAYMENTS.md`, Known limits).
 - [ ] Delete the rehearsal accounts if you no longer need them (account screen → Delete account). They are
-      in hushmallow-staging only.
+      in hushmallow-staging only. Nothing is ever made in live mode.
 - [ ] Note anything that looked or felt wrong; it goes into the next round before production is switched on.
 
 ## What staging does not change, and what is still open
 
 * Production: no change to `app.hushmallow.com`, its Worker (`ENTITLEMENT_MODE = "testing"`, no billing
   values), its sign-in project hushmallow1, its model key, its tester codes or its security headers.
-  Production billing stays off until the owner does `docs/PAYMENTS.md` sections 1 to 4 in **live** mode.
+  Production billing stays off until the owner does `docs/PAYMENTS.md` sections 1 to 4 in **live** mode,
+  and merges the activation commit that sets `BILLING_LIVE = "approved"`.
 * The prices above are provisional test values, not the final commercial prices.
-* Legal documents (privacy policy and terms for the main app) do not exist yet.
+* The privacy policy and terms (`legal/privacy.html`, `legal/terms.html`) are drafts awaiting the owner's and
+  legal review; the sandbox portal links the preview's copies (B6).
 * A branch preview of **any** branch (and a deployment's own `<hash>.hushmallow.pages.dev` address)
   counts as staging in the app. Only origins listed in the staging Worker's `ALLOWED_ORIGINS` are answered,
   so another preview needs its origin added there (and as `APP_ORIGIN`, if Checkout should return to it),

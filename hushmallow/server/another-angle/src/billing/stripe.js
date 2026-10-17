@@ -2,9 +2,12 @@
 // web subscriptions (src/billing/routes.js):
 //
 //   createStripe({ secretKey, apiVersion?, fetch }) →
-//     createCheckoutSession(params, { idempotencyKey? }), createPortalSession(params), retrieveSubscription(id)
+//     createCheckoutSession(params, { idempotencyKey? }), createPortalSession(params), retrieveSubscription(id),
+//     createCustomer(params, { idempotencyKey? }), retrieveCustomer(id), retrievePrice(id), listSubscriptions(customer),
+//     retrieveCheckoutSession(id), expireCheckoutSession(id)
 //     each → { ok: true, data } | { ok: false, status, code }   (never throws; status 0 = no answer)
 //     (idempotencyKey: Stripe's Idempotency-Key header; the same key gives back the first answer for 24 hours)
+//     Every call sends Stripe-Version when apiVersion is set (src/config.js pins it wherever billing is on).
 //   verifyWebhookSignature(payload, header, secret, nowMs, toleranceSec?) →
 //     { ok: true, timestamp } | { ok: false, code }
 //   signWebhookPayload(payload, secret, timestampSec) → a Stripe-Signature header (tests, rehearsals)
@@ -19,6 +22,8 @@
 const API = 'https://api.stripe.com';
 const enc = new TextEncoder();
 export const SIGNATURE_TOLERANCE_SEC = 300;
+/** listSubscriptions reads at most this many of a customer's subscriptions (every status): far more than one account has. */
+export const SUBSCRIPTION_LIST_LIMIT = 20;
 
 /**
  * Stripe's form encoding: nested objects and arrays as key[sub][0]=… pairs.
@@ -69,10 +74,22 @@ export function createStripe({ secretKey, apiVersion = '', fetch: fetchImpl, tim
   return {
     /** POST /v1/checkout/sessions @param {Record<string, unknown>} params @param {{ idempotencyKey?: string }} [o] */
     createCheckoutSession: (params, o) => call('POST', '/v1/checkout/sessions', params, o),
-    /** POST /v1/billing_portal/sessions @param {{ customer: string, return_url: string }} params */
+    /** POST /v1/billing_portal/sessions (flow_data: straight to one task, such as a plan change) @param {{ customer: string, return_url: string, flow_data?: Record<string, unknown> }} params */
     createPortalSession: (params) => call('POST', '/v1/billing_portal/sessions', params),
     /** GET /v1/subscriptions/:id (the current truth, whatever order the events came in) @param {string} id */
     retrieveSubscription: (id) => call('GET', `/v1/subscriptions/${encodeURIComponent(id)}`),
+    /** POST /v1/customers @param {Record<string, unknown>} params @param {{ idempotencyKey?: string }} [o] */
+    createCustomer: (params, o) => call('POST', '/v1/customers', params, o),
+    /** GET /v1/customers/:id (a deleted one reads back as { id, deleted: true }) @param {string} id */
+    retrieveCustomer: (id) => call('GET', `/v1/customers/${encodeURIComponent(id)}`),
+    /** GET /v1/prices/:id @param {string} id */
+    retrievePrice: (id) => call('GET', `/v1/prices/${encodeURIComponent(id)}`),
+    /** GET /v1/subscriptions?customer=…&status=all (a customer's subscriptions, ended ones included) @param {string} customer */
+    listSubscriptions: (customer) => call('GET', `/v1/subscriptions?${new URLSearchParams({ customer, status: 'all', limit: String(SUBSCRIPTION_LIST_LIMIT) })}`),
+    /** GET /v1/checkout/sessions/:id @param {string} id */
+    retrieveCheckoutSession: (id) => call('GET', `/v1/checkout/sessions/${encodeURIComponent(id)}`),
+    /** POST /v1/checkout/sessions/:id/expire (an open session can no longer be paid) @param {string} id */
+    expireCheckoutSession: (id) => call('POST', `/v1/checkout/sessions/${encodeURIComponent(id)}/expire`, {}),
   };
 }
 

@@ -21,9 +21,9 @@
 //              device), and it expires with the paid period (at most
 //              BILLING_TOKEN_TTL_HOURS). No invite code is accepted.
 //   billing+testing — billing, or a valid tester invite code (a testing
-//              session exactly as in testing mode, with its caps). Only with
-//              TESTER_INVITE_CODES set; without codes it is billing alone,
-//              never open to anyone.
+//              session exactly as in testing mode, with its caps, its token
+//              marked inv: 1). Only with TESTER_INVITE_CODES set; without
+//              codes it is billing alone, never open to anyone.
 //
 // Either way /v1/angle only ever checks the server's own signed token.
 
@@ -31,7 +31,7 @@ import { verifySignedTransaction } from './storekit.js';
 import { keyedHash, safeEqual } from './tokens.js';
 
 /**
- * @typedef {{ ok: true, subject: string, source: 'testing' | 'storekit' | 'billing', expiresAt: number }
+ * @typedef {{ ok: true, subject: string, source: 'testing' | 'storekit' | 'billing', expiresAt: number, invited?: true }
  *         | { ok: false, status: number, code: string, message: string }} EntitlementResult
  * @typedef {{ accountToken?: string | null,
  *   beyond?: (token: string) => Promise<{ ok: true, uid: string, until: number } | { ok: false, status: number, code: string, message: string }> }} BillingDeps
@@ -89,11 +89,12 @@ async function billingEntitlement(body, cfg, now, { accountToken = null, beyond 
     }
     refused = { ok: false, status: r.status, code: r.code, message: r.message };
   }
-  // a tester's invite code (billing+testing with codes set): the testing session, as in testing mode
+  // a tester's invite code (billing+testing with codes set): the testing session, as in testing mode, marked as minted
+  // with a code (invited), so the testing sessions from before the switch can be told apart and refused
   if (testers && body.invite) {
     if (await inviteMatches(body.invite, cfg)) {
       const subject = body.deviceId ? `dev_${await keyedHash(cfg.hashKey, `device:${body.deviceId}`)}` : `dev_${crypto.randomUUID()}`;
-      return { ok: true, subject, source: 'testing', expiresAt: now + cfg.testingTokenTtlMs };
+      return { ok: true, subject, source: 'testing', expiresAt: now + cfg.testingTokenTtlMs, invited: true };
     }
     if (!refused) return { ok: false, status: 403, code: 'invite_required', message: 'That tester invite code is not one of ours.' };
   }

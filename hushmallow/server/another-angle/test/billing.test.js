@@ -13,9 +13,10 @@ import { makeEnv, req, angleReq, clock, allowAll, denyAll, ORIGIN, CLOCK_START, 
 import { createApp } from '../src/app.js';
 import { createMockProvider } from '../src/providers/mock.js';
 import { verifyWebhookSignature, signWebhookPayload, formEncode, SIGNATURE_TOLERANCE_SEC } from '../src/billing/stripe.js';
-import { memoryBillingNamespace, billingClient, summarise, supersedes, effectiveTier, planForPrice, PERIOD_GRACE_MS, EVENT_KEEP_MS, Billing } from '../src/billing/store.js';
+import { memoryBillingNamespace, billingClient, summarise, supersedes, effectiveTier, planForPrice, PERIOD_GRACE_MS, PAST_DUE_GRACE_MS, EVENT_KEEP_MS, Billing } from '../src/billing/store.js';
 import { createAccountVerifier } from '../src/billing/account.js';
 import { CHECKOUT_WINDOW_MS } from '../src/billing/routes.js';
+import { price as sellable, PRICE_SLOTS } from './billing-fixtures.js';
 import { readConfig, SUPABASE_PROJECT_URL, STAGING_SUPABASE_PROJECT_URL } from '../src/config.js';
 import { fromB64url } from '../src/auth/tokens.js';
 import worker from '../src/index.js';
@@ -25,7 +26,10 @@ const APP = 'https://app.hushmallow.com';
 const UID = '0b0c3c1e-5f2a-4c1b-9a77-2d4e6f8a9b10';
 const OTHER = '7d1f2e3a-0b4c-4d5e-8f60-718293a4b5c6';
 const WHSEC = `whsec_${'b'.repeat(32)}`;
-const SK = `sk_test_${'a'.repeat(24)}`;
+// the production Worker's key is live, and taken only with BILLING_LIVE = "approved" (src/config.js); the staging
+// Worker's is a test key. Both built at runtime, so no key-shaped literal is ever committed.
+const SK = `rk_live_${'a'.repeat(24)}`;
+const TEST_SK = `sk_test_${'a'.repeat(24)}`;
 const PK = `sb_publishable_${'c'.repeat(24)}`;
 const PRICES = { paidMonthly: 'price_FlowMonthly1', paidYearly: 'price_FlowYearly1', ultraMonthly: 'price_BeyondMonthly1', ultraYearly: 'price_BeyondYearly1' };
 const DAY = 86400000;
@@ -37,11 +41,12 @@ function jwt(sub = UID, { exp = (CLOCK_START + 3600000) / 1000, iss = `${SUPABAS
 }
 const TOKEN = jwt(UID);
 
-/** The billing configuration, on. */
+/** The billing configuration, on: production with its live key and the owner's approval (staging: its test key). */
 function billingEnv(over = {}) {
+  const staging = over.ACCOUNTS_STAGE === 'staging';
   return makeEnv({
     ALLOWED_ORIGINS: `${ORIGIN},${APP},http://localhost:8000`,
-    STRIPE_SECRET_KEY: SK, STRIPE_WEBHOOK_SECRET: WHSEC,
+    STRIPE_SECRET_KEY: staging ? TEST_SK : SK, STRIPE_WEBHOOK_SECRET: WHSEC, ...(staging ? {} : { BILLING_LIVE: 'approved' }),
     STRIPE_PRICE_PAID_MONTHLY: PRICES.paidMonthly, STRIPE_PRICE_PAID_YEARLY: PRICES.paidYearly,
     STRIPE_PRICE_ULTRA_MONTHLY: PRICES.ultraMonthly, STRIPE_PRICE_ULTRA_YEARLY: PRICES.ultraYearly,
     SUPABASE_URL: SUPABASE, SUPABASE_PUBLISHABLE_KEY: PK, APP_ORIGIN: APP,
@@ -63,7 +68,8 @@ function subscription(over = {}, { price = PRICES.ultraMonthly, end = (CLOCK_STA
 function upstream({ users = { [TOKEN]: { id: UID, email: 'ana@example.com' } } } = {}) {
   const calls = [];
   const subs = new Map();
-  const o = { calls, subs, users, stripeDown: false, checkoutUrl: 'https://checkout.stripe.com/c/pay/cs_test_a1' };
+  const customers = new Map();
+  const o = { calls, subs, users, customers, stripeDown: false, checkoutUrl: 'https://checkout.stripe.com/c/pay/cs_test_a1' };
   const reply = (status, body) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
   o.fetch = async (url, init = {}) => {
     const u = new URL(String(url));
@@ -78,10 +84,20 @@ function upstream({ users = { [TOKEN]: { id: UID, email: 'ana@example.com' } } }
     }
     if (u.origin !== 'https://api.stripe.com') throw new TypeError('unexpected host');
     if (o.stripeDown) return reply(500, { error: { type: 'api_error', message: 'down' } });
+    // checkout's price check (the four configured prices, sellable) and the account's own customer (one per idempotency key)
+    const pm = /^\/v1\/prices\/(price_[A-Za-z0-9]+)$/.exec(u.pathname);
+    if (call.method === 'GET' && pm) return PRICE_SLOTS[pm[1]] ? reply(200, sellable(pm[1], ...PRICE_SLOTS[pm[1]])) : reply(404, { error: { code: 'resource_missing' } });
+    if (call.method === 'POST' && u.pathname === '/v1/customers') {
+      const key = headers['idempotency-key'] || String(customers.size);
+      if (!customers.has(key)) customers.set(key, `cus_New${customers.size + 1}abc`);
+      return reply(200, { id: customers.get(key), object: 'customer' });
+    }
     if (call.method === 'POST' && u.pathname === '/v1/checkout/sessions') return reply(200, { id: 'cs_test_a1', object: 'checkout.session', url: o.checkoutUrl });
     if (call.method === 'POST' && u.pathname === '/v1/billing_portal/sessions') return reply(200, { id: 'bps_1', object: 'billing_portal.session', url: 'https://billing.stripe.com/p/session/test_1' });
     const m = /^\/v1\/subscriptions\/(sub_[A-Za-z0-9]+)$/.exec(u.pathname);
     if (call.method === 'GET' && m) return subs.has(m[1]) ? reply(200, subs.get(m[1])) : reply(404, { error: { code: 'resource_missing', type: 'invalid_request_error', message: `No such subscription: '${m[1]}'` } });
+    // a customer's subscriptions (the webhook lists them when one ends)
+    if (call.method === 'GET' && u.pathname === '/v1/subscriptions') return reply(200, { object: 'list', data: [...subs.values()].filter((x) => x.customer === u.searchParams.get('customer')), has_more: false });
     return reply(404, { error: { code: 'resource_missing' } });
   };
   o.stripe = () => calls.filter((c) => c.url.startsWith('https://api.stripe.com'));
@@ -101,7 +117,8 @@ const billingReq = (path, { token = TOKEN, body, method, origin } = {}) => req(p
   headers: token ? { authorization: `Bearer ${token}` } : {},
 });
 let evtSeq = 0;
-const event = (type, object, now, id = `evt_Test${++evtSeq}`) => ({ id, object: 'event', type, created: Math.floor(now() / 1000), livemode: false, data: { object } });
+// livemode true: the shared fixture's key is live, and the webhook applies only events of its own mode
+const event = (type, object, now, id = `evt_Test${++evtSeq}`) => ({ id, object: 'event', type, created: Math.floor(now() / 1000), livemode: true, data: { object } });
 async function deliver(app, env, ev, { secret = WHSEC, at, tamper = null, header } = {}) {
   const payload = JSON.stringify(ev);
   const sig = header ?? await signWebhookPayload(payload, secret, Math.floor((at ?? CLOCK_START) / 1000));
@@ -230,8 +247,8 @@ function checkWrangler(toml) {
       continue;
     }
     // switched on: complete, and every value has its shape (readConfig counts a misshapen one as unset), with
-    // stand-ins for the two secrets, which never live here
-    const b = readConfig({ ...vars, STRIPE_SECRET_KEY: SK, STRIPE_WEBHOOK_SECRET: WHSEC }).billing;
+    // stand-ins for the two secrets, which never live here, and for the approval until its own commit
+    const b = readConfig({ BILLING_LIVE: 'approved', ...vars, STRIPE_SECRET_KEY: SK, STRIPE_WEBHOOK_SECRET: WHSEC }).billing;
     assert.equal(b.configured, true, `${name}: the billing vars are complete, each with its shape`);
     assert.equal(b.supabaseUrl, String(vars.SUPABASE_URL).replace(/\/+$/, ''), `${name}: SUPABASE_URL is hushmallow1`);
     assert.equal(b.supabaseKey, vars.SUPABASE_PUBLISHABLE_KEY, `${name}: SUPABASE_PUBLISHABLE_KEY is a publishable key`);
@@ -303,6 +320,12 @@ test('wrangler.toml switched on exactly as docs/PAYMENTS.md says passes the same
 });
 
 // -------------------------------------------------------------- not set up --
+/** /v1/health's key flags (test/billing-env.test.js): the production fixture's approved live key, the staging one's test key, none. */
+const FLAGS = {
+  live: { stripe_mode: 'live', live_approved: true, api_version: null, automatic_tax: false },
+  test: { stripe_mode: 'test', live_approved: false, api_version: null, automatic_tax: false },
+  none: { stripe_mode: null, live_approved: false, api_version: null, automatic_tax: false },
+};
 test('not configured: every billing route answers 503, health says so, and nothing is called', async () => {
   const up = upstream();
   const s = setup({ env: makeEnv({ PROVIDER: 'mock' }), up });
@@ -314,14 +337,14 @@ test('not configured: every billing route answers 503, health says so, and nothi
   const wh = await deliver(s.app, s.env, event('customer.subscription.updated', subscription(), s.now));
   assert.equal(wh.status, 503, 'no webhook secret: Stripe keeps retrying until it is set');
   const h = await (await s.app.fetch(req('/v1/health'), s.env)).json();
-  assert.deepEqual(h.billing, { configured: false, webhook: false });
+  assert.deepEqual(h.billing, { configured: false, webhook: false, ...FLAGS.none });
   assert.deepEqual(h.configured, { signing_key: true, provider_key: true }, 'the existing block is unchanged');
   assert.equal(up.calls.length, 0);
   // configured, but the Durable Object is not bound: still off (never an in-memory stand-in)
   const unbound = setup({ env: billingEnv({ BILLING: undefined }), up });
   assert.equal((await unbound.app.fetch(billingReq('/v1/billing/status'), unbound.env)).status, 503);
-  assert.deepEqual((await (await unbound.app.fetch(req('/v1/health'), unbound.env)).json()).billing, { configured: false, webhook: true });
-  assert.deepEqual((await (await s.app.fetch(req('/v1/health'), billingEnv())).json()).billing, { configured: true, webhook: true });
+  assert.deepEqual((await (await unbound.app.fetch(req('/v1/health'), unbound.env)).json()).billing, { configured: false, webhook: true, ...FLAGS.live });
+  assert.deepEqual((await (await s.app.fetch(req('/v1/health'), billingEnv())).json()).billing, { configured: true, webhook: true, ...FLAGS.live });
 });
 
 // ---------------------------------------------------------------- checkout --
@@ -335,19 +358,21 @@ test('checkout: the account is checked with the sign-in project, then a subscrip
   assert.equal(sb.url, `${SUPABASE}/auth/v1/user`);
   assert.equal(sb.headers.apikey, PK);
   assert.equal(sb.headers.authorization, `Bearer ${TOKEN}`);
-  const [st] = s.up.stripe();
-  assert.equal(st.path, '/v1/checkout/sessions');
+  // the price is read first (src/billing/routes.js CHECKOUT_PRICE_RULES), then the account's own customer is made
+  const sessions = () => s.up.stripe().filter((c) => c.method === 'POST' && c.path === '/v1/checkout/sessions');
+  assert.deepEqual(s.up.stripe().map((c) => `${c.method} ${c.path}`), [`GET /v1/prices/${PRICES.ultraYearly}`, 'POST /v1/customers', 'POST /v1/checkout/sessions']);
+  const [st] = sessions();
   assert.equal(st.headers.authorization, `Bearer ${SK}`);
   assert.equal(st.headers['content-type'], 'application/x-www-form-urlencoded');
   const f = Object.fromEntries(st.form);
   assert.deepEqual(f, {
-    mode: 'subscription', 'line_items[0][price]': PRICES.ultraYearly, 'line_items[0][quantity]': '1', client_reference_id: UID,
-    success_url: `${APP}/?billing=success`, cancel_url: `${APP}/?billing=cancel`,
-    'metadata[user_id]': UID, 'metadata[plan]': 'ultra', 'metadata[period]': 'yearly', 'subscription_data[metadata][user_id]': UID,
+    mode: 'subscription', 'line_items[0][price]': PRICES.ultraYearly, 'line_items[0][quantity]': '1', customer: 'cus_New1abc', client_reference_id: UID,
+    success_url: `${APP}/?billing=success&session_id={CHECKOUT_SESSION_ID}`, cancel_url: `${APP}/?billing=cancel`,
+    'metadata[user_id]': UID, 'metadata[plan]': 'ultra', 'metadata[period]': 'yearly', 'metadata[price]': PRICES.ultraYearly, 'subscription_data[metadata][user_id]': UID,
   });
   // Flow monthly maps to its own price
   await s.app.fetch(billingReq('/v1/billing/checkout', { body: { plan: 'paid', period: 'monthly' } }), s.env);
-  assert.equal(s.up.stripe()[1].form.get('line_items[0][price]'), PRICES.paidMonthly);
+  assert.equal(sessions()[1].form.get('line_items[0][price]'), PRICES.paidMonthly);
   // the account answer is kept a minute: no second question to the sign-in project, then asked again
   assert.equal(s.up.supabase().length, 1);
   s.now.advance(61000);
@@ -400,7 +425,7 @@ test('checkout: refusals (no account, a dead session, bad bodies, no price, Stri
 test('checkout: two tabs at once get one Checkout Session (one idempotency key per account, plan and period, for two minutes)', async () => {
   const s = setup();
   const post = (plan, period, token = TOKEN) => s.app.fetch(billingReq('/v1/billing/checkout', { body: { plan, period }, token }), s.env);
-  const keys = () => s.up.stripe().map((c) => c.headers['idempotency-key']);
+  const keys = () => s.up.stripe().filter((c) => c.path === '/v1/checkout/sessions').map((c) => c.headers['idempotency-key']);
   await Promise.all([post('ultra', 'monthly'), post('ultra', 'monthly')]);
   const [a, b] = keys();
   assert.ok(a && a === b, 'the same key, so Stripe gives back the same session: it can be paid once');
@@ -412,10 +437,11 @@ test('checkout: two tabs at once get one Checkout Session (one idempotency key p
   await post('ultra', 'monthly');
   assert.equal(new Set(keys()).size, 5, 'another period, plan or account, or a later try: a key of its own');
   for (const k of keys()) assert.ok(k.length <= 255, 'within Stripe\'s limit');
-  // the portal and the webhook's reads carry none
+  // the portal and the webhook's reads carry none (the customer's own is customer:<account>: test/billing-checkout.test.js)
+  const before = s.up.stripe().length;
   await subscribe(s);
   await s.app.fetch(billingReq('/v1/billing/portal', { body: {} }), s.env);
-  assert.deepEqual(s.up.stripe().filter((c) => c.path !== '/v1/checkout/sessions').map((c) => c.headers['idempotency-key']), [undefined, undefined]);
+  assert.deepEqual(s.up.stripe().slice(before).map((c) => [c.path, c.headers['idempotency-key']]), [['/v1/subscriptions/sub_Test123', undefined], ['/v1/billing_portal/sessions', undefined]]);
   assertClean(s.logs);
 });
 
@@ -430,13 +456,13 @@ test('checkout after a cancelled subscription reuses the Stripe customer', async
 // ---------------------------------------------------------- status / portal --
 test('status and portal: nothing yet, then the plan the webhook recorded; the portal for its customer', async () => {
   const s = setup();
-  assert.deepEqual(await status(s), { tier: 'none', status: 'none', current_period_end: null, cancel_at_period_end: false, manageable: false });
+  assert.deepEqual(await status(s), { tier: 'none', status: 'none', current_period_end: null, cancel_at_period_end: false, ends_at: null, manageable: false });
   assert.equal((await s.app.fetch(billingReq('/v1/billing/status', { token: null }), s.env)).status, 401);
   const none = await s.app.fetch(billingReq('/v1/billing/portal', { body: {} }), s.env);
   assert.equal(none.status, 404);
   assert.equal((await none.json()).error.code, 'no_subscription');
   await subscribe(s);
-  assert.deepEqual(await status(s), { tier: 'ultra', status: 'active', current_period_end: new Date(CLOCK_START + 30 * DAY).toISOString(), cancel_at_period_end: false, manageable: true });
+  assert.deepEqual(await status(s), { tier: 'ultra', status: 'active', current_period_end: new Date(CLOCK_START + 30 * DAY).toISOString(), cancel_at_period_end: false, ends_at: null, manageable: true });
   const p = await s.app.fetch(billingReq('/v1/billing/portal', { body: {} }), s.env);
   assert.equal(p.status, 200);
   assert.deepEqual(await p.json(), { url: 'https://billing.stripe.com/p/session/test_1' });
@@ -646,6 +672,17 @@ test('Billing Durable Object: the state machine, one apply per event, old events
   assert.equal(supersedes(rec({ status: 'canceled' }), other({ status: 'active' })), true, 'a new active one replaces an ended one');
   assert.equal(supersedes(rec({ tier: 'paid' }), other({ tier: 'ultra' })), true, 'two active: the higher plan');
   assert.equal(supersedes(rec({ tier: 'ultra' }), other({ tier: 'paid' })), false);
+  // a record whose period was over a day before the other was read (its end never recorded) gives nothing: a lower plan replaces it
+  const stale = rec({ tier: 'ultra' }), after = stale.current_period_end + PERIOD_GRACE_MS;
+  const flow = (over = {}) => ({ ...other({ tier: 'paid', current_period_end: after + 30 * DAY, ...over }), as_of: after });
+  assert.equal(supersedes(stale, { ...flow(), as_of: after - 1 }), false, 'within the grace it still counts');
+  assert.equal(supersedes(stale, flow()), true);
+  assert.equal(supersedes(stale, flow({ status: 'canceled' })), false, 'neither gives anything: the higher plan stays, as before');
+  // a past_due record past its cap (its end never recorded; its period a year long) gives nothing too: a lower plan replaces it
+  const owed = rec({ tier: 'ultra', status: 'past_due', past_due_since: a.as_of, current_period_end: a.as_of + 365 * DAY });
+  const flowAt = (at) => ({ ...other({ tier: 'paid', current_period_end: at + 30 * DAY }), as_of: at });
+  assert.equal(supersedes(owed, flowAt(a.as_of + PAST_DUE_GRACE_MS)), false, 'within the cap it still counts');
+  assert.equal(supersedes(owed, flowAt(a.as_of + PAST_DUE_GRACE_MS + 1)), true);
   assert.equal(typeof Billing, 'function');
 });
 
@@ -655,7 +692,7 @@ test('subscription summary: price → plan, the period end (item or subscription
   assert.deepEqual(planForPrice('price_Unknown1', 'hushmallow.ultra.yearly', prices), { plan: 'ultra', period: 'yearly' });
   assert.equal(planForPrice('price_Unknown1', 'something.else', prices), null);
   const s = summarise(subscription(), prices, 5);
-  assert.deepEqual(s, { v: 1, subscription: 'sub_Test123', customer: 'cus_Test123', status: 'active', tier: 'ultra', period: 'monthly', current_period_end: CLOCK_START + 30 * DAY, cancel_at_period_end: false, as_of: 5 });
+  assert.deepEqual(s, { v: 1, subscription: 'sub_Test123', customer: 'cus_Test123', status: 'active', tier: 'ultra', period: 'monthly', current_period_end: CLOCK_START + 30 * DAY, cancel_at_period_end: false, cancel_at: null, as_of: 5 });
   // older API: the period end on the subscription itself
   const oldApi = summarise({ ...subscription(), current_period_end: (CLOCK_START + 7 * DAY) / 1000, items: { data: [{ price: { id: PRICES.paidMonthly } }] } }, prices, 5);
   assert.equal(oldApi.current_period_end, CLOCK_START + 7 * DAY);
@@ -664,7 +701,8 @@ test('subscription summary: price → plan, the period end (item or subscription
   assert.equal(summarise(subscription({}, { price: 'price_Unknown1' }), prices, 5).tier, 'none', 'an unknown price gives nothing');
   const end = CLOCK_START + 30 * DAY;
   for (const [st, tier] of [['active', 'ultra'], ['trialing', 'ultra'], ['past_due', 'ultra'], ['canceled', 'none'], ['unpaid', 'none'], ['incomplete', 'none'], ['incomplete_expired', 'none'], ['paused', 'none'], ['unknown', 'none']]) {
-    assert.equal(effectiveTier({ ...s, status: st }, CLOCK_START), tier, st);
+    // read just now (past_due counts 14 days from its read: test/billing-state.test.js)
+    assert.equal(effectiveTier({ ...s, status: st, as_of: CLOCK_START }, CLOCK_START), tier, st);
   }
   assert.equal(effectiveTier(s, end + PERIOD_GRACE_MS - 1), 'ultra');
   assert.equal(effectiveTier(s, end + PERIOD_GRACE_MS), 'none');
@@ -862,7 +900,7 @@ test('wrangler.toml [env.staging]: billing+testing for staging only, the preview
   for (const k of ['STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET', 'ANTHROPIC_API_KEY', 'TOKEN_SIGNING_KEY', 'TESTER_INVITE_CODES']) assert.equal(staging[k], undefined, k);
   assert.deepEqual([staging.PROVIDER, staging.DAILY_SPEND_CAP_USD, staging.REQUIRE_HTTPS, staging.ALLOW_NO_ORIGIN], ['anthropic', '3', 'true', 'false']);
   // as the staging Worker reads it once the owner's TEST secrets are set: still off while the prices and the accounts are placeholders
-  const cfg = readConfig({ ...staging, STRIPE_SECRET_KEY: SK, STRIPE_WEBHOOK_SECRET: WHSEC });
+  const cfg = readConfig({ ...staging, STRIPE_SECRET_KEY: TEST_SK, STRIPE_WEBHOOK_SECRET: WHSEC });
   assert.equal(cfg.entitlementMode, 'billing+testing');
   assert.equal(cfg.billing.appOrigin, PREVIEW);
   assert.equal(cfg.billing.accountsStage, 'staging');
@@ -873,10 +911,10 @@ test('wrangler.toml [env.staging]: billing+testing for staging only, the preview
   assert.equal(cfg.billing.placeholderPrices, 4);
   assert.equal(cfg.billing.configured, false);
   // …still off with the four test price ids alone: the accounts are placeholders
-  assert.equal(readConfig({ ...staging, ...REAL_PRICES, STRIPE_SECRET_KEY: SK, STRIPE_WEBHOOK_SECRET: WHSEC }).billing.configured, false);
+  assert.equal(readConfig({ ...staging, ...REAL_PRICES, STRIPE_SECRET_KEY: TEST_SK, STRIPE_WEBHOOK_SECRET: WHSEC }).billing.configured, false);
   // …and on, once the staging project exists too (its URL in src/config.js and in [env.staging.vars], and its key)
   const { readConfig: readWithStaging } = await withStagingProject(STAGING_SUPABASE);
-  const on = readWithStaging({ ...staging, ...REAL_PRICES, SUPABASE_URL: STAGING_SUPABASE, SUPABASE_PUBLISHABLE_KEY: PK, STRIPE_SECRET_KEY: SK, STRIPE_WEBHOOK_SECRET: WHSEC }).billing;
+  const on = readWithStaging({ ...staging, ...REAL_PRICES, SUPABASE_URL: STAGING_SUPABASE, SUPABASE_PUBLISHABLE_KEY: PK, STRIPE_SECRET_KEY: TEST_SK, STRIPE_WEBHOOK_SECRET: WHSEC }).billing;
   assert.equal(on.configured, true);
   assert.equal(on.supabaseUrl, STAGING_SUPABASE);
   assert.equal(on.placeholderPrices, 0);
@@ -910,7 +948,7 @@ test('the staging Worker\'s sign-in project: placeholders mean "accounts not con
   assert.equal((await acct.json()).error.code, 'accounts_not_configured');
   assert.equal((await (await session({ invite: 'MALLOW-ONE', device_id: 'device-aaaaaaaaaaaaaaaa' }, TOKEN)).json()).source, 'testing');
   // /v1/health says so (never a value)
-  assert.deepEqual((await (await s.app.fetch(req('/v1/health'), s.env)).json()).billing, { configured: false, webhook: true, accounts_configured: false });
+  assert.deepEqual((await (await s.app.fetch(req('/v1/health'), s.env)).json()).billing, { configured: false, webhook: true, accounts_configured: false, ...FLAGS.test });
   // no outbound call at all: neither Stripe nor any sign-in project
   assert.equal(s.up.calls.length, 0);
   assert.ok(s.logs.some((l) => JSON.parse(l).err === 'accounts_not_configured'), 'the log line says why');
@@ -918,7 +956,7 @@ test('the staging Worker\'s sign-in project: placeholders mean "accounts not con
   // with the price placeholders too (wrangler.toml [env.staging] as it is): the accounts are named first
   const both = setup({ env: billingEnv({ ...ACCOUNTS, ...PLACEHOLDERS }) });
   assert.equal((await (await both.app.fetch(billingReq('/v1/billing/status'), both.env)).json()).error.code, 'accounts_not_configured');
-  assert.deepEqual((await (await both.app.fetch(req('/v1/health'), both.env)).json()).billing, { configured: false, webhook: true, placeholder_prices: 4, accounts_configured: false });
+  assert.deepEqual((await (await both.app.fetch(req('/v1/health'), both.env)).json()).billing, { configured: false, webhook: true, placeholder_prices: 4, accounts_configured: false, ...FLAGS.test });
   assert.equal(both.up.calls.length, 0);
   // each placeholder alone is enough, on any Worker
   for (const over of [{ SUPABASE_URL: 'https://STAGING_TODO.supabase.co' }, { SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_TODO' }, { SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_TODO_owner_staging_key' }, { ACCOUNTS_STAGE: 'staging' }]) {
@@ -941,7 +979,7 @@ test('the staging Worker\'s sign-in project: placeholders mean "accounts not con
   const off = setup({ env: billingEnv({ SUPABASE_URL: '' }) });
   const r = await (await off.app.fetch(billingReq('/v1/billing/status'), off.env)).json();
   assert.deepEqual([r.error.code, r.error.message], ['billing_not_configured', 'Web subscriptions are not set up on this server.']);
-  assert.deepEqual((await (await off.app.fetch(req('/v1/health'), off.env)).json()).billing, { configured: false, webhook: true });
+  assert.deepEqual((await (await off.app.fetch(req('/v1/health'), off.env)).json()).billing, { configured: false, webhook: true, ...FLAGS.live });
 });
 
 test('once hushmallow-staging exists: the staging Worker accepts only its project, production only hushmallow1; the server and the app name the same project', async () => {
@@ -995,7 +1033,7 @@ test('placeholder price ids (price_TODO…) count as unset: billing answers "not
     assert.match(e.message, /Stripe price ids are still placeholders \(price_TODO…\)/, path);
   }
   const h = await (await s.app.fetch(req('/v1/health'), s.env)).json();
-  assert.deepEqual(h.billing, { configured: false, webhook: true, placeholder_prices: 4 });
+  assert.deepEqual(h.billing, { configured: false, webhook: true, placeholder_prices: 4, ...FLAGS.live });
   // Stripe's events wait (503: Stripe retries) until the ids are real
   assert.equal((await deliver(s.app, s.env, event('customer.subscription.updated', subscription(), s.now))).status, 503);
   // Another Angle: an account cannot get a billing session; a tester's code still opens a testing one
@@ -1010,14 +1048,14 @@ test('placeholder price ids (price_TODO…) count as unset: billing answers "not
   // one placeholder among real ids: only that plan is not on sale
   const m = setup({ env: billingEnv({ STRIPE_PRICE_ULTRA_YEARLY: 'price_TODO_owner' }) });
   assert.equal(readConfig(m.env).billing.configured, true);
-  assert.deepEqual((await (await m.app.fetch(req('/v1/health'), m.env)).json()).billing, { configured: true, webhook: true, placeholder_prices: 1 });
+  assert.deepEqual((await (await m.app.fetch(req('/v1/health'), m.env)).json()).billing, { configured: true, webhook: true, placeholder_prices: 1, ...FLAGS.live });
   const y = await m.app.fetch(billingReq('/v1/billing/checkout', { body: { plan: 'ultra', period: 'yearly' } }), m.env);
   assert.equal(y.status, 503);
   assert.equal((await y.json()).error.code, 'price_not_configured');
   assert.equal(m.up.stripe().length, 0, 'a placeholder is never sent to Stripe');
   const mo = await m.app.fetch(billingReq('/v1/billing/checkout', { body: { plan: 'ultra', period: 'monthly' } }), m.env);
   assert.equal(mo.status, 200);
-  assert.equal(m.up.stripe()[0].form.get('line_items[0][price]'), PRICES.ultraMonthly);
+  assert.equal(m.up.stripe().find((c) => c.path === '/v1/checkout/sessions').form.get('line_items[0][price]'), PRICES.ultraMonthly);
   // nothing set at all: the general message, no word of placeholders
   const off = setup({ env: makeEnv({ PROVIDER: 'mock' }) });
   const r = await off.app.fetch(billingReq('/v1/billing/status'), off.env);
