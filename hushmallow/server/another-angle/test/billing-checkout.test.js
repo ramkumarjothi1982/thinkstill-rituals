@@ -848,8 +848,8 @@ async function paid(s, { sub = {}, session = {} } = {}) {
   Object.assign(s.up.sessions.get(id), { status: 'complete', payment_status: 'paid', subscription: 'sub_Paid1', ...session });
   return id;
 }
-const ACTIVE = { tier: 'ultra', status: 'active', current_period_end: new Date(CLOCK_START + 30 * DAY).toISOString(), cancel_at_period_end: false, ends_at: null, manageable: true };
-const NONE = { tier: 'none', status: 'none', current_period_end: null, cancel_at_period_end: false, ends_at: null, manageable: false };
+const ACTIVE = { tier: 'ultra', status: 'active', period: 'monthly', current_period_end: new Date(CLOCK_START + 30 * DAY).toISOString(), cancel_at_period_end: false, ends_at: null, manageable: true };
+const NONE = { tier: 'none', status: 'none', period: null, current_period_end: null, cancel_at_period_end: false, ends_at: null, manageable: false };
 
 test('POST /v1/billing/sync: back from Checkout, the session\'s subscription is read and recorded at once; the answer is the status', async () => {
   const s = track(setup());
@@ -905,8 +905,10 @@ test('sync refusals: another account\'s session (403), not complete (409), a bad
     assert.deepEqual(await code(await sync(s, { session_id: v })), [400, 'invalid_session'], String(v));
   }
   assert.deepEqual(lines(s.logs).filter((l) => l.route === 'sync' && l.status === 'invalid').map((l) => l.err), ['mode_mismatch', ...Array(6).fill('session_id')]);
-  assert.deepEqual(await code(await sync(s, {})), [400, 'invalid_session'], 'no session_id');
-  for (const b of [{ session_id: id, plan: 'ultra' }, [id], id]) assert.deepEqual(await code(await sync(s, b)), [400, 'invalid_body'], JSON.stringify(b));
+  // {} is the refresh after a plan change (test/billing-upgrade.test.js): this account has no record yet, so 404 and
+  // nothing asked of Stripe
+  assert.deepEqual(await code(await sync(s, {})), [404, 'no_subscription'], 'no session_id: a refresh');
+  for (const b of [{ session_id: id, plan: 'ultra' }, { session_id: id, refresh: true }, { refresh: false }, { refresh: 'true' }, [id], id]) assert.deepEqual(await code(await sync(s, b)), [400, 'invalid_body'], JSON.stringify(b));
   assert.equal(calls(s).length, n);
   // unknown to Stripe: 404
   assert.deepEqual(await code(await sync(s, { session_id: `cs_live_Z${'x'.repeat(16)}` })), [404, 'session_not_found']);
@@ -978,47 +980,81 @@ test('sync shares the billing rate limit (BILLING_IP_LIMITER, else the isolate\'
 });
 
 // ------------------------------------------------------------ the portal --
-test('portal intent "switch": straight to the plan change of the account\'s subscription; Stripe refusing the flow (400) opens the portal\'s home; no customer is 404', async () => {
+test('portal: {} is the home (Settings → Manage subscription, cancel included), unchanged; intent "switch" is the plan choice, back to ?billing=changed or ?billing=unchanged, never the home; Stripe refusing the flow is 503 plan_change_unavailable', async () => {
   const s = track(setup());
   const portal = (body, o = {}) => s.app.fetch(billingReq('/v1/billing/portal', { body, ...o }), s.env);
   const portals = () => s.up.stripe().filter((c) => c.path === '/v1/billing_portal/sessions').map((c) => Object.fromEntries(c.form));
   const home = { customer: 'cus_Test123', return_url: `${APP}/?billing=portal` };
   const URL_ = 'https://billing.stripe.com/p/session/test_1';
+  const SWITCH = {
+    customer: 'cus_Test123', return_url: `${APP}/?billing=unchanged`,
+    'flow_data[type]': 'subscription_update', 'flow_data[subscription_update][subscription]': 'sub_Test123',
+    'flow_data[after_completion][type]': 'redirect', 'flow_data[after_completion][redirect][return_url]': `${APP}/?billing=changed`,
+  };
   assert.deepEqual(await code(await portal({ intent: 'switch' })), [404, 'no_subscription']);
+  assert.deepEqual(await code(await portal({})), [404, 'no_subscription']);
+  assert.equal(portals().length, 0);
   await subscribe(s);
   const res = await portal({ intent: 'switch' });
   assert.equal(res.status, 200);
+  assert.equal(res.headers.get('access-control-allow-origin'), ORIGIN);
   assert.deepEqual(await res.json(), { url: URL_, flow: 'subscription_update' });
-  assert.deepEqual(portals().at(-1), { ...home, 'flow_data[type]': 'subscription_update', 'flow_data[subscription_update][subscription]': 'sub_Test123' });
-  // {} (and no body at all): the home, as before
+  assert.deepEqual(portals().at(-1), SWITCH);
+  assert.deepEqual([lastLog(s, 'portal').status, lastLog(s, 'portal').intent], ['ok', 'switch']);
+  // {} (and no body at all): the home, exactly as before, cancellation and all (it is Stripe's page, unchanged)
   assert.deepEqual(await (await portal({})).json(), { url: URL_ });
   assert.deepEqual(await (await portal(undefined, { method: 'POST' })).json(), { url: URL_ });
   assert.deepEqual(portals().slice(-2), [home, home]);
-  // the portal not letting customers switch plans: once more without flow_data, and the log says so
+  assert.equal(lastLog(s, 'portal').intent, 'home');
+  // the portal not letting customers switch plans: 503, and never the home in its place (one call, no second)
   s.up.portalFlows = false;
+  let n = portals().length;
   const fb = await portal({ intent: 'switch' });
-  assert.deepEqual(await fb.json(), { url: URL_, flow: 'portal' });
-  assert.deepEqual(portals().slice(-2).map((f) => f['flow_data[type]'] ?? null), ['subscription_update', null]);
+  assert.deepEqual(await code(fb), [503, 'plan_change_unavailable']);
+  assert.equal((await fb.json()).url, undefined);
+  assert.deepEqual(portals().slice(n), [SWITCH], 'no fallback to the home');
   const l = lastLog(s, 'portal');
-  assert.deepEqual([l.status, l.http, l.err, l.stripe_http], ['switch_fallback', 200, 'invalid_request_error', 400]);
-  // any other failure is not retried
+  assert.deepEqual([l.status, l.http, l.err, l.stripe_http, l.intent], ['plan_change_unavailable', 503, 'flow:invalid_request_error', 400, 'switch']);
+  // the home still opens: cancelling is never behind the plan-change setting
+  assert.deepEqual(await (await portal({})).json(), { url: URL_ });
+  // any other failure is 502, not retried
   s.up.portalFlows = true;
   s.up.fail = { path: /^\/v1\/billing_portal\//, status: 500, error: { type: 'api_error' } };
-  const n = portals().length;
+  n = portals().length;
   assert.deepEqual(await code(await portal({ intent: 'switch' })), [502, 'billing_unavailable']);
   assert.equal(portals().length, n + 1);
+  assert.deepEqual(await code(await portal({})), [502, 'billing_unavailable']);
   s.up.fail = null;
-  // bodies other than {} or { intent: 'switch' }
-  for (const [b, want] of [[{ intent: 'cancel' }, 'invalid_intent'], [{ intent: 'switch', plan: 'ultra' }, 'invalid_body'], [[], 'invalid_body'], [null, 'invalid_body']]) {
+  // bodies other than {}, { intent: 'switch' } or { intent: 'upgrade', plan, period }
+  for (const [b, want] of [
+    [{ intent: 'cancel' }, 'invalid_intent'], [{ intent: 'SWITCH' }, 'invalid_intent'], [{ intent: 'switch', plan: 'ultra' }, 'invalid_body'],
+    [{ plan: 'ultra', period: 'yearly' }, 'invalid_body'], [{ intent: 'switch', url: 'https://evil.example/' }, 'invalid_body'],
+    [{ intent: 'upgrade', plan: 'ultra', period: 'yearly', return_url: 'https://evil.example/' }, 'invalid_body'],
+    [[], 'invalid_body'], [null, 'invalid_body'],
+  ]) {
     assert.deepEqual(await code(await portal(b)), [400, want], JSON.stringify(b));
   }
   assert.deepEqual(await code(await s.app.fetch(req('/v1/billing/portal', { raw: 'nope', headers: { authorization: `Bearer ${TOKEN}` } }), s.env)), [400, 'invalid_json']);
-  // a subscription that has ended: no plan to change, the home opens
+  // payment owed: fix the card in Manage subscription first, no plan change on a failing card
+  for (const st of ['past_due', 'unpaid', 'incomplete', 'paused']) {
+    s.now.advance(60000);
+    s.up.subs.set('sub_Test123', subscription({ status: st }));
+    await deliver(s.app, s.env, event('customer.subscription.updated', subscription({ status: st }), s.now), { at: s.now() });
+    assert.equal((await status(s)).status, st);
+    n = portals().length;
+    assert.deepEqual(await code(await portal({ intent: 'switch' })), [409, 'payment_issue'], st);
+    assert.equal(portals().length, n, 'Stripe not asked');
+    assert.deepEqual(await (await portal({})).json(), { url: URL_ }, `${st}: Manage subscription still opens`);
+  }
+  // a subscription that has ended: nothing to change (a new plan is a checkout); the home still opens for receipts
   s.now.advance(60000);
   s.up.subs.set('sub_Test123', subscription({ status: 'canceled' }));
   await deliver(s.app, s.env, event('customer.subscription.deleted', subscription({ status: 'canceled' }), s.now), { at: s.now() });
   assert.equal((await status(s)).status, 'canceled');
-  assert.deepEqual(await (await portal({ intent: 'switch' })).json(), { url: URL_, flow: 'portal' });
+  n = portals().length;
+  assert.deepEqual(await code(await portal({ intent: 'switch' })), [404, 'no_subscription']);
+  assert.equal(portals().length, n);
+  assert.deepEqual(await (await portal({})).json(), { url: URL_ });
   assert.deepEqual(portals().at(-1), home);
   assertClean(allLogs.flat());
 });

@@ -91,7 +91,9 @@ export function price(id, plan, period, over = {}) {
  * by customer). A POST with an Idempotency-Key it has seen gets the first answer again, as Stripe does. Sessions are of
  * the key's mode (cs_live_… on a live key) and keep what checkout sent. `fail` makes every call whose path matches
  * answer with that status and error (a restricted key without a permission, Stripe down); `portalFlows: false`
- * refuses a portal session with flow_data (the portal does not let customers switch plans). A customer marked
+ * refuses a portal session with flow_data (the portal does not let customers switch plans), and `portalPrices` (the
+ * portal configuration's subscription_update products, as price ids; null: any) refuses a confirm flow to any other
+ * price, as Stripe does. A customer marked
  * `deleted: true` (in `customers`) is read back as Stripe's deleted customer, and listing its subscriptions
  * (unless `deletedListing` is 'empty') or making a session for it answers 400 resource_missing.
  */
@@ -114,6 +116,8 @@ export function upstream({ users = { [TOKEN]: { id: UID, email: 'ana@example.com
     /** @type {{ path: RegExp, status: number, error: Record<string, string> } | null} */
     fail: null,
     portalFlows: true,
+    /** @type {string[] | null} */
+    portalPrices: null,
     /** @type {'missing' | 'empty'} what listing a deleted customer's subscriptions answers */
     deletedListing: 'missing',
     /** the clock sessions expire on (setup() gives it the app's) */
@@ -163,6 +167,8 @@ export function upstream({ users = { [TOKEN]: { id: UID, email: 'ana@example.com
     }
     if (method === 'POST' && p === '/v1/billing_portal/sessions') {
       if (form.has('flow_data[type]') && !o.portalFlows) return reply(400, { error: { type: 'invalid_request_error', message: 'This feature is not enabled for the portal configuration of cus_x.' } });
+      const to = form.get('flow_data[subscription_update_confirm][items][0][price]');
+      if (to !== null && o.portalPrices && !o.portalPrices.includes(to)) return reply(400, { error: { type: 'invalid_request_error', param: 'flow_data[subscription_update_confirm][items][0][price]', message: 'That price is not in the portal configuration.' } });
       return reply(200, { id: 'bps_1', object: 'billing_portal.session', url: 'https://billing.stripe.com/p/session/test_1' });
     }
     if (method === 'POST' && p === '/v1/customers') {
