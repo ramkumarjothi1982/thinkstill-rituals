@@ -49,19 +49,43 @@ const CHECKOUT_SESSION = /^cs_(?:test|live)_[A-Za-z0-9]{10,250}$/;
 const MS_TIME_MIN = 1e11;
 
 /**
- * Which plan a Stripe price is: one of the configured price ids, else a lookup
- * key equal to the app's product id (hushmallow.ultra.monthly…), so a price the
- * owner replaces later still maps. null for anything else.
- * @param {string | undefined} id @param {string | undefined | null} lookupKey
- * @param {{ paid: { monthly: string, yearly: string }, ultra: { monthly: string, yearly: string } }} prices
- * @returns {{ plan: 'paid' | 'ultra', period: 'monthly' | 'yearly' } | null}
+ * @typedef {{ paid: { monthly: string, yearly: string }, ultra: { monthly: string, yearly: string } }} Prices
+ * @typedef {{ plan: 'paid' | 'ultra', period: 'monthly' | 'yearly' }} Plan
  */
-export function planForPrice(id, lookupKey, prices) {
+
+/** The configured slot a price id sits in, or null. @param {string | undefined} id @param {Prices} prices @returns {Plan | null} */
+function slotOf(id, prices) {
   for (const plan of /** @type {const} */ (['paid', 'ultra'])) {
     for (const period of /** @type {const} */ (['monthly', 'yearly'])) if (id && prices[plan][period] === id) return { plan, period };
   }
+  return null;
+}
+
+/** A price with no lookup key (Stripe sends null). @param {unknown} k */
+const noLookupKey = (k) => k == null || k === '';
+
+/**
+ * Which plan a Stripe price is. Its lookup key decides when it is one of the app's product ids
+ * (hushmallow.ultra.monthly…): the key is set on the price in Stripe, so an id pasted into the wrong slot never changes
+ * what was bought, and a price the owner replaces later still maps. Only a price with no lookup key falls back to
+ * the configured ids; any other lookup key is no plan of ours.
+ * @param {string | undefined} id @param {string | undefined | null} lookupKey @param {Prices} prices
+ * @returns {Plan | null}
+ */
+export function planForPrice(id, lookupKey, prices) {
   const m = typeof lookupKey === 'string' ? PRODUCT.exec(lookupKey) : null;
-  return m ? { plan: /** @type {'paid' | 'ultra'} */ (m[1]), period: /** @type {'monthly' | 'yearly'} */ (m[2]) } : null;
+  if (m) return { plan: /** @type {Plan['plan']} */ (m[1]), period: /** @type {Plan['period']} */ (m[2]) };
+  return noLookupKey(lookupKey) ? slotOf(id, prices) : null;
+}
+
+/**
+ * A configured price id whose lookup key says something else (another plan or period, or not one of the app's): the
+ * lookup key decides (planForPrice), and the webhook logs price_mismatch so the slot gets fixed.
+ * @param {string | undefined} id @param {string | undefined | null} lookupKey @param {Prices} prices
+ */
+export function priceMismatch(id, lookupKey, prices) {
+  const slot = slotOf(id, prices);
+  return !!slot && !noLookupKey(lookupKey) && lookupKey !== `hushmallow.${slot.plan}.${slot.period}`;
 }
 
 /** A Stripe id (or an expanded object's id), or null. @param {unknown} v */

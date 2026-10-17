@@ -25,7 +25,7 @@ import { json, error, readJson, readText } from '../http.js';
 import { allow, memoryRateLimiter } from '../limits/ratelimit.js';
 import { createStripe, verifyWebhookSignature } from './stripe.js';
 import { createAccountVerifier, uidOf } from './account.js';
-import { billingClient, summarise, effectiveTier, accessUntil, idOf, ACCESS } from './store.js';
+import { billingClient, summarise, effectiveTier, accessUntil, idOf, priceMismatch, ACCESS } from './store.js';
 
 export const PATHS = Object.freeze({ checkout: '/v1/billing/checkout', status: '/v1/billing/status', portal: '/v1/billing/portal', webhook: '/v1/billing/webhook' });
 /**
@@ -300,6 +300,11 @@ export function createBilling({ logger, now, fetch: fetchImpl = (input, init) =>
       if (l.conflict) return { http: 200, outcome: 'customer_conflict' };
     }
     const record = summarise(sub, cfg.billing.prices, asOf);
+    // a configured price id whose lookup key names another plan: the key decided; say so, so the slot gets fixed
+    const items = Array.isArray(sub.items?.data) ? sub.items.data : [];
+    if (items.some((/** @type {any} */ it) => priceMismatch((it?.price || it?.plan)?.id, (it?.price || it?.plan)?.lookup_key, cfg.billing.prices))) {
+      logger.event({ evt: 'billing', route: eventId ? 'webhook' : 'sync', status: 'price_mismatch', stripe_event: eventType, tier: record.tier, period: record.period });
+    }
     const r = eventId ? await store.apply(uid, eventId, record) : { ...(await store.sync(uid, record)), duplicate: false };
     return { http: 200, outcome: r.duplicate ? 'duplicate' : r.applied ? 'applied' : 'stale', tier: effectiveTier(record, now()), subStatus: record.status, duplicate: r.duplicate };
   }

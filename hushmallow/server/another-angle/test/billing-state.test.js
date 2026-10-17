@@ -7,13 +7,13 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { clock, CLOCK_START } from './helpers.js';
 import { createStripe, signWebhookPayload, SUBSCRIPTION_LIST_LIMIT } from '../src/billing/stripe.js';
-import { memoryBillingNamespace, billingClient, summarise } from '../src/billing/store.js';
+import { memoryBillingNamespace, billingClient, summarise, planForPrice, priceMismatch } from '../src/billing/store.js';
 import { createBilling, EVENTS } from '../src/billing/routes.js';
 import { readConfig, STRIPE_API_VERSION_EXPECTED } from '../src/config.js';
 import { createLogger } from '../src/log.js';
 import {
   upstream, billingEnv, subscription, setup, event, deliver, subscribe, status, lines, jwt, assertClean, withStagingProject,
-  UID, OTHER, TEST_KEY, WHSEC, DAY, STAGING_SUPABASE,
+  UID, OTHER, TEST_KEY, WHSEC, DAY, STAGING_SUPABASE, PRICES,
 } from './billing-fixtures.js';
 
 // ---------------------------------------------------------- Stripe client --
@@ -324,4 +324,31 @@ test('diagnostics: a Stripe refusal is logged with its code and HTTP status (502
     ['webhook', 'invalid', 400, 'invalid_json'], ['webhook', 'invalid', 400, 'invalid_event'],
   ]);
   assertClean([...s.logs, ...d.logs, ...e.logs]);
+});
+
+// ------------------------------------------------------- which plan a price is --
+test('the lookup key decides the plan; a configured id that disagrees with it is logged as price_mismatch', async () => {
+  const prices = readConfig(billingEnv()).billing.prices;
+  assert.deepEqual(planForPrice('price_Anything1', 'hushmallow.ultra.yearly', prices), { plan: 'ultra', period: 'yearly' });
+  assert.deepEqual(planForPrice(PRICES.paidMonthly, 'hushmallow.ultra.monthly', prices), { plan: 'ultra', period: 'monthly' }, 'the key wins over the slot');
+  assert.deepEqual(planForPrice(PRICES.paidMonthly, null, prices), { plan: 'paid', period: 'monthly' }, 'no lookup key: the configured slot');
+  assert.deepEqual(planForPrice(PRICES.paidMonthly, '', prices), { plan: 'paid', period: 'monthly' });
+  assert.equal(planForPrice(PRICES.paidMonthly, 'flow_monthly_v1', prices), null, 'a lookup key that is not the app\'s: no plan');
+  assert.equal(priceMismatch(PRICES.paidMonthly, 'hushmallow.ultra.monthly', prices), true);
+  assert.equal(priceMismatch(PRICES.paidMonthly, 'flow_monthly_v1', prices), true);
+  assert.equal(priceMismatch(PRICES.paidMonthly, 'hushmallow.paid.monthly', prices), false);
+  assert.equal(priceMismatch(PRICES.paidMonthly, null, prices), false);
+  assert.equal(priceMismatch('price_Replaced9', 'hushmallow.ultra.monthly', prices), false, 'a price replaced later is no mismatch');
+  // Beyond monthly's id pasted into Flow monthly's slot: the subscriber has Beyond, and the log says the slot is wrong
+  const s = setup({ env: billingEnv({ STRIPE_PRICE_PAID_MONTHLY: PRICES.ultraMonthly, STRIPE_PRICE_ULTRA_MONTHLY: '' }) });
+  await subscribe(s, subscription({}, { price: PRICES.ultraMonthly, lookup: 'hushmallow.ultra.monthly' }));
+  assert.equal((await status(s)).tier, 'ultra');
+  const m = lines(s.logs).find((l) => l.status === 'price_mismatch');
+  assert.ok(m, 'logged');
+  assert.deepEqual([m.route, m.tier, m.period, m.stripe_event], ['webhook', 'ultra', 'monthly', 'checkout.session.completed']);
+  // matching: no such line
+  const ok = setup();
+  await subscribe(ok, subscription({}, { price: PRICES.ultraMonthly, lookup: 'hushmallow.ultra.monthly' }));
+  assert.equal(lines(ok.logs).some((l) => l.status === 'price_mismatch'), false);
+  assertClean([...s.logs, ...ok.logs]);
 });
