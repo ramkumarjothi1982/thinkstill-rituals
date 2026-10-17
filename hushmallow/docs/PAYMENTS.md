@@ -62,7 +62,7 @@ Rehearse everything first in the staging **sandbox** (`docs/STAGING.md` Part B, 
    * The portal's **login link** (email login): activate it, and put it on the support page and in the receipt emails. Someone who has deleted their hushmallow account can then still cancel.
 8. **Revenue recovery.** Settings → Billing → Revenue recovery:
    * Smart Retries on, with a window of about **2 weeks**, to match the 14-day `past_due` cap (D5).
-   * If all retries for a payment fail: **cancel the subscription** (D6). "Mark as unpaid" also ends access; **never "leave the subscription past due"**.
+   * If all retries for a payment fail: **cancel the subscription** (D6). Not "mark the subscription as unpaid": an unpaid subscription stays in place with its invoice open, paying that invoice later makes it active again, and until then the account cannot subscribe afresh (checkout sends it to the portal to pay or cancel). And **never "leave the subscription past due"**.
    * Emails: failed card payments (with a link to Stripe's page or the portal), expiring cards, and a Stripe-hosted link to confirm payments that need 3-D Secure.
    * Settings → Customer emails (or Subscriptions and emails): successful payments and refunds, finalized invoices, and upcoming-renewal reminders, at least for yearly plans (D15).
 9. **API key: a restricted key.** Developers → API keys → Create restricted key → "Building your own integration". Name it for its Worker (`hushmallow-worker-live`), and give it exactly these permissions, everything else None (names from memory):
@@ -268,7 +268,7 @@ Each decision has a recommended default, already built where the code needs one;
 * **D1** the staging Stripe environment: a sandbox named hushmallow-staging (`docs/STAGING.md` B1).
 * **D2** the final amounts of the four prices, in live Stripe and `BILLING_PRICES` together.
 * **D3** GST registration, and when `STRIPE_AUTOMATIC_TAX` goes on (off by default: `AUTOMATIC_TAX_DEFAULT`, `src/config.js`); **D4** the product tax code (yours or your accountant's choice).
-* **D5** access while a renewal fails: 14 days of `past_due` (`PAST_DUE_GRACE_MS`, `src/billing/store.js`); **D6** when retries run out: cancel (or unpaid), never past due.
+* **D5** access while a renewal fails: 14 days of `past_due` (`PAST_DUE_GRACE_MS`, `src/billing/store.js`); **D6** when retries run out: cancel, never unpaid or past due.
 * **D7** cancel at period end, no partial refunds; **D8** upgrades at once, downgrades at period end.
 * **D9** account deletion with a live web plan: block deletion until it is cancelled (the client's guard), and the portal login link on the support page.
 * **D10** delayed methods off; **D11** Adaptive Pricing off; **D12** `checkout.hushmallow.com`, in section 1's order; **D13** no email sent to Stripe; **D14** no trials or promotion codes.

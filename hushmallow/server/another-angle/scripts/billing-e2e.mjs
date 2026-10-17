@@ -583,7 +583,8 @@ export async function run({ env = process.env, args = [], fetch: f = (input, ini
         clk = await advance(clk, Math.max(next, clk.frozen_time) + 3600);
         s = await subscription(sub.id);
       }
-      check(s.status === 'canceled' || s.status === 'unpaid', 'S5: once the retries ran out, Stripe ended the subscription (D6: cancel, or unpaid; never left past due)', String(s.status));
+      // D6 is cancel only: an unpaid subscription stays in place with its invoice open, and paying it revives it
+      check(s.status === 'canceled', 'S5: once the retries ran out, Stripe cancelled the subscription (D6: cancel; never unpaid or left past due)', String(s.status));
       if (s.status === 'canceled') await delivered('S5', 'customer.subscription.deleted', sub.id);
       await mustStatus('S5: no plan', (st) => st.tier === 'none');
       const shut = await session();

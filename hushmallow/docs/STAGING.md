@@ -391,8 +391,8 @@ portal.
 1. **Settings** → **Billing** → **Revenue recovery**:
    * **Retries**: Smart Retries on, with a window of about **2 weeks**, to match the Worker's 14-day
      `past_due` cap (D5).
-   * **If all retries for a payment fail**: **Cancel the subscription** (D6). "Mark as unpaid" is acceptable;
-     never "leave the subscription past due".
+   * **If all retries for a payment fail**: **Cancel the subscription** (D6). Not "mark as unpaid" (the
+     subscription stays in place with its invoice open, and S5 fails), and never "leave the subscription past due".
    * **Emails**: failed card payment emails on (linking to Stripe's page or the portal); expiring-card reminders
      on; for 3-D Secure, send a Stripe-hosted link to confirm payments when required.
 2. **Settings** → **Customer emails** (or **Subscriptions and emails**): successful payments and refunds on,
@@ -552,7 +552,7 @@ while any of it is still a placeholder.
 | P1 | The key-free checks (below), plus: `Origin: https://app.hushmallow.com` refused on staging (403), and a hushmallow1 token refused (401). |
 | S3 | Renewal: a test clock, a customer on it with `metadata.user_id`, a card, Flow monthly (tier `paid`); the clock past the period end; `invoice.paid` delivered (200); the period a month on, at the Worker too. |
 | S4 | A failed renewal, then recovery: Beyond monthly, the `…0341` card (`pm_card_chargeCustomerFail`); `invoice.payment_failed`, `past_due` with Beyond still open (`/v1/session` 200); a good card, the open invoice paid; `active` again. |
-| S5 | Retries running out: fails again, then the clock follows each retry until Stripe ends the subscription (`canceled` or `unpaid`, never left `past_due`: B7); tier `none`, `/v1/session` 403 `subscription_required`. The 14-day `past_due` cap runs on the Worker's own clock, which a test clock does not move: the server's tests cover it. |
+| S5 | Retries running out: fails again, then the clock follows each retry until Stripe cancels the subscription (`canceled`; never `unpaid` or left `past_due`: B7); tier `none`, `/v1/session` 403 `subscription_required`. The 14-day `past_due` cap runs on the Worker's own clock, which a test clock does not move: the server's tests cover it. |
 | S6 | Plan changes through the API: Flow (403 for Another Angle) → Beyond monthly (tier `ultra`, 200) → Flow yearly (tier `paid`, a year-long period, 403). |
 | S7 | Cancellations: at the period end (`ends_at` the period end, tier unchanged), `cancel_at` 90 days on (`ends_at` that date), past it (tier `none`); a cancel at once (`none` at the next check). |
 | S8 | A resend of an applied event (status unchanged; the Worker's log says `"duplicate":true`); a second, higher subscription for the same customer, then cancelled (the remaining Flow one is recorded). |

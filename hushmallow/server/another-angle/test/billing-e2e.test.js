@@ -177,7 +177,7 @@ test('a full run (P0, P1, S3-S9) against the Worker and a sandbox with test cloc
     'P0 tax: taxability_reason is not not_collecting', 'webhook: a stale signature → 400 bad_signature', 'checkout: Origin app.hushmallow.com → 403',
     'checkout: a token of igbxbfuaoybfzsroxuln → 401', 'S3: Stripe moved the period on by one month', 'S3: still active, and the Worker has the new period end',
     'S4: past_due, and Beyond still open while Stripe retries', 'S4: /v1/session still opens Another Angle (200, source billing)', 'S4: active again',
-    'S5: once the retries ran out, Stripe ended the subscription', 'S5: /v1/session 403 subscription_required', 'S6: Flow → Beyond monthly: tier ultra',
+    'S5: once the retries ran out, Stripe cancelled the subscription', 'S5: /v1/session 403 subscription_required', 'S6: Flow → Beyond monthly: tier ultra',
     'S6: → Flow yearly: tier paid, a period of a year', 'S7: cancel_at: ends_at is that date, tier unchanged', 'S7: past cancel_at: no plan',
     'S7: cancelled at once: no plan at the next check', 'S8: the resent event changes nothing (tier paid)', 'S8: the remaining Flow subscription is recorded (tier paid)',
     'S9: invoice.payment_action_required delivered (200)', 'S9: past_due while the payment waits for the customer',
@@ -260,10 +260,14 @@ test('a Worker that never gets the events, or Stripe left to keep a failed renew
   assert.equal(await b.drive(['--phases', 'S5']), 1);
   const bt = b.out.join('\n');
   assert.match(bt, /^INFO {2}S5 starts with S4's steps|^S4 \(the start of S5\)/m);
-  assert.match(bt, /^FAIL {2}S5: once the retries ran out, Stripe ended the subscription \(D6: cancel, or unpaid; never left past due\) {2}past_due$/m);
-  // with "mark as unpaid" it passes
+  assert.match(bt, /^FAIL {2}S5: once the retries ran out, Stripe cancelled the subscription \(D6: cancel; never unpaid or left past due\) {2}past_due$/m);
+  // "mark as unpaid" fails too: the subscription stays in place with its invoice open (D6 is cancel only)
   const c = world({ box: { afterRetries: 'unpaid' } });
-  assert.equal(await c.drive(['--phases', 'S4,S5']), 0, c.out.join('\n'));
+  assert.equal(await c.drive(['--phases', 'S4,S5']), 1, c.out.join('\n'));
+  assert.match(c.out.join('\n'), /^FAIL {2}S5: once the retries ran out, Stripe cancelled the subscription \(D6: cancel; never unpaid or left past due\) {2}unpaid$/m);
+  // cancel, as B7 sets it: passes
+  const k = world({ box: { afterRetries: 'cancel' } });
+  assert.equal(await k.drive(['--phases', 'S4,S5']), 0, k.out.join('\n'));
   // an account that already has a plan (a run's leftover): no scenario starts, and nothing is made
   const d = world();
   await billingClient(d.env.BILLING).sync(ACCOUNT.uid, summarise(F.subscription({ livemode: false }), CONFIG.prices, CLOCK_START));
@@ -271,7 +275,7 @@ test('a Worker that never gets the events, or Stripe left to keep a failed renew
   assert.match(d.out.join('\n'), /^FAIL {2}the account starts with no plan {2}ultra\/active$/m);
   assert.match(d.out.join('\n'), /^SKIP {2}S3-S9: not run$/m);
   assert.deepEqual(d.box.s.calls.filter((x) => x.key === E2E_KEY), []);
-  assertQuiet([...a.out, ...b.out, ...c.out, ...d.out]);
+  assertQuiet([...a.out, ...b.out, ...c.out, ...k.out, ...d.out]);
 });
 
 test('P0 names what the sandbox was set up wrong: a price, the endpoint\'s events and version, the portal, Stripe Tax', async () => {

@@ -55,6 +55,11 @@ test('the defaults the docs state are the code\'s: the 14-day past_due cap, the 
   assert.ok(PAYMENTS.includes('`BILLING_LIVE = "approved"`'));
   assert.match(PAYMENTS, /`STRIPE_AUTOMATIC_TAX` stays `"false"`/);
   assert.match(PAYMENTS, /never "leave the subscription past due"/);
+  // D6 is cancel only: an unpaid subscription stays in place with its invoice open
+  for (const [name, text] of [['PAYMENTS.md', PAYMENTS], ['STAGING.md', STAGING]]) {
+    assert.match(text, /\*\*[Cc]ancel the subscription\*\* \(D6\)/, name);
+    assert.doesNotMatch(text, /"Mark as unpaid" (?:is acceptable|also ends access)|cancel \(or unpaid\)|`canceled` or `unpaid`/, `${name}: unpaid is not an answer to D6`);
+  }
   for (const [name, text] of [['PAYMENTS.md', PAYMENTS], ['STAGING.md', STAGING]]) {
     assert.ok(text.includes('checkout.hushmallow.com'), name);
     assert.doesNotMatch(text, /within two minutes/, `${name}: the duplicate guards are no longer a two-minute window`);
