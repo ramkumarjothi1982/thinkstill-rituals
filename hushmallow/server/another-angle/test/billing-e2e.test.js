@@ -246,6 +246,39 @@ test('livemode true on any Stripe object stops the run at once (exit 3): nothing
   assertQuiet([...a.out, ...b.out]);
 });
 
+// ------------------------------------------------------------------ Ctrl-C --
+test('stopped half way (Ctrl-C): the run\'s subscriptions are cancelled before its clocks are deleted, so the Worker records the end and the next run starts clean', async () => {
+  const w = world();
+  const stop = { now: false };
+  // Ctrl-C while S4's Beyond subscription is running
+  const code = await w.drive(['--phases', 'S4'], { stop, write: (/** @type {string} */ l) => { w.out.push(l); if (/^PASS {2}S4: tier ultra, active/.test(l)) stop.now = true; } });
+  const text = w.out.join('\n');
+  assert.equal(code, 1, text);
+  assert.match(text, /^FAIL {2}stopped: interrupted$/m);
+  await w.box.drain();
+  const { s } = w.box;
+  // the subscription is cancelled first, then the clock deleted (with its customer); the cancel is said
+  const writes = s.calls.filter((c) => c.key === E2E_KEY && c.method === 'DELETE').map((c) => c.path.replace(/\b(sub|clock)_\w+/, '$1'));
+  assert.deepEqual(writes, ['/v1/subscriptions/sub', '/v1/test_helpers/test_clocks/clock']);
+  assert.match(text, /^ {6}cancelled sub_\w+\n {6}deleted clock_\w+$/m);
+  assert.equal([...s.clocks.values()].every((c) => c.deleted), true);
+  // Stripe told the Worker, which recorded the end: no plan
+  const ended = s.events.filter((e) => e.type === 'customer.subscription.deleted');
+  assert.equal(ended.length, 1);
+  assert.equal(ended[0].pending_webhooks, 0, 'the Worker acknowledged it');
+  const rec = await billingClient(w.env.BILLING).get(ACCOUNT.uid);
+  assert.deepEqual([rec.status, rec.tier], ['canceled', 'ultra']);
+  // so the next run passes its start check and runs
+  w.out.length = 0;
+  assert.equal(await w.drive(['--phases', 'S3']), 0, w.out.join('\n'));
+  assert.match(w.out.join('\n'), /^PASS {2}the account starts with no plan {2}none\/canceled$/m);
+  // a run that ends on its own cancels nothing more in the end (each scenario already did)
+  const k = world();
+  assert.equal(await k.drive(['--phases', 'S7']), 0, k.out.join('\n'));
+  assert.doesNotMatch(k.out.join('\n'), /^ {6}cancelled /m);
+  assertQuiet([...w.out, ...k.out]);
+});
+
 // --------------------------------------------------------------- the checks --
 test('a Worker that never gets the events, or Stripe left to keep a failed renewal past due, fails the run (exit 1)', async () => {
   // the endpoint's signing secret is not the Worker's: every delivery is refused (400), so nothing is recorded

@@ -560,7 +560,9 @@ while any of it is still a placeholder.
 
 Each scenario starts with E2E-B on no plan and ends there; each object it makes carries `metadata[e2e_run]`
 (the clocks, the run in their name), only those ids are printed, and its test clocks are deleted at the end
-(which deletes their customers and subscriptions). It asks `/v1/billing/status` every 5 s at most (the limit is
+(which deletes their customers and subscriptions). Any of its subscriptions still running then (a run stopped
+half way, Ctrl-C) is cancelled first, so Stripe tells the Worker and E2E-B is on no plan for the next run.
+It asks `/v1/billing/status` every 5 s at most (the limit is
 20 a minute) and `/v1/session` every 21 s at most. It never makes prices, products, registrations, settings or
 webhook endpoints, and any Stripe object read with `livemode: true` stops it at once. Exit `0`: every check
 passed; `1`: a check failed; `2`: refused to start; `3`: stopped on a live object. The test-clock limits it

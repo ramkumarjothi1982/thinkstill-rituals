@@ -18,7 +18,8 @@
 // it, give the customer a test card and a subscription with metadata.user_id = the test account, move the clock on,
 // and wait for the Worker's GET /v1/billing/status to follow. It never creates prices, products, registrations,
 // settings or webhook endpoints. Every object it makes carries metadata[e2e_run] (a clock, its name), only those ids
-// are printed, and its test clocks are deleted at the end (which deletes their customers and subscriptions). Any
+// are printed, and its test clocks are deleted at the end (which deletes their customers and subscriptions), after
+// any of its subscriptions still running (a run stopped half way, Ctrl-C) is cancelled, so the Worker records it. Any
 // Stripe object read with livemode true stops the run at once. S1, S2 and S10-S13 need the hosted pages or the app
 // and stay manual.
 //
@@ -271,6 +272,8 @@ export async function run({ env = process.env, args = [], fetch: f = (input, ini
   const production = workerClient({ base: cfg.productionWorker, origin: cfg.productionOrigin, fetch: f });
   /** @type {string[]} */
   const clocks = [];
+  /** @type {string[]} every subscription this run made (cancelled before the clocks go, if still running) */
+  const made = [];
   /** @type {string} the staging webhook endpoint (P0 finds it; S8 resends to it) */
   let endpoint = '';
   write(`hushmallow web subscriptions, sandbox driver: run ${runId}, phases ${[...phases].join(',')}`);
@@ -469,6 +472,7 @@ export async function run({ env = process.env, args = [], fetch: f = (input, ini
   async function subscribe(customer, plan, period, label) {
     const r = await stripe.post('/v1/subscriptions', { customer, items: [{ price: cfg.prices[plan][period] }], metadata: { user_id: acct.uid, e2e_run: runId } });
     need(r.ok && SUB.test(String(r.data?.id)), `${label}: ${PRODUCT_NAMES[plan]} ${period}`, r.ok ? '' : `${r.status} ${r.code}`);
+    made.push(r.data.id);
     write(`      made ${r.data.id} (${label})`);
     need(r.data.status === 'active', `${label}: the first payment went through`, String(r.data.status));
     return r.data;
@@ -717,7 +721,19 @@ export async function run({ env = process.env, args = [], fetch: f = (input, ini
     else if (e instanceof Stop) { check(false, `stopped: ${e.message}`); }
     else check(false, 'the driver stopped', clean(/** @type {any} */ (e)?.message || e));
   } finally {
-    // its own test clocks only; deleting one deletes its customers and subscriptions
+    // first its own subscriptions still running (a scenario stopped half way: Ctrl-C ends it before its own cancel),
+    // cancelled at Stripe, which tells the Worker; a clock deleted with one still on it takes it away unannounced,
+    // and the account keeps that plan at the Worker, so every later run fails its start check. Best effort.
+    for (const id of made) {
+      try {
+        const r = await stripe.get(`/v1/subscriptions/${id}`);
+        if (!r.ok || TERMINAL.has(r.data.status)) continue;
+        const d = await stripe.del(`/v1/subscriptions/${id}`);
+        if (d.ok) write(`      cancelled ${id}`);
+        else check(false, `${id} not cancelled before its clock is deleted: check the account's plan at the Worker`, `${d.status} ${d.code}`);
+      } catch (e) { if (e instanceof Abort) aborted = true; }
+    }
+    // then its own test clocks only; deleting one deletes its customers and subscriptions
     for (const id of clocks) {
       try {
         const r = await stripe.del(`/v1/test_helpers/test_clocks/${id}`);
@@ -734,6 +750,6 @@ export async function run({ env = process.env, args = [], fetch: f = (input, ini
 // run as a command (npm run e2e:billing); imported (test/billing-e2e.test.js), it only offers run() and its parts
 if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const stop = { now: false };
-  process.once('SIGINT', () => { stop.now = true; console.log('stopping: the test clocks of this run are deleted first'); });
+  process.once('SIGINT', () => { stop.now = true; console.log('stopping: the subscriptions of this run are cancelled and its test clocks deleted first'); });
   process.exitCode = await run({ env: process.env, args: process.argv.slice(2), stop });
 }
