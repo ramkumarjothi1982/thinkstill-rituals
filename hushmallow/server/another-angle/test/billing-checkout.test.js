@@ -446,6 +446,28 @@ test('the previous Checkout Session: the same again is handed back; another plan
   assertClean(s.logs, await pending.json());
 });
 
+test('the previous session on the slot\'s old price (replaced in Stripe, its lookup key moved to a new id): expired, and the new session sells the new price', async () => {
+  const s = track(setup());
+  assert.equal((await post(s, ULTRA_M)).status, 200);
+  const [s1] = sessionIds(s);
+  const NEW = 'price_BeyondMonthly2';
+  s.up.prices.set(NEW, price(NEW, 'ultra', 'monthly'));
+  s.up.prices.set(PRICES.ultraMonthly, { ...s.up.prices.get(PRICES.ultraMonthly), lookup_key: null, active: false });
+  const env = { ...s.env, STRIPE_PRICE_ULTRA_MONTHLY: NEW };
+  s.now.advance(5 * 60000);
+  const res = await s.app.fetch(billingReq('/v1/billing/checkout', { body: ULTRA_M }), env);
+  assert.equal(res.status, 200, await res.clone().text());
+  assert.equal(s.up.sessions.get(s1).status, 'expired', 'the open session would charge the old price');
+  assert.equal(creates(s).length, 2);
+  const f = creates(s).at(-1).form;
+  assert.deepEqual([f.get('line_items[0][price]'), f.get('metadata[price]')], [NEW, NEW]);
+  assert.equal((await db(s).lastCheckout(UID)).id, sessionIds(s)[1]);
+  // and that one is handed back to the next tap
+  assert.deepEqual(await (await s.app.fetch(billingReq('/v1/billing/checkout', { body: ULTRA_M }), env)).json(), { url: s.up.checkoutUrl });
+  assert.equal(creates(s).length, 2);
+  assertClean(s.logs);
+});
+
 test('the previous session: past its time, of the other mode, gone or expired is left alone; an expire refused because it was paid that moment is payment_pending; refused while open is 502', async () => {
   const sessionReads = (s) => calls(s).filter((c) => c.includes('/v1/checkout/sessions/'));
   // past its expires_at: Stripe is not asked about it
