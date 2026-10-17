@@ -56,11 +56,14 @@ APPLE_ENVIRONMENTS = "Production"
 #   SUPABASE_PUBLISHABLE_KEY  its publishable key (sb_publishable_…, public by design)
 #   APP_ORIGIN                where Stripe sends people back; one of ALLOWED_ORIGINS
 #   STRIPE_PRICE_PAID_MONTHLY, STRIPE_PRICE_PAID_YEARLY,
-#   STRIPE_PRICE_ULTRA_MONTHLY, STRIPE_PRICE_ULTRA_YEARLY   price_… ids (A$)
+#   STRIPE_PRICE_ULTRA_MONTHLY, STRIPE_PRICE_ULTRA_YEARLY   price_… ids (US$): live mode's
+#                             own four, never the sandbox's (STRIPE_INTEGRATION_TODO.md)
 #   BILLING_TOKEN_TTL_HOURS   optional, default 24: the longest a Beyond session lasts
-#   STRIPE_AUTOMATIC_TAX      optional, "false" by default: "true" turns Stripe Tax on at
-#                             Checkout, only once the AU GST registration shows Collecting
-#                             in this Stripe environment (decision D3)
+#   STRIPE_AUTOMATIC_TAX      optional, "false" by default (the Checkout Studio's value):
+#                             "true" turns Stripe Tax on at Checkout, only once an active
+#                             registration (Collecting) is verified in this Stripe
+#                             environment (decision D3); it then replaces two Studio values
+#                             (automatic_tax on, billing address required)
 #   STRIPE_API_VERSION        "2026-08-26.dahlia", required with the vars above: pins the
 #                             API version of the server's own requests; create the
 #                             webhook endpoint on the same version (src/config.js
@@ -259,18 +262,20 @@ SUPABASE_URL = "https://STAGING_TODO.supabase.co"
 SUPABASE_PUBLISHABLE_KEY = "sb_publishable_TODO"
 # Where Stripe sends people back: the release branch's preview (one of ALLOWED_ORIGINS).
 APP_ORIGIN = "https://claude-launch-rc.hushmallow.pages.dev"
-# PLACEHOLDERS until the owner pastes the four TEST price ids (price_…) from
-# Stripe's test mode. A placeholder price id (the marked TODO value below) counts as unset (src/config.js
-# PRICE_PLACEHOLDER): with all four unset, every billing route answers 503
-# billing_not_configured and /v1/health says "placeholder_prices": 4.
-STRIPE_PRICE_PAID_MONTHLY = "price_TODO_owner"
-STRIPE_PRICE_PAID_YEARLY = "price_TODO_owner"
-STRIPE_PRICE_ULTRA_MONTHLY = "price_TODO_owner"
-STRIPE_PRICE_ULTRA_YEARLY = "price_TODO_owner"
+# The owner's four prices (2026-10-17, US dollars): hushmallow Flow US$9.99 a month and US$99.99 a year,
+# hushmallow Beyond US$19.99 a month and US$199.99 a year. Not secret. This Worker takes a TEST key only, so
+# they must be the Stripe sandbox's; whether they are is still to be verified (STRIPE_INTEGRATION_TODO.md). A
+# live-mode id here answers the test key "No such price": checkout's price check refuses it (a 503, and
+# "not_found" in the log line) and the sandbox driver's preflight (P0) names the slot.
+STRIPE_PRICE_PAID_MONTHLY = "price_1URLbJL2iXNcXbZPceXTGXsH"
+STRIPE_PRICE_PAID_YEARLY = "price_1URLeGL2iXNcXbZPz31feM3V"
+STRIPE_PRICE_ULTRA_MONTHLY = "price_1URLlFL2iXNcXbZPGjBOF6zy"
+STRIPE_PRICE_ULTRA_YEARLY = "price_1URLv2L2iXNcXbZP6vLFoAtV"
 # The API version of the Worker's own Stripe requests; the staging webhook endpoint is created on the
 # same one (src/config.js STRIPE_API_VERSION_EXPECTED: every table with billing vars pins exactly this).
 STRIPE_API_VERSION = "2026-08-26.dahlia"
-# Stripe Tax at Checkout (decision D3): "false" until the sandbox's AU GST registration shows Collecting.
+# Stripe Tax at Checkout (decision D3): "false" (the Checkout Studio's value) until an active registration in
+# the sandbox is verified.
 STRIPE_AUTOMATIC_TAX = "false"
 
 [[env.staging.durable_objects.bindings]]

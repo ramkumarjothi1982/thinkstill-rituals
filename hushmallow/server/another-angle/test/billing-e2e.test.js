@@ -145,8 +145,9 @@ test('the driver refuses anything but a test secret or restricted key, and an ac
 
 test('the driver refuses while staging still has placeholders (the repository today), and says which', async () => {
   const { problems } = await D.repoConfig();
-  assert.ok(problems.some((p) => /SUPABASE_PUBLISHABLE_KEY is still a placeholder/.test(p)));
-  for (const k of ['STRIPE_PRICE_PAID_MONTHLY', 'STRIPE_PRICE_PAID_YEARLY', 'STRIPE_PRICE_ULTRA_MONTHLY', 'STRIPE_PRICE_ULTRA_YEARLY']) assert.ok(problems.some((p) => p.includes(k)), k);
+  // the four price ids are the owner's now (wrangler.toml [env.staging.vars]), so only the staging project's key is
+  // left (here src/config.js has a staging project: test/staging-loader.js)
+  assert.deepEqual(problems, ['[env.staging.vars] SUPABASE_PUBLISHABLE_KEY is still a placeholder']);
   const w = world();
   assert.equal(await w.drive([], { config: undefined }), 2);
   assert.match(w.out.join('\n'), /^REFUSED {2}staging is not set up yet: .*Nothing was sent\.$/);
@@ -158,6 +159,10 @@ test('the driver refuses while staging still has placeholders (the repository to
   assert.equal(config.automaticTax, false);
   assert.deepEqual(config.billingPrices, BILLING_PRICES);
   assert.deepEqual(config.production, { mode: 'testing', liveApproved: false });
+  assert.deepEqual(config.prices, {
+    paid: { monthly: 'price_1URLbJL2iXNcXbZPceXTGXsH', yearly: 'price_1URLeGL2iXNcXbZPz31feM3V' },
+    ultra: { monthly: 'price_1URLlFL2iXNcXbZPGjBOF6zy', yearly: 'price_1URLv2L2iXNcXbZP6vLFoAtV' },
+  });
   assert.deepEqual(Object.keys(D.SANDBOX_AMOUNTS).map((k) => [k, `US$${(D.SANDBOX_AMOUNTS[k] / 100).toFixed(2)}`]), Object.entries(BILLING_PRICES));
 });
 

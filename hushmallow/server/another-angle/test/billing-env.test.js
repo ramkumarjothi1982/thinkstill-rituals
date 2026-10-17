@@ -203,7 +203,7 @@ test('/v1/health says the Stripe mode, why a key is refused, the approval, the A
   const staging = { ...varsTables(WRANGLER).staging, BILLING: billingEnv().BILLING, STRIPE_WEBHOOK_SECRET: WHSEC };
   assert.deepEqual(await health(makeEnv({ ...staging, STRIPE_SECRET_KEY: TEST_KEY })), {
     configured: false, webhook: true, stripe_mode: 'test', live_approved: false, api_version: STRIPE_API_VERSION_EXPECTED, automatic_tax: false,
-    placeholder_prices: 4, accounts_configured: false,
+    accounts_configured: false,
   });
   const wrong = await health(makeEnv({ ...staging, STRIPE_SECRET_KEY: LIVE_KEY, BILLING_LIVE: 'approved' }));
   assert.deepEqual([wrong.stripe_mode, wrong.key_refused, wrong.live_approved], [null, 'live_key_on_staging', false]);
