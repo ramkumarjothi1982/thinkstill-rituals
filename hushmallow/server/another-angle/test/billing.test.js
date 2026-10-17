@@ -105,7 +105,8 @@ const billingReq = (path, { token = TOKEN, body, method, origin } = {}) => req(p
   headers: token ? { authorization: `Bearer ${token}` } : {},
 });
 let evtSeq = 0;
-const event = (type, object, now, id = `evt_Test${++evtSeq}`) => ({ id, object: 'event', type, created: Math.floor(now() / 1000), livemode: false, data: { object } });
+// livemode true: the shared fixture's key is live, and the webhook applies only events of its own mode
+const event = (type, object, now, id = `evt_Test${++evtSeq}`) => ({ id, object: 'event', type, created: Math.floor(now() / 1000), livemode: true, data: { object } });
 async function deliver(app, env, ev, { secret = WHSEC, at, tamper = null, header } = {}) {
   const payload = JSON.stringify(ev);
   const sig = header ?? await signWebhookPayload(payload, secret, Math.floor((at ?? CLOCK_START) / 1000));

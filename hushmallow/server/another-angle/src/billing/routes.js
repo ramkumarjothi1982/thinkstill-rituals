@@ -227,6 +227,9 @@ export function createBilling({ logger, now, fetch: fetchImpl = (input, init) =>
     const type = event.type.slice(0, 48);
     if (!EVENTS.includes(type)) { log('webhook', t0, { status: 'ignored', http: 200, stripe_event: type }); return json(200, { received: true }); }
     if (!ready(env, cfg)) { log('webhook', t0, { status: 'off', http: 503, stripe_event: type, err: offReason(cfg) }); return error(503, offCode(cfg), offMessage(cfg)); }
+    // an event of the other mode (the test endpoint's whsec_ next to a live key, or the reverse) never gives a plan;
+    // checked once billing is on, so while it is off every event waits (503) instead of being dropped
+    if (event.livemode !== (cfg.billing.keyMode === 'live')) { log('webhook', t0, { status: 'mode_mismatch', http: 200, stripe_event: type }); return json(200, { received: true }); }
     const r = await apply(event, env, cfg);
     log('webhook', t0, { status: r.outcome, http: r.http, stripe_event: type, tier: r.tier, sub_status: r.subStatus, duplicate: r.duplicate });
     return r.http === 200 ? json(200, { received: true, ...(r.duplicate ? { duplicate: true } : {}) }) : error(r.http, 'retry_later', 'Could not record the event just now.');
@@ -274,9 +277,13 @@ export function createBilling({ logger, now, fetch: fetchImpl = (input, init) =>
     /** @type {any} */
     let sub;
     if (got.ok) sub = got.data;
-    else if (got.status === 404 && eventType.startsWith('customer.subscription.')) { sub = obj; asOf = Number(created) * 1000 || 0; }
-    else if (got.status === 404) return { http: 200, outcome: 'no_subscription' };
-    else return { http: 502, outcome: 'stripe_error' };
+    else if (got.status === 404) {
+      // Stripe does not have it (any more): the event's own, unverified copy may only take access away, as of the
+      // event's time; a copy that would give access records nothing
+      if (!eventType.startsWith('customer.subscription.') || idOf(obj?.id) !== subId || ACCESS.has(obj?.status)) return { http: 200, outcome: 'not_found' };
+      sub = obj;
+      asOf = Number(created) * 1000 || 0;
+    } else return { http: 502, outcome: 'stripe_error' };
     if (idOf(sub?.id) !== subId) return { http: 502, outcome: 'stripe_error' };
     const store = storeFor(env);
     const customer = idOf(sub.customer) || idOf(obj?.customer);

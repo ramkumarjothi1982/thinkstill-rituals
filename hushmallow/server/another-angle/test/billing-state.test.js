@@ -6,13 +6,14 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { clock, CLOCK_START } from './helpers.js';
-import { createStripe, SUBSCRIPTION_LIST_LIMIT } from '../src/billing/stripe.js';
+import { createStripe, signWebhookPayload, SUBSCRIPTION_LIST_LIMIT } from '../src/billing/stripe.js';
 import { memoryBillingNamespace, billingClient, summarise } from '../src/billing/store.js';
 import { createBilling, EVENTS } from '../src/billing/routes.js';
 import { readConfig, STRIPE_API_VERSION_EXPECTED } from '../src/config.js';
 import { createLogger } from '../src/log.js';
 import {
-  upstream, billingEnv, subscription, setup, event, deliver, subscribe, status, lines, jwt, assertClean, UID, OTHER, TEST_KEY, DAY,
+  upstream, billingEnv, subscription, setup, event, deliver, subscribe, status, lines, jwt, assertClean, withStagingProject,
+  UID, OTHER, TEST_KEY, WHSEC, DAY, STAGING_SUPABASE,
 } from './billing-fixtures.js';
 
 // ---------------------------------------------------------- Stripe client --
@@ -127,6 +128,14 @@ function billingOf({ up = upstream(), now = clock(), env = billingEnv() } = {}) 
   return { billing, logs, up, now, env, cfg: readConfig(env), db: billingClient(env.BILLING) };
 }
 
+/** A signed webhook Request for the event, as Stripe sends it (for createBilling's webhook with a cfg of its own). */
+async function signed(ev, now) {
+  const payload = JSON.stringify(ev);
+  return new Request('https://angle.example.workers.dev/v1/billing/webhook', {
+    method: 'POST', headers: { 'content-type': 'application/json', 'stripe-signature': await signWebhookPayload(payload, WHSEC, Math.floor(now() / 1000)) }, body: payload,
+  });
+}
+
 test('recordSubscription (the webhook\'s apply, and the return sync with no event id): reads, links, records', async () => {
   const b = billingOf();
   b.up.subs.set('sub_Test123', subscription());
@@ -180,7 +189,7 @@ test('events: the eleven, each routed by its prefix, each re-reading and recordi
     const s = setup();
     assert.equal((await deliver(s.app, s.env, event(type, objectFor(type, { mode: 'payment', subscription: null }), s.now), { at: s.now() })).status, 200);
     assert.equal(s.up.stripe().length, 0, type);
-    assert.equal(await s.env.BILLING.instances.get(`user:${UID}`), undefined);
+    assert.equal(s.env.BILLING.instances.get(`user:${UID}`)?.map.size ?? 0, 0, `${type}: nothing recorded`);
   }
 });
 
@@ -223,4 +232,66 @@ test('delayed payments: access follows the re-read subscription, never the check
   await deliver(f.app, f.env, event('checkout.session.async_payment_failed', objectFor('checkout.session.async_payment_failed', { payment_status: 'unpaid' }), f.now), { at: f.now() });
   assert.deepEqual([(await status(f)).tier, (await status(f)).status], ['none', 'incomplete_expired']);
   assertClean([...s.logs, ...f.logs]);
+});
+
+// ---------------------------------------------------------- livemode gate --
+test('livemode gate: an event of the other mode gets 200 mode_mismatch before any Stripe call, and gives nothing', async () => {
+  const s = setup();   // the production fixture: a live key
+  s.up.subs.set('sub_Test123', subscription());
+  for (const livemode of [false, undefined, 'true']) {
+    const ev = event('checkout.session.completed', objectFor('checkout.session.completed'), s.now);
+    if (livemode === undefined) delete ev.livemode; else ev.livemode = livemode;
+    const res = await deliver(s.app, s.env, ev, { at: s.now() });
+    assert.equal(res.status, 200, String(livemode));
+    assert.deepEqual(await res.json(), { received: true });
+  }
+  assert.equal(s.up.calls.length, 0, 'Stripe never asked');
+  assert.equal((await status(s)).tier, 'none');
+  assert.equal(lines(s.logs).filter((l) => l.status === 'mode_mismatch' && l.stripe_event === 'checkout.session.completed').length, 3);
+  // the same event in live mode: recorded
+  await deliver(s.app, s.env, event('checkout.session.completed', objectFor('checkout.session.completed'), s.now), { at: s.now() });
+  assert.equal((await status(s)).tier, 'ultra');
+  // the staging Worker (a test key): a live event is the mismatch
+  const { readConfig: readWithStaging } = await withStagingProject(STAGING_SUPABASE);
+  const env = billingEnv({ ACCOUNTS_STAGE: 'staging', SUPABASE_URL: STAGING_SUPABASE });
+  const cfg = readWithStaging(env);
+  assert.equal(cfg.billing.keyMode, 'test');
+  const b = billingOf({ env });
+  b.up.subs.set('sub_Test123', subscription({ livemode: false }));
+  const hook = async (ev) => b.billing.webhook(await signed(ev, b.now), env, cfg);
+  assert.equal((await hook(event('customer.subscription.updated', subscription(), b.now, { livemode: true }))).status, 200);
+  assert.equal(b.up.calls.length, 0);
+  assert.equal((await hook(event('customer.subscription.updated', subscription(), b.now, { livemode: false }))).status, 200);
+  assert.equal((await b.db.get(UID)).tier, 'ultra', 'a test event on the test key is applied');
+  // while billing is off, the gate waits: 503, so a live event is never dropped during a misconfiguration
+  const off = setup({ env: billingEnv({ BILLING_LIVE: undefined }) });
+  assert.equal((await deliver(off.app, off.env, event('customer.subscription.updated', subscription(), off.now), { at: off.now() })).status, 503);
+  assertClean([...s.logs, ...b.logs, ...off.logs]);
+});
+
+// ------------------------------------------------------------- Stripe 404 --
+test('a 404 from Stripe: the event\'s own copy may only take access away, never give it', async () => {
+  // never seen, and Stripe has no such subscription: an active copy grants nothing
+  const s = setup();
+  const fresh = await deliver(s.app, s.env, event('customer.subscription.created', subscription(), s.now), { at: s.now() });
+  assert.equal(fresh.status, 200);
+  assert.equal((await status(s)).tier, 'none');
+  assert.equal(s.env.BILLING.instances.get(`user:${UID}`)?.map.size ?? 0, 0, 'nothing recorded');
+  assert.ok(lines(s.logs).some((l) => l.status === 'not_found'));
+  // an active account: a newer active copy changes nothing; a newer canceled copy ends it
+  await subscribe(s);
+  s.up.subs.delete('sub_Test123');
+  s.now.advance(60000);
+  await deliver(s.app, s.env, event('customer.subscription.updated', subscription({ cancel_at_period_end: true }), s.now), { at: s.now() });
+  assert.equal((await status(s)).cancel_at_period_end, false, 'the active copy was not applied');
+  s.now.advance(60000);
+  await deliver(s.app, s.env, event('customer.subscription.deleted', subscription({ status: 'canceled' }), s.now), { at: s.now() });
+  assert.deepEqual([(await status(s)).tier, (await status(s)).status], ['none', 'canceled']);
+  // a checkout or invoice event whose subscription Stripe does not have: nothing
+  const c = setup();
+  for (const type of ['checkout.session.completed', 'invoice.paid']) {
+    assert.equal((await deliver(c.app, c.env, event(type, objectFor(type), c.now), { at: c.now() })).status, 200);
+  }
+  assert.equal((await status(c)).tier, 'none');
+  assertClean([...s.logs, ...c.logs]);
 });
