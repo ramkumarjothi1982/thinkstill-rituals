@@ -8,8 +8,10 @@ import assert from 'node:assert/strict';
 import { clock } from './helpers.js';
 import { createStripe, SUBSCRIPTION_LIST_LIMIT } from '../src/billing/stripe.js';
 import { memoryBillingNamespace, billingClient, summarise } from '../src/billing/store.js';
+import { createBilling } from '../src/billing/routes.js';
 import { readConfig, STRIPE_API_VERSION_EXPECTED } from '../src/config.js';
-import { upstream, billingEnv, subscription, UID, OTHER, TEST_KEY } from './billing-fixtures.js';
+import { createLogger } from '../src/log.js';
+import { upstream, billingEnv, subscription, assertClean, UID, OTHER, TEST_KEY } from './billing-fixtures.js';
 
 // ---------------------------------------------------------- Stripe client --
 test('Stripe client: customer create, price, subscriptions of a customer, checkout session read and expire; pinned version on each', async () => {
@@ -113,4 +115,35 @@ test('Billing DO: the new ops stay atomic when calls race (one customer wins; th
   await Promise.all(reads.map((r, i) => (i % 2 ? db.sync(UID, r) : db.apply(UID, `evt_Race${i}`, r))));
   const kept = await db.get(UID);
   assert.deepEqual([kept.status, kept.as_of], ['canceled', t() + 4000]);
+});
+
+// ------------------------------------------------------ recordSubscription --
+/** createBilling on its own (the routes' internals), with a logger into `logs`. */
+function billingOf({ up = upstream(), now = clock(), env = billingEnv() } = {}) {
+  const logs = [];
+  const billing = createBilling({ logger: createLogger((l) => logs.push(l)), now, fetch: up.fetch, ipKey: async () => 'ip' });
+  return { billing, logs, up, now, env, cfg: readConfig(env), db: billingClient(env.BILLING) };
+}
+
+test('recordSubscription (the webhook\'s apply, and the return sync with no event id): reads, links, records', async () => {
+  const b = billingOf();
+  b.up.subs.set('sub_Test123', subscription());
+  const args = { subId: 'sub_Test123', uidHint: UID, obj: {}, eventType: 'checkout.session.completed', created: Math.floor(b.now() / 1000), eventId: null };
+  assert.deepEqual(await b.billing.recordSubscription(args, b.env, b.cfg), { http: 200, outcome: 'applied', tier: 'ultra', subStatus: 'active', duplicate: false });
+  assert.equal((await b.db.get(UID)).tier, 'ultra');
+  assert.equal(await b.db.owner('cus_Test123'), UID, 'the customer is linked to the account');
+  assert.deepEqual([...b.env.BILLING.instances.get(`user:${UID}`).map.keys()].filter((k) => k.startsWith('evt:')), [], 'no event id kept');
+  assert.deepEqual(b.up.stripe().map((c) => c.path), ['/v1/subscriptions/sub_Test123'], 'it read the subscription itself');
+  // with an event id: applied once, then a duplicate
+  b.now.advance(1000);
+  const once = await b.billing.recordSubscription({ ...args, eventId: 'evt_R1' }, b.env, b.cfg);
+  assert.equal(once.outcome, 'applied');
+  assert.equal((await b.billing.recordSubscription({ ...args, eventId: 'evt_R1' }, b.env, b.cfg)).outcome, 'duplicate');
+  // a customer already linked to another account: nothing recorded for this one
+  const c = billingOf();
+  c.up.subs.set('sub_Test123', subscription());
+  await c.db.link('cus_Test123', OTHER);
+  assert.deepEqual(await c.billing.recordSubscription(args, c.env, c.cfg), { http: 200, outcome: 'customer_conflict' });
+  assert.equal(await c.db.get(UID), null);
+  assertClean([...b.logs, ...c.logs]);
 });

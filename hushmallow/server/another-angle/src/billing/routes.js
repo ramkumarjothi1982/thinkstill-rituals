@@ -242,6 +242,20 @@ export function createBilling({ logger, now, fetch: fetchImpl = (input, init) =>
       uid = uidOf(obj.metadata?.user_id);
     }
     if (!subId || !/^sub_/.test(subId)) return { http: 200, outcome: 'no_subscription' };
+    return recordSubscription({ subId, uidHint: uid, obj, eventType: event.type, created: Number(event.created), eventId: event.id }, env, cfg);
+  }
+
+  /**
+   * Read a subscription back from Stripe and record it for its account: the webhook's apply (with the event's id, so
+   * it is applied once) and the checkout return's sync (eventId null). Who it belongs to: uidHint (the event's or the
+   * signed-in account), else the subscription's metadata, else its customer's link; a customer linked to another
+   * account records nothing.
+   * @param {{ subId: string, uidHint: string | null, obj: any, eventType: string, created: number, eventId: string | null }} args
+   *   obj: the event's object (a subscription event's own copy is the fallback on a 404); created: the event's, in seconds
+   * @param {Record<string, any>} env @param {Config} cfg
+   * @returns {Promise<{ http: number, outcome: string, tier?: string, subStatus?: string, duplicate?: boolean }>}
+   */
+  async function recordSubscription({ subId, uidHint, obj, eventType, created, eventId }, env, cfg) {
     // as of when Stripe was asked, not when it answered: of two deliveries racing for the same subscription, the one
     // that asked later read the later state, whichever answer comes back first
     let asOf = now();
@@ -249,13 +263,13 @@ export function createBilling({ logger, now, fetch: fetchImpl = (input, init) =>
     /** @type {any} */
     let sub;
     if (got.ok) sub = got.data;
-    else if (got.status === 404 && event.type.startsWith('customer.subscription.')) { sub = obj; asOf = Number(event.created) * 1000 || 0; }
+    else if (got.status === 404 && eventType.startsWith('customer.subscription.')) { sub = obj; asOf = Number(created) * 1000 || 0; }
     else if (got.status === 404) return { http: 200, outcome: 'no_subscription' };
     else return { http: 502, outcome: 'stripe_error' };
     if (idOf(sub?.id) !== subId) return { http: 502, outcome: 'stripe_error' };
     const store = storeFor(env);
-    const customer = idOf(sub.customer) || idOf(obj.customer);
-    uid = uid || uidOf(sub.metadata?.user_id) || (customer ? uidOf(await store.owner(customer)) : null);
+    const customer = idOf(sub.customer) || idOf(obj?.customer);
+    const uid = uidOf(uidHint) || uidOf(sub.metadata?.user_id) || (customer ? uidOf(await store.owner(customer)) : null);
     // not one of ours (made in the dashboard, or by another app on the account): nothing to give
     if (!uid) return { http: 200, outcome: 'unlinked' };
     if (customer) {
@@ -263,7 +277,7 @@ export function createBilling({ logger, now, fetch: fetchImpl = (input, init) =>
       if (l.conflict) return { http: 200, outcome: 'customer_conflict' };
     }
     const record = summarise(sub, cfg.billing.prices, asOf);
-    const r = await store.apply(uid, event.id, record);
+    const r = eventId ? await store.apply(uid, eventId, record) : { ...(await store.sync(uid, record)), duplicate: false };
     return { http: 200, outcome: r.duplicate ? 'duplicate' : r.applied ? 'applied' : 'stale', tier: effectiveTier(record, now()), subStatus: record.status, duplicate: r.duplicate };
   }
 
@@ -281,7 +295,7 @@ export function createBilling({ logger, now, fetch: fetchImpl = (input, init) =>
     return { ok: true, uid: a.uid, until: accessUntil(rec, now(), cfg.billing.tokenTtlMs) };
   }
 
-  return { ready, checkout, status, portal, webhook, beyondAccess };
+  return { ready, checkout, status, portal, webhook, beyondAccess, recordSubscription };
 }
 
 /** An https URL from Stripe's answer, or null. @param {unknown} v */
