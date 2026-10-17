@@ -169,6 +169,10 @@ export const CANCEL_FIRST = Object.freeze({
   title: 'Cancel your subscription first',
   body: 'Deleting your account doesn’t cancel your subscription, and it would keep renewing with no account to manage it from. Cancel it in Manage subscription, then come back here.',
   refused: 'Cancel your subscription first, in Manage subscription above.',
+  // the check had no answer (offline, the server busy or rate-limited): never deleted on a guess, since a renewing
+  // plan kept nowhere here (a new browser, cleared site data, a copy older than the grace) would read as none
+  unchecked: 'Couldn’t check for a subscription just now, so Delete waits. Try again in a moment.',
+  retry: 'Try again',
 });
 /** The account's web plan still renews (only with web billing on, never in the App Store app): Delete account waits. */
 export function renewingWebPlan(app) {
@@ -179,8 +183,10 @@ export function renewingWebPlan(app) {
 
 /**
  * The delete screen's first step while the web plan renews (D9): "Cancel your subscription first" with Manage
- * subscription, and `submit` stays off until a check shows the plan ended or cancelling. It asks the server once on
- * opening (cancelled in the portal since, or bought on another phone); `checked` settles after that answer.
+ * subscription, and `submit` stays off until a check shows the plan ended or cancelling. It asks the server on
+ * opening (cancelled in the portal since, or bought on another phone); `checked` settles after that answer. It fails
+ * closed: until the server has answered once on this screen, Delete waits ("Couldn't check…", with Try again).
+ * ready(), at submit: after that check (once more if it had no answer) → null to go ahead, else the line refusing it.
  * → null where it never applies (web billing off, the App Store app): the screen exactly as before.
  * confirmed(): the typed word is right (the other condition for `submit`).
  */
@@ -203,19 +209,45 @@ export function deleteGuard(app, { submit = null, confirmed = () => false } = {}
   const box = h('div', { class: 'hm-account-facts', 'data-cancel-first': '' },
     h('h2', { class: 'hm-account-eyebrow' }, CANCEL_FIRST.title), h('p', { class: 'hm-auth-hint' }, CANCEL_FIRST.body),
     h('div', { class: 'hm-auth-actions' }, manage), status);
+  const retry = h('button', { type: 'button', class: 'hm-auth-btn', 'data-act': 'recheck-subscription' }, CANCEL_FIRST.retry);
+  retry.addEventListener('click', () => (retry.disabled ? undefined : check()));
+  const note = h('div', { class: 'hm-account-facts', 'data-unchecked': '' },
+    h('p', { class: 'hm-auth-hint', role: 'status' }, CANCEL_FIRST.unchecked), h('div', { class: 'hm-auth-actions' }, retry));
   const el = h('div', { style: { display: 'contents' } });
-  const blocked = () => renewingWebPlan(app);
+  // answered: the server has answered a check since this screen opened; failed: the last one here had no answer
+  let answered = false, failed = false, checking = null;
+  const blocked = () => !answered || renewingWebPlan(app);
   let shown = null;
   const update = () => {
-    const now = blocked();
-    // redrawn only when it changes: a check with the same answer never takes focus off Manage subscription
-    if (now !== shown) { shown = now; el.replaceChildren(...(now ? [box] : [])); }
-    if (submit && !submit.form?.dataset?.busy) submit.disabled = now || !confirmed();
+    // one step at a time: a renewing plan's (from what is kept, even unchecked), else the unanswered check's line
+    const now = renewingWebPlan(app) ? 'renewing' : failed ? 'unchecked' : '';
+    // redrawn only when it changes: a check with the same answer never takes focus off Manage subscription / Try again
+    if (now !== shown) { shown = now; el.replaceChildren(...(now === 'renewing' ? [box] : now === 'unchecked' ? [note] : [])); }
+    if (submit && !submit.form?.dataset?.busy) submit.disabled = blocked() || !confirmed();
   };
+  /** Ask the server (one at a time here); the answer, or none, is read off the entitlements once it settles. */
+  function check() {
+    if (checking) return checking;
+    retry.disabled = true;
+    checking = Promise.resolve().then(() => ent.refresh({ force: true })).catch(() => {}).then(() => {
+      if (ent.webAnswered?.()) answered = true;
+      failed = !answered;
+      checking = null;
+      retry.disabled = false;
+      update();
+    });
+    return checking;
+  }
   update();
-  const off = ent.onChange?.(update);
-  const checked = Promise.resolve().then(() => ent.refresh({ force: true })).catch(() => {}).then(update);
-  return { el, blocked, checked, update, stop: () => off?.() };
+  // a check from elsewhere (coming back to the app) that brings a plan, or a change to it, is an answer too
+  const off = ent.onChange?.(() => { if (ent.webAnswered?.()) { answered = true; failed = false; } update(); });
+  let opened = check();
+  async function ready() {
+    await opened;
+    if (!answered) await (opened = check());
+    return !answered ? CANCEL_FIRST.unchecked : renewingWebPlan(app) ? CANCEL_FIRST.refused : null;
+  }
+  return { el, blocked, get checked() { return checking || opened; }, ready, update, stop: () => off?.() };
 }
 
 /**
@@ -918,10 +950,10 @@ export default function account(app, params = {}) {
       fields: [confirm], submit: 'Delete my account', busy: 'Deleting…', act: 'delete-confirm', danger: true,
       onSubmit: async (v) => {
         if (!VM.deleteConfirmed(v.confirm)) return { ok: false, error: { code: 'confirm', field: 'confirm', message: `Type “${VM.DELETE_WORD}” to confirm.` } };
-        // D9: never while the web plan still renews (after the check this screen made on opening)
+        // D9: never while the web plan still renews, nor without the billing server's answer on this screen
         if (guard) {
-          await guard.checked;
-          if (guard.blocked()) { later(() => guard.update(), 0); return { ok: false, error: { code: 'subscription', message: CANCEL_FIRST.refused } }; }
+          const refused = await guard.ready();
+          if (refused) { later(() => guard.update(), 0); return { ok: false, error: { code: 'subscription', message: refused } }; }
         }
         const a = await api();
         const r = await a.deleteAccount();

@@ -172,6 +172,8 @@ export function createEntitlements({ store, billing = null, now = () => Date.now
     onChange(fn) { listeners.add(fn); return () => listeners.delete(fn); },
     /** Web subscriptions: the account is signed in here (a web plan needs one). */
     webSignedIn: () => !!web && web.signedIn(),
+    /** Web subscriptions: the last check had the billing server's answer (false offline, signed out, a 5xx or 429). */
+    webAnswered: () => !!web && webAnswered,
     /** A web plan's details for Settings: { status, periodEnd, endsAt, cancelAtPeriodEnd, manageable } | null. */
     webPlan() {
       const s = cur();

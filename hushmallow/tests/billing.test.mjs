@@ -37,13 +37,14 @@ function authHandle({ signedIn = true, token = 'eyJhbGciOi.account-token.sig' } 
 }
 /** Our server's billing routes, faked: records every request. */
 function billingServer({ status = { tier: 'none', status: 'none', current_period_end: null, cancel_at_period_end: false, manageable: false } } = {}) {
-  const s = { calls: [], status, sync: null, checkout: { http: 200, body: { url: 'https://checkout.stripe.com/c/pay/cs_test_a1' } }, portal: { http: 200, body: { url: 'https://billing.stripe.com/p/session/test_1' } }, down: false };
+  const s = { calls: [], status, statusReply: null, sync: null, checkout: { http: 200, body: { url: 'https://checkout.stripe.com/c/pay/cs_test_a1' } }, portal: { http: 200, body: { url: 'https://billing.stripe.com/p/session/test_1' } }, down: false };
   s.fetch = async (url, init = {}) => {
     s.calls.push({ url: String(url), init, body: init.body ? JSON.parse(init.body) : null });
     if (s.down) throw new TypeError('Failed to fetch');
     const path = new URL(url).pathname;
     const reply = (http, body) => new Response(JSON.stringify(body), { status: http, headers: { 'content-type': 'application/json' } });
-    if (path === PATHS.status) return reply(200, s.status);
+    // statusReply: the status route failing ({ http, body }: the server busy, the rate limit, a gateway)
+    if (path === PATHS.status) return s.statusReply ? reply(s.statusReply.http, s.statusReply.body) : reply(200, s.status);
     if (path === PATHS.checkout) return reply(s.checkout.http, s.checkout.body);
     if (path === PATHS.portal) return reply(s.portal.http, s.portal.body);
     // POST /v1/billing/sync (WS3): a server without it yet answers 404, as any unknown path
@@ -110,6 +111,7 @@ test('off: the entitlements, Another Angle and the plans copy are exactly as bef
     assert.deepEqual(await ent.refresh(), store.get('entitlement'));
     assert.equal(ent.webPlan(), null);
     assert.equal(ent.webSignedIn(), false);
+    assert.equal(ent.webAnswered(), false);
     assert.deepEqual(await ent.manage(), { failed: true, reason: 'off' });
   }
   const P = await import('../src/app/scenes/plans.js');
@@ -876,7 +878,9 @@ test('delete account (D9): a web plan that still renews shows "Cancel your subsc
   assert.equal(none.submit.disabled, false);
   // bought on another phone (nothing kept here): the check on opening brings it, and the step appears
   const elsewhere = await open({ kept: null, word: 'delete' });
-  assert.equal(elsewhere.guard.blocked(), false);
+  assert.equal(elsewhere.guard.blocked(), true, 'Delete waits for the check');
+  assert.equal(shown(elsewhere.guard), '', 'with nothing shown meanwhile');
+  assert.equal(elsewhere.submit.disabled, true);
   await elsewhere.guard.checked;
   assert.equal(elsewhere.guard.blocked(), true);
   assert.equal(elsewhere.submit.disabled, true);
@@ -918,14 +922,87 @@ test('delete account (D9): a web plan that still renews shows "Cancel your subsc
   } finally { if (prev === undefined) delete globalThis.window; else globalThis.window = prev; }
 });
 
+test('delete account (D9): with no answer from the billing check, Delete waits ("Couldn’t check…", Try again) and is refused at submit', async () => {
+  fakeDocument();
+  const A = await import('../src/app/scenes/account.js');
+  const LIVE = { tier: 'ultra', status: 'active', current_period_end: '2027-10-16T09:00:00.000Z', ends_at: null, cancel_at_period_end: false, manageable: true };
+  const NONE = { tier: 'none', status: 'none', current_period_end: null, cancel_at_period_end: false, manageable: false };
+  const shown = (g) => all(g.el).map(text).join(' ');
+  const paths = (s) => s.server.calls.map((c) => new URL(c.url).pathname);
+  const failing = (http) => ({ http, body: { status: 'error', error: { code: 'billing_unavailable', message: 'x' } } });
+  // a new browser, or cleared site data (nothing kept here), and the check fails: busy, the IP limit, a gateway, offline
+  for (const why of [503, 429, 502, 'offline']) {
+    const s = setup();
+    if (why === 'offline') s.server.down = true; else s.server.statusReply = failing(why);
+    const ent = createEntitlements({ store: memStore(), billing: s.billing });
+    const submit = new FakeEl('button');
+    const g = A.deleteGuard({ billing: s.billing, ent }, { submit, confirmed: () => true });
+    await g.checked;
+    assert.equal(ent.webAnswered(), false);
+    assert.equal(g.blocked(), true, `${why}: never deleted on no answer`);
+    assert.equal(submit.disabled, true, String(why));
+    assert.ok(shown(g).includes(A.CANCEL_FIRST.unchecked), String(why));
+    assert.ok(!shown(g).includes(A.CANCEL_FIRST.title), 'nothing kept says a plan renews');
+    // at submit: asked once more, and still refused without an answer
+    assert.equal(await g.ready(), A.CANCEL_FIRST.unchecked, String(why));
+    assert.deepEqual(paths(s), ['/v1/billing/status', '/v1/billing/status'], String(why));
+  }
+  // a renewing plan kept here longer than the grace ago (set aside: no plan for now), and the check fails now
+  const s = setup();
+  s.server.status = LIVE;
+  const store = memStore();
+  const clock = clockAt();
+  await createEntitlements({ store, billing: s.billing, now: clock }).refresh({ force: true });
+  clock.t += BILLING_GRACE_MS + 3600000;
+  s.server.statusReply = failing(503);
+  const ent = createEntitlements({ store, billing: s.billing, now: clock });
+  assert.equal(ent.webPlan(), null, 'older than the grace');
+  const submit = new FakeEl('button');
+  const g = A.deleteGuard({ billing: s.billing, ent }, { submit, confirmed: () => true });
+  await g.checked;
+  assert.equal(g.blocked(), true);
+  assert.equal(submit.disabled, true);
+  // Try again, the server answers now: the plan renews, so the step shows instead of the line
+  const retry = all(g.el).find((n) => n.tagName === 'BUTTON' && text(n) === 'Try again');
+  assert.equal(retry.attrs['data-act'], 'recheck-subscription');
+  s.server.statusReply = null;
+  await click(retry);
+  await g.checked;
+  assert.equal(g.blocked(), true);
+  assert.ok(shown(g).includes(A.CANCEL_FIRST.title));
+  assert.ok(!shown(g).includes(A.CANCEL_FIRST.unchecked));
+  assert.equal(await g.ready(), A.CANCEL_FIRST.refused);
+  // cancelled there since: the answer at submit lets it through
+  s.server.status = { ...LIVE, cancel_at_period_end: true, ends_at: LIVE.current_period_end };
+  await ent.refresh({ force: true });
+  assert.equal(await g.ready(), null);
+  assert.equal(submit.disabled, false);
+  // no plan at all: one answer, at submit, is enough
+  const late = setup();
+  late.server.status = NONE;
+  late.server.statusReply = failing(503);
+  const lateEnt = createEntitlements({ store: memStore(), billing: late.billing });
+  const lateSubmit = new FakeEl('button');
+  const lg = A.deleteGuard({ billing: late.billing, ent: lateEnt }, { submit: lateSubmit, confirmed: () => true });
+  await lg.checked;
+  assert.equal(lg.blocked(), true);
+  late.server.statusReply = null;
+  assert.equal(await lg.ready(), null, 'the answer came at submit');
+  assert.equal(lg.blocked(), false);
+  assert.equal(shown(lg), '', 'the line goes');
+  assert.deepEqual(paths(late), ['/v1/billing/status', '/v1/billing/status']);
+  assert.equal(await lg.ready(), null);
+  assert.equal(late.server.calls.length, 2, 'not asked again once answered');
+});
+
 test('delete account (D9): the delete screen puts the step first, keeps Delete off while it shows, and refuses at submit too', () => {
   const src = read('src/app/scenes/account.js');
   const del = src.slice(src.indexOf('  V.delete = () => {'), src.indexOf('  // ----------------------------------------------------------- actions --'));
   assert.match(del, /const guard = deleteGuard\(app, \{ submit: f\.submitBtn, confirmed: \(\) => VM\.deleteConfirmed\(confirm\.input\.value\) \}\);/);
   assert.match(del, /confirm\.onInput\(\(\) => \{ f\.submitBtn\.disabled = !!guard\?\.blocked\(\) \|\| !VM\.deleteConfirmed\(confirm\.input\.value\); \}\);/);
   assert.match(del, /body: \[\n\s+guard\?\.el,\n\s+h\('div', \{ class: 'hm-account-facts' \}/, 'the step comes first');
-  assert.match(del, /await guard\.checked;\n\s+if \(guard\.blocked\(\)\) \{ later\(\(\) => guard\.update\(\), 0\); return \{ ok: false/);
-  assert.ok(del.indexOf('await guard.checked') < del.indexOf('a.deleteAccount()'), 'before anything is deleted');
+  assert.match(del, /const refused = await guard\.ready\(\);\n\s+if \(refused\) \{ later\(\(\) => guard\.update\(\), 0\); return \{ ok: false, error: \{ code: 'subscription', message: refused \} \}; \}/);
+  assert.ok(del.indexOf('await guard.ready()') < del.indexOf('a.deleteAccount()'), 'before anything is deleted');
   assert.match(del, /stop: \(\) => guard\?\.stop\(\),/);
   assert.match(src, /stopView\?\.\(\); stopView = null;\n[\s\S]{0,200}const make = V\[top\.view\]/, 'dropped when another screen shows');
   assert.equal((src.match(/stopView\?\.\(\); stopView = null;/g) || []).length, 2, 'and when the scene goes');
