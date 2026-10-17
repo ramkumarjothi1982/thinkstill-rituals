@@ -135,10 +135,14 @@ export function createEntitlements({ store, billing = null, now = () => Date.now
   function refreshWeb(force) {
     if (webCheck) return webCheck;
     if (!force && now() - lastWebCheck < BILLING_RECHECK_MS) return Promise.resolve(cur());
+    return askWeb(() => web.status());
+  }
+  /** One request (status, or a Checkout sync: the same answer); a refresh meanwhile joins it. */
+  function askWeb(ask) {
     lastWebCheck = now();
     webCheck = (async () => {
       let r = null;
-      try { r = await web.status(); } catch { r = null; }
+      try { r = await ask(); } catch { r = null; }
       webAnswered = !!r?.ok;
       // a plan, or what the server says about a web plan kept here (ended, or a past one with receipts to see);
       // a test or App Store plan is never taken away by it. Offline or signed out: what is kept stays, within the grace
@@ -146,6 +150,11 @@ export function createEntitlements({ store, billing = null, now = () => Date.now
       return cur();
     })().finally(() => { webCheck = null; });
     return webCheck;
+  }
+  /** Back from Checkout: the session's own answer, after any check in flight (an older answer never lands after it). */
+  async function syncWeb(sessionId) {
+    while (webCheck) await webCheck.catch(() => {});
+    return askWeb(() => web.sync(sessionId));
   }
 
   const api = {
@@ -168,6 +177,8 @@ export function createEntitlements({ store, billing = null, now = () => Date.now
       const s = cur();
       return s.source === 'billing' ? { status: s.status || null, periodEnd: s.periodEnd ?? null, endsAt: s.endsAt ?? null, cancelAtPeriodEnd: !!s.cancelAtPeriodEnd, manageable: !!s.manageable } : null;
     },
+    /** Web subscriptions, back from Checkout: the plan from that session (src/app/billing.js sync), at once. */
+    async sync(sessionId) { return web ? syncWeb(sessionId) : cur(); },
     async refresh({ force = false } = {}) {
       if (web) return refreshWeb(force);
       if (!native) return state;

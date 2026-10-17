@@ -37,7 +37,7 @@ function authHandle({ signedIn = true, token = 'eyJhbGciOi.account-token.sig' } 
 }
 /** Our server's billing routes, faked: records every request. */
 function billingServer({ status = { tier: 'none', status: 'none', current_period_end: null, cancel_at_period_end: false, manageable: false } } = {}) {
-  const s = { calls: [], status, checkout: { http: 200, body: { url: 'https://checkout.stripe.com/c/pay/cs_test_a1' } }, portal: { http: 200, body: { url: 'https://billing.stripe.com/p/session/test_1' } }, down: false };
+  const s = { calls: [], status, sync: null, checkout: { http: 200, body: { url: 'https://checkout.stripe.com/c/pay/cs_test_a1' } }, portal: { http: 200, body: { url: 'https://billing.stripe.com/p/session/test_1' } }, down: false };
   s.fetch = async (url, init = {}) => {
     s.calls.push({ url: String(url), init, body: init.body ? JSON.parse(init.body) : null });
     if (s.down) throw new TypeError('Failed to fetch');
@@ -46,6 +46,8 @@ function billingServer({ status = { tier: 'none', status: 'none', current_period
     if (path === PATHS.status) return reply(200, s.status);
     if (path === PATHS.checkout) return reply(s.checkout.http, s.checkout.body);
     if (path === PATHS.portal) return reply(s.portal.http, s.portal.body);
+    // POST /v1/billing/sync (WS3): a server without it yet answers 404, as any unknown path
+    if (path === PATHS.sync && s.sync) return reply(s.sync.http, typeof s.sync.body === 'function' ? s.sync.body() : s.sync.body);
     return reply(404, {});
   };
   return s;
@@ -358,11 +360,11 @@ test('purchase and restore go through the web; in the App Store shell the web is
 test('back from Stripe: ?billing= leaves the address at once; the plan is asked for again and said once', async () => {
   const replaced = [];
   const hist = { state: { i: 0 }, replaceState: (s, _, u) => replaced.push([s, u]) };
-  assert.equal(takeReturn({ loc: { href: 'https://app.hushmallow.com/?billing=success' }, hist }), 'success');
+  assert.deepEqual(takeReturn({ loc: { href: 'https://app.hushmallow.com/?billing=success' }, hist }), { kind: 'success', sessionId: null });
   assert.deepEqual(replaced.pop(), [{ i: 0 }, 'https://app.hushmallow.com/']);
-  assert.equal(takeReturn({ loc: { href: 'https://app.hushmallow.com/?v=abc&billing=cancel#home' }, hist }), 'cancel');
+  assert.deepEqual(takeReturn({ loc: { href: 'https://app.hushmallow.com/?v=abc&billing=cancel#home' }, hist }), { kind: 'cancel', sessionId: null });
   assert.equal(replaced.pop()[1], 'https://app.hushmallow.com/?v=abc#home', 'everything else in the address stays');
-  assert.equal(takeReturn({ loc: { href: 'https://app.hushmallow.com/?billing=portal' }, hist }), 'portal');
+  assert.deepEqual(takeReturn({ loc: { href: 'https://app.hushmallow.com/?billing=portal' }, hist }), { kind: 'portal', sessionId: null });
   assert.equal(takeReturn({ loc: { href: 'https://app.hushmallow.com/?billing=<script>' }, hist }), null);
   assert.equal(replaced.length, 2, 'an unknown value is taken out too');
   assert.equal(takeReturn({ loc: { href: 'https://app.hushmallow.com/' }, hist }), null);
@@ -378,6 +380,8 @@ test('back from Stripe: ?billing= leaves the address at once; the plan is asked 
   };
   const toasts = [], waits = [];
   const app = { ent: createEntitlements({ store: memStore(), billing: setup({ server }).billing }), toast: (t) => toasts.push(t), haptic: () => {}, world: { react: () => {} } };
+  assert.deepEqual(await welcomeBack(app, { kind: 'cancel', sessionId: null }, { sleep: async () => {} }), 'cancel', 'takeReturn\'s answer as it comes');
+  toasts.length = 0;
   const fast = { sleep: async (ms) => { waits.push(ms); } };
   assert.equal(await welcomeBack(app, 'success', fast), 'welcome');
   assert.deepEqual(toasts, [`Welcome to ${PLANS.ultra.name}`]);
@@ -394,6 +398,129 @@ test('back from Stripe: ?billing= leaves the address at once; the plan is asked 
   assert.deepEqual(toasts, ['No problem. Nothing was charged.']);
   assert.equal(await welcomeBack(app3, 'portal', fast), 'portal');
   assert.equal(await welcomeBack(app3, null, fast), null);
+});
+
+test('back from Checkout: session_id leaves the address with ?billing=, and only a well-formed one is kept, only on success', () => {
+  const replaced = [];
+  const hist = { state: null, replaceState: (_, __, u) => replaced.push(u) };
+  const id = `cs_test_${'a1B2'.repeat(15)}`;
+  assert.deepEqual(takeReturn({ loc: { href: `https://app.hushmallow.com/?billing=success&session_id=${id}` }, hist }), { kind: 'success', sessionId: id });
+  assert.equal(replaced.pop(), 'https://app.hushmallow.com/', 'both taken out at once');
+  assert.deepEqual(takeReturn({ loc: { href: `https://app.hushmallow.com/?v=abc&session_id=${id}&billing=success#home` }, hist }), { kind: 'success', sessionId: id });
+  assert.equal(replaced.pop(), 'https://app.hushmallow.com/?v=abc#home');
+  const live = `cs_live_${'Z9'.repeat(20)}`;
+  assert.equal(takeReturn({ loc: { href: `https://app.hushmallow.com/?billing=success&session_id=${live}` }, hist }).sessionId, live);
+  replaced.pop();
+  // never sent: Stripe's placeholder left unfilled, another kind of id, too short or long, anything else in it
+  for (const bad of ['{CHECKOUT_SESSION_ID}', 'cs_test_short', `cs_prod_${'a'.repeat(20)}`, `sub_${'a'.repeat(20)}`, `cs_test_${'a'.repeat(251)}`, `cs_test_${'a'.repeat(20)}%3Cb%3E`, `cs_test_${'a'.repeat(20)}-x`, '']) {
+    assert.deepEqual(takeReturn({ loc: { href: `https://app.hushmallow.com/?billing=success&session_id=${bad}` }, hist }), { kind: 'success', sessionId: null }, bad);
+    assert.equal(replaced.pop(), 'https://app.hushmallow.com/', `${bad}: taken out all the same`);
+  }
+  // a session id beside any other kind is taken out and not kept
+  for (const kind of ['cancel', 'portal']) {
+    assert.deepEqual(takeReturn({ loc: { href: `https://app.hushmallow.com/?billing=${kind}&session_id=${id}` }, hist }), { kind, sessionId: null });
+    assert.equal(replaced.pop(), 'https://app.hushmallow.com/');
+  }
+  assert.equal(takeReturn({ loc: { href: `https://app.hushmallow.com/?billing=nope&session_id=${id}` }, hist }), null);
+  assert.equal(replaced.pop(), 'https://app.hushmallow.com/');
+  // no ?billing=: not ours, nothing touched
+  assert.equal(takeReturn({ loc: { href: `https://app.hushmallow.com/?session_id=${id}` }, hist }), null);
+  assert.equal(replaced.length, 0);
+});
+
+test('sync: the session id goes to /v1/billing/sync with the token (only a well-formed one, never for a guest); the answer is read as the status', async () => {
+  const id = `cs_test_${'a1B2'.repeat(15)}`;
+  const s = setup();
+  s.server.sync = { http: 200, body: { tier: 'ultra', status: 'active', current_period_end: '2026-11-16T09:00:00.000Z', ends_at: null, cancel_at_period_end: false, manageable: true } };
+  assert.deepEqual(await s.billing.sync(id), { ok: true, tier: 'ultra', status: 'active', periodEnd: Date.parse('2026-11-16T09:00:00Z'), endsAt: null, cancelAtPeriodEnd: false, manageable: true });
+  const [c] = s.server.calls;
+  assert.equal(c.url, `${EP}/v1/billing/sync`);
+  assert.equal(c.init.method, 'POST');
+  assert.deepEqual(c.body, { session_id: id }, 'the session id only');
+  assert.deepEqual(c.init.headers, { authorization: 'Bearer eyJhbGciOi.account-token.sig', 'content-type': 'application/json' });
+  for (const [k, v] of Object.entries({ mode: 'cors', credentials: 'omit', cache: 'no-store', referrerPolicy: 'no-referrer', redirect: 'error' })) assert.equal(c.init[k], v, k);
+  // malformed: nothing is sent
+  for (const bad of [null, undefined, '', '{CHECKOUT_SESSION_ID}', 'cs_test_short', `cs_test_${'a'.repeat(20)}<`, 42, { id }]) assert.deepEqual(await s.billing.sync(bad), { ok: false, reason: 'invalid' }, String(bad));
+  assert.equal(s.server.calls.length, 1);
+  // a server without the route yet, another account's session, refused: not ok (the caller goes on asking for the status)
+  for (const [http, reason] of [[404, 'http_404'], [403, 'http_403'], [400, 'http_400'], [502, 'http_502']]) {
+    s.server.sync = { http, body: { status: 'error', error: { code: 'x' } } };
+    assert.deepEqual(await s.billing.sync(id), { ok: false, reason });
+  }
+  s.server.sync = { http: 401, body: {} };
+  assert.deepEqual(await s.billing.sync(id), { ok: false, reason: 'signed-out' });
+  s.server.down = true;
+  assert.deepEqual(await s.billing.sync(id), { ok: false, reason: 'network' });
+  const guest = setup({ signedIn: false });
+  assert.deepEqual(await guest.billing.sync(id), { ok: false, reason: 'signed-out' });
+  assert.equal(guest.server.calls.length, 0);
+});
+
+test('back from Checkout: the session is synced once, then the plan is asked for as before; a 404 from sync is ignored', async () => {
+  const id = `cs_test_${'a1B2'.repeat(15)}`;
+  const PLAN = { tier: 'ultra', status: 'active', current_period_end: null, cancel_at_period_end: false, manageable: true };
+  const run = async (prep) => {
+    const server = billingServer();
+    prep(server);
+    const toasts = [], waits = [];
+    const app = { ent: createEntitlements({ store: memStore(), billing: setup({ server }).billing }), toast: (t) => toasts.push(t), haptic: () => {}, world: { react: () => {} } };
+    const out = await welcomeBack(app, { kind: 'success', sessionId: id }, { sleep: async (ms) => { waits.push(ms); } });
+    return { out, toasts, waits, paths: server.calls.map((c) => new URL(c.url).pathname), ent: app.ent };
+  };
+  // the server has the route: the plan at once, said once, no status asked
+  const now = await run((sv) => { sv.sync = { http: 200, body: PLAN }; });
+  assert.equal(now.out, 'welcome');
+  assert.deepEqual(now.toasts, ['Welcome to hushmallow Beyond']);
+  assert.deepEqual(now.paths, ['/v1/billing/sync']);
+  assert.equal(now.ent.source(), 'billing');
+  // a server without it yet (404): ignored, then the status checks as before
+  const old = await run((sv) => {
+    let asks = 0;
+    const answer = sv.fetch;
+    sv.fetch = async (u, i) => { if (new URL(u).pathname === PATHS.status && ++asks === 2) sv.status = PLAN; return answer(u, i); };
+  });
+  assert.equal(old.out, 'welcome');
+  assert.deepEqual(old.paths, ['/v1/billing/sync', '/v1/billing/status', '/v1/billing/status']);
+  assert.deepEqual(old.waits, [2000]);
+  // the session is not complete yet (the plan is none): the checks go on, then a calm "on its way"
+  const open = await run((sv) => { sv.sync = { http: 200, body: { tier: 'none', status: 'none', current_period_end: null, cancel_at_period_end: false, manageable: false } }; });
+  assert.equal(open.out, 'pending');
+  assert.deepEqual(open.paths, ['/v1/billing/sync', ...Array(5).fill('/v1/billing/status')]);
+  assert.deepEqual(open.toasts, [RETURN_LINES.pending]);
+  // no session id (an old success address, or a malformed one): no sync, as before
+  const server = billingServer();
+  server.status = PLAN;
+  const app = { ent: createEntitlements({ store: memStore(), billing: setup({ server }).billing }), toast: () => {}, haptic: () => {}, world: { react: () => {} } };
+  assert.equal(await welcomeBack(app, { kind: 'success', sessionId: null }, { sleep: async () => {} }), 'welcome');
+  assert.deepEqual(server.calls.map((c) => new URL(c.url).pathname), ['/v1/billing/status']);
+});
+
+test('sync waits for a check already in flight: the older answer never lands after the session\'s', async () => {
+  const id = `cs_test_${'a1B2'.repeat(15)}`;
+  const server = billingServer({ status: { tier: 'none', status: 'canceled', current_period_end: null, cancel_at_period_end: false, manageable: true } });
+  const answer = server.fetch;
+  let release;
+  const held = new Promise((r) => { release = r; });
+  const asked = [];   // in the order sent (the fake records a request when it answers)
+  server.fetch = async (u, i) => { const p = new URL(u).pathname; asked.push(p); if (p === PATHS.status && asked.length === 1) await held; return answer(u, i); };
+  server.sync = { http: 200, body: { tier: 'paid', status: 'active', current_period_end: null, cancel_at_period_end: false, manageable: true } };
+  const store = memStore();
+  store.set('entitlement', { tier: 'none', source: 'billing', since: 1, checkedAt: Date.now(), status: 'canceled', manageable: true });   // a past web plan
+  const ent = createEntitlements({ store, billing: setup({ server }).billing });
+  const boot = ent.refresh();   // main.js asks at start, before the way back from Stripe is handled
+  const synced = ent.sync(id);
+  for (let i = 0; i < 5; i++) await tick();
+  assert.deepEqual(asked, ['/v1/billing/status'], 'the sync waits');
+  release();
+  await boot;
+  await synced;
+  assert.deepEqual(asked, ['/v1/billing/status', '/v1/billing/sync']);
+  assert.equal(ent.tier(), 'paid', 'the session\'s answer is the last word');
+  // and a refresh asked while the sync runs joins it (one request at a time)
+  const again = ent.sync(id);
+  const joined = ent.refresh({ force: true });
+  await Promise.all([again, joined]);
+  assert.deepEqual(asked, ['/v1/billing/status', '/v1/billing/sync', '/v1/billing/sync']);
 });
 
 // ------------------------------------------------------------- the copy --

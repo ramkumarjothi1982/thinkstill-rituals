@@ -11,9 +11,10 @@
 //
 // This file holds hushmallow's ONE billing network call (tests/core.test.mjs
 // allows exactly the `netFetch` line below, only to the configured endpoint
-// and only these three paths). What is sent: the signed-in account's access
-// token (Authorization: Bearer) and, for a checkout, { plan, period }. Never
-// words, feelings or photos, and nothing at all for a guest.
+// and only these four paths). What is sent: the signed-in account's access
+// token (Authorization: Bearer) and, for a checkout, { plan, period }; back
+// from Checkout, the session's id Stripe put in the address. Never words,
+// feelings or photos, and nothing at all for a guest.
 //
 //   createBilling({ auth, signIn, config?, shell?, prices?, fetchImpl?, nav?, timeoutMs? }) → billing | null (off)
 //     signedIn()             the account is signed in on this device
@@ -22,13 +23,15 @@
 //                              (periodEnd, endsAt: ms or null; the server sends ISO or ms, both are read)
 //     checkout(plan, period) → { redirecting } (on to Stripe Checkout) | { needsAccount } | { manage } (has a plan) | { failed, reason }
 //     portal()               → { redirecting } (Stripe's customer portal) | { needsAccount } | { none } | { failed, reason }
+//     sync(sessionId)        → as status(): back from Checkout, the server reads that session from Stripe and records the
+//                              plan at once (the webhook may be a moment behind); a malformed id is never sent
 //     prices()               → { productId: 'A$…' }, from BILLING_PRICES (only those set)
 //   resolveBilling({ provider, endpoint, allowedHosts, loc, session }) → { provider, endpoint } | null
 //   inNativeShell(win?)     the App Store app's shell (window.HushNative or the hushStore message handler)
-//   takeReturn({ loc, hist }) → 'success' | 'cancel' | 'portal' | null: the ?billing= Stripe sent the person
-//     back with, taken out of the address at once (Back never brings it again)
-//   welcomeBack(app, kind)  after Stripe: the plan is asked for again (a few times: the webhook can take a
-//     moment) and said once
+//   takeReturn({ loc, hist }) → { kind: 'success' | 'cancel' | 'portal', sessionId } | null: the ?billing= Stripe sent
+//     the person back with (and Checkout's session_id), taken out of the address at once (Back never brings it again)
+//   welcomeBack(app, back)  after Stripe: the session is synced, then the plan is asked for again (a few times: the
+//     webhook can take a moment) and said once
 //
 // Only Stripe's own pages are ever opened (STRIPE_PAGES: checkout.stripe.com,
 // billing.stripe.com, and our custom domain checkout.hushmallow.com, which Stripe
@@ -37,7 +40,9 @@
 import { BILLING_PRICES, deploySettings } from './config.js';
 import { PLANS } from './entitlements.js';
 
-export const PATHS = Object.freeze({ checkout: '/v1/billing/checkout', status: '/v1/billing/status', portal: '/v1/billing/portal' });
+export const PATHS = Object.freeze({ checkout: '/v1/billing/checkout', status: '/v1/billing/status', portal: '/v1/billing/portal', sync: '/v1/billing/sync' });
+/** A Checkout Session id as Stripe makes them (the server checks the same shape, and that its mode is the key's). */
+export const SESSION_ID = /^cs_(test|live)_[A-Za-z0-9]{10,250}$/;
 /**
  * Our custom domain for Checkout and the customer portal (decision D12). Stripe moves both pages there the moment the
  * owner activates it, so this list must be live in production and staging before that, or every checkout and
@@ -154,6 +159,19 @@ export function createBilling({
     } catch { return { http: 0, data: null }; } finally { clearTimeout(timer); }
   }
   const reasonOf = (r) => (r.http === 0 ? 'network' : `http_${r.http}`);
+  /** The plan as the server says it (GET status, or a sync: the same answer), read strictly. */
+  function readStatus(r) {
+    if (r.signedOut || r.http === 401) return { ok: false, reason: 'signed-out' };
+    if (r.http !== 200 || !r.data || typeof r.data !== 'object') return { ok: false, reason: reasonOf(r) };
+    const d = r.data;
+    return {
+      ok: true, tier: ['none', 'paid', 'ultra'].includes(d.tier) ? d.tier : 'none',
+      status: typeof d.status === 'string' && /^[a-z_]{1,24}$/.test(d.status) ? d.status : 'none',
+      // endsAt: the day the subscription ends (cancelled at the period end, or a date set for it); null while it renews
+      periodEnd: dateMs(d.current_period_end), endsAt: dateMs(d.ends_at),
+      cancelAtPeriodEnd: d.cancel_at_period_end === true, manageable: d.manageable === true,
+    };
+  }
   /** Onwards to a Stripe page (the page leaves). false when the answer is not one. */
   function open(url) {
     const href = stripePage(url);
@@ -168,17 +186,12 @@ export function createBilling({
     accountToken,
     async status() {
       if (!signedIn()) return { ok: false, reason: 'signed-out' };
-      const r = await call(PATHS.status, { method: 'GET' });
-      if (r.signedOut || r.http === 401) return { ok: false, reason: 'signed-out' };
-      if (r.http !== 200 || !r.data || typeof r.data !== 'object') return { ok: false, reason: reasonOf(r) };
-      const d = r.data;
-      return {
-        ok: true, tier: ['none', 'paid', 'ultra'].includes(d.tier) ? d.tier : 'none',
-        status: typeof d.status === 'string' && /^[a-z_]{1,24}$/.test(d.status) ? d.status : 'none',
-        // endsAt: the day the subscription ends (cancelled at the period end, or a date set for it); null while it renews
-        periodEnd: dateMs(d.current_period_end), endsAt: dateMs(d.ends_at),
-        cancelAtPeriodEnd: d.cancel_at_period_end === true, manageable: d.manageable === true,
-      };
+      return readStatus(await call(PATHS.status, { method: 'GET' }));
+    },
+    async sync(sessionId) {
+      if (typeof sessionId !== 'string' || !SESSION_ID.test(sessionId)) return { ok: false, reason: 'invalid' };
+      if (!signedIn()) return { ok: false, reason: 'signed-out' };
+      return readStatus(await call(PATHS.sync, { body: { session_id: sessionId } }));
     },
     async checkout(plan, period) {
       if (!['paid', 'ultra'].includes(plan) || !['monthly', 'yearly'].includes(period)) return { failed: true, reason: 'invalid' };
@@ -205,37 +218,48 @@ export function createBilling({
   };
 }
 
-/** The ?billing= Stripe sent the person back with ('success' | 'cancel' | 'portal'), taken out of the address; null when none. */
+/**
+ * The ?billing= Stripe sent the person back with ({ kind: 'success' | 'cancel' | 'portal', sessionId }), taken out of
+ * the address with Checkout's session_id; null when none. sessionId: only on success, and only a well-formed one.
+ */
 export function takeReturn({ loc = globalThis.location, hist = globalThis.history } = {}) {
   let u;
   try { u = new URL(loc.href); } catch { return null; }
   if (!u.searchParams.has('billing')) return null;
   const v = u.searchParams.get('billing');
+  const id = u.searchParams.get('session_id');
   u.searchParams.delete('billing');
+  u.searchParams.delete('session_id');
   try { hist.replaceState(hist.state ?? null, '', u.href); } catch { /* the address keeps it; nothing else reads it */ }
-  return ['success', 'cancel', 'portal'].includes(v) ? v : null;
+  if (!['success', 'cancel', 'portal'].includes(v)) return null;
+  return { kind: v, sessionId: v === 'success' && typeof id === 'string' && SESSION_ID.test(id) ? id : null };
 }
 
 /**
- * Back from Stripe. 'success': the plan is asked for again, a few times (the webhook can take a moment),
- * and said once it is here, else a calm "on its way"; 'cancel': nothing was charged; 'portal': the plan
- * is asked for again quietly (it may have been cancelled or changed there).
+ * Back from Stripe (takeReturn's answer, or just its kind). 'success': the Checkout Session is synced first (the plan
+ * at once, before the webhook), then the plan is asked for again, a few times (the webhook can take a moment), and
+ * said once it is here, else a calm "on its way"; 'cancel': nothing was charged; 'portal': the plan is asked for
+ * again quietly (it may have been cancelled or changed there).
  */
-export async function welcomeBack(app, kind, { waits = [0, 2000, 4000, 8000, 15000], sleep = (ms) => new Promise((r) => setTimeout(r, ms)) } = {}) {
+export async function welcomeBack(app, back, { waits = [0, 2000, 4000, 8000, 15000], sleep = (ms) => new Promise((r) => setTimeout(r, ms)) } = {}) {
+  const { kind, sessionId = null } = typeof back === 'string' ? { kind: back } : back || {};
   const { ent } = app;
   if (kind === 'cancel') { app.toast(RETURN_LINES.cancel); return 'cancel'; }
   if (kind === 'portal') { try { await ent.refresh({ force: true }); } catch { /* the next check */ } return 'portal'; }
   if (kind !== 'success') return null;
+  const here = () => ent.source() === 'billing' && ent.has('paid');
+  let arrived = false;
+  // a server without the sync route yet (404), or any failure: the checks below, as before
+  if (sessionId && typeof ent.sync === 'function') { try { await ent.sync(sessionId); } catch { /* the checks */ } arrived = here(); }
   for (const ms of waits) {
+    if (arrived) break;
     if (ms) await sleep(ms);
     try { await ent.refresh({ force: true }); } catch { /* try again */ }
-    if (ent.source() === 'billing' && ent.has('paid')) {
-      app.toast(`Welcome to ${PLANS[ent.tier()].name}`);
-      app.haptic?.('success');
-      app.world?.react?.('celebrate');
-      return 'welcome';
-    }
+    arrived = here();
   }
-  app.toast(RETURN_LINES.pending, 4200);
-  return 'pending';
+  if (!arrived) { app.toast(RETURN_LINES.pending, 4200); return 'pending'; }
+  app.toast(`Welcome to ${PLANS[ent.tier()].name}`);
+  app.haptic?.('success');
+  app.world?.react?.('celebrate');
+  return 'welcome';
 }
