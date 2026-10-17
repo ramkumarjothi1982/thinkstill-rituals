@@ -16,7 +16,7 @@
 // never matches; a fake that cannot be (a workflow line) goes in ALLOW, as
 // its exact line. Prints where a secret is and its kind, never the secret.
 import { createHash } from 'node:crypto';
-import { lstatSync, readFileSync, realpathSync } from 'node:fs';
+import { lstatSync, readdirSync, readFileSync, realpathSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -82,6 +82,26 @@ export function scanFiles(root, files, { allow = true } = {}) {
 /** Every tracked file, as paths from root (the repository root). */
 export const trackedFiles = (root) => execFileSync('git', ['-C', root, 'ls-files', '-z'], { encoding: 'utf8', maxBuffer: 64 << 20 }).split('\0').filter(Boolean);
 export const scanTree = (root) => scanFiles(root, trackedFiles(root));
+
+/** Dependencies and git's own folder: never in git (node_modules is gitignored), so a walk leaves them out as ls-files does. */
+const WALK_SKIP = new Set(['.git', 'node_modules']);
+/**
+ * Every file under root, read from disk (paths from root, sorted): for a copy with no .git, where git cannot list them.
+ * Links are not followed; .git and node_modules are left out. A .env or .dev.vars is read like any file: an export holding one is itself a leak.
+ */
+export function walkFiles(root) {
+  const out = [];
+  const walk = (rel) => {
+    for (const e of readdirSync(join(root, rel), { withFileTypes: true })) {
+      if (WALK_SKIP.has(e.name)) continue;
+      const p = rel ? `${rel}/${e.name}` : e.name;
+      if (e.isDirectory()) walk(p);
+      else if (e.isFile()) out.push(p);
+    }
+  };
+  walk('');
+  return out.sort();
+}
 
 /** A path in a diff header (b/<path>, quoted when git must), or null for /dev/null. */
 function diffPath(s) {

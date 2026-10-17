@@ -14,10 +14,10 @@ import assert from 'node:assert/strict';
 import { appendFileSync, lstatSync, mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { ALLOW, SECRET_PATTERNS, addedLines, describe, findSecrets, lineHash, scanFiles, scanTree, secretsInLine, trackedFiles } from '../tools/secret-scan.mjs';
+import { ALLOW, SECRET_PATTERNS, addedLines, describe, findSecrets, lineHash, scanFiles, scanTree, secretsInLine, trackedFiles, walkFiles } from '../tools/secret-scan.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const repo = fileURLToPath(new URL('../../', import.meta.url));
@@ -172,6 +172,28 @@ test('build-site.sh scans every tracked file first, published or not: a key in a
     rmSync(join(d, '.git'), { recursive: true, force: true });
     const nogit = spawnSync('bash', [join(d, 'hushmallow/tools/build-site.sh'), out, 'sec2'], { cwd: tmpdir(), env: gitEnv, encoding: 'utf8' });
     assert.match(nogit.stderr, /secret scan: not a git work tree, so only the built site is scanned/);
+  } finally { rmSync(d, { recursive: true, force: true }); }
+});
+
+test('walkFiles: every file under a folder, from disk, the same paths ls-files gives a checkout of it (links not followed; .git and node_modules left out)', () => {
+  // every tracked file of this repository is walked
+  const walked = walkFiles(repo);
+  const has = new Set(walked);
+  const missed = trackedFiles(repo).filter((f) => { try { return lstatSync(join(repo, f)).isFile() && !has.has(f); } catch { return false; } });
+  assert.deepEqual(missed, [], 'every tracked file is walked');
+  assert.deepEqual(walked.filter((f) => /(^|\/)(\.git|node_modules)(\/|$)/.test(f)), [], 'no .git or node_modules file');
+  const d = mkdtempSync(join(tmpdir(), 'hm-secrets-walk-'));
+  try {
+    for (const f of ['z.txt', 'a/b/c.md', '.env', '.git/config', 'node_modules/p/i.js', 'a/node_modules/q/i.js', 'sub/.git']) { mkdirSync(dirname(join(d, f)), { recursive: true }); writeFileSync(join(d, f), 'x\n'); }
+    symlinkSync(join(d, 'a'), join(d, 'linked-dir'));
+    symlinkSync(join(d, 'z.txt'), join(d, 'linked-file'));
+    assert.deepEqual(walkFiles(d), ['.env', 'a/b/c.md', 'z.txt']);
+    // an export of this repository (git archive, a tarball with no .git): exactly the files committed at HEAD
+    const exp = join(d, 'export');
+    mkdirSync(exp);
+    execFileSync('sh', ['-c', 'git -C "$1" archive --format=tar HEAD | tar -x -C "$2"', 'sh', repo, exp], { env: gitEnv, stdio: ['ignore', 'ignore', 'pipe'] });
+    const committed = git(repo, 'ls-tree', '-r', '-z', 'HEAD').split('\0').filter((l) => l && !l.startsWith('120000 ') && !l.startsWith('160000 ')).map((l) => l.slice(l.indexOf('\t') + 1)).sort();
+    assert.deepEqual(walkFiles(exp), committed);
   } finally { rmSync(d, { recursive: true, force: true }); }
 });
 
