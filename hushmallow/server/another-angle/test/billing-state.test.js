@@ -5,13 +5,15 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { clock } from './helpers.js';
+import { clock, CLOCK_START } from './helpers.js';
 import { createStripe, SUBSCRIPTION_LIST_LIMIT } from '../src/billing/stripe.js';
 import { memoryBillingNamespace, billingClient, summarise } from '../src/billing/store.js';
-import { createBilling } from '../src/billing/routes.js';
+import { createBilling, EVENTS } from '../src/billing/routes.js';
 import { readConfig, STRIPE_API_VERSION_EXPECTED } from '../src/config.js';
 import { createLogger } from '../src/log.js';
-import { upstream, billingEnv, subscription, assertClean, UID, OTHER, TEST_KEY } from './billing-fixtures.js';
+import {
+  upstream, billingEnv, subscription, setup, event, deliver, subscribe, status, lines, jwt, assertClean, UID, OTHER, TEST_KEY, DAY,
+} from './billing-fixtures.js';
 
 // ---------------------------------------------------------- Stripe client --
 test('Stripe client: customer create, price, subscriptions of a customer, checkout session read and expire; pinned version on each', async () => {
@@ -146,4 +148,79 @@ test('recordSubscription (the webhook\'s apply, and the return sync with no even
   assert.deepEqual(await c.billing.recordSubscription(args, c.env, c.cfg), { http: 200, outcome: 'customer_conflict' });
   assert.equal(await c.db.get(UID), null);
   assertClean([...b.logs, ...c.logs]);
+});
+
+// ------------------------------------------------------------------ events --
+const ELEVEN = [
+  'checkout.session.completed', 'checkout.session.async_payment_succeeded', 'checkout.session.async_payment_failed',
+  'customer.subscription.created', 'customer.subscription.updated', 'customer.subscription.deleted', 'customer.subscription.paused', 'customer.subscription.resumed',
+  'invoice.paid', 'invoice.payment_failed', 'invoice.payment_action_required',
+];
+/** The object each kind of event carries, naming sub_Test123 for UID. */
+function objectFor(type, over = {}) {
+  if (type.startsWith('checkout.session.')) return { id: 'cs_test_a1', object: 'checkout.session', mode: 'subscription', payment_status: 'paid', status: 'complete', client_reference_id: UID, customer: 'cus_Test123', subscription: 'sub_Test123', ...over };
+  if (type.startsWith('invoice.')) return { id: 'in_1', object: 'invoice', customer: 'cus_Test123', parent: { type: 'subscription_details', subscription_details: { subscription: 'sub_Test123', metadata: { user_id: UID } } }, ...over };
+  return subscription(over);
+}
+
+test('events: the eleven, each routed by its prefix, each re-reading and recording the subscription', async () => {
+  assert.deepEqual([...EVENTS], ELEVEN);
+  for (const type of ELEVEN) {
+    const s = setup();
+    s.up.subs.set('sub_Test123', subscription());
+    const res = await deliver(s.app, s.env, event(type, objectFor(type), s.now), { at: s.now() });
+    assert.equal(res.status, 200, type);
+    assert.deepEqual(s.up.stripe().map((c) => `${c.method} ${c.path}`), ['GET /v1/subscriptions/sub_Test123'], `${type}: read back from Stripe`);
+    assert.equal((await status(s)).tier, 'ultra', type);
+    assert.ok(lines(s.logs).some((l) => l.stripe_event === type && l.status === 'applied'), type);
+    assertClean(s.logs);
+  }
+  // a checkout that is not a subscription (any of the three): acknowledged, Stripe never asked
+  for (const type of ELEVEN.slice(0, 3)) {
+    const s = setup();
+    assert.equal((await deliver(s.app, s.env, event(type, objectFor(type, { mode: 'payment', subscription: null }), s.now), { at: s.now() })).status, 200);
+    assert.equal(s.up.stripe().length, 0, type);
+    assert.equal(await s.env.BILLING.instances.get(`user:${UID}`), undefined);
+  }
+});
+
+test('invoice.paid in both shapes keeps a renewal that lost its subscription event (the period end moves on)', async () => {
+  for (const shape of ['parent', 'flat']) {
+    const s = setup();
+    const long = jwt(UID, { exp: (CLOCK_START + 60 * DAY) / 1000 });
+    s.up.users[long] = { id: UID };
+    await subscribe(s, subscription({}, { end: (CLOCK_START + 30 * DAY) / 1000 }));
+    // the renewal: Stripe moved the period on; the customer.subscription.updated for it never arrived
+    s.now.advance(30 * DAY);
+    s.up.subs.set('sub_Test123', subscription({ metadata: {} }, { end: (CLOCK_START + 60 * DAY) / 1000 }));
+    const inv = shape === 'parent'
+      ? { id: 'in_2', object: 'invoice', customer: 'cus_Test123', parent: { type: 'subscription_details', subscription_details: { subscription: 'sub_Test123', metadata: { user_id: UID } } } }
+      : { id: 'in_2', object: 'invoice', customer: 'cus_Test123', subscription: 'sub_Test123', subscription_details: { metadata: { user_id: UID } } };
+    assert.equal((await deliver(s.app, s.env, event('invoice.paid', inv, s.now), { at: s.now() })).status, 200, shape);
+    s.now.advance(2 * DAY);   // past the old period end and its day of grace
+    const st = await status(s, long);
+    assert.deepEqual([st.tier, st.current_period_end], ['ultra', new Date(CLOCK_START + 60 * DAY).toISOString()], shape);
+  }
+});
+
+test('delayed payments: access follows the re-read subscription, never the checkout session', async () => {
+  const s = setup();
+  // completed but unpaid (a delayed method): the subscription is incomplete, so no plan yet
+  s.up.subs.set('sub_Test123', subscription({ status: 'incomplete' }));
+  await deliver(s.app, s.env, event('checkout.session.completed', objectFor('checkout.session.completed', { payment_status: 'unpaid' }), s.now), { at: s.now() });
+  assert.deepEqual([(await status(s)).tier, (await status(s)).status], ['none', 'incomplete']);
+  // the payment clears: active
+  s.now.advance(1000);
+  s.up.subs.set('sub_Test123', subscription());
+  await deliver(s.app, s.env, event('checkout.session.async_payment_succeeded', objectFor('checkout.session.async_payment_succeeded'), s.now), { at: s.now() });
+  assert.equal((await status(s)).tier, 'ultra');
+  // another account's delayed payment fails: its subscription never activates
+  const f = setup();
+  f.up.subs.set('sub_Test123', subscription({ status: 'incomplete' }));
+  await deliver(f.app, f.env, event('checkout.session.completed', objectFor('checkout.session.completed', { payment_status: 'unpaid' }), f.now), { at: f.now() });
+  f.now.advance(1000);
+  f.up.subs.set('sub_Test123', subscription({ status: 'incomplete_expired' }));
+  await deliver(f.app, f.env, event('checkout.session.async_payment_failed', objectFor('checkout.session.async_payment_failed', { payment_status: 'unpaid' }), f.now), { at: f.now() });
+  assert.deepEqual([(await status(f)).tier, (await status(f)).status], ['none', 'incomplete_expired']);
+  assertClean([...s.logs, ...f.logs]);
 });

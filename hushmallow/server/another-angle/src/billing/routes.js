@@ -11,6 +11,7 @@
 //   GET  /v1/billing/status    the account's token → { tier, status, current_period_end, cancel_at_period_end, manageable }
 //   POST /v1/billing/portal    the account's token → { url } (Stripe's customer portal: cancel, change plan, card, receipts)
 //   POST /v1/billing/webhook   Stripe's events, signed (Stripe-Signature); no Origin, the signature is the check
+//                              (EVENTS: checkout.session.*, customer.subscription.*, invoice.*; each re-reads its subscription)
 //
 // Who is asking is decided by the sign-in project (account.js); what they
 // have is decided only by Stripe's signed events, kept in the Billing
@@ -27,8 +28,17 @@ import { createAccountVerifier, uidOf } from './account.js';
 import { billingClient, summarise, effectiveTier, accessUntil, idOf, ACCESS } from './store.js';
 
 export const PATHS = Object.freeze({ checkout: '/v1/billing/checkout', status: '/v1/billing/status', portal: '/v1/billing/portal', webhook: '/v1/billing/webhook' });
-/** The events the webhook endpoint should send (docs/PAYMENTS.md); any other is acknowledged and ignored. */
-export const EVENTS = Object.freeze(['checkout.session.completed', 'customer.subscription.created', 'customer.subscription.updated', 'customer.subscription.deleted', 'invoice.payment_failed']);
+/**
+ * The events the webhook endpoint should send (docs/PAYMENTS.md); any other is acknowledged and ignored. Each one
+ * re-reads its subscription, so Stripe's status decides access: a delayed payment's checkout (async_payment_*), a
+ * renewal or a recovery whose customer.subscription.updated was lost (invoice.paid) all still land.
+ */
+export const EVENTS = Object.freeze([
+  'checkout.session.completed', 'checkout.session.async_payment_succeeded', 'checkout.session.async_payment_failed',
+  'customer.subscription.created', 'customer.subscription.updated', 'customer.subscription.deleted',
+  'customer.subscription.paused', 'customer.subscription.resumed',
+  'invoice.paid', 'invoice.payment_failed', 'invoice.payment_action_required',
+]);
 export const WEBHOOK_MAX_BYTES = 262144;
 /**
  * Checkouts for the same account, plan and period within one such window share an idempotency key, so two tabs
@@ -229,11 +239,12 @@ export function createBilling({ logger, now, fetch: fetchImpl = (input, init) =>
   async function apply(event, env, cfg) {
     const obj = event.data?.object && typeof event.data.object === 'object' ? event.data.object : {};
     let uid = null, subId = null;
-    if (event.type === 'checkout.session.completed') {
+    // by the event's prefix: a Checkout Session (subscription mode only), an invoice, or the subscription itself
+    if (event.type.startsWith('checkout.session.')) {
       if (obj.mode !== 'subscription') return { http: 200, outcome: 'ignored' };
       uid = uidOf(obj.client_reference_id) || uidOf(obj.metadata?.user_id);
       subId = idOf(obj.subscription);
-    } else if (event.type === 'invoice.payment_failed') {
+    } else if (event.type.startsWith('invoice.')) {
       // where the subscription sits on an invoice depends on the API version
       subId = idOf(obj.subscription) || idOf(obj.parent?.subscription_details?.subscription);
       uid = uidOf(obj.subscription_details?.metadata?.user_id) || uidOf(obj.parent?.subscription_details?.metadata?.user_id);
