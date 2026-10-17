@@ -323,6 +323,128 @@ test('both pages: not a crisis service, with Australian and international lines;
   assert.match(read(PAGES[1]), /<span class="legal-todo" data-todo="tax">\[Owner: [^\]]*GST[^\]]*\]<\/span>/);
 });
 
+// ------------------------------------------------------------------ 5 --
+test('the build publishes both pages at /legal/ (versioned styles, check.mjs passes) and _headers gives /legal/* a strict policy', async () => {
+  const out = mkdtempSync(join(tmpdir(), 'hm-legal-'));
+  try {
+    const env = { ...process.env };
+    for (const k of ['SUPABASE_URL', 'SUPABASE_PUBLISHABLE_KEY', 'HM_AUTH_MODE']) delete env[k];
+    const log = execFileSync('bash', [`${root}tools/build-site.sh`, out, 'legal1'], { env, stdio: 'pipe' }).toString();
+    assert.match(log, /check: ok/);
+    assert.match(log, /legal pages 2/);
+    for (const p of PAGES) {
+      const pub = readFileSync(join(out, p), 'utf8');
+      assert.match(pub, /href="\.\.\/v\/legal1\/src\/ui\/legal\.css"/, `${p}: styles from this version's folder`);
+      assert.match(pub, /src="\.\.\/v\/legal1\/assets\/brand\/hushmallow-logo-light-360\.webp"/, p);
+      assert.doesNotMatch(pub, /(?:href|src)="\.\.\/(?:src|assets)\//, `${p}: nothing unversioned left`);
+      assert.match(pub, /<a class="legal-home" href="\.\.\/">/, `${p}: the way back is untouched`);
+      assert.equal(pub.replace(/\.\.\/v\/legal1\//g, '../'), read(p), `${p}: only the paths change`);
+    }
+    assert.ok(existsSync(join(out, 'v/legal1/src/ui/legal.css')));
+    const headers = readFileSync(join(out, '_headers'), 'utf8');
+    const block = headers.split(/\n(?=\S)/).find((b) => b.startsWith('/legal/*'));
+    assert.ok(block, '_headers has /legal/*');
+    for (const line of ['Cache-Control: no-cache', 'Referrer-Policy: no-referrer', 'X-Frame-Options: DENY']) assert.ok(block.includes(`  ${line}`), line);
+    // nosniff is one exact token: the whole-site rule (tools/site/security-headers.mjs) sets it for /legal/* too, and only it
+    assert.ok(!block.includes('X-Content-Type-Options'), '/legal/* leaves nosniff to the whole-site rule');
+    assert.ok((headers.split(/\n(?=\S)/).find((b) => b.startsWith('/*\n')) || '').includes('  X-Content-Type-Options: nosniff'), 'the whole-site rule sets nosniff');
+    const { LEGAL_CSP } = await import('../tools/site/auth-config.mjs');
+    assert.ok(block.includes(`  Content-Security-Policy: ${LEGAL_CSP}`));
+    assert.equal(LEGAL_CSP, `${read(PAGES[0]).match(/http-equiv="Content-Security-Policy" content="([^"]+)"/)[1]}; frame-ancestors 'none'`, 'the header is the meta tag plus frame-ancestors');
+    assert.ok(headers.indexOf('/auth/*') >= 0 && /\/auth\/\*\n {2}Cache-Control: no-store/.test(headers), '/auth/* unchanged');
+
+    // check.mjs refuses a published legal page that breaks the rules
+    const { checkSite } = await import('../tools/site/check.mjs');
+    assert.deepEqual((await checkSite(out, 'legal1')).problems, []);
+    const bad = mkdtempSync(join(tmpdir(), 'hm-legal-bad-'));
+    try {
+      cpSync(out, bad, { recursive: true });
+      const pp = join(bad, 'legal/privacy.html');
+      writeFileSync(pp, readFileSync(pp, 'utf8')
+        .replace('</head>', '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter">\n<script>1</script>\n</head>')
+        .replace('<a href="#device">', '<a href="#nowhere" onclick="x()">')
+        .replace(/<meta name="legal-version" content="[^"]*">/, '<meta name="legal-version" content="1999-01-01">'));
+      unlinkSync(join(bad, 'legal/terms.html'));
+      const r = await checkSite(bad, 'legal1');
+      const has = (re) => r.problems.some((x) => re.test(x));
+      assert.ok(has(/legal\/privacy\.html has a <script>/), 'a script');
+      assert.ok(has(/legal\/privacy\.html has an inline event handler/), 'a handler');
+      assert.ok(has(/loads https:\/\/fonts\.googleapis\.com/), 'another site');
+      assert.ok(has(/links to #nowhere, which is not an id/), 'a broken fragment');
+      assert.ok(has(/legal\/terms\.html \(the app links to it\) is not in the site/), 'a missing page');
+      assert.ok(has(/links to terms\.html, which is not in the site/), 'a broken link');
+      assert.ok(has(/legal\/privacy\.html says legal-version 1999-01-01, not \d{4}-\d{2}-\d{2}/), 'another version than the one a sign-up records');
+    } finally { rmSync(bad, { recursive: true, force: true }); }
+  } finally { rmSync(out, { recursive: true, force: true }); }
+});
+
+// ------------------------------------------------------------------ 6 --
+class FakeEl {
+  constructor(tag) { this.tagName = String(tag).toUpperCase(); this.nodeType = tag === '#text' ? 3 : 1; this.children = []; this.attrs = {}; this.style = {}; this.listeners = {}; this.textContent = ''; }
+  setAttribute(k, v) { this.attrs[k] = String(v); }
+  getAttribute(k) { return k in this.attrs ? this.attrs[k] : null; }
+  addEventListener(t, fn) { (this.listeners[t] ||= []).push(fn); }
+  append(...kids) { for (const k of kids) this.children.push(k); }
+}
+const text = (n) => (n.nodeType === 3 ? n.textContent : n.children.map(text).join(''));
+const find = (n, pred, out = []) => { if (n.nodeType === 1 && pred(n)) out.push(n); for (const k of n.children || []) find(k, pred, out); return out; };
+
+test('the app links to both pages in a new tab: legalLink, "Terms · Privacy Policy" and the sign-up tick', async () => {
+  globalThis.document = { createElement: (t) => new FakeEl(t), createElementNS: (_, t) => new FakeEl(t), createTextNode: (t) => Object.assign(new FakeEl('#text'), { textContent: String(t) }) };
+  try {
+    const L = await import('../src/app/legal.js');
+    assert.deepEqual({ ...L.LEGAL_PAGES }, { privacy: 'legal/privacy.html', terms: 'legal/terms.html' });
+    // relative to the app's page: index.html is at the site's root, here and when published
+    for (const p of Object.values(L.LEGAL_PAGES)) { assert.ok(PAGES.includes(p)); assert.ok(existsSync(resolve(root, p))); }
+    assert.ok(existsSync(root + 'index.html'));
+    for (const kind of ['privacy', 'terms']) {
+      const a = L.legalLink(kind);
+      assert.equal(a.tagName, 'A');
+      assert.deepEqual({ href: a.attrs.href, target: a.attrs.target, rel: a.attrs.rel, label: a.attrs['aria-label'], kind: a.attrs['data-legal'] },
+        { href: L.LEGAL_PAGES[kind], target: '_blank', rel: 'noopener', label: `${L.LEGAL_LABELS[kind]} (opens a new tab)`, kind });
+      assert.equal(text(a), L.LEGAL_LABELS[kind]);
+      assert.ok(a.attrs['aria-label'].startsWith(text(a)), 'the name starts with the words on it');
+    }
+    assert.deepEqual({ ...L.LEGAL_LABELS }, { privacy: 'Privacy Policy', terms: 'Terms' });
+    const btn = L.legalLink('privacy', { cls: 'btn ghost block', style: { textDecoration: 'none' } });
+    assert.equal(btn.attrs.class, 'btn ghost block'); assert.equal(btn.style.textDecoration, 'none');
+    const pair = L.legalLinks();
+    assert.equal(text(pair), 'Terms · Privacy Policy');
+    assert.equal(pair.attrs.class, 'legal-links');
+    assert.deepEqual(find(pair, (n) => n.tagName === 'A').map((n) => n.attrs['data-legal']), ['terms', 'privacy']);
+    const agree = L.consentLabel();
+    assert.equal(agree.map((x) => (typeof x === 'string' ? x : text(x))).join(''), 'I’m 18 or older, and I agree to the Terms and the Privacy Policy');
+    assert.equal(agree.map((x) => (typeof x === 'string' ? x : text(x))).join(''), L.CONSENT_LINE);
+    assert.deepEqual(agree.filter((x) => typeof x !== 'string').map((n) => [text(n), n.attrs.href]), [['Terms', 'legal/terms.html'], ['Privacy Policy', 'legal/privacy.html']]);
+    assert.equal(L.agreeLine, undefined, 'the old "By creating an account…" line is merged into the tick');
+    // never "AI" or the provider in the app's own words for them
+    for (const s of [...Object.values(L.LEGAL_LABELS), L.CONSENT_LINE]) assert.doesNotMatch(s, /\bAI\b|Anthropic/);
+  } finally { delete globalThis.document; }
+});
+
+test('the links sit where people look: Settings → Privacy and About, the plans page\'s foot, the sign-up form above its button', () => {
+  const settings = read('src/app/scenes/settings.js');
+  assert.match(settings, /import \{ legalLink, legalLinks \} from '\.\.\/legal\.js';/);
+  const privacy = settings.slice(settings.indexOf("section('Privacy')"), settings.indexOf("section('Plan')"));
+  assert.match(privacy, /'data-act': 'delete-local'[^\n]*\n(?:\s*\/\/[^\n]*\n)*\s*legalLink\('privacy', \{ cls: 'btn ghost block'/, 'Privacy ends with the Privacy Policy, after Delete everything');
+  const about = settings.slice(settings.indexOf("section('About')"));
+  assert.match(about, /openSupport\(app\) \}, 'Support lines'\),\n\s*legalLinks\(\),/, 'About: Terms · Privacy Policy under Support lines');
+  const plans = read('src/app/scenes/plans.js');
+  assert.match(plans, /import \{ legalLinks \} from '\.\.\/legal\.js';/);
+  const foot = plans.slice(plans.indexOf("h('div', { class: 'plans-foot' }"));
+  assert.match(foot, /legalLinks\('legal-links plans-legal'\)\)\)\);/, 'the last thing in the plans foot');
+  const account = read('src/app/scenes/account.js');
+  assert.match(account, /import \{ consentLabel, CONSENT_LINE \} from '\.\.\/legal\.js';/);
+  const create = account.slice(account.indexOf('V.create = '), account.indexOf("V['check-email']"));
+  assert.match(create, /const agree = consentTick\(uid\('agree'\)\);/);
+  // the tick is the form's last field: after the others and before the error and the button
+  assert.match(create, /fields: \[email, pw, name, agree\],/);
+  assert.match(account, /\.\.\.before, \.\.\.fields\.map\(\(x\) => x\.wrap\), note, errEl, actionsEl\);/);
+  // styled where each screen can see it: app.css (Settings, plans) and account.css (the account screens)
+  assert.match(read('src/ui/app.css'), /^\.legal-links a \{ display: inline-flex; align-items: center; min-height: 44px;/m, '44 px targets');
+  assert.match(read('src/ui/account.css'), /^\.hm-auth-tick a \{/m);
+});
+
 // ------------------------------------------------- the owner's confirmed facts, 17 Oct 2026 --
 // (docs/integration/DECISIONS.md, "2026-10-17: owner-confirmed facts"). What is not confirmed stays a placeholder.
 test('the owner\'s facts (17 Oct 2026): the ABN shown, the entity still to check, 18+, support@, worldwide, the disclaimer', () => {
@@ -487,126 +609,4 @@ test('the Privacy Policy: "AI and sensitive information" says what Another Angle
   assert.match(textOf(sectionOf(html, 'overseas')), /European Union: Brevo, which sends account emails/);
   if (draft) for (const id of ['account', 'sharing', 'overseas']) assert.ok([...sectionOf(html, id).matchAll(TODO)].some((m) => m[1] === 'email-provider'), `§${id}: Brevo, to confirm`);
   assert.doesNotMatch(textOf(html), /the email delivery service used for account emails/, 'the provider is named');
-});
-
-// ------------------------------------------------------------------ 5 --
-test('the build publishes both pages at /legal/ (versioned styles, check.mjs passes) and _headers gives /legal/* a strict policy', async () => {
-  const out = mkdtempSync(join(tmpdir(), 'hm-legal-'));
-  try {
-    const env = { ...process.env };
-    for (const k of ['SUPABASE_URL', 'SUPABASE_PUBLISHABLE_KEY', 'HM_AUTH_MODE']) delete env[k];
-    const log = execFileSync('bash', [`${root}tools/build-site.sh`, out, 'legal1'], { env, stdio: 'pipe' }).toString();
-    assert.match(log, /check: ok/);
-    assert.match(log, /legal pages 2/);
-    for (const p of PAGES) {
-      const pub = readFileSync(join(out, p), 'utf8');
-      assert.match(pub, /href="\.\.\/v\/legal1\/src\/ui\/legal\.css"/, `${p}: styles from this version's folder`);
-      assert.match(pub, /src="\.\.\/v\/legal1\/assets\/brand\/hushmallow-logo-light-360\.webp"/, p);
-      assert.doesNotMatch(pub, /(?:href|src)="\.\.\/(?:src|assets)\//, `${p}: nothing unversioned left`);
-      assert.match(pub, /<a class="legal-home" href="\.\.\/">/, `${p}: the way back is untouched`);
-      assert.equal(pub.replace(/\.\.\/v\/legal1\//g, '../'), read(p), `${p}: only the paths change`);
-    }
-    assert.ok(existsSync(join(out, 'v/legal1/src/ui/legal.css')));
-    const headers = readFileSync(join(out, '_headers'), 'utf8');
-    const block = headers.split(/\n(?=\S)/).find((b) => b.startsWith('/legal/*'));
-    assert.ok(block, '_headers has /legal/*');
-    for (const line of ['Cache-Control: no-cache', 'Referrer-Policy: no-referrer', 'X-Frame-Options: DENY']) assert.ok(block.includes(`  ${line}`), line);
-    // nosniff is one exact token: the whole-site rule (tools/site/security-headers.mjs) sets it for /legal/* too, and only it
-    assert.ok(!block.includes('X-Content-Type-Options'), '/legal/* leaves nosniff to the whole-site rule');
-    assert.ok((headers.split(/\n(?=\S)/).find((b) => b.startsWith('/*\n')) || '').includes('  X-Content-Type-Options: nosniff'), 'the whole-site rule sets nosniff');
-    const { LEGAL_CSP } = await import('../tools/site/auth-config.mjs');
-    assert.ok(block.includes(`  Content-Security-Policy: ${LEGAL_CSP}`));
-    assert.equal(LEGAL_CSP, `${read(PAGES[0]).match(/http-equiv="Content-Security-Policy" content="([^"]+)"/)[1]}; frame-ancestors 'none'`, 'the header is the meta tag plus frame-ancestors');
-    assert.ok(headers.indexOf('/auth/*') >= 0 && /\/auth\/\*\n {2}Cache-Control: no-store/.test(headers), '/auth/* unchanged');
-
-    // check.mjs refuses a published legal page that breaks the rules
-    const { checkSite } = await import('../tools/site/check.mjs');
-    assert.deepEqual((await checkSite(out, 'legal1')).problems, []);
-    const bad = mkdtempSync(join(tmpdir(), 'hm-legal-bad-'));
-    try {
-      cpSync(out, bad, { recursive: true });
-      const pp = join(bad, 'legal/privacy.html');
-      writeFileSync(pp, readFileSync(pp, 'utf8')
-        .replace('</head>', '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter">\n<script>1</script>\n</head>')
-        .replace('<a href="#device">', '<a href="#nowhere" onclick="x()">')
-        .replace(/<meta name="legal-version" content="[^"]*">/, '<meta name="legal-version" content="1999-01-01">'));
-      unlinkSync(join(bad, 'legal/terms.html'));
-      const r = await checkSite(bad, 'legal1');
-      const has = (re) => r.problems.some((x) => re.test(x));
-      assert.ok(has(/legal\/privacy\.html has a <script>/), 'a script');
-      assert.ok(has(/legal\/privacy\.html has an inline event handler/), 'a handler');
-      assert.ok(has(/loads https:\/\/fonts\.googleapis\.com/), 'another site');
-      assert.ok(has(/links to #nowhere, which is not an id/), 'a broken fragment');
-      assert.ok(has(/legal\/terms\.html \(the app links to it\) is not in the site/), 'a missing page');
-      assert.ok(has(/links to terms\.html, which is not in the site/), 'a broken link');
-      assert.ok(has(/legal\/privacy\.html says legal-version 1999-01-01, not \d{4}-\d{2}-\d{2}/), 'another version than the one a sign-up records');
-    } finally { rmSync(bad, { recursive: true, force: true }); }
-  } finally { rmSync(out, { recursive: true, force: true }); }
-});
-
-// ------------------------------------------------------------------ 6 --
-class FakeEl {
-  constructor(tag) { this.tagName = String(tag).toUpperCase(); this.nodeType = tag === '#text' ? 3 : 1; this.children = []; this.attrs = {}; this.style = {}; this.listeners = {}; this.textContent = ''; }
-  setAttribute(k, v) { this.attrs[k] = String(v); }
-  getAttribute(k) { return k in this.attrs ? this.attrs[k] : null; }
-  addEventListener(t, fn) { (this.listeners[t] ||= []).push(fn); }
-  append(...kids) { for (const k of kids) this.children.push(k); }
-}
-const text = (n) => (n.nodeType === 3 ? n.textContent : n.children.map(text).join(''));
-const find = (n, pred, out = []) => { if (n.nodeType === 1 && pred(n)) out.push(n); for (const k of n.children || []) find(k, pred, out); return out; };
-
-test('the app links to both pages in a new tab: legalLink, "Terms · Privacy Policy" and the sign-up tick', async () => {
-  globalThis.document = { createElement: (t) => new FakeEl(t), createElementNS: (_, t) => new FakeEl(t), createTextNode: (t) => Object.assign(new FakeEl('#text'), { textContent: String(t) }) };
-  try {
-    const L = await import('../src/app/legal.js');
-    assert.deepEqual({ ...L.LEGAL_PAGES }, { privacy: 'legal/privacy.html', terms: 'legal/terms.html' });
-    // relative to the app's page: index.html is at the site's root, here and when published
-    for (const p of Object.values(L.LEGAL_PAGES)) { assert.ok(PAGES.includes(p)); assert.ok(existsSync(resolve(root, p))); }
-    assert.ok(existsSync(root + 'index.html'));
-    for (const kind of ['privacy', 'terms']) {
-      const a = L.legalLink(kind);
-      assert.equal(a.tagName, 'A');
-      assert.deepEqual({ href: a.attrs.href, target: a.attrs.target, rel: a.attrs.rel, label: a.attrs['aria-label'], kind: a.attrs['data-legal'] },
-        { href: L.LEGAL_PAGES[kind], target: '_blank', rel: 'noopener', label: `${L.LEGAL_LABELS[kind]} (opens a new tab)`, kind });
-      assert.equal(text(a), L.LEGAL_LABELS[kind]);
-      assert.ok(a.attrs['aria-label'].startsWith(text(a)), 'the name starts with the words on it');
-    }
-    assert.deepEqual({ ...L.LEGAL_LABELS }, { privacy: 'Privacy Policy', terms: 'Terms' });
-    const btn = L.legalLink('privacy', { cls: 'btn ghost block', style: { textDecoration: 'none' } });
-    assert.equal(btn.attrs.class, 'btn ghost block'); assert.equal(btn.style.textDecoration, 'none');
-    const pair = L.legalLinks();
-    assert.equal(text(pair), 'Terms · Privacy Policy');
-    assert.equal(pair.attrs.class, 'legal-links');
-    assert.deepEqual(find(pair, (n) => n.tagName === 'A').map((n) => n.attrs['data-legal']), ['terms', 'privacy']);
-    const agree = L.consentLabel();
-    assert.equal(agree.map((x) => (typeof x === 'string' ? x : text(x))).join(''), 'I’m 18 or older, and I agree to the Terms and the Privacy Policy');
-    assert.equal(agree.map((x) => (typeof x === 'string' ? x : text(x))).join(''), L.CONSENT_LINE);
-    assert.deepEqual(agree.filter((x) => typeof x !== 'string').map((n) => [text(n), n.attrs.href]), [['Terms', 'legal/terms.html'], ['Privacy Policy', 'legal/privacy.html']]);
-    assert.equal(L.agreeLine, undefined, 'the old "By creating an account…" line is merged into the tick');
-    // never "AI" or the provider in the app's own words for them
-    for (const s of [...Object.values(L.LEGAL_LABELS), L.CONSENT_LINE]) assert.doesNotMatch(s, /\bAI\b|Anthropic/);
-  } finally { delete globalThis.document; }
-});
-
-test('the links sit where people look: Settings → Privacy and About, the plans page\'s foot, the sign-up form above its button', () => {
-  const settings = read('src/app/scenes/settings.js');
-  assert.match(settings, /import \{ legalLink, legalLinks \} from '\.\.\/legal\.js';/);
-  const privacy = settings.slice(settings.indexOf("section('Privacy')"), settings.indexOf("section('Plan')"));
-  assert.match(privacy, /'data-act': 'delete-local'[^\n]*\n(?:\s*\/\/[^\n]*\n)*\s*legalLink\('privacy', \{ cls: 'btn ghost block'/, 'Privacy ends with the Privacy Policy, after Delete everything');
-  const about = settings.slice(settings.indexOf("section('About')"));
-  assert.match(about, /openSupport\(app\) \}, 'Support lines'\),\n\s*legalLinks\(\),/, 'About: Terms · Privacy Policy under Support lines');
-  const plans = read('src/app/scenes/plans.js');
-  assert.match(plans, /import \{ legalLinks \} from '\.\.\/legal\.js';/);
-  const foot = plans.slice(plans.indexOf("h('div', { class: 'plans-foot' }"));
-  assert.match(foot, /legalLinks\('legal-links plans-legal'\)\)\)\);/, 'the last thing in the plans foot');
-  const account = read('src/app/scenes/account.js');
-  assert.match(account, /import \{ consentLabel, CONSENT_LINE \} from '\.\.\/legal\.js';/);
-  const create = account.slice(account.indexOf('V.create = '), account.indexOf("V['check-email']"));
-  assert.match(create, /const agree = consentTick\(uid\('agree'\)\);/);
-  // the tick is the form's last field: after the others and before the error and the button
-  assert.match(create, /fields: \[email, pw, name, agree\],/);
-  assert.match(account, /\.\.\.before, \.\.\.fields\.map\(\(x\) => x\.wrap\), note, errEl, actionsEl\);/);
-  // styled where each screen can see it: app.css (Settings, plans) and account.css (the account screens)
-  assert.match(read('src/ui/app.css'), /^\.legal-links a \{ display: inline-flex; align-items: center; min-height: 44px;/m, '44 px targets');
-  assert.match(read('src/ui/account.css'), /^\.hm-auth-tick a \{/m);
 });
