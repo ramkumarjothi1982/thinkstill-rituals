@@ -130,7 +130,7 @@ export function createEntitlements({ store, billing = null, now = () => Date.now
     store.set('entitlement', state);
     listeners.forEach((fn) => fn(state));
   };
-  let lastWebCheck = -Infinity, webCheck = null, webAnswered = false;
+  let lastWebCheck = -Infinity, webCheck = null, webAnswered = false, webOff = false;
   /** Ask the billing server (at most once a BILLING_RECHECK_MS unless forced; one request at a time). */
   function refreshWeb(force) {
     if (webCheck) return webCheck;
@@ -144,6 +144,8 @@ export function createEntitlements({ store, billing = null, now = () => Date.now
       let r = null;
       try { r = await ask(); } catch { r = null; }
       webAnswered = !!r?.ok;
+      // the server's word that it has no web billing (billing.js BILLING_OFF_CODES): nothing answered, nothing kept changes
+      webOff = r?.ok === false && !!r.off;
       // a plan, or what the server says about a web plan kept here (ended, or a past one with receipts to see);
       // a test or App Store plan is never taken away by it. Offline or signed out: what is kept stays, within the grace
       if (r?.ok && (RANK[r.tier] > 0 || state.source === 'billing' || (state.tier === 'none' && r.manageable))) setWeb(r);
@@ -174,6 +176,9 @@ export function createEntitlements({ store, billing = null, now = () => Date.now
     webSignedIn: () => !!web && web.signedIn(),
     /** Web subscriptions: the last check had the billing server's answer (false offline, signed out, a 5xx or 429). */
     webAnswered: () => !!web && webAnswered,
+    /** Web subscriptions: the last check's answer was that the billing server has no web billing at all (a 503
+     *  billing_not_configured or accounts_not_configured): no plan can be bought or managed there. */
+    webOff: () => !!web && webOff,
     /** A web plan's details for Settings: { status, periodEnd, endsAt, cancelAtPeriodEnd, manageable } | null. */
     webPlan() {
       const s = cur();

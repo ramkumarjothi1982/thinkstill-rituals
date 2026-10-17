@@ -1017,6 +1017,137 @@ test('delete account (D9): with no answer from the billing check, Delete waits (
   assert.equal(late.server.calls.length, 2, 'not asked again once answered');
 });
 
+test('delete account (D9): a Worker with no web billing (503 billing_not_configured / accounts_not_configured) lets Delete go ahead; any other failure still waits', async () => {
+  fakeDocument();
+  const A = await import('../src/app/scenes/account.js');
+  const LIVE = { tier: 'ultra', status: 'active', current_period_end: '2027-10-16T09:00:00.000Z', ends_at: null, cancel_at_period_end: false, manageable: true };
+  const shown = (g) => all(g.el).map(text).join(' ');
+  const paths = (s) => s.server.calls.map((c) => new URL(c.url).pathname);
+  // the server's answer on every billing route while it has no billing (server/another-angle src/billing/routes.js
+  // offCode: not configured, or its sign-in project still a placeholder, as on a branch preview's staging Worker)
+  const offReply = (code) => ({ http: 503, body: { status: 'error', error: { code, message: 'Web subscriptions are not set up on this server.' } } });
+  /** The delete screen's guard, once its check on opening has settled. raw: the status route's body as plain text. */
+  const open = async ({ reply = null, raw = null, down = false, store = memStore(), now } = {}) => {
+    const server = billingServer();
+    const base = server.fetch;
+    server.fetch = async (url, init) => {
+      if (!raw || new URL(url).pathname !== PATHS.status) return base(url, init);
+      server.calls.push({ url: String(url), init, body: null });
+      return new Response(raw.body, { status: raw.http });
+    };
+    const s = setup({ server });
+    s.server.statusReply = reply;
+    s.server.down = down;
+    const ent = createEntitlements({ store, billing: s.billing, ...(now ? { now } : {}) });
+    const submit = new FakeEl('button');
+    const g = A.deleteGuard({ billing: s.billing, ent }, { submit, confirmed: () => true });
+    await g.checked;
+    return { s, ent, g, submit };
+  };
+  for (const code of ['billing_not_configured', 'accounts_not_configured']) {
+    // nothing kept here: Delete goes ahead, as with web billing off, and nothing is said in its way
+    const { s, ent, g, submit } = await open({ reply: offReply(code) });
+    assert.equal(g.blocked(), false, `${code}: no web billing on this Worker`);
+    assert.equal(submit.disabled, false, code);
+    assert.equal(shown(g), '', `${code}: no "Couldn’t check" line, no step`);
+    assert.equal(await g.ready(), null, code);
+    assert.deepEqual(paths(s), ['/v1/billing/status'], `${code}: asked once, not again at submit`);
+    assert.equal(ent.webAnswered(), false, `${code}: no plan was answered`);
+    assert.equal(ent.webOff(), true, code);
+    // billing.js keeps the server's word: no plan answered, and no web billing there (status and sync alike)
+    const b = setup();
+    b.server.statusReply = offReply(code);
+    b.server.sync = offReply(code);
+    assert.deepEqual(await b.billing.status(), { ok: false, reason: 'http_503', off: code }, code);
+    assert.deepEqual(await b.billing.sync(`cs_test_${'a1B2'.repeat(15)}`), { ok: false, reason: 'http_503', off: code }, code);
+  }
+  assert.equal(createEntitlements({ store: memStore() }).webOff(), false, 'web billing off on this page: never');
+  // everything else still fails closed: offline, a 5xx (or any status) without those codes or with them on another
+  // status, and answers that only look like it
+  const failing = (http, body) => ({ reply: { http, body } });
+  const closed = [
+    ['offline', { down: true }],
+    ['503 billing_unavailable', failing(503, { status: 'error', error: { code: 'billing_unavailable', message: 'x' } })],
+    ['503 rate_limited', failing(503, { status: 'error', error: { code: 'rate_limited', message: 'x' } })],
+    ['500 billing_not_configured', failing(500, offReply('billing_not_configured').body)],
+    ['502 accounts_not_configured', failing(502, offReply('accounts_not_configured').body)],
+    ['504 billing_not_configured', failing(504, offReply('billing_not_configured').body)],
+    ['429 billing_not_configured', failing(429, offReply('billing_not_configured').body)],
+    ['503 no code', failing(503, { status: 'error' })],
+    ['503 {}', failing(503, {})],
+    ['503 null', failing(503, null)],
+    ['503 error as a string', failing(503, { error: 'billing_not_configured' })],
+    ['503 code at the top', failing(503, { code: 'billing_not_configured' })],
+    ['503 code in capitals', failing(503, { error: { code: 'BILLING_NOT_CONFIGURED' } })],
+    ['503 code with a space', failing(503, { error: { code: 'billing_not_configured ' } })],
+    ['503 code with more after it', failing(503, { error: { code: 'billing_not_configured_yet' } })],
+    ['503 code in a list', failing(503, { error: { code: ['billing_not_configured'] } })],
+    ['503 an array', failing(503, [{ error: { code: 'billing_not_configured' } }])],
+    ['503 html', { raw: { http: 503, body: '<html><body>Service Unavailable</body></html>' } }],
+    ['503 the code as text', { raw: { http: 503, body: 'billing_not_configured' } }],
+    ['503 cut-off JSON', { raw: { http: 503, body: '{"status":"error","error":{"code":"billing_not_configured"' } }],
+  ];
+  for (const [why, o] of closed) {
+    const { s, ent, g, submit } = await open(o);
+    assert.equal(ent.webOff(), false, why);
+    assert.equal(g.blocked(), true, `${why}: never deleted on no answer`);
+    assert.equal(submit.disabled, true, why);
+    assert.ok(shown(g).includes(A.CANCEL_FIRST.unchecked), why);
+    assert.equal(await g.ready(), A.CANCEL_FIRST.unchecked, why);
+    assert.deepEqual(paths(s), ['/v1/billing/status', '/v1/billing/status'], `${why}: asked once more at submit`);
+  }
+  // a timeout: the request is let go after timeoutMs, and Delete waits
+  const slow = createBilling({
+    auth: () => authHandle(), signIn: true, config: CONFIG, nav: () => {}, timeoutMs: 20,
+    fetchImpl: (url, init) => new Promise((_, reject) => { init.signal.addEventListener('abort', () => reject(new DOMException('The operation was aborted.', 'AbortError'))); }),
+  });
+  assert.deepEqual(await slow.status(), { ok: false, reason: 'network' });
+  const slowEnt = createEntitlements({ store: memStore(), billing: slow });
+  const sg = A.deleteGuard({ billing: slow, ent: slowEnt }, { submit: new FakeEl('button'), confirmed: () => true });
+  await sg.checked;
+  assert.equal(slowEnt.webOff(), false);
+  assert.equal(sg.blocked(), true, 'a timeout: never deleted on no answer');
+  assert.equal(await sg.ready(), A.CANCEL_FIRST.unchecked);
+  // a failure first, then the Worker's "no billing" on Try again: the line goes and Delete goes ahead
+  const t = await open({ reply: { http: 502, body: {} } });
+  assert.ok(shown(t.g).includes(A.CANCEL_FIRST.unchecked));
+  t.s.server.statusReply = offReply('accounts_not_configured');
+  await click(all(t.g.el).find((n) => n.tagName === 'BUTTON' && text(n) === A.CANCEL_FIRST.retry));
+  await t.g.checked;
+  assert.equal(t.g.blocked(), false);
+  assert.equal(shown(t.g), '');
+  assert.equal(t.submit.disabled, false);
+  // billing set up on the Worker while the screen is open: a check from coming back to the app brings a renewing plan,
+  // and the step appears
+  const on = await open({ reply: offReply('billing_not_configured') });
+  on.s.server.statusReply = null;
+  on.s.server.status = LIVE;
+  await on.ent.refresh({ force: true });
+  assert.equal(on.g.blocked(), true);
+  assert.ok(shown(on.g).includes(A.CANCEL_FIRST.title));
+  assert.equal(on.submit.disabled, true);
+  // a renewing plan this phone checked within the grace, and the Worker has no billing now (its key removed or
+  // refused): that plan may still renew at Stripe, so the step stays; the answer changes nothing kept, and once the
+  // copy is older than the grace (set aside: no plan), Delete goes ahead
+  const store = memStore();
+  const clock = clockAt();
+  const k = setup();
+  k.server.status = LIVE;
+  await createEntitlements({ store, billing: k.billing, now: clock }).refresh({ force: true });
+  clock.t += 3600000;
+  const kept = await open({ reply: offReply('billing_not_configured'), store, now: clock });
+  assert.equal(kept.g.blocked(), true);
+  assert.ok(shown(kept.g).includes(A.CANCEL_FIRST.title));
+  assert.ok(!shown(kept.g).includes(A.CANCEL_FIRST.unchecked));
+  assert.equal(await kept.g.ready(), A.CANCEL_FIRST.refused);
+  assert.equal(kept.ent.webPlan()?.status, 'active', 'what is kept stays');
+  clock.t += BILLING_GRACE_MS;
+  const aged = await open({ reply: offReply('billing_not_configured'), store, now: clock });
+  assert.equal(aged.g.blocked(), false);
+  assert.equal(shown(aged.g), '');
+  assert.equal(await aged.g.ready(), null);
+});
+
 test('delete account (D9): an end date set on or before the period end (a Dashboard cancel_at) is not renewing, as Settings says', async () => {
   fakeDocument();
   const A = await import('../src/app/scenes/account.js');

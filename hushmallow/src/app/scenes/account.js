@@ -189,6 +189,9 @@ export function renewingWebPlan(app) {
  * subscription, and `submit` stays off until a check shows the plan ended or cancelling. It asks the server on
  * opening (cancelled in the portal since, or bought on another phone); `checked` settles after that answer. It fails
  * closed: until the server has answered once on this screen, Delete waits ("Couldn't check…", with Try again).
+ * A server with no web billing at all (its 503 billing_not_configured / accounts_not_configured: ent.webOff()) is an
+ * answer too, of no subscription to cancel there, as with web billing off; only a renewing plan this phone checked
+ * within the grace still shows the step. Offline, a timeout, any other failure: no answer.
  * ready(), at submit: after that check (once more if it had no answer) → null to go ahead, else the line refusing it.
  * → null where it never applies (web billing off, the App Store app): the screen exactly as before.
  * confirmed(): the typed word is right (the other condition for `submit`).
@@ -217,7 +220,8 @@ export function deleteGuard(app, { submit = null, confirmed = () => false } = {}
   const note = h('div', { class: 'hm-account-facts', 'data-unchecked': '' },
     h('p', { class: 'hm-auth-hint', role: 'status' }, CANCEL_FIRST.unchecked), h('div', { class: 'hm-auth-actions' }, retry));
   const el = h('div', { style: { display: 'contents' } });
-  // answered: the server has answered a check since this screen opened; failed: the last one here had no answer
+  // answered: the server has answered a check since this screen opened (a plan, or that it has no web billing);
+  // failed: the last one here had no answer
   let answered = false, failed = false, checking = null;
   const blocked = () => !answered || renewingWebPlan(app);
   let shown = null;
@@ -233,7 +237,7 @@ export function deleteGuard(app, { submit = null, confirmed = () => false } = {}
     if (checking) return checking;
     retry.disabled = true;
     checking = Promise.resolve().then(() => ent.refresh({ force: true })).catch(() => {}).then(() => {
-      if (ent.webAnswered?.()) answered = true;
+      if (ent.webAnswered?.() || ent.webOff?.()) answered = true;
       failed = !answered;
       checking = null;
       retry.disabled = false;

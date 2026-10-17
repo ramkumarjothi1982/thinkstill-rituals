@@ -19,8 +19,9 @@
 //   createBilling({ auth, signIn, config?, shell?, prices?, fetchImpl?, nav?, timeoutMs? }) → billing | null (off)
 //     signedIn()             the account is signed in on this device
 //     accountToken()         → its current access token, or null (Another Angle's session sends it too, src/beyond/angle-client.js)
-//     status()               → { ok: true, tier, status, periodEnd, endsAt, cancelAtPeriodEnd, manageable } | { ok: false, reason }
-//                              (periodEnd, endsAt: ms or null; the server sends ISO or ms, both are read)
+//     status()               → { ok: true, tier, status, periodEnd, endsAt, cancelAtPeriodEnd, manageable } | { ok: false, reason, off? }
+//                              (periodEnd, endsAt: ms or null; the server sends ISO or ms, both are read; off: the
+//                              server's 503 saying it has no web billing at all, one of BILLING_OFF_CODES)
 //     checkout(plan, period) → { redirecting } (on to Stripe Checkout) | { needsAccount } | { manage } (has a plan)
 //                              | { pending } (a payment still going through) | { failed, reason }
 //     portal(intent?)        → { redirecting } (Stripe's customer portal) | { needsAccount } | { none } | { failed, reason };
@@ -71,6 +72,13 @@ export const RETURN_LINES = Object.freeze({
  *  plan happens on the subscription page that opens next), or a payment still going through (nothing new started). */
 export const CHANGE_PLAN = 'You already have a plan. You can change it on the next page.';
 export const PAYMENT_PENDING = 'Your payment is still going through. Nothing more was charged.';
+/**
+ * The codes our server's billing routes answer 503 with while it has no web billing at all (server/another-angle
+ * src/billing/routes.js offCode: not configured, a key refused, or its sign-in project still a placeholder, as on a
+ * branch preview's staging Worker before its keys). Only these, only on a 503, only as { error: { code } }: anything
+ * else is no answer (the delete screen's check fails closed on it).
+ */
+export const BILLING_OFF_CODES = Object.freeze(['billing_not_configured', 'accounts_not_configured']);
 const DEV_HOSTS = ['localhost', '127.0.0.1'];
 const DEV_KEY = 'hm2:billingDev';
 const PRODUCT = /^hushmallow\.(paid|ultra)\.(monthly|yearly)$/;
@@ -197,7 +205,11 @@ export function createBilling({
   /** The plan as the server says it (GET status, or a sync: the same answer), read strictly. */
   function readStatus(r) {
     if (r.signedOut || r.http === 401) return { ok: false, reason: 'signed-out' };
-    if (r.http !== 200 || !r.data || typeof r.data !== 'object') return { ok: false, reason: reasonOf(r) };
+    if (r.http !== 200 || !r.data || typeof r.data !== 'object') {
+      // no plan answered; a 503 with one of BILLING_OFF_CODES says this server has no web billing to ask (off)
+      const code = r.http === 503 ? r.data?.error?.code : null;
+      return { ok: false, reason: reasonOf(r), ...(BILLING_OFF_CODES.includes(code) ? { off: code } : {}) };
+    }
     const d = r.data;
     return {
       ok: true, tier: ['none', 'paid', 'ultra'].includes(d.tier) ? d.tier : 'none',
