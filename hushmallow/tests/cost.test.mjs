@@ -25,7 +25,7 @@ test('cost: the machine factor is the slowdown every kind of reference work show
   assert.ok(Math.abs(most.ratios.regex - 3) < 1e-9);
 });
 
-test('cost: a budget is judged at budget × factor, the message says how, and a machine past MAX_FACTOR is not judged', () => {
+test('cost: a budget is judged at budget × factor, the message says how, and past MAX_FACTOR a reading that needs the factor is not judged', () => {
   const m = (factor) => ({ factor, ratios: { regex: factor, strings: factor, loops: factor } });
   const still = (factor) => () => m(factor); // the second timing: the machine as slow as that, right then
   const never = () => { throw new Error('timed again'); };
@@ -55,12 +55,22 @@ test('cost: a budget is judged at budget × factor, the message says how, and a 
   let n = 0;
   const b = within(40, () => vals[n++], 3, m(2), still(2));
   assert.deepEqual([b.ok, b.seen, n], [true, [90, 70], 2]);
-  // past MAX_FACTOR: nothing read, the test fails saying why
+  // past MAX_FACTOR: a reading under the written budget passes on any machine (nothing timed again for it)
+  const fast = within(40, () => 1, 3, m(MAX_FACTOR + 1.6), never);
+  assert.deepEqual([fast.ok, fast.factor], [true, MAX_FACTOR + 1.6]);
+  // one over it: timed again first, and still past MAX_FACTOR, not judged: the test fails saying why, with the reading
   let reads = 0;
-  assert.throws(() => within(40, () => { reads++; return 1; }, 3, m(MAX_FACTOR + 0.5)), /^Error: this machine is too slow to judge this budget: factor 4\.50 /);
-  assert.equal(reads, 0);
+  assert.throws(() => within(40, () => { reads++; return 61; }, 3, m(5.6), still(5.5)),
+    /^Error: this machine is too slow to judge this budget: 61\.0 ms for a budget of 40 ms, at a factor of 5\.50 \(.* as the file began, regex 5\.50, strings 5\.50, loops 5\.50 just now; a budget stretches at most 4x: 40 ms would be 220\.0 ms\)$/);
+  assert.equal(reads, 1);
+  // past it only as the file began (a slow start): judged at the second timing's factor
+  timings = 0;
+  const start = within(40, () => 61, 3, m(4.2), once(2.8));
+  assert.deepEqual([start.ok, start.factor, start.seen, timings], [true, 2.8, [61], 1]);
   assert.equal(within(40, () => 150, 3, m(MAX_FACTOR), still(MAX_FACTOR)).ok, true);
-  assert.throws(() => within(40, () => 1, 3, m(NaN)), /too slow to judge this budget/);
+  // a factor that is no number: the written budget still passes, a reading over it is not judged
+  assert.equal(within(40, () => 1, 3, m(NaN), never).ok, true);
+  assert.throws(() => within(40, () => 41, 3, m(NaN), never), /too slow to judge this budget/);
 });
 
 test('cost: the reference work is its own (no imports), and every budget file loads it before any hushmallow module', () => {

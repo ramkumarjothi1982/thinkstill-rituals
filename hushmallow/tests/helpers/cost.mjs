@@ -30,7 +30,8 @@
 //     on "i i i i ", 1.5-1.8x; r5's, deathCare, 6.6x). A factor of the work's total (3.2-3.4 there) passes r5, but it also
 //     passed r4 with keepLocal or selfEnding doing all their work three times over; the smallest kind's (1.00) passes
 //     no slower rule, and r5 fails there as it did before;
-//   - above MAX_FACTOR nothing is judged: the test fails, saying the machine is too slow to judge the budget.
+//   - above MAX_FACTOR a reading that would need the factor is not judged: the test fails, saying the machine is too
+//     slow to judge the budget (a reading under the written budget still passes).
 // Every budget is then judged at budget × factor (within()), a reading over the written budget only once the machine has
 // shown, timed again right then, that it is still that slow. The budget numbers in the tests stay as written.
 const clock = typeof process.threadCpuUsage === 'function' ? () => process.threadCpuUsage() : () => process.cpuUsage();
@@ -189,33 +190,34 @@ export const ratiosText = (m = machine) => Object.entries(m.ratios).map(([k, v])
  * readings are in `seen` for the message); what still slows a busy runner's thread for a moment (a core shared with
  * another file, a cold cache, a GC) spoils only the reading it fell in.
  *
- * A reading under the written budget passes on any machine. One over it passes only under budget × factor, and only if
- * the machine is still that slow: the reference work is timed again right then (at most once a call, and never on a
- * machine judged by the written budget) and the smaller factor of the two is the one used. (On the reference machine one
- * process read every kind of work 1.5x slower as it began, for about a minute, then ran at its usual speed: that factor
- * alone would have excused a rule 1.5x slower.) The rule's own code never runs in either timing, and the second timing
- * can only lower the factor, never raise it.
+ * A reading under the written budget passes on any machine, and nothing else is timed for it. One over it passes only
+ * under budget × factor, and only if the machine is still that slow: the reference work is timed again right then (at
+ * most once a call, and never on a machine judged by the written budget) and the smaller factor of the two is the one
+ * used. (On the reference machine one process read every kind of work 1.5x slower as it began, for about a minute, then
+ * ran at its usual speed: that factor alone would have excused a rule 1.5x slower.) The rule's own code never runs in
+ * either timing, and the second timing can only lower the factor, never raise it.
  *
- * `note` says what the readings were judged against: the written budget, the factor and the budget it made. On a
- * machine more than MAX_FACTOR slower nothing is read: it throws, and the test fails saying so. (`m` and `again` are
- * this machine and its second timing; tests/cost.test.mjs passes others.)
+ * `note` says what the readings were judged against: the written budget, the factor and the budget it made. A reading
+ * over the written budget on a machine still more than MAX_FACTOR slower when timed again is not judged: it throws, and
+ * the test fails saying so. (`m` and `again` are this machine and its second timing; tests/cost.test.mjs passes others.)
  */
 export function within(budget, read, tries = 3, m = machine, again = () => machineFactor(calibrate())) {
-  if (!(m.factor <= MAX_FACTOR)) {
-    throw new Error(`this machine is too slow to judge this budget: factor ${fx(m.factor)} (the reference work read ${ratiosText(m)} × the reference machine's; a budget stretches at most ${MAX_FACTOR}x: ${budget} ms would be ${(budget * m.factor).toFixed(1)} ms)`);
-  }
   let factor = m.factor, now = null;
   const seen = [];
+  const timed = () => `the reference work read ${ratiosText(m)} × the reference machine's as the file began${now ? `, ${ratiosText(now)} just now` : ''}`;
   const judged = (ok, ms) => {
     const limit = budget * factor;
-    const timed = `the reference work read ${ratiosText(m)} × the reference machine's as the file began${now ? `, ${ratiosText(now)} just now` : ''}`;
-    return { ok, ms, seen, budget, factor, limit, note: `budget ${budget} ms × machine factor ${fx(factor)} = ${limit.toFixed(1)} ms (${timed})` };
+    return { ok, ms, seen, budget, factor, limit, note: `budget ${budget} ms × machine factor ${fx(factor)} = ${limit.toFixed(1)} ms (${timed()})` };
   };
   for (let k = 0; k < tries; k++) {
     const v = read();
     seen.push(v);
     if (v < budget) return judged(true, v);
-    if (v < budget * factor && !now) { now = again(); factor = Math.min(factor, now.factor); }
+    // over the written budget: only the factor can pass it, so the machine shows it is still that slow (once a call)
+    if (!now && factor > 1 && (v < budget * factor || !(factor <= MAX_FACTOR))) { now = again(); factor = Math.min(factor, now.factor); }
+    if (!(factor <= MAX_FACTOR)) {
+      throw new Error(`this machine is too slow to judge this budget: ${readings(seen)} ms for a budget of ${budget} ms, at a factor of ${fx(factor)} (${timed()}; a budget stretches at most ${MAX_FACTOR}x: ${budget} ms would be ${(budget * factor).toFixed(1)} ms)`);
+    }
     if (v < budget * factor) return judged(true, v);
   }
   return judged(false, Math.min(...seen));
