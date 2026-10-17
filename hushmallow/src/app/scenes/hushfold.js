@@ -197,7 +197,8 @@ export default function hushfold(app, params = {}) {
   const gearBtn = h('button', { class: 'hf-btn', type: 'button', 'aria-label': 'Settings', onclick: () => app.go('settings') }, hfIcon('gear'));
   const topEl = h('header', { class: 'hf-top' }, logoBox, h('div', { class: 'grow' }), panelBtn, gearBtn);
   const tellLabel = h('span', { class: 'label' });
-  const tellBtn = h('button', { class: 'hf-pill is-hidden', type: 'button', 'data-hf': 'tell', 'data-sheet-return': '2', onclick: () => openTell('pill') }, h('span', { class: 'dot', 'aria-hidden': 'true' }), hfIcon('talk'), tellLabel);
+  // (hidden until it is shown, and out of reach meanwhile: showTell)
+  const tellBtn = h('button', { class: 'hf-pill is-hidden', type: 'button', inert: '', 'aria-hidden': 'true', 'data-hf': 'tell', 'data-sheet-return': '2', onclick: () => openTell('pill') }, h('span', { class: 'dot', 'aria-hidden': 'true' }), hfIcon('talk'), tellLabel);
   // (the focus comes back to the Support pill when a sheet closes and its opener has gone: data-sheet-return, ui.js)
   const supportPill = h('button', { class: 'hf-pill support', type: 'button', hidden: true, 'data-sheet-return': '1', onclick: () => openSupportSheet({ category: pillCategory() }) }, hfIcon('support'), 'Support');
   // a paused world says so on the stage, with one tap back into it
@@ -399,6 +400,9 @@ export default function hushfold(app, params = {}) {
     const vw = stageRight(), vh = innerHeight;
     // the dock keeps to the stage too (its pills centred in it, never under the panel)
     dock.style.right = vw < innerWidth ? `${innerWidth - vw}px` : '';
+    // (under the phone sheet, which covers it, its pills are out of reach: no Tab stop on a pill behind the sheet)
+    const covered = panelSheet();
+    if (dock.inert !== covered) dock.inert = covered;
     const topB = topEl.getBoundingClientRect().bottom || 60;
     const band = Math.max(Math.min(156, Math.max(118, vh * 0.17)), bandNeed ? bandNeed + 24 : 0);
     bandPx = Math.round(band);
@@ -1414,6 +1418,10 @@ export default function hushfold(app, params = {}) {
   function showTell(on) {
     const was = !tellBtn.classList.contains('is-hidden');
     tellBtn.classList.toggle('is-hidden', !on);
+    // hidden (a first visit before the invitation, under the open Tell overlay), it is out of reach too, as the Support pill
+    // under the overlay is: no Tab stop on a pill nobody can see, nothing a screen reader finds (its fade in is the CSS's)
+    tellBtn.inert = !on;
+    if (on) tellBtn.removeAttribute('aria-hidden'); else tellBtn.setAttribute('aria-hidden', 'true');
     // (the dock grew or shrank: the thoughts' room and the Mallow follow)
     if (was !== !!on && stage) layout();
   }
@@ -1698,6 +1706,9 @@ export default function hushfold(app, params = {}) {
     clearTimeout(inviteT);
     panel?.close();
     closeRead();
+    // (opened from the Tell pill, the focus goes back to it on close: the overlay's own focus return finds the pill still out
+    // of reach under it, so onClose gives the focus back once the pill is in reach again)
+    const fromPill = document.activeElement === tellBtn;
     showTell(false);
     // one Support control at a time (review P3, 320 px): while the overlay is open its own Support chip is the one — the
     // dock's pill steps away under it (unseen, untouchable, out of the tab order) and comes back when it closes
@@ -1746,6 +1757,7 @@ export default function hushfold(app, params = {}) {
         // crisis words typed in the last moment before closing: the urgent sheet still opens, once
         if (meta.safety?.level === 'crisis' && !meta.supportShown && reason !== 'submit') openSupportSheet({ urgent: true });
         showTell(true);
+        if (fromPill && reason !== 'submit') focusBackToTell(ov?.el);
         layout();
         subtitles.unsuspend();
         if (reason !== 'submit') {
@@ -1957,6 +1969,14 @@ export default function hushfold(app, params = {}) {
     const a = document.activeElement;
     if (a && a !== document.body && !subtitles.el.contains(a)) return;
     if (!tellBtn.classList.contains('is-hidden')) tellBtn.focus?.({ preventScroll: true });
+  }
+  /**
+   * The Tell overlay opened from the Tell pill has closed unsent: the focus back to the pill, from the page (Escape, Back) or
+   * from the overlay's own ✕ (still there as it fades out) — never taken from a sheet or a field it has gone to meanwhile.
+   */
+  function focusBackToTell(ovEl) {
+    const a = document.activeElement;
+    if (!a || a === document.body || ovEl?.contains?.(a)) tellBtn.focus?.({ preventScroll: true });
   }
   /**
    * (fix round) After Send on the care, crisis and gentle paths, or once their chips have gone: the keyboard focus waits on
@@ -2438,6 +2458,10 @@ export default function hushfold(app, params = {}) {
     if (p.isOpen) { p.close(); return; }
     closeRead();                   // one transient layer at a time
     p.open();
+    // a first visit, before the invitation: the panel says worlds begin with telling a Mallow, and a feeling picked in it
+    // has the Mallow answer towards that, so the Tell pill is there for it, as on a returning visit (the squeeze
+    // invitation still comes in its own time)
+    if (!overlay) showTell(true);
     root.classList.add('hf-panel-open');
     pushLayer('panel');
     panelBtn.setAttribute('aria-expanded', 'true');

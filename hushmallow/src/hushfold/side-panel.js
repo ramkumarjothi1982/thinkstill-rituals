@@ -157,7 +157,10 @@ export function createSidePanel({ app, root, getFlow, flowAvailable = () => Prom
       const tier = ent.tier();
       planEl.className = `plan${tier === 'paid' ? ' on' : tier === 'ultra' ? ' beyond' : ''}`;
       planEl.replaceChildren(tier === 'none' ? 'No plan yet · See plans' : (PLANS[tier]?.name || 'Your plan'));
-      planEl.setAttribute('aria-label', tier === 'none' ? 'No plan yet. See the plans.' : `Your plan: ${PLANS[tier]?.name || tier}. See plans.`);
+      // (the name holds the words it shows, in their order: WCAG 2.5.3 Label in Name — a voice command says what it sees;
+      // with no plan the words shown are the name itself: older axe reads the "·" as a word, not punctuation)
+      if (tier === 'none') planEl.removeAttribute('aria-label');
+      else planEl.setAttribute('aria-label', `Your plan: ${PLANS[tier]?.name || tier}. See plans.`);
       feelWrap.replaceChildren(...QUICK_FEELINGS.map(([id, label]) => chip(label, s.emotion === id, () => onFeeling?.(s.emotion === id ? null : id))),
         chip(s.emotion && !QUICK_FEELINGS.some(([id]) => id === s.emotion) ? `${s.emotionName || 'Something else'} ✓` : 'Something else…', s.emotion && !QUICK_FEELINGS.some(([id]) => id === s.emotion), () => onFeeling?.('other')));
       intentWrap.replaceChildren(...INTENTIONS.map(([id, label]) => chip(label, s.intention === id, () => onIntention?.(s.intention === id ? null : id))));
