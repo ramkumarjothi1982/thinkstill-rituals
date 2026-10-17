@@ -9,3 +9,4 @@
 2026-10-12 redeploy with angle-v5
 2026-10-17 redeploy: the owner's staging Supabase project (oghzabvkrxsejkkjdsuc), the Sandbox USD prices, Checkout Studio settings
 2026-10-17 redeploy: upgrades confirmed on Stripe's page and back to hushmallow (portal flows, sync refresh), security review fixes
+2026-10-18 redeploy (AEDT): the final review's fixes (plan_ending, the chooser judged on Stripe's copy, scheduled changes, one screen per text)
