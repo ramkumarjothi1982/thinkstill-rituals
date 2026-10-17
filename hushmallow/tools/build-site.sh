@@ -7,8 +7,11 @@
 # bypassing every cache, and moves itself to the newer version), and the
 # old root src/app/main.js becomes a tiny forwarder for pages cached before
 # this layout existed. Only the app ships: no dev tools, workbook or Python.
-# The finished site is then checked (tools/site/check.mjs): every file the
-# page, its modules, its styles and its art tables name must be in it.
+# Every tracked file of the repository is scanned for secrets first
+# (tools/secret-scan.mjs), published or not; in an export with no .git, every
+# file under the repository root. The finished site is then checked
+# (tools/site/check.mjs): every file the page, its modules, its styles and its
+# art tables name must be in it, and no file may hold a secret key.
 #
 # Sign-in (optional): the build variables SUPABASE_URL and
 # SUPABASE_PUBLISHABLE_KEY (Cloudflare Pages, Production and Preview) are the
@@ -29,9 +32,16 @@
 # paths, so the GitHub Pages copy (served one folder down) works too; _headers
 # gives /legal/* a strict Content-Security-Policy (no script at all).
 set -euo pipefail
-here="$(cd "$(dirname "$0")/.." && pwd)"
+# the real path (-P): a linked checkout runs every node step by the path node sees
+here="$(cd "$(dirname "$0")/.." && pwd -P)"
 out="$1"; ver="$2"
 [[ "$ver" =~ ^[0-9a-zA-Z_-]+$ ]] || { echo "bad version: $ver" >&2; exit 1; }
+# Cloudflare Pages builds every push of every branch whatever it changes (the workflows filter by path),
+# so a key in a doc, the server or the repository root fails here before anything is built. A checkout
+# (.git at the repository root) has its tracked files scanned, and if git cannot list them (dubious
+# ownership, a gitdir that is gone, no git) the build stops (exit 2); only a copy with no .git at all
+# (an export, a tarball) has every file under the root read directly instead. Never skipped.
+node "$here/tools/secret-scan.mjs" --source "$here/.."
 # the two public sign-in values, or { enabled: false }: checked first, so a refused value never leaves a half-built site
 authtmp="$(mktemp -d)"; trap 'rm -rf "$authtmp"' EXIT
 node "$here/tools/site/auth-config.mjs" "$authtmp/public-config.js" "$ver" "$authtmp/_headers"

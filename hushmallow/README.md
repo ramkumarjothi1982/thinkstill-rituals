@@ -101,6 +101,7 @@ Garden, More rituals, Your journey, Settings).
 ```bash
 node --test hushmallow/tests/*.test.mjs
 ```
+Once per clone, run `git config core.hooksPath tools/hooks` (from the repository root): the pre-commit hook then refuses a commit that adds a Stripe, Supabase or Anthropic secret. The same scan (`node hushmallow/tools/secret-scan.mjs`) runs over every tracked file in both test suites and before every site build, so a commit made without the hook still fails there.
 
 ### Updating the 1,000 rituals
 They come from `content/Hushmallow_1000_Rituals_V3.xlsx`: 50 touch engines ×
