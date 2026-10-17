@@ -4,6 +4,8 @@
 // tokens, Anthropic keys and private keys (tools/secret-scan.mjs). Publishable
 // keys are public and pass. ALLOW holds only the two deliberate fakes, each by
 // its exact line. tools/build-site.sh scans every tracked file before each build
+// (a checkout whose git fails stops the build; an export with no .git has every
+// file read from disk instead, never skipped)
 // and the site it assembles after, with no allow-list (tools/site/check.mjs,
 // section 7), and tools/hooks/pre-commit (repository root) refuses a commit
 // whose staged lines add one. .env files, like .dev.vars, are never tracked.
@@ -168,10 +170,101 @@ test('build-site.sh scans every tracked file first, published or not: a key in a
     assert.match(r.stderr, /README\.md:2: a Stripe secret or restricted key \(sk_live_…\)/);
     assert.ok(!r.stderr.includes(sk) && !r.stdout.includes(sk), 'the key is never printed');
     assert.throws(() => lstatSync(out), 'nothing was built');
-    // an exported copy (no git): it says so instead of skipping in silence (the build then fails here for want of the app)
-    rmSync(join(d, '.git'), { recursive: true, force: true });
-    const nogit = spawnSync('bash', [join(d, 'hushmallow/tools/build-site.sh'), out, 'sec2'], { cwd: tmpdir(), env: gitEnv, encoding: 'utf8' });
-    assert.match(nogit.stderr, /secret scan: not a git work tree, so only the built site is scanned/);
+  } finally { rmSync(d, { recursive: true, force: true }); }
+});
+
+// build-site.sh and the scanner in a folder laid out like the repository (<d>/hushmallow/tools/), with these files besides
+const buildCopy = (d, files = {}) => {
+  mkdirSync(join(d, 'hushmallow/tools'), { recursive: true });
+  writeFileSync(join(d, 'hushmallow/tools/build-site.sh'), readFileSync(join(root, 'tools/build-site.sh')));
+  writeFileSync(join(d, 'hushmallow/tools/secret-scan.mjs'), readFileSync(SCAN));
+  for (const [f, text] of Object.entries(files)) { mkdirSync(dirname(join(d, f)), { recursive: true }); writeFileSync(join(d, f), text); }
+};
+const BASH = execFileSync('sh', ['-c', 'command -v bash'], { encoding: 'utf8' }).trim();   // by its path: a test may run the build with no git (or bash) on PATH
+const buildIn = (d, out, env = gitEnv) => spawnSync(BASH, [join(d, 'hushmallow/tools/build-site.sh'), out, 'sec2'], { cwd: tmpdir(), env, encoding: 'utf8' });
+
+test('build-site.sh in a checkout whose git fails stops the build, never skipping the scan: a bad GIT_DIR, a gitdir that is gone, no git, dubious ownership, a .git git passes over', () => {
+  const sk = `sk_live_${'G'.repeat(24)}`;
+  const stopped = (r, out, how) => {
+    const log = r.stdout + r.stderr;
+    assert.equal(r.status, 2, `${how}: ${log}`);
+    assert.match(r.stderr, /secret scan: \S+ is a checkout \(it has \.git\) but git cannot list its tracked files/, how);
+    assert.doesNotMatch(log, /not a git work tree|every file was read directly|no secrets in/, `${how}: not skipped, not walked`);
+    assert.ok(!log.includes(sk), `${how}: the key is never printed`);
+    assert.throws(() => lstatSync(out), `${how}: nothing was built`);
+  };
+  // this repository, git pointed at nothing: the whole site would otherwise be built and published unscanned
+  const tmp = mkdtempSync(join(tmpdir(), 'hm-secrets-gitfail-'));
+  try {
+    const env = { ...gitEnv, GIT_DIR: join(tmp, 'no-such-gitdir') };
+    for (const k of ['SUPABASE_URL', 'SUPABASE_PUBLISHABLE_KEY', 'HM_AUTH_MODE', 'CF_PAGES_BRANCH']) delete env[k];
+    const out = join(tmp, 'site');
+    stopped(spawnSync('bash', [join(root, 'tools/build-site.sh'), out, 'sec3'], { cwd: tmpdir(), env, encoding: 'utf8' }), out, 'GIT_DIR names no repository');
+
+    // a checkout whose root README holds a key, each with its git broken another way
+    const checkout = (name) => { const d = join(tmp, name); mkdirSync(d); git(d, 'init', '-q'); buildCopy(d, { 'README.md': `# notes\nSTRIPE_SECRET_KEY=${sk}\n` }); git(d, 'add', '-A'); return d; };
+    // a linked worktree or submodule moved away from its repository: its .git file names a gitdir that is gone
+    let d = checkout('moved');
+    rmSync(join(d, '.git'), { recursive: true });
+    writeFileSync(join(d, '.git'), `gitdir: ${join(tmp, 'gone/.git/worktrees/moved')}\n`);
+    stopped(buildIn(d, join(d, 'dist')), join(d, 'dist'), 'a gitdir that is gone');
+    // a build image with node but no git
+    d = checkout('nogit');
+    const bin = join(tmp, 'bin');
+    mkdirSync(bin);
+    symlinkSync(process.execPath, join(bin, 'node'));
+    symlinkSync(execFileSync('sh', ['-c', 'command -v dirname'], { encoding: 'utf8' }).trim(), join(bin, 'dirname'));
+    stopped(buildIn(d, join(d, 'dist'), { ...gitEnv, PATH: bin }), join(d, 'dist'), 'no git on PATH');
+    // an empty .git inside another repository: git passes over it and answers for the folder above, which tracks none of these files
+    const outer = join(tmp, 'outer');
+    mkdirSync(outer);
+    git(outer, 'init', '-q');
+    d = join(outer, 'copy');
+    buildCopy(d, { 'README.md': `# notes\nSTRIPE_SECRET_KEY=${sk}\n` });
+    mkdirSync(join(d, '.git'));
+    const passedOver = buildIn(d, join(d, 'dist'));
+    stopped(passedOver, join(d, 'dist'), 'a .git git passes over');
+    assert.match(passedOver.stderr, /git takes \S+outer as the work tree/);
+    // a checkout owned by another user (a container build, a shared cache): git refuses it (safe.directory)
+    if (process.getuid?.() === 0) {
+      d = checkout('owned');
+      execFileSync('chown', ['-R', '65534:65534', d]);
+      const dubious = buildIn(d, join(d, 'dist'));
+      stopped(dubious, join(d, 'dist'), 'dubious ownership');
+      assert.match(dubious.stderr, /dubious ownership/);
+    }
+  } finally { rmSync(tmp, { recursive: true, force: true }); }
+});
+
+test('build-site.sh in a copy with no .git (an export): every file under the repository root is read directly, so a key in a doc still stops the build', () => {
+  const d = mkdtempSync(join(tmpdir(), 'hm-secrets-export-'));
+  try {
+    const sk = `sk_live_${'E'.repeat(24)}`, wh = `whsec_${'x'.repeat(32)}`;
+    buildCopy(d, {
+      'README.md': `# notes\nSTRIPE_SECRET_KEY=${sk}\n`,
+      'hushmallow/docs/STAGING.md': `the webhook: ${wh}\n`,
+      'hushmallow/server/another-angle/.dev.vars': `STRIPE_SECRET_KEY=${sk}\n`,   // gitignored, but an export holding one is itself a leak
+      'hushmallow/server/another-angle/node_modules/pkg/fixture.js': `export const k = '${sk}';\n`,   // a dependency: never in git, not read
+    });
+    const out = join(d, 'dist');
+    const r = buildIn(d, out);
+    assert.equal(r.status, 1, r.stdout + r.stderr);
+    assert.match(r.stderr, /secret scan: 3 secrets in the files under \S+ \(no \.git there, so every file was read directly\)/);
+    assert.deepEqual(r.stderr.split('\n').filter((l) => l.startsWith('  ')).map((l) => l.trim()), [
+      'README.md:2: a Stripe secret or restricted key (sk_live_…)',
+      'hushmallow/docs/STAGING.md:1: a Stripe webhook signing secret (whsec_…)',
+      'hushmallow/server/another-angle/.dev.vars:1: a Stripe secret or restricted key (sk_live_…)',
+    ]);
+    assert.doesNotMatch(r.stderr, /not a git work tree/);
+    for (const v of [sk, wh]) assert.ok(!r.stderr.includes(v) && !r.stdout.includes(v), 'a secret is never printed');
+    assert.throws(() => lstatSync(out), 'nothing was built');
+    // the keys taken out: the walk passes and says what it read (the build then stops here for want of the app)
+    writeFileSync(join(d, 'README.md'), '# notes\n');
+    writeFileSync(join(d, 'hushmallow/docs/STAGING.md'), 'the webhook: a Worker secret\n');
+    rmSync(join(d, 'hushmallow/server/another-angle/.dev.vars'));
+    const ok = buildIn(d, out);
+    assert.match(ok.stdout, /secret scan: no secrets in the 4 files under \S+ \(no \.git there, so every file was read directly\)/);
+    assert.doesNotMatch(ok.stderr, /secret scan:/);
   } finally { rmSync(d, { recursive: true, force: true }); }
 });
 

@@ -2,12 +2,15 @@
 // restricted keys (sk_/rk_, live or test) and webhook signing secrets
 // (whsec_), Supabase secret keys (sb_secret_), service_role JWTs and access
 // tokens (sbp_), Anthropic keys (sk-ant-) and private keys (PEM).
-//   node hushmallow/tools/secret-scan.mjs           every tracked file (git ls-files)
-//   node hushmallow/tools/secret-scan.mjs --staged  the lines a commit adds
+//   node hushmallow/tools/secret-scan.mjs                  every tracked file (git ls-files)
+//   node hushmallow/tools/secret-scan.mjs --staged         the lines a commit adds
+//   node hushmallow/tools/secret-scan.mjs --source <root>  a build's: the tracked files of a checkout
+//     (a git failure there exits 2), or every file under root in a copy with no .git (an export)
 //
 // One list of patterns for every guard: tests/no-secrets.test.mjs and the
 // server's test/no-secrets.test.js (every tracked file), tools/build-site.sh
-// (every tracked file before each build, whatever the push changed; then
+// (every tracked file before each build, whatever the push changed, or every
+// file of an export with no .git; then
 // tools/site/check.mjs, every file of the built site, with no allow-list) and
 // the pre-commit hook (tools/hooks/pre-commit at the repository root; turn it
 // on with git config core.hooksPath tools/hooks). Publishable keys (pk_,
@@ -18,7 +21,7 @@
 import { createHash } from 'node:crypto';
 import { lstatSync, readdirSync, readFileSync, realpathSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 /** kind, and a pattern whose `head` group is the public prefix shown in a report. */
@@ -103,6 +106,33 @@ export function walkFiles(root) {
   return out.sort();
 }
 
+/**
+ * A build's scan of the repository at root: { how: 'tracked' | 'walk', files (how many), found }.
+ * A checkout has .git there (a folder, or a file for a linked worktree or submodule): its tracked files are scanned,
+ * and git must list them for root itself, or this throws, so the build stops rather than skip the scan (dubious
+ * ownership, a gitdir that is gone, no git, an empty .git that git passes over for a repository above).
+ * Only a copy with no .git at all (an export, a tarball) is walked instead: every file under root, read from disk.
+ */
+export function scanSource(root) {
+  try { lstatSync(join(root, '.git')); } catch (e) {
+    if (e.code !== 'ENOENT') throw e;
+    const files = walkFiles(root);
+    return { how: 'walk', files: files.length, found: scanFiles(root, files) };
+  }
+  let files;
+  try {
+    const top = execFileSync('git', ['-C', root, 'rev-parse', '--show-toplevel'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+    // .native: the spelling the file system keeps (a case-insensitive disk), as git gives it
+    if (realpathSync.native(top) !== realpathSync.native(root)) throw new Error(`git takes ${top} as the work tree, not this folder`);
+    files = trackedFiles(root);
+  } catch (e) {
+    const why = (e.stderr ? String(e.stderr) : '').trim() || e.message;
+    throw new Error(`${root} is a checkout (it has .git) but git cannot list its tracked files, so they are not scanned and nothing is built: ${why}\n`
+      + 'Fix git there (its safe.directory, the gitdir its .git names, git on PATH), or build from an export with no .git, whose files are then read directly.');
+  }
+  return { how: 'tracked', files: files.length, found: scanFiles(root, files) };
+}
+
 /** A path in a diff header (b/<path>, quoted when git must), or null for /dev/null. */
 function diffPath(s) {
   s = s.replace(/\t$/, '');   // git ends the header with a tab when the name has a space
@@ -155,17 +185,27 @@ let main = false;
 try { main = !!process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url); } catch { /* not a file: imported */ }
 if (main) {
   const staged = process.argv.includes('--staged');
-  let found;
+  const at = process.argv.indexOf('--source');
+  let found, source = null;
   try {
-    found = staged ? scanDiff(stagedDiff()) : scanTree(execFileSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' }).trim());
+    if (staged) found = scanDiff(stagedDiff());
+    else if (at > 0) {
+      if (!process.argv[at + 1]) throw new Error('--source needs the repository root');
+      source = { root: resolve(process.argv[at + 1]) };
+      Object.assign(source, scanSource(source.root));
+      found = source.found;
+    } else found = scanTree(execFileSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' }).trim());
   } catch (e) { console.error(`secret scan: ${e.message}`); process.exit(2); }
+  const walked = source?.how === 'walk' ? `under ${source.root} (no .git there, so every file was read directly)` : null;
   if (found.length) {
-    console.error(`secret scan: ${found.length} secret${found.length === 1 ? '' : 's'} in ${staged ? 'the staged changes (commit refused)' : 'tracked files'}:`);
+    console.error(`secret scan: ${found.length} secret${found.length === 1 ? '' : 's'} in ${staged ? 'the staged changes (commit refused)' : walked ? `the files ${walked}` : 'tracked files'}:`);
     for (const f of found) console.error(`  ${describe(f)}`);
     if (staged) console.error('Take the value out of the file and git add it again.');
+    if (walked) console.error('With no .git, gitignored files are read too: a .env or .dev.vars does not belong in an export.');
     console.error('A secret belongs in a Worker secret or a gitignored .dev.vars, never in git. If it was ever pushed or shared, roll it in that provider\'s dashboard.');
     console.error('A deliberate fake: build it at run time in a test, or add its exact line to ALLOW in hushmallow/tools/secret-scan.mjs.');
     process.exit(1);
   }
-  if (!staged) console.log('secret scan: no secrets in tracked files');   // the hook stays quiet on a clean commit
+  if (walked) console.log(`secret scan: no secrets in the ${source.files} files ${walked}`);
+  else if (!staged) console.log('secret scan: no secrets in tracked files');   // the hook stays quiet on a clean commit
 }
