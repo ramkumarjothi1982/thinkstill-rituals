@@ -154,12 +154,14 @@ failed payments, expiring cards and 3-D Secure confirmations.
 ## Project structure
 
 Files touched by this work: `server/another-angle/src/billing/routes.js` (the Studio settings, the price
-rules), `server/another-angle/src/billing/store.js` (`noLookupKey` exported), `server/another-angle/src/config.js`
-(a comment), `server/another-angle/wrangler.toml` (the staging ids, comments),
-`server/another-angle/scripts/billing-e2e.mjs` (prices read by id, in US$), `src/app/config.js` and
-`src/app/billing.js` (US$ display prices), their tests, `docs/PAYMENTS.md`, `docs/STAGING.md`,
-`docs/integration/DECISIONS.md`, `server/another-angle/README.md`, `legal/terms.html`, and this file. **No new
-route**: the five `/v1/billing/*` routes are as before.
+rules: USD only, each slot's amount), `server/another-angle/src/billing/stripe.js` (`retrievePrice` reads
+`currency_options`), `server/another-angle/src/billing/store.js` (`noLookupKey` exported),
+`server/another-angle/src/config.js` (one id in two slots counts as unset), `server/another-angle/src/app.js`
+(`/v1/health` `duplicate_prices`), `server/another-angle/wrangler.toml` (the staging ids, comments),
+`server/another-angle/scripts/billing-e2e.mjs` (prices read by id, in US$; tax checks for any jurisdiction)
+and `scripts/billing-checks.mjs`, `src/app/config.js` and `src/app/billing.js` (US$ display prices), their
+tests, `docs/PAYMENTS.md`, `docs/STAGING.md`, `docs/integration/DECISIONS.md`, `server/another-angle/README.md`,
+`legal/terms.html`, and this file. **No new route**: the five `/v1/billing/*` routes are as before.
 
 ## Flow overview
 
