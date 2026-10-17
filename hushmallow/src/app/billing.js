@@ -22,7 +22,8 @@
 //     status()               → { ok: true, tier, status, periodEnd, endsAt, cancelAtPeriodEnd, manageable } | { ok: false, reason }
 //                              (periodEnd, endsAt: ms or null; the server sends ISO or ms, both are read)
 //     checkout(plan, period) → { redirecting } (on to Stripe Checkout) | { needsAccount } | { manage } (has a plan) | { failed, reason }
-//     portal()               → { redirecting } (Stripe's customer portal) | { needsAccount } | { none } | { failed, reason }
+//     portal(intent?)        → { redirecting } (Stripe's customer portal) | { needsAccount } | { none } | { failed, reason };
+//                              intent 'switch' (the plans page, for a plan already held) opens it on changing the plan
 //     sync(sessionId)        → as status(): back from Checkout, the server reads that session from Stripe and records the
 //                              plan at once (the webhook may be a moment behind); a malformed id is never sent
 //     prices()               → { productId: 'A$…' }, from BILLING_PRICES (only those set)
@@ -208,9 +209,10 @@ export function createBilling({
       if (r.http === 200 && open(r.data?.url)) return { redirecting: true };
       return { failed: true, reason: r.http === 200 ? 'not_stripe' : reasonOf(r) };
     },
-    async portal() {
+    async portal(intent) {
       if (!signedIn()) return { needsAccount: true };
-      const r = await call(PATHS.portal, { body: {} });
+      // { intent: 'switch' }: the server opens Stripe's change-plan page (a plain portal where that is off); Settings: {}
+      const r = await call(PATHS.portal, { body: intent === 'switch' ? { intent: 'switch' } : {} });
       if (r.signedOut || r.http === 401) return { needsAccount: true };
       if (r.http === 404) return { none: true };
       if (r.http === 200 && open(r.data?.url)) return { redirecting: true };

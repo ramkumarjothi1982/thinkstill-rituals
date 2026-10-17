@@ -216,8 +216,11 @@ export function createEntitlements({ store, billing = null, now = () => Date.now
       return state;
     },
     cancelTest() { if (state.source === 'test') set('none', null); },
-    /** Web subscriptions: Stripe's customer portal (cancel as easily as subscribing, change plan, card, receipts). */
-    async manage() { return web ? web.portal() : { failed: true, reason: 'off' }; },
+    /**
+     * Web subscriptions: Stripe's customer portal (cancel as easily as subscribing, change plan, card, receipts).
+     * { intent: 'switch' }: straight to changing the plan (the plans page, when the account has one already).
+     */
+    async manage({ intent } = {}) { return web ? web.portal(intent === 'switch' ? 'switch' : undefined) : { failed: true, reason: 'off' }; },
   };
   // the plans page shows these under each button (src/app/scenes/plans.js); only with web subscriptions on
   if (web) api.prices = () => web.prices();

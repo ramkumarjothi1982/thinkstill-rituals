@@ -171,8 +171,9 @@ export default function plans(app, params = {}) {
     }
     if (r?.manage) {
       toast(CHANGE_PLAN, 3200);
+      // a plan already: the portal opens on changing it (Flow → Beyond, monthly → yearly), not on its front page
       let m = null;
-      try { m = await ent.manage(); } catch { m = null; }
+      try { m = await ent.manage({ intent: 'switch' }); } catch { m = null; }
       if (gone || m?.redirecting) return;
       toast('That didn’t open just now. Try again in a moment.', 3200);
     } else if (r?.unavailable) toast('Subscriptions are handled in the App Store app.');

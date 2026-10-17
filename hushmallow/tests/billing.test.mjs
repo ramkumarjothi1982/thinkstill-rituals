@@ -239,11 +239,30 @@ test('status and portal: the server\'s answer, read strictly; the portal opens o
   assert.deepEqual(await s.billing.portal(), { redirecting: true });
   assert.deepEqual(s.navs, ['https://billing.stripe.com/p/session/test_1']);
   assert.equal(s.server.calls.at(-1).url, `${EP}/v1/billing/portal`);
+  assert.deepEqual(s.server.calls.at(-1).body, {}, 'Settings\' Manage subscription: the portal\'s front page');
+  // the plans page, for a plan already held: straight to changing it ({ intent: 'switch' }); nothing else is ever sent
+  assert.deepEqual(await s.billing.portal('switch'), { redirecting: true });
+  assert.deepEqual(s.server.calls.at(-1).body, { intent: 'switch' });
+  for (const other of ['cancel', 'SWITCH', { intent: 'switch' }, 1]) {
+    await s.billing.portal(other);
+    assert.deepEqual(s.server.calls.at(-1).body, {}, String(other));
+  }
+  const ent = createEntitlements({ store: memStore(), billing: s.billing });
+  await ent.manage();
+  assert.deepEqual(s.server.calls.at(-1).body, {});
+  await ent.manage({ intent: 'switch' });
+  assert.deepEqual(s.server.calls.at(-1).body, { intent: 'switch' });
+  await ent.manage({ intent: 'other' });
+  assert.deepEqual(s.server.calls.at(-1).body, {});
+  // Settings asks for the front page; the plans page's 409 for the change of plan
+  assert.match(read('src/app/scenes/settings.js'), /try \{ r = await ent\.manage\(\); \}/);
+  assert.match(read('src/app/scenes/plans.js'), /try \{ m = await ent\.manage\(\{ intent: 'switch' \}\); \}/);
+  const opened = s.navs.length;
   s.server.portal = { http: 404, body: { error: { code: 'no_subscription' } } };
   assert.deepEqual(await s.billing.portal(), { none: true });
   s.server.portal = { http: 200, body: { url: 'https://evil.example/portal' } };
   assert.deepEqual(await s.billing.portal(), { failed: true, reason: 'not_stripe' });
-  assert.equal(s.navs.length, 1);
+  assert.equal(s.navs.length, opened, 'nothing more opened');
 });
 
 test('prices come from configuration only; none set, none shown', () => {
@@ -750,6 +769,7 @@ test('plans page, web subscriptions on: a plan already goes to the portal; confi
   assert.deepEqual(prices.map((n) => [n.textContent, n.hidden]), [['A$9.99 a month', false], ['', true]]);
   await click(p.buttons().find((b) => text(b) === 'Step into hushmallow Beyond'));
   assert.deepEqual(s.server.calls.map((c) => new URL(c.url).pathname), ['/v1/billing/checkout', '/v1/billing/portal']);
+  assert.deepEqual(s.server.calls[1].body, { intent: 'switch' }, 'the portal opens on changing the plan');
   assert.deepEqual(s.navs, ['https://billing.stripe.com/p/session/test_1']);
   assert.ok(all(p.body).some((n) => text(n) === 'You already have a plan. You can change it on the next page.'));
   p.view.leave();
