@@ -14,7 +14,7 @@
 // The foot ends with small "Terms · Privacy Policy" links (src/app/legal.js).
 import { h, iconBtn, toast } from '../ui.js';
 import { PLANS } from '../entitlements.js';
-import { rememberPlan } from '../billing.js';
+import { rememberPlan, CHANGE_PLAN, PAYMENT_PENDING } from '../billing.js';
 import { BRAND, brandName } from '../../brand.js';
 import { brandMark, logoImg, fitWhole } from '../../ui/type.js';
 import { openSupport } from './support.js';
@@ -43,10 +43,8 @@ export const WEB_NOTE = 'You’ll sign in first, so your plan stays with your ac
 /** Web subscriptions: said on the account screen when a guest steps into a plan, or restores one. */
 export const SIGN_IN_FIRST = 'Sign in or create an account first, so your plan stays with you.';
 export const SIGN_IN_TO_RESTORE = 'Sign in to the account your plan is with.';
-/** Web subscriptions: the account has a plan already; a change of plan happens on the subscription page. */
-export const CHANGE_PLAN = 'You already have a plan. You can change it on the next page.';
-/** Web subscriptions: a payment for this account is still going through (its plan not here yet); nothing new was started. */
-export const PAYMENT_PENDING = 'Your payment is still going through. Nothing more was charged.';
+/** Web subscriptions, checkout's 409: a plan already, or a payment going through (src/app/billing.js: the account card says them too). */
+export { CHANGE_PLAN, PAYMENT_PENDING };
 const SVG = 'http://www.w3.org/2000/svg';
 
 // Flow's sigil: three soft swells (Hushflow); Beyond reuses Zuzu's spiral

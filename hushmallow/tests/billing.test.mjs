@@ -14,7 +14,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-import { createBilling, resolveBilling, inNativeShell, takeReturn, welcomeBack, stripePage, planNow, rememberPlan, plannedPlan, PATHS, PORTAL_WAITS, PLAN_INTENT_MS, RETURN_LINES, STRIPE_PAGES, CHECKOUT_DOMAIN } from '../src/app/billing.js';
+import { createBilling, resolveBilling, inNativeShell, takeReturn, welcomeBack, stripePage, planNow, rememberPlan, plannedPlan, PATHS, PORTAL_WAITS, PLAN_INTENT_MS, RETURN_LINES, STRIPE_PAGES, CHECKOUT_DOMAIN, CHANGE_PLAN, PAYMENT_PENDING } from '../src/app/billing.js';
 import { createEntitlements, BILLING_GRACE_MS, BILLING_RECHECK_MS, BILLING_CLOCK_SKEW_MS, PLANS } from '../src/app/entitlements.js';
 import { BILLING_PROVIDER, BILLING_ENDPOINT, BILLING_PRICES, ANGLE_ENDPOINT, ANGLE_ALLOWED_HOSTS } from '../src/app/config.js';
 import { createStore } from '../src/engine/storage.js';
@@ -645,6 +645,7 @@ test('web billing copy: no App Store, no price written in, no plan word, no "ser
     P.periodNote({ web: true, period: 'monthly' }), P.periodNote({ web: true, period: 'yearly' }),
     P.WEB_NOTE, P.SIGN_IN_FIRST, P.SIGN_IN_TO_RESTORE, P.CHANGE_PLAN, P.PAYMENT_PENDING, ...Object.values(RETURN_LINES),
   ];
+  assert.deepEqual([P.CHANGE_PLAN, P.PAYMENT_PENDING], [CHANGE_PLAN, PAYMENT_PENDING], 'one copy, said by the plans page and the account card');
   assert.equal(lines[0].replaceAll(NBSP, ' '), 'Billed monthly. Cancel any time in Settings.');
   assert.equal(lines[1].replaceAll(NBSP, ' '), 'Billed once a year. Cancel any time in Settings.');
   assert.ok(lines[0].endsWith(`in${NBSP}Settings.`), 'never "Settings." alone on a line');
@@ -1112,26 +1113,32 @@ test('the plan across sign-in: a guest\'s "Step into…" is kept, and the accoun
     const went = [];
     const app = { billing: s.billing, ent: createEntitlements({ store: memStore(), billing: s.billing }), go: (...a) => went.push(a) };
     const offer = A.continuePlan(app);
-    const btn = all(offer).find((n) => n.tagName === 'BUTTON');
+    const btn = all(offer.el).find((n) => n.tagName === 'BUTTON');
     assert.equal(text(btn), 'Continue to hushmallow Beyond (yearly)');
     assert.equal(btn.attrs['data-act'], 'continue-plan');
     await click(btn);
-    assert.deepEqual(s.server.calls.map((c) => [new URL(c.url).pathname, c.body]), [['/v1/billing/checkout', { plan: 'ultra', period: 'yearly' }]]);
+    // the plan is asked for first (a plan already here needs no checkout), then on to checkout
+    assert.deepEqual(s.server.calls.map((c) => [new URL(c.url).pathname, c.body]), [['/v1/billing/status', null], ['/v1/billing/checkout', { plan: 'ultra', period: 'yearly' }]]);
     assert.deepEqual(s.navs, ['https://checkout.stripe.com/c/pay/cs_test_a1']);
     assert.equal(btn.disabled, true, 'quiet while the page leaves');
     assert.equal(plannedPlan(), null, 'offered once');
     assert.equal(A.continuePlan(app), null);
-    // a plan already (409): the plans page says so; a failure says nothing was charged
+    offer.stop();
+    // a plan already (409): said, and the subscription page opens on changing it, as the plans page does
     rememberPlan('paid', 'monthly');
     s.server.checkout = { http: 409, body: { error: { code: 'already_subscribed' } } };
-    await click(all(A.continuePlan(app)).find((n) => n.tagName === 'BUTTON'));
-    assert.deepEqual(went, [['plans', { focus: 'paid' }]]);
+    s.server.calls.length = 0;
+    await click(all(A.continuePlan(app).el).find((n) => n.tagName === 'BUTTON'));
+    assert.deepEqual(s.server.calls.map((c) => [new URL(c.url).pathname, c.body]), [['/v1/billing/checkout', { plan: 'paid', period: 'monthly' }], ['/v1/billing/portal', { intent: 'switch' }]]);
+    assert.deepEqual(s.navs.at(-1), 'https://billing.stripe.com/p/session/test_1');
+    assert.ok(all(document.body).some((n) => text(n) === CHANGE_PLAN));
+    assert.deepEqual(went, [], 'not the plans page with nothing said');
     rememberPlan('paid', 'monthly');
     s.server.checkout = { http: 503, body: {} };
     const failed = A.continuePlan(app);
-    const fb = all(failed).find((n) => n.tagName === 'BUTTON');
+    const fb = all(failed.el).find((n) => n.tagName === 'BUTTON');
     await click(fb);
-    assert.ok(all(failed).map(text).includes('That didn’t go through. Nothing was charged.'));
+    assert.ok(all(failed.el).map(text).includes('That didn’t go through. Nothing was charged.'));
     assert.equal(fb.disabled, false);
     // never: with a plan already, as a guest, with web billing off or in the App Store app
     rememberPlan('ultra', 'yearly');
@@ -1143,8 +1150,76 @@ test('the plan across sign-in: a guest\'s "Step into…" is kept, and the accoun
     assert.equal(A.continuePlan({ billing: away.billing, ent: createEntitlements({ store: memStore(), billing: away.billing }) }), null, 'a guest');
     assert.equal(A.continuePlan({ billing: null, ent: createEntitlements({ store: memStore() }) }), null, 'billing off');
     assert.deepEqual(plannedPlan(), { plan: 'ultra', period: 'yearly' }, 'none of those took it');
-    // the account card puts it first
-    assert.match(read('src/app/scenes/account.js'), /body: \[\n\s+continuePlan\(app\),\n\s+h\('p', \{ class: 'hm-auth-hint hm-auth-center', 'data-since': '' \}/);
+    // the account card puts it first, and lets go of it with the screen
+    const src = read('src/app/scenes/account.js');
+    assert.match(src, /const offer = continuePlan\(app\);/);
+    assert.match(src, /body: \[\n\s+offer\?\.el,\n\s+h\('p', \{ class: 'hm-auth-hint hm-auth-center', 'data-since': '' \}/);
+    assert.match(src, /after: \(\) => loadAccount\(\{ settingsRow, libraryRow, syncStatus, loadNote, picker \}\),\n\s+stop: \(\) => offer\?\.stop\(\),/);
+  } finally { tab.restore(); }
+});
+
+test('the plan across sign-in: the offer goes once a check shows a plan, a tap waits for the check in flight, a payment going through is said', async () => {
+  const tab = fakeSession();
+  const body = fakeDocument();
+  try {
+    const A = await import('../src/app/scenes/account.js');
+    const said = () => all(body).map(text);
+    const BEYOND = { tier: 'ultra', status: 'active', current_period_end: '2027-10-16T09:00:00.000Z', ends_at: null, cancel_at_period_end: false, manageable: true };
+    const paths = (s) => s.server.calls.map((c) => new URL(c.url).pathname);
+    /** The account card after the sign-in reload: rendered while the start's check is still in flight. */
+    const open = (status) => {
+      rememberPlan('ultra', 'yearly');
+      const s = setup();
+      s.server.status = status;
+      const went = [];
+      const app = { billing: s.billing, ent: createEntitlements({ store: memStore(), billing: s.billing }), go: (...a) => went.push(a) };
+      const boot = app.ent.refresh();
+      const offer = A.continuePlan(app);
+      const card = new FakeEl('div');
+      card.append(offer.el);
+      return { s, app, went, boot, offer, card, btn: all(offer.el).find((n) => n.tagName === 'BUTTON') };
+    };
+    // an existing Beyond subscriber: the check answers with the plan, and the offer goes
+    const sub = open(BEYOND);
+    assert.equal(sub.card.children.length, 1, 'shown while the check runs');
+    await sub.boot;
+    assert.equal(sub.app.ent.has('ultra'), true);
+    assert.deepEqual(sub.card.children, [], 'withdrawn');
+    assert.deepEqual(plannedPlan(), { plan: 'ultra', period: 'yearly' }, 'not taken: as when a plan was known at the start');
+    // tapped before the check answered: it waits for that answer, then no checkout: the change of plan, said
+    const quick = open(BEYOND);
+    await click(quick.btn);
+    await quick.boot;
+    assert.deepEqual(paths(quick.s), ['/v1/billing/status', '/v1/billing/portal'], 'no checkout');
+    assert.deepEqual(quick.s.server.calls[1].body, { intent: 'switch' });
+    assert.ok(said().includes(CHANGE_PLAN));
+    assert.deepEqual(quick.went, []);
+    // the portal not opening is said, and the button wakes
+    const NONE = { tier: 'none', status: 'none', current_period_end: null, cancel_at_period_end: false, manageable: false };
+    const down = open(NONE);
+    await down.boot;
+    down.s.server.checkout = { http: 409, body: { error: { code: 'already_subscribed' } } };
+    down.s.server.portal = { http: 503, body: {} };
+    await click(down.btn);
+    assert.ok(said().includes('That didn’t open just now. Try again in a moment.'));
+    assert.equal(down.btn.disabled, false);
+    // a payment still going through: said (never the portal), and the button wakes
+    const pend = open(NONE);
+    await pend.boot;
+    pend.s.server.checkout = { http: 409, body: { status: 'error', error: { code: 'payment_pending', message: 'x' } } };
+    await click(pend.btn);
+    assert.deepEqual(paths(pend.s), ['/v1/billing/status', '/v1/billing/checkout']);
+    assert.ok(said().includes(PAYMENT_PENDING));
+    assert.equal(pend.btn.disabled, false);
+    assert.deepEqual(pend.went, []);
+    // its plan arriving later (coming back to the app) withdraws the offer; stop() lets go of it
+    pend.s.server.status = BEYOND;
+    await pend.app.ent.refresh({ force: true });
+    assert.deepEqual(pend.card.children, []);
+    const left = open(BEYOND);
+    left.offer.stop();
+    await left.boot;
+    assert.equal(left.card.children.length, 1, 'no longer listening');
   } finally { tab.restore(); }
 });
 

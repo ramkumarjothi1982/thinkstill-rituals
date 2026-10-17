@@ -67,6 +67,10 @@ export const RETURN_LINES = Object.freeze({
   pending: 'Thank you. Your plan is on its way: it can take a minute to arrive.',
   signIn: 'Sign in to see your plan.',
 });
+/** Checkout's 409 as the plans page and the account card's "Continue to …" say it: a plan already (the change of
+ *  plan happens on the subscription page that opens next), or a payment still going through (nothing new started). */
+export const CHANGE_PLAN = 'You already have a plan. You can change it on the next page.';
+export const PAYMENT_PENDING = 'Your payment is still going through. Nothing more was charged.';
 const DEV_HOSTS = ['localhost', '127.0.0.1'];
 const DEV_KEY = 'hm2:billingDev';
 const PRODUCT = /^hushmallow\.(paid|ultra)\.(monthly|yearly)$/;
