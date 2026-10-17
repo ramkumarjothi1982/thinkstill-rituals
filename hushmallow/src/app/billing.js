@@ -23,7 +23,8 @@
 //                              (periodEnd, endsAt: ms or null; the server sends ISO or ms, both are read; off: the
 //                              server's 503 saying it has no web billing at all, one of BILLING_OFF_CODES)
 //     checkout(plan, period) → { redirecting } (on to Stripe Checkout) | { needsAccount } | { manage } (has a plan)
-//                              | { pending } (a payment still going through) | { failed, reason }
+//                              | { pending } (a payment still going through) | { failed, reason, support? }
+//                              (support: the account's billing needs a person, 409 customer_conflict: BILLING_SUPPORT)
 //     portal(intent?)        → { redirecting } (Stripe's customer portal) | { needsAccount } | { none } | { failed, reason };
 //                              intent 'switch' (the plans page, for a plan already held) opens it on changing the plan
 //     sync(sessionId)        → as status(): back from Checkout, the server reads that session from Stripe and records the
@@ -72,6 +73,11 @@ export const RETURN_LINES = Object.freeze({
  *  plan happens on the subscription page that opens next), or a payment still going through (nothing new started). */
 export const CHANGE_PLAN = 'You already have a plan. You can change it on the next page.';
 export const PAYMENT_PENDING = 'Your payment is still going through. Nothing more was charged.';
+/** Where billing questions go: the contact address the Terms and the Privacy Policy give (legal/terms.html, Contact). */
+export const SUPPORT_EMAIL = 'support@hushmallow.com';
+/** Checkout's 409 customer_conflict, on the plans page and the account card: nothing was made, and the account's
+ *  billing needs a person to look at it (its Stripe customer is linked elsewhere), so where to write is said. */
+export const BILLING_SUPPORT = `That didn’t go through, and nothing was charged. Your account’s billing needs a look from us: please email ${SUPPORT_EMAIL}.`;
 /**
  * The codes our server's billing routes answer 503 with while it has no web billing at all (server/another-angle
  * src/billing/routes.js offCode: not configured, a key refused, or its sign-in project still a placeholder, as on a
@@ -247,11 +253,13 @@ export function createBilling({
       if (r.signedOut || r.http === 401) return { needsAccount: true };
       // 409, nothing new made: a plan already (already_subscribed, or no code from an older server: changed in the
       // portal), or a payment still going through (payment_pending: a checkout just completed whose plan is not here
-      // yet, or a first payment unfinished). Any other code (customer_conflict: the account's Stripe customer needs
-      // support) is no plan to change, so never the portal
+      // yet, or a first payment unfinished). Any other code is no plan to change, so never the portal; customer_conflict
+      // (the account's Stripe customer is linked elsewhere) needs a person: { support } (BILLING_SUPPORT says where)
       if (r.http === 409) {
         const code = r.data?.error?.code;
-        return code === 'payment_pending' ? { pending: true } : code === 'already_subscribed' || !code ? { manage: true } : { failed: true, reason: 'http_409' };
+        if (code === 'payment_pending') return { pending: true };
+        if (code === 'already_subscribed' || !code) return { manage: true };
+        return code === 'customer_conflict' ? { failed: true, reason: 'customer_conflict', support: true } : { failed: true, reason: 'http_409' };
       }
       if (r.http === 200 && open(r.data?.url)) return { redirecting: true };
       return { failed: true, reason: r.http === 200 ? 'not_stripe' : reasonOf(r) };

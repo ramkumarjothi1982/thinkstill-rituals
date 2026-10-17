@@ -170,12 +170,15 @@ test('checkout: a guest is asked to sign in (nothing sent); signed in, only { pl
     s.server.checkout = { http: 409, body };
     assert.deepEqual(await s.billing.checkout('paid', 'monthly'), { manage: true }, `no code (an older server): ${JSON.stringify(body)}`);
   }
-  // any other code is no plan to change: customer_conflict (WS3: the account's Stripe customer link needs support)
-  // never opens the portal on a customer linked to another account
-  for (const code of ['customer_conflict', 'other']) {
-    s.server.checkout = { http: 409, body: { status: 'error', error: { code, message: 'x' } } };
-    assert.deepEqual(await s.billing.checkout('paid', 'monthly'), { failed: true, reason: 'http_409' }, code);
-  }
+  // customer_conflict (WS3: the account's Stripe customer link needs support) is no plan to change: never the portal
+  // on a customer linked to another account, and said with where to write (support)
+  s.server.checkout = { http: 409, body: { status: 'error', error: { code: 'customer_conflict', message: 'x' } } };
+  assert.deepEqual(await s.billing.checkout('paid', 'monthly'), { failed: true, reason: 'customer_conflict', support: true });
+  // any other code is no plan to change either, and the code means nothing on another status
+  s.server.checkout = { http: 409, body: { status: 'error', error: { code: 'other', message: 'x' } } };
+  assert.deepEqual(await s.billing.checkout('paid', 'monthly'), { failed: true, reason: 'http_409' });
+  s.server.checkout = { http: 503, body: { status: 'error', error: { code: 'customer_conflict', message: 'x' } } };
+  assert.deepEqual(await s.billing.checkout('paid', 'monthly'), { failed: true, reason: 'http_503' });
   s.server.checkout = { http: 401, body: {} };
   assert.deepEqual(await s.billing.checkout('paid', 'monthly'), { needsAccount: true });
   s.server.checkout = { http: 503, body: {} };
@@ -644,6 +647,7 @@ test('web billing copy: no App Store, no price written in, no plan word, no "ser
   const lines = [
     P.periodNote({ web: true, period: 'monthly' }), P.periodNote({ web: true, period: 'yearly' }),
     P.WEB_NOTE, P.SIGN_IN_FIRST, P.SIGN_IN_TO_RESTORE, P.CHANGE_PLAN, P.PAYMENT_PENDING, ...Object.values(RETURN_LINES),
+    (await import('../src/app/billing.js')).BILLING_SUPPORT,
   ];
   assert.deepEqual([P.CHANGE_PLAN, P.PAYMENT_PENDING], [CHANGE_PLAN, PAYMENT_PENDING], 'one copy, said by the plans page and the account card');
   assert.equal(lines[0].replaceAll(NBSP, ' '), 'Billed monthly. Cancel any time in Settings.');
@@ -791,7 +795,8 @@ test('plans page, web subscriptions on: a plan already goes to the portal; confi
   p.view.leave();
 });
 
-test('plans page, web subscriptions on: a 409 customer_conflict says it didn\'t go through, never "You already have a plan" or the portal', async () => {
+test('plans page, web subscriptions on: a 409 customer_conflict says to write to support, never "You already have a plan" or the portal', async () => {
+  const { BILLING_SUPPORT, SUPPORT_EMAIL } = await import('../src/app/billing.js');
   const s = setup();
   s.server.checkout = { http: 409, body: { status: 'error', error: { code: 'customer_conflict', message: 'x' } } };
   const p = await plansPage(createEntitlements({ store: memStore(), billing: s.billing }));
@@ -800,10 +805,29 @@ test('plans page, web subscriptions on: a 409 customer_conflict says it didn\'t 
   assert.deepEqual(s.server.calls.map((c) => new URL(c.url).pathname), ['/v1/billing/checkout'], 'no portal');
   assert.deepEqual(s.navs, []);
   const said = all(p.body).map(text);
-  assert.ok(said.includes('That didn’t go through. Nothing was charged.'));
+  assert.ok(said.includes(BILLING_SUPPORT), 'the support line');
+  assert.ok(said.some((l) => /nothing was charged/i.test(l) && l.includes(SUPPORT_EMAIL)), 'nothing charged, and where to write');
+  assert.ok(!said.includes('That didn’t go through. Nothing was charged.'), 'not the plain line');
   assert.ok(!said.includes('You already have a plan. You can change it on the next page.'));
   assert.equal(beyond.disabled, false);
+  // any other 409 code: the plain line, as any failure
+  s.server.checkout = { http: 409, body: { status: 'error', error: { code: 'other', message: 'x' } } };
+  const q = await plansPage(createEntitlements({ store: memStore(), billing: s.billing }));
+  await click(q.buttons().find((b) => text(b) === 'Step into hushmallow Flow'));
+  assert.ok(all(q.body).map(text).includes('That didn’t go through. Nothing was charged.'));
+  assert.deepEqual(s.server.calls.map((c) => new URL(c.url).pathname), ['/v1/billing/checkout', '/v1/billing/checkout'], 'no portal');
   p.view.leave();
+  q.view.leave();
+});
+
+test('billing support: the address the support line gives is the Terms\' and the Privacy Policy\'s contact address', async () => {
+  const { BILLING_SUPPORT, SUPPORT_EMAIL } = await import('../src/app/billing.js');
+  assert.equal(typeof SUPPORT_EMAIL, 'string');
+  for (const p of ['legal/terms.html', 'legal/privacy.html']) {
+    assert.ok(read(p).includes(`<li>Email: <a href="mailto:${SUPPORT_EMAIL}">${SUPPORT_EMAIL}</a>`), `${p}: the same address`);
+  }
+  assert.ok(BILLING_SUPPORT.endsWith(`${SUPPORT_EMAIL}.`), 'the line ends with it');
+  assert.match(BILLING_SUPPORT, /^That didn’t go through, and nothing was charged\./);
 });
 
 test('plans page, web subscriptions on: a payment still going through is said so (never the portal), and welcomed once it is here', async () => {
@@ -1343,6 +1367,21 @@ test('the plan across sign-in: the offer goes once a check shows a plan, a tap w
     assert.ok(said().includes(PAYMENT_PENDING));
     assert.equal(pend.btn.disabled, false);
     assert.deepEqual(pend.went, []);
+    // the account's billing needs a look (409 customer_conflict): where to write is said (never the portal), and the
+    // button wakes
+    const { BILLING_SUPPORT } = await import('../src/app/billing.js');
+    const conflict = open(NONE);
+    await conflict.boot;
+    conflict.s.server.checkout = { http: 409, body: { status: 'error', error: { code: 'customer_conflict', message: 'x' } } };
+    const changes = () => said().filter((l) => l === CHANGE_PLAN).length;
+    const before = changes();
+    await click(conflict.btn);
+    assert.deepEqual(paths(conflict.s), ['/v1/billing/status', '/v1/billing/checkout'], 'no portal');
+    assert.deepEqual(conflict.s.navs, []);
+    assert.ok(all(conflict.offer.el).map(text).includes(BILLING_SUPPORT), 'the support line on the card');
+    assert.equal(changes(), before, 'never "You already have a plan" for it');
+    assert.equal(conflict.btn.disabled, false);
+    assert.deepEqual(conflict.went, []);
     // its plan arriving later (coming back to the app) withdraws the offer; stop() lets go of it
     pend.s.server.status = BEYOND;
     await pend.app.ent.refresh({ force: true });

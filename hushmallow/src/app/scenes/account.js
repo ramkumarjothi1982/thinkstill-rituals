@@ -53,7 +53,7 @@ import * as VM from '../../auth/view-model.js';
 import { NOTICE_TEXT } from '../../auth/boot.js';
 import { agreeLine } from '../legal.js';
 import { PLANS } from '../entitlements.js';
-import { plannedPlan, CHANGE_PLAN, PAYMENT_PENDING } from '../billing.js';
+import { plannedPlan, CHANGE_PLAN, PAYMENT_PENDING, BILLING_SUPPORT } from '../billing.js';
 
 const CSS = [new URL('../../auth/auth.css', import.meta.url).href, new URL('../../ui/account.css', import.meta.url).href];
 /** Both stylesheets; resolves when they have loaded (or after 1.2 s). */
@@ -295,6 +295,7 @@ export function continuePlan(app) {
       if (m?.redirecting) { setTimeout(() => { b.disabled = false; }, 4000); return; }
       toast('That didn’t open just now. Try again in a moment.', 3200);
     } else if (r?.pending) toast(PAYMENT_PENDING, 3600);   // its plan arrives with a later check, and the offer goes
+    else if (r?.support) status.textContent = BILLING_SUPPORT;   // the account's billing needs a person: where to write
     else status.textContent = 'That didn’t go through. Nothing was charged.';
     b.disabled = false;
   });
