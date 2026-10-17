@@ -7,7 +7,7 @@
 import { authBoot, createAuthHandle, NOTICE_TEXT, noticeText } from '../auth/boot.js';
 import { createPrefs } from './prefs.js';
 import { createEntitlements } from './entitlements.js';
-import { createBilling, takeReturn, welcomeBack } from './billing.js';
+import { createBilling, takeReturn, welcomeBack, planNow } from './billing.js';
 import { createRecommender } from '../engine/recommend.js';
 import { createWorld } from './world.js';
 import { RITUALS } from '../data/rituals.js';
@@ -224,8 +224,10 @@ const SCENES = {
 };
 
 async function boot() {
-  // back from Stripe (?billing=…): out of the address before anything else reads or keeps it
+  // back from Stripe (?billing=…): out of the address before anything else reads or keeps it, and the plan as kept
+  // before the trip (before the first check below), so the way back from the portal can tell when its change arrives
   const billingBack = billing ? takeReturn() : null;
+  const planBefore = billingBack ? planNow(ent) : null;
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') checkVersion(); });
   // a web plan is checked again whenever the app comes back to the foreground (at most once a minute)
   if (billing) document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') ent.refresh().catch(() => {}); });
@@ -260,7 +262,7 @@ async function boot() {
   stack.push({ name: 'home', params: {} });
   await app.go('home', { intro: !prefs.get('seenIntro') }, { replace: true });
   if (app.auth.enabled) afterAuthBoot();
-  if (billingBack) welcomeBack(app, billingBack).catch(() => {});
+  if (billingBack) welcomeBack(app, billingBack, { before: planBefore }).catch(() => {});
 }
 
 /** Sign-in on: the notice from before a reload, a deep link to the account, and the session check. */

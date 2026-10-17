@@ -16,7 +16,8 @@
 //   guest-choice   after a first sign-in on this device: keep this device's
 //                  guest things with the account here, or not now (asked once;
 //                  the account screen offers them again later)
-//   account        name, email, home Mallow, the two opt-in sync switches
+//   account        (a plan chosen on the plans page before signing in: "Continue to …" first,
+//                  web billing only) name, email, home Mallow, the two opt-in sync switches
 //                  (each with a plain privacy line and when it was given),
 //                  change password, sign out, remove this device's data,
 //                  delete account
@@ -26,7 +27,8 @@
 //                  step takes the 6-digit code it emailed. Forgot it? one tap.
 //   signout        sign out (optionally removing this account's things here)
 //   device-data    remove this device's copy of the account's things
-//   delete         typed confirmation; says exactly what goes, where
+//   delete         typed confirmation; says exactly what goes, where; with web billing on and a
+//                  plan that still renews, "Cancel your subscription first" comes before it (D9)
 //   off / expired  sign-in is off in this build / the session ended
 // Choosing a new password from an emailed link happens on /auth/callback
 // (src/auth/callback.js), which then opens this screen signed in.
@@ -50,6 +52,8 @@ import { checkEmail, checkPassword, friendlyError, passwordStrength, MESSAGES } 
 import * as VM from '../../auth/view-model.js';
 import { NOTICE_TEXT } from '../../auth/boot.js';
 import { agreeLine } from '../legal.js';
+import { PLANS } from '../entitlements.js';
+import { plannedPlan, CHANGE_PLAN, PAYMENT_PENDING, BILLING_SUPPORT } from '../billing.js';
 
 const CSS = [new URL('../../auth/auth.css', import.meta.url).href, new URL('../../ui/account.css', import.meta.url).href];
 /** Both stylesheets; resolves when they have loaded (or after 1.2 s). */
@@ -152,6 +156,151 @@ const NOT_TOUCHED = [
 export const WEB_PLAN_NOT_TOUCHED = 'a web subscription, if you have one, and our server’s record of it (which plan and its status, never your card): deleting your account doesn’t cancel it, so cancel it first in Settings → Manage subscription';
 /** The delete screen's "Not touched" list: as before, unless web subscriptions are on (never in the App Store app). */
 export const notTouched = (app) => (app?.billing ? NOT_TOUCHED.map((l) => (l.startsWith('your plan:') ? WEB_PLAN_NOT_TOUCHED : l)) : NOT_TOUCHED);
+
+/**
+ * Decision D9: an account whose web subscription still renews can't be deleted until it is cancelled. Deleting the
+ * account doesn't cancel it, and afterwards there is no account to open Manage subscription from, so a yearly plan
+ * would renew next year. false: deletion goes ahead, with only the "Not touched" line (WEB_PLAN_NOT_TOUCHED) saying so.
+ */
+export const BLOCK_DELETE_WHILE_SUBSCRIBED = true;
+/** Stripe statuses of a subscription that still renews (past_due: Stripe is still retrying the payment). */
+export const RENEWING = Object.freeze(['active', 'trialing', 'past_due']);
+export const CANCEL_FIRST = Object.freeze({
+  title: 'Cancel your subscription first',
+  body: 'Deleting your account doesn’t cancel your subscription, and it would keep renewing with no account to manage it from. Cancel it in Manage subscription, then come back here.',
+  refused: 'Cancel your subscription first, in Manage subscription above.',
+  // the check had no answer (offline, the server busy or rate-limited): never deleted on a guess, since a renewing
+  // plan kept nowhere here (a new browser, cleared site data, a copy older than the grace) would read as none
+  unchecked: 'Couldn’t check for a subscription just now, so Delete waits. Try again in a moment.',
+  retry: 'Try again',
+});
+/** The account's web plan still renews (only with web billing on, never in the App Store app): Delete account waits. */
+export function renewingWebPlan(app) {
+  if (!BLOCK_DELETE_WHILE_SUBSCRIBED || !app?.billing || !app.ent?.isWeb) return false;
+  const p = app.ent.webPlan?.();
+  if (!p || !RENEWING.includes(p.status) || p.cancelAtPeriodEnd) return false;
+  // an end date set on or before the period end (a Dashboard cancel_at comes as ends_at alone): nothing more is
+  // charged, as Settings says (webPlanNote); one set after it still renews first
+  return !(Number.isFinite(p.endsAt) && !(Number.isFinite(p.periodEnd) && p.endsAt > p.periodEnd + 86400000));
+}
+
+/**
+ * The delete screen's first step while the web plan renews (D9): "Cancel your subscription first" with Manage
+ * subscription, and `submit` stays off until a check shows the plan ended or cancelling. It asks the server on
+ * opening (cancelled in the portal since, or bought on another phone); `checked` settles after that answer. It fails
+ * closed: until the server has answered once on this screen, Delete waits ("Couldn't check…", with Try again).
+ * A server with no web billing at all (its 503 billing_not_configured / accounts_not_configured: ent.webOff()) is an
+ * answer too, of no subscription to cancel there, as with web billing off; only a renewing plan this phone checked
+ * within the grace still shows the step. Offline, a timeout, any other failure: no answer.
+ * ready(), at submit: after that check (once more if it had no answer) → null to go ahead, else the line refusing it.
+ * → null where it never applies (web billing off, the App Store app): the screen exactly as before.
+ * confirmed(): the typed word is right (the other condition for `submit`).
+ */
+export function deleteGuard(app, { submit = null, confirmed = () => false } = {}) {
+  if (!BLOCK_DELETE_WHILE_SUBSCRIBED || !app?.billing || !app.ent?.isWeb) return null;
+  const ent = app.ent;
+  const status = h('p', { class: 'hm-auth-hint', role: 'status', 'aria-live': 'polite' });
+  const manage = h('button', { type: 'button', class: 'hm-auth-btn primary', 'data-act': 'manage-subscription' }, 'Manage subscription');
+  manage.addEventListener('click', async () => {
+    if (manage.disabled) return;
+    manage.disabled = true;
+    status.textContent = '';
+    let r = null;
+    try { r = await ent.manage(); } catch { r = null; }
+    // leaving for the portal; Back from there can restore this page as it was, so the button wakes again
+    if (r?.redirecting) { setTimeout(() => { manage.disabled = false; }, 4000); return; }
+    manage.disabled = false;
+    status.textContent = r?.needsAccount ? 'Sign in again to manage your subscription.' : 'That didn’t open just now. Try again in a moment.';
+  });
+  const box = h('div', { class: 'hm-account-facts', 'data-cancel-first': '' },
+    h('h2', { class: 'hm-account-eyebrow' }, CANCEL_FIRST.title), h('p', { class: 'hm-auth-hint' }, CANCEL_FIRST.body),
+    h('div', { class: 'hm-auth-actions' }, manage), status);
+  const retry = h('button', { type: 'button', class: 'hm-auth-btn', 'data-act': 'recheck-subscription' }, CANCEL_FIRST.retry);
+  retry.addEventListener('click', () => (retry.disabled ? undefined : check()));
+  const note = h('div', { class: 'hm-account-facts', 'data-unchecked': '' },
+    h('p', { class: 'hm-auth-hint', role: 'status' }, CANCEL_FIRST.unchecked), h('div', { class: 'hm-auth-actions' }, retry));
+  const el = h('div', { style: { display: 'contents' } });
+  // answered: the server has answered a check since this screen opened (a plan, or that it has no web billing);
+  // failed: the last one here had no answer
+  let answered = false, failed = false, checking = null;
+  const blocked = () => !answered || renewingWebPlan(app);
+  let shown = null;
+  const update = () => {
+    // one step at a time: a renewing plan's (from what is kept, even unchecked), else the unanswered check's line
+    const now = renewingWebPlan(app) ? 'renewing' : failed ? 'unchecked' : '';
+    // redrawn only when it changes: a check with the same answer never takes focus off Manage subscription / Try again
+    if (now !== shown) { shown = now; el.replaceChildren(...(now === 'renewing' ? [box] : now === 'unchecked' ? [note] : [])); }
+    if (submit && !submit.form?.dataset?.busy) submit.disabled = blocked() || !confirmed();
+  };
+  /** Ask the server (one at a time here); the answer, or none, is read off the entitlements once it settles. */
+  function check() {
+    if (checking) return checking;
+    retry.disabled = true;
+    checking = Promise.resolve().then(() => ent.refresh({ force: true })).catch(() => {}).then(() => {
+      if (ent.webAnswered?.() || ent.webOff?.()) answered = true;
+      failed = !answered;
+      checking = null;
+      retry.disabled = false;
+      update();
+    });
+    return checking;
+  }
+  update();
+  // a check from elsewhere (coming back to the app) that brings a plan, or a change to it, is an answer too
+  const off = ent.onChange?.(() => { if (ent.webAnswered?.()) { answered = true; failed = false; } update(); });
+  let opened = check();
+  async function ready() {
+    await opened;
+    if (!answered) await (opened = check());
+    return !answered ? CANCEL_FIRST.unchecked : renewingWebPlan(app) ? CANCEL_FIRST.refused : null;
+  }
+  return { el, blocked, get checked() { return checking || opened; }, ready, update, stop: () => off?.() };
+}
+
+/**
+ * The plan a guest chose before signing in (the plans page, src/app/billing.js plannedPlan): "Continue to hushmallow
+ * Beyond (yearly)", one tap on to its checkout → { el, stop }. null: web billing off (or the App Store app), not signed
+ * in, a plan already, or nothing chosen in the last half hour here. Rendered before the start's check answers (the
+ * sign-in reload), so a plan that check brings withdraws it, and a tap waits for that check before any checkout.
+ * stop(): stops listening (the screen goes).
+ */
+export function continuePlan(app) {
+  const ent = app?.ent;
+  if (!app?.billing || !ent?.isWeb || !ent.webSignedIn?.() || ent.has?.('paid')) return null;
+  const want = plannedPlan();
+  if (!want) return null;
+  const status = h('p', { class: 'hm-auth-hint', role: 'status', 'aria-live': 'polite' });
+  const b = h('button', { type: 'button', class: 'hm-auth-btn primary', 'data-act': 'continue-plan' }, `Continue to ${PLANS[want.plan].name} (${want.period})`);
+  const el = h('div', { class: 'hm-auth-actions', 'data-continue-plan': '' }, b, status);
+  // a plan known now (the start's check, coming back to the app): no offer to buy one (what was chosen stays, as at the start)
+  let off = ent.onChange?.(() => { if (ent.has('paid')) { stop(); el.remove(); } });
+  const stop = () => { off?.(); off = null; };
+  b.addEventListener('click', async () => {
+    if (b.disabled) return;
+    b.disabled = true;
+    status.textContent = '';
+    plannedPlan({ take: true });   // offered once: not again after this tap
+    // the check in flight first (at most one a minute): a plan already needs no checkout, only the change of plan
+    try { await ent.refresh(); } catch { /* checkout's 409 says it too */ }
+    let r = null;
+    if (ent.has('paid')) r = { manage: true };
+    else { try { r = await ent.purchase(want.plan, want.period); } catch { r = null; } }
+    // on to the secure checkout page; Back from there can restore this page as it was, so the button wakes again
+    if (r?.redirecting) { setTimeout(() => { b.disabled = false; }, 4000); return; }
+    if (r?.manage) {
+      // a plan already: said, then the subscription page on changing it, as the plans page does
+      toast(CHANGE_PLAN, 3200);
+      let m = null;
+      try { m = await ent.manage({ intent: 'switch' }); } catch { m = null; }
+      if (m?.redirecting) { setTimeout(() => { b.disabled = false; }, 4000); return; }
+      toast('That didn’t open just now. Try again in a moment.', 3200);
+    } else if (r?.pending) toast(PAYMENT_PENDING, 3600);   // its plan arrives with a later check, and the offer goes
+    else if (r?.support) status.textContent = BILLING_SUPPORT;   // the account's billing needs a person: where to write
+    else status.textContent = 'That didn’t go through. Nothing was charged.';
+    b.disabled = false;
+  });
+  return { el, stop };
+}
 
 export default function account(app, params = {}) {
   const cssReady = ensureCss();
@@ -582,10 +731,12 @@ export default function account(app, params = {}) {
     // an arrival (a sign-in, a confirmed email, a new password…) is said here, at the top of the card,
     // the first time the card shows: never in a toast over the card's own fields on a small phone
     const arrival = arrivalLede(o.arrived, u.email);
+    const offer = continuePlan(app);
     const view = {
       title: VM.greeting(acct.profile?.displayName) || 'Your account',
       lede: arrival || (u.email ? ['Signed in as ', strong(u.email)] : 'Signed in'),
       body: [
+        offer?.el,
         h('p', { class: 'hm-auth-hint hm-auth-center', 'data-since': '' }, since ? `With hushmallow since ${since}.` : ''),
         section('You', nameForm.form, h('div', { class: 'hm-auth-field' }, h('span', { class: 'hm-auth-label', id: uid('pick') }, 'Home Mallow'), picker, pickedName)),
         section('Keep with my account', hint('Both are off unless you turn them on. Turning one off deletes what it kept with your account; this phone keeps its own copy.'), settingsRow.el, libraryRow.el, syncStatus, loadNote),
@@ -600,6 +751,7 @@ export default function account(app, params = {}) {
       ],
       mood: o.arrived ? 'happy' : 'idle',
       after: () => loadAccount({ settingsRow, libraryRow, syncStatus, loadNote, picker }),
+      stop: () => offer?.stop(),
     };
     return view;
   };
@@ -823,6 +975,11 @@ export default function account(app, params = {}) {
       fields: [confirm], submit: 'Delete my account', busy: 'Deleting…', act: 'delete-confirm', danger: true,
       onSubmit: async (v) => {
         if (!VM.deleteConfirmed(v.confirm)) return { ok: false, error: { code: 'confirm', field: 'confirm', message: `Type “${VM.DELETE_WORD}” to confirm.` } };
+        // D9: never while the web plan still renews, nor without the billing server's answer on this screen
+        if (guard) {
+          const refused = await guard.ready();
+          if (refused) { later(() => guard.update(), 0); return { ok: false, error: { code: 'subscription', message: refused } }; }
+        }
         const a = await api();
         const r = await a.deleteAccount();
         if (!r.ok) return r;
@@ -831,11 +988,14 @@ export default function account(app, params = {}) {
       after: [linkBtn('Keep my account', () => goBack(), 'cancel')],
     });
     f.submitBtn.disabled = true;
-    confirm.onInput(() => { f.submitBtn.disabled = !VM.deleteConfirmed(confirm.input.value); });
+    // web billing on: "Cancel your subscription first" while the plan renews, and Delete waits for it (null: as before)
+    const guard = deleteGuard(app, { submit: f.submitBtn, confirmed: () => VM.deleteConfirmed(confirm.input.value) });
+    confirm.onInput(() => { f.submitBtn.disabled = !!guard?.blocked() || !VM.deleteConfirmed(confirm.input.value); });
     return {
       title: 'Delete your account?',
       lede: 'This can’t be undone. Here is exactly what happens.',
       body: [
+        guard?.el,
         h('div', { class: 'hm-account-facts' },
           h('h2', { class: 'hm-account-eyebrow' }, 'Deleted from our server, now'), list(DELETED_ON_SERVER),
           h('h2', { class: 'hm-account-eyebrow' }, 'Deleted from this phone'), list(DELETED_HERE),
@@ -843,6 +1003,7 @@ export default function account(app, params = {}) {
         f.form,
       ],
       mood: 'concerned',
+      stop: () => guard?.stop(),
     };
   };
 
@@ -874,14 +1035,17 @@ export default function account(app, params = {}) {
   }
 
   // ------------------------------------------------------------ render --
+  let stopView = null;   // what the screen on show listens to (the delete screen's plan), dropped with it
   function render() {
     if (left) return;
     const top = nav[nav.length - 1];
     clearTimers();
+    stopView?.(); stopView = null;
     if (top.view !== 'password') pendingPw = null;   // the passwords of a change in progress go with its screen
     const make = V[top.view] || V.welcome;
     let v;
     try { v = make(top.opts || {}); } catch (e) { console.warn('[account]', e); v = V.welcome(); }
+    stopView = v.stop || null;
     el.dataset.authView = top.view;
     title.textContent = v.title;
     lede.replaceChildren(...[].concat(v.lede || []));
@@ -972,6 +1136,7 @@ export default function account(app, params = {}) {
       left = true;
       pendingPw = null;
       clearTimers();
+      stopView?.(); stopView = null;
       off?.();
       mallow?.destroy();
       vv?.removeEventListener?.('resize', fitKeyboard); vv?.removeEventListener?.('scroll', fitKeyboard);

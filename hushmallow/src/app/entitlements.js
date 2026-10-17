@@ -126,26 +126,37 @@ export function createEntitlements({ store, billing = null, now = () => Date.now
   /** The billing server's answer, kept with when it was checked. */
   const setWeb = (r) => {
     const since = state.source === 'billing' && state.tier === r.tier && state.since ? state.since : now();
-    state = { tier: r.tier, source: 'billing', since, checkedAt: now(), status: r.status, periodEnd: r.periodEnd, cancelAtPeriodEnd: r.cancelAtPeriodEnd, manageable: r.manageable };
+    state = { tier: r.tier, source: 'billing', since, checkedAt: now(), status: r.status, periodEnd: r.periodEnd, endsAt: r.endsAt ?? null, cancelAtPeriodEnd: r.cancelAtPeriodEnd, manageable: r.manageable };
     store.set('entitlement', state);
     listeners.forEach((fn) => fn(state));
   };
-  let lastWebCheck = -Infinity, webCheck = null, webAnswered = false;
+  let lastWebCheck = -Infinity, webCheck = null, webAnswered = false, webOff = false;
   /** Ask the billing server (at most once a BILLING_RECHECK_MS unless forced; one request at a time). */
   function refreshWeb(force) {
     if (webCheck) return webCheck;
     if (!force && now() - lastWebCheck < BILLING_RECHECK_MS) return Promise.resolve(cur());
+    return askWeb(() => web.status());
+  }
+  /** One request (status, or a Checkout sync: the same answer); a refresh meanwhile joins it. */
+  function askWeb(ask) {
     lastWebCheck = now();
     webCheck = (async () => {
       let r = null;
-      try { r = await web.status(); } catch { r = null; }
+      try { r = await ask(); } catch { r = null; }
       webAnswered = !!r?.ok;
+      // the server's word that it has no web billing (billing.js BILLING_OFF_CODES): nothing answered, nothing kept changes
+      webOff = r?.ok === false && !!r.off;
       // a plan, or what the server says about a web plan kept here (ended, or a past one with receipts to see);
       // a test or App Store plan is never taken away by it. Offline or signed out: what is kept stays, within the grace
       if (r?.ok && (RANK[r.tier] > 0 || state.source === 'billing' || (state.tier === 'none' && r.manageable))) setWeb(r);
       return cur();
     })().finally(() => { webCheck = null; });
     return webCheck;
+  }
+  /** Back from Checkout: the session's own answer, after any check in flight (an older answer never lands after it). */
+  async function syncWeb(sessionId) {
+    while (webCheck) await webCheck.catch(() => {});
+    return askWeb(() => web.sync(sessionId));
   }
 
   const api = {
@@ -163,11 +174,18 @@ export function createEntitlements({ store, billing = null, now = () => Date.now
     onChange(fn) { listeners.add(fn); return () => listeners.delete(fn); },
     /** Web subscriptions: the account is signed in here (a web plan needs one). */
     webSignedIn: () => !!web && web.signedIn(),
-    /** A web plan's details for Settings: { status, periodEnd, cancelAtPeriodEnd, manageable } | null. */
+    /** Web subscriptions: the last check had the billing server's answer (false offline, signed out, a 5xx or 429). */
+    webAnswered: () => !!web && webAnswered,
+    /** Web subscriptions: the last check's answer was that the billing server has no web billing at all (a 503
+     *  billing_not_configured or accounts_not_configured): no plan can be bought or managed there. */
+    webOff: () => !!web && webOff,
+    /** A web plan's details for Settings: { status, periodEnd, endsAt, cancelAtPeriodEnd, manageable } | null. */
     webPlan() {
       const s = cur();
-      return s.source === 'billing' ? { status: s.status || null, periodEnd: s.periodEnd ?? null, cancelAtPeriodEnd: !!s.cancelAtPeriodEnd, manageable: !!s.manageable } : null;
+      return s.source === 'billing' ? { status: s.status || null, periodEnd: s.periodEnd ?? null, endsAt: s.endsAt ?? null, cancelAtPeriodEnd: !!s.cancelAtPeriodEnd, manageable: !!s.manageable } : null;
     },
+    /** Web subscriptions, back from Checkout: the plan from that session (src/app/billing.js sync), at once. */
+    async sync(sessionId) { return web ? syncWeb(sessionId) : cur(); },
     async refresh({ force = false } = {}) {
       if (web) return refreshWeb(force);
       if (!native) return state;
@@ -205,8 +223,11 @@ export function createEntitlements({ store, billing = null, now = () => Date.now
       return state;
     },
     cancelTest() { if (state.source === 'test') set('none', null); },
-    /** Web subscriptions: Stripe's customer portal (cancel as easily as subscribing, change plan, card, receipts). */
-    async manage() { return web ? web.portal() : { failed: true, reason: 'off' }; },
+    /**
+     * Web subscriptions: Stripe's customer portal (cancel as easily as subscribing, change plan, card, receipts).
+     * { intent: 'switch' }: straight to changing the plan (the plans page, when the account has one already).
+     */
+    async manage({ intent } = {}) { return web ? web.portal(intent === 'switch' ? 'switch' : undefined) : { failed: true, reason: 'off' }; },
   };
   // the plans page shows these under each button (src/app/scenes/plans.js); only with web subscriptions on
   if (web) api.prices = () => web.prices();

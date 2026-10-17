@@ -113,12 +113,15 @@ test('shipped code calls no remote service except Another Angle’s own server',
   const STAGING_PROJECT_TEMPLATE = 'https://${STAGING_PROJECT_REF}.supabase.co';
   assert.ok(STAGING_PROJECT_URL === '' || (/^https:\/\/[a-z0-9]{20}\.supabase\.co$/.test(STAGING_PROJECT_URL) && STAGING_PROJECT_URL !== PROJECT_URL), STAGING_PROJECT_URL);
   // …and web subscriptions (src/app/billing.js; off unless src/app/config.js switches them on): one fetch, only to the
-  // billing endpoint (the same Worker, one of ANGLE_ALLOWED_HOSTS) + one of its three paths, with the account's token
+  // billing endpoint (the same Worker, one of ANGLE_ALLOWED_HOSTS) + one of its four paths, with the account's token
   const billingFetch = 'const netFetch = (url, init) => globalThis.fetch(url, init);';
   const billingSrc = readFileSync(`${root}src/app/billing.js`, 'utf8');
   assert.equal(billingSrc.split(billingFetch).length, 2, 'one fetch site in app/billing.js');
   assert.match(billingSrc, /const url = `\$\{endpoint\}\$\{path\}`;/);
   assert.match(billingSrc, /if \(!endpoint \|\| !Object\.values\(PATHS\)\.includes\(path\)\)/);
+  const { PATHS: BILLING_PATHS } = await import('../src/app/billing.js');
+  assert.deepEqual({ ...BILLING_PATHS }, { checkout: '/v1/billing/checkout', status: '/v1/billing/status', portal: '/v1/billing/portal', sync: '/v1/billing/sync' }, 'exactly these four paths');
+  assert.ok(Object.isFrozen(BILLING_PATHS));
   for (const f of walk(`${root}src`)) {
     let s = readFileSync(f, 'utf8');
     if (f.endsWith('/src/app/update.js')) s = s.replace(versionCheck, '');

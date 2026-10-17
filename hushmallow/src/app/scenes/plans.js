@@ -7,12 +7,14 @@
 // Each invitation leads with three or four things; the rest waits behind
 // "Everything included".
 // With web subscriptions on (src/app/billing.js, off by default) "Step into…"
-// asks a guest to sign in first (a web plan belongs to an account), then goes
-// on to the secure checkout page for the chosen plan and period; prices come
-// from configuration only (none set: none shown). Off, nothing here changes.
+// asks a guest to sign in first (a web plan belongs to an account; the account
+// card then offers that plan again), then goes on to the secure checkout page
+// for the chosen plan and period; prices come from configuration only (none
+// set: none shown). Off, nothing here changes.
 // The foot ends with small "Terms · Privacy Policy" links (src/app/legal.js).
 import { h, iconBtn, toast } from '../ui.js';
 import { PLANS } from '../entitlements.js';
+import { rememberPlan, CHANGE_PLAN, PAYMENT_PENDING, BILLING_SUPPORT } from '../billing.js';
 import { BRAND, brandName } from '../../brand.js';
 import { brandMark, logoImg, fitWhole } from '../../ui/type.js';
 import { openSupport } from './support.js';
@@ -41,8 +43,8 @@ export const WEB_NOTE = 'You’ll sign in first, so your plan stays with your ac
 /** Web subscriptions: said on the account screen when a guest steps into a plan, or restores one. */
 export const SIGN_IN_FIRST = 'Sign in or create an account first, so your plan stays with you.';
 export const SIGN_IN_TO_RESTORE = 'Sign in to the account your plan is with.';
-/** Web subscriptions: the account has a plan already; a change of plan happens on the subscription page. */
-export const CHANGE_PLAN = 'You already have a plan. You can change it on the next page.';
+/** Web subscriptions, checkout's 409: a plan already, or a payment going through (src/app/billing.js: the account card says them too). */
+export { CHANGE_PLAN, PAYMENT_PENDING };
 const SVG = 'http://www.w3.org/2000/svg';
 
 // Flow's sigil: three soft swells (Hushflow); Beyond reuses Zuzu's spiral
@@ -146,6 +148,13 @@ export default function plans(app, params = {}) {
       b.classList.toggle('is-busy', on && b === btn);
     }
   }
+  /** The plan is here: said once, then the Hushfold (the buttons stay quiet until it opens). */
+  function welcome(name, test = false) {
+    toast(test ? `Test purchase: ${name} unlocked (no charge)` : `Welcome to ${name}`);
+    app.haptic('success');
+    world.react('celebrate');
+    homeTimer = setTimeout(() => { if (!gone) app.go('home', {}, { replace: true }); }, 900);
+  }
   async function buy(id, btn) {
     if (pending) return;
     pending = true;
@@ -155,28 +164,31 @@ export default function plans(app, params = {}) {
     if (gone) return;
     // success only when the plan is really on this phone now (a bridge reply
     // after a cancel can carry the old tier)
-    if (r?.ok && ent.has(id)) {
-      toast(r.test ? `Test purchase: ${PLANS[id].name} unlocked (no charge)` : `Welcome to ${PLANS[id].name}`);
-      app.haptic('success');
-      world.react('celebrate');
-      homeTimer = setTimeout(() => { if (!gone) app.go('home', {}, { replace: true }); }, 900);
-      return;   // the buttons stay quiet until the Hushfold opens
-    }
+    if (r?.ok && ent.has(id)) { welcome(PLANS[id].name, r.test); return; }
     // web: on to the secure checkout page (the buttons stay quiet while the page leaves)
     if (r?.redirecting) return;
     if (r?.needsAccount) {
       pending = false; setBusy(false);
+      rememberPlan(id, period);   // the account card offers it again after sign-in (src/app/scenes/account.js continuePlan)
       app.go('account', { view: 'welcome', notice: SIGN_IN_FIRST });
       return;
     }
-    if (r?.manage) {
+    // web: a payment still going through (a checkout just completed): asked for once more; here now, welcome
+    if (r?.pending) {
+      try { await ent.refresh({ force: true }); } catch { /* said below */ }
+      if (gone) return;
+      if (ent.source() === 'billing' && ent.has('paid')) { welcome(PLANS[ent.tier()].name); return; }
+      toast(PAYMENT_PENDING, 3600);
+    } else if (r?.manage) {
       toast(CHANGE_PLAN, 3200);
+      // a plan already: the portal opens on changing it (Flow → Beyond, monthly → yearly), not on its front page
       let m = null;
-      try { m = await ent.manage(); } catch { m = null; }
+      try { m = await ent.manage({ intent: 'switch' }); } catch { m = null; }
       if (gone || m?.redirecting) return;
       toast('That didn’t open just now. Try again in a moment.', 3200);
     } else if (r?.unavailable) toast('Subscriptions are handled in the App Store app.');
     else if (r?.cancelled) toast('No problem. Nothing was charged.');
+    else if (r?.support) toast(BILLING_SUPPORT, 6000);   // the account's billing needs a person: where to write
     else toast('That didn’t go through. Nothing was charged.', 3200);
     pending = false;
     setBusy(false);

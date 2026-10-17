@@ -169,11 +169,19 @@ export default function settings(app) {
   return { el, title: 'Settings', enter() { world.dim(true); world.showMallow(false); world.setStage('resting'); }, leave() { world.showMallow(true); } };
 }
 
-/** "Renews on 12 November 2026", "Ends on 12 November 2026. Nothing more is charged." or a card that needs a look. */
-export function webPlanNote({ status, periodEnd, cancelAtPeriodEnd } = {}, tier = 'none') {
+/**
+ * "Renews on 12 November 2026", "Ends on 12 November 2026. Nothing more is charged." or a card that needs a look.
+ * The end is the server's ends_at (endsAt); an answer from before it had one: the period end, when cancelled.
+ */
+export function webPlanNote({ status, periodEnd, endsAt = null, cancelAtPeriodEnd } = {}, tier = 'none') {
   if (tier === 'none') return null;
   if (status === 'past_due') return 'Your last payment didn’t go through. You can update your card in Manage subscription.';
-  const when = Number.isFinite(periodEnd) ? new Date(periodEnd).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : null;
-  if (!when) return null;
-  return cancelAtPeriodEnd ? `Ends on ${when}. Nothing more is charged.` : `Renews on ${when}`;
+  const day = (t) => (Number.isFinite(t) ? new Date(t).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : null);
+  const end = Number.isFinite(endsAt) ? endsAt : cancelAtPeriodEnd ? periodEnd : null;
+  if (day(end)) {
+    // an end set after this period (the Dashboard can; the portal cancels at the period end, D7): it still renews until then
+    const renewsFirst = !cancelAtPeriodEnd && Number.isFinite(periodEnd) && end > periodEnd + 86400000;
+    return renewsFirst ? `Renews on ${day(periodEnd)}. Ends on ${day(end)}.` : `Ends on ${day(end)}. Nothing more is charged.`;
+  }
+  return day(periodEnd) ? `Renews on ${day(periodEnd)}` : null;
 }
