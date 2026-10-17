@@ -57,9 +57,8 @@ export const CHECKOUT_WINDOW_MS = 120000;
  * What a price must be in Stripe before checkout sells it (decisions D2, D3, D11, and the owner's USD decision of
  * 2026-10-17). US dollars only (Adaptive Pricing off: the plans page and the terms say US$), its default currency and
  * every other it carries (currency_options, read expanded: Checkout would charge some customers in one of those, as
- * the session sends no currency); recurring every one month or
- * one year, as its period; the owner's amount for its slot (unit_amount, in US cents: D2, the amounts the app's
- * BILLING_PRICES shows); and active. Its lookup key, if it has one, names the plan and period of the slot it sits in; a
+ * the session sends no currency); recurring every one month or one year, as its period; the owner's amount for its
+ * slot (unit_amount, in US cents: D2, the amounts the app's BILLING_PRICES shows); and active. Its lookup key, if it has one, names the plan and period of the slot it sits in; a
  * price with no lookup key is sold, and its configured id is then what maps it to a plan (store.js planForPrice). The
  * four amounts differ, so two ids swapped while pasting never sell Beyond at Flow's price, or the reverse, with lookup
  * keys or without, in either Stripe mode (the sandbox driver cannot read live prices). Its tax behaviour: any while
