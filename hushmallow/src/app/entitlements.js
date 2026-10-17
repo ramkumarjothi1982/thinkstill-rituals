@@ -187,6 +187,9 @@ export function createEntitlements({ store, billing = null, now = () => Date.now
     onChange(fn) { listeners.add(fn); return () => listeners.delete(fn); },
     /** Web subscriptions: the account is signed in here (a web plan needs one). */
     webSignedIn: () => !!web && web.signedIn(),
+    /** The account this page runs as (its namespace's uid: a web plan and a change of plan are kept with it), or null
+     *  (a guest, or a store without a namespace). */
+    account: () => (typeof owner === 'string' ? owner : null),
     /** Web subscriptions: the last check had the billing server's answer (false offline, signed out, a 5xx or 429). */
     webAnswered: () => !!web && webAnswered,
     /** Web subscriptions: the last check's answer was that the billing server has no web billing at all (a 503
@@ -245,8 +248,12 @@ export function createEntitlements({ store, billing = null, now = () => Date.now
      */
     async manage({ intent, plan, period } = {}) {
       if (!web) return { failed: true, reason: 'off' };
-      if (intent === 'upgrade') return web.upgrade(plan, period);
-      return web.portal(intent === 'switch' ? 'switch' : undefined);
+      // a change of plan: whose it is and the plan it starts from go with the trip (src/app/plan-change.js departChange),
+      // so the way back judges it for that account only, against that plan
+      const s = cur();
+      const trip = { uid: api.account(), from: { tier: s.tier, period: s.source === 'billing' ? s.period ?? null : null, status: s.source === 'billing' ? s.status ?? null : null } };
+      if (intent === 'upgrade') return web.upgrade(plan, period, trip);
+      return web.portal(intent === 'switch' ? 'switch' : undefined, trip);
     },
   };
   // the plans page shows these under each button (src/app/scenes/plans.js); only with web subscriptions on

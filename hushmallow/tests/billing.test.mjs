@@ -93,10 +93,10 @@ test('the shipped config: off (then nothing is switched on), or switched on with
   assert.match(main, /const billing = createBilling\(\{ auth: \(\) => app\.auth, signIn: !!AUTH\.config\.enabled && !AUTH\.forwarding \}\);\nconst ent = createEntitlements\(\{ store, billing \}\);/);
   assert.match(main, /const billingBack = billing \? takeReturn\(\) : null;/);
   assert.match(main, /if \(billing\) document\.addEventListener\('visibilitychange'/);
-  assert.match(main, /const planBefore = billingBack \? planNow\(ent\) : null;/);
+  assert.match(main, /const planBefore = billing \? planNow\(ent\) : null;/);
   assert.match(main, /if \(billingBack\) welcomeBack\(app, billingBack, \{ before: planBefore \}\)\.catch\(\(\) => \{\}\);/);
   // the plan before the trip is taken before the first check at start
-  assert.ok(main.indexOf('const planBefore = billingBack ? planNow(ent) : null;') < main.indexOf('  ent.refresh().catch(() => {});'), 'before the first check');
+  assert.ok(main.indexOf('const planBefore = billing ? planNow(ent) : null;') < main.indexOf('  ent.refresh().catch(() => {});'), 'before the first check');
 });
 
 test('off: the entitlements, Another Angle and the plans copy are exactly as before', async () => {

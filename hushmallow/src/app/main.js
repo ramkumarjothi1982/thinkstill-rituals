@@ -242,8 +242,9 @@ const SCENES = {
 async function boot() {
   // back from Stripe (?billing=…): out of the address before anything else reads or keeps it, and the plan as kept
   // before the trip (before the first check below), so the way back from the portal can tell when its change arrives
+  // (and a change kept in this tab from a page that was not signed in is judged against this account's own plan)
   const billingBack = billing ? takeReturn() : null;
-  const planBefore = billingBack ? planNow(ent) : null;
+  const planBefore = billing ? planNow(ent) : null;
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') checkVersion(); });
   // a web plan is checked again whenever the app comes back to the foreground (at most once a minute)
   if (billing) document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') ent.refresh().catch(() => {}); });
@@ -282,7 +283,7 @@ async function boot() {
   if (app.auth.enabled) afterAuthBoot();
   if (billingBack) welcomeBack(app, billingBack, { before: planBefore }).catch(() => {});
   // a reload while a change of plan was being confirmed (kept in this tab for 15 minutes): it carries on
-  else if (billing) resumeChange(app).catch(() => {});
+  else if (billing) resumeChange(app, { before: planBefore }).catch(() => {});
 }
 
 /** Sign-in on: the notice from before a reload, a deep link to the account, and the session check. */

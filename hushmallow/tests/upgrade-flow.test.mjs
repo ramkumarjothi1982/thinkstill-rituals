@@ -22,13 +22,14 @@ import { fileURLToPath } from 'node:url';
 import { createBilling, takeReturn, welcomeBack, planNow, PATHS, PLAN_TO, CHANGE_CODES, RETURN_KINDS, RETURN_LINES } from '../src/app/billing.js';
 import { createEntitlements, PLANS, LIVE_FEATURES } from '../src/app/entitlements.js';
 import {
-  confirmChange, resumeChange, verdict, rememberChange, pendingChange, resetPlanChange,
-  CHANGE_KEY, CHANGE_MS, CONFIRM_WAITS, CHANGE_LINES, QUIET_RECHECK_MS, PAYMENT_STATUSES,
+  confirmChange, resumeChange, verdict, rememberChange, pendingChange, resetPlanChange, departChange, takeTrip,
+  CHANGE_KEY, CHANGE_MS, CONFIRM_WAITS, CHANGE_LINES, QUIET_RECHECK_MS, PAYMENT_STATUSES, TRIP_KEY, TRIP_MS,
 } from '../src/app/plan-change.js';
 import { createStore } from '../src/engine/storage.js';
+import { ACCOUNT_TAB_KEYS, removeAccountTabKeys } from '../src/auth/namespace.js';
 import { MALLOWS, MALLOW_IDS } from '../src/mallows/registry.js';
 import {
-  CONFIG, plan, account, authHandle, memSession, fakeUi, installDom, FakeEl, text, all, click, sleepFor, welcomeApp, keepGlobals,
+  CONFIG, plan, account, authHandle, memSession, fakeUi, installDom, FakeEl, text, all, click, sleepFor, welcomeApp, keepGlobals, UID_A, UID_B,
 } from './helpers/upgrade-fakes.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
@@ -386,6 +387,176 @@ test('back from a change, not signed in on this page: the sign-in screen, the ch
   assert.equal(away.server.calls.length, 0);
 });
 
+// ------------------------------------------- whose change it is (a shared browser) --
+test('a change kept in this tab is the account\'s: another account signed in on the tab never hears of it, and a sign-out takes it', async () => {
+  const session = memSession();
+  const at = Date.parse('2026-10-17T20:00:00Z');
+  let t = at;
+  const now = () => t;
+  // A (Flow monthly) upgrades to Beyond monthly; Stripe's answer is late, so the change is kept for a quiet check
+  const a = await account({ held: plan('paid', 'monthly'), uid: UID_A });
+  a.server.answers = [plan('paid', 'monthly')];
+  assert.equal(await confirmChange({ ent: a.ent }, { kind: 'changed', to: 'ultra.monthly' }, { before: planNow(a.ent), session, ui: fakeUi(), now, sleep: async () => {} }), 'timeout');
+  assert.deepEqual([pendingChange({ session, now: t }).state, pendingChange({ session, now: t }).uid], ['quiet', UID_A], 'kept with the account');
+  // A signs out (elsewhere: this tab's copy stays) and B, who already holds Beyond monthly, signs in on this tab
+  for (const [held, quiet] of [[plan('ultra', 'monthly'), true], [plan('paid', 'yearly'), null]]) {
+    const copy = JSON.stringify({ ...JSON.parse(session.getItem(CHANGE_KEY)), state: 'quiet' });
+    session.setItem(CHANGE_KEY, copy);
+    resetPlanChange();
+    const b = await account({ held, uid: UID_B });
+    b.server.answers = [held];
+    const ui = fakeUi();
+    t += QUIET_RECHECK_MS;
+    assert.equal(await resumeChange({ ent: b.ent }, { quiet, before: planNow(b.ent), session, ui, now, sleep: async () => {} }), null, `${held.tier}.${held.period}`);
+    assert.deepEqual(ui.events, [], 'no welcome, no "Confirming…", no "still confirming"');
+    assert.equal(b.server.calls.length, 0, 'nothing asked for A\'s change');
+    assert.equal(session.getItem(CHANGE_KEY), null, 'dropped');
+    session.setItem(CHANGE_KEY, copy);
+  }
+  // A, back on the same tab later, still has it
+  resetPlanChange();
+  a.server.answers = [plan('ultra', 'monthly')];
+  const ui = fakeUi();
+  t += QUIET_RECHECK_MS;
+  assert.equal(await resumeChange({ ent: a.ent }, { quiet: true, session, ui, now, sleep: async () => {} }), 'confirmed');
+  assert.deepEqual(kinds(ui), ['welcome']);
+  // any sign-out, a deletion and "Remove this device's data" take this tab's copy (src/auth/client.js)
+  assert.deepEqual(ACCOUNT_TAB_KEYS.map((k) => `hm2:${k}`), [CHANGE_KEY, TRIP_KEY]);
+  departChange({ uid: UID_A, from: plan('paid', 'monthly'), to: 'ultra.yearly' }, { session, now: t });
+  rememberChange({ to: 'ultra.yearly', at: t, from: { tier: 'paid', period: 'monthly' }, state: 'quiet', uid: UID_A }, { session });
+  session.setItem('hm2:planIntent', '{"plan":"paid","period":"yearly","at":1}');
+  assert.equal(removeAccountTabKeys(session), 2);
+  assert.deepEqual([session.getItem(CHANGE_KEY), session.getItem(TRIP_KEY)], [null, null]);
+  assert.notEqual(session.getItem('hm2:planIntent'), null, 'a guest\'s chosen plan is not the account\'s');
+  const client = read('src/auth/client.js');
+  assert.equal((client.match(/removeAccountTabKeys\(ss\);/g) || []).length, 3, 'sign-out, deletion, this device\'s data');
+});
+
+test('the way back lands on a tab signed in as another account since the trip left: not theirs, nothing said, nothing asked', async () => {
+  const session = memSession();
+  globalThis.sessionStorage = session;   // billing.js keeps the trip in this tab (its default session)
+  try {
+    const a = await account({ held: plan('paid', 'monthly'), uid: UID_A });
+    a.server.portal = { http: 200, body: { url: 'https://billing.stripe.com/p/flow/up', flow: 'subscription_update_confirm', to: 'ultra.monthly' } };
+    assert.deepEqual(await a.ent.manage({ intent: 'upgrade', plan: 'ultra', period: 'monthly' }), { redirecting: true, to: 'ultra.monthly' });
+    const trip = JSON.parse(session.getItem(TRIP_KEY));
+    assert.deepEqual([trip.uid, trip.from, trip.to], [UID_A, { tier: 'paid', period: 'monthly', status: 'active' }, 'ultra.monthly'], 'whose trip, and from what');
+    // meanwhile A signed out and B (already on Beyond monthly) signed in: the tab reloads into B's namespace
+    const b = await account({ held: plan('ultra', 'monthly'), uid: UID_B });
+    b.server.answers = [plan('ultra', 'monthly')];
+    const ui = fakeUi();
+    assert.equal(await confirmChange({ ent: b.ent }, { kind: 'changed', to: 'ultra.monthly' }, { before: planNow(b.ent), session, ui, sleep: async () => {} }), 'other-account');
+    assert.deepEqual(ui.events, []);
+    assert.equal(b.server.calls.length, 0);
+    assert.deepEqual([session.getItem(CHANGE_KEY), session.getItem(TRIP_KEY)], [null, null]);
+    // the back link the same
+    departChange({ uid: UID_A, from: plan('paid', 'monthly'), to: null }, { session });
+    assert.equal(await confirmChange({ ent: b.ent }, { kind: 'unchanged' }, { before: planNow(b.ent), session, ui, sleep: async () => {} }), 'other-account');
+    assert.deepEqual(ui.events, []);
+    // A's own way back: the trip's plan is the plan before
+    departChange({ uid: UID_A, from: plan('paid', 'monthly'), to: 'ultra.monthly' }, { session });
+    a.server.answers = [plan('ultra', 'monthly')];
+    const mine = fakeUi();
+    assert.equal(await confirmChange({ ent: a.ent }, { kind: 'changed', to: 'ultra.monthly' }, { before: planNow(a.ent), session, ui: mine, sleep: async () => {} }), 'confirmed');
+    assert.deepEqual(mine.events.at(-1), ['welcome', { tier: 'ultra', period: 'monthly', from: { tier: 'paid', period: 'monthly', status: 'active' }, to: 'ultra.monthly' }]);
+    assert.equal(session.getItem(TRIP_KEY), null, 'taken');
+    // a trip is kept for TRIP_MS, then forgotten
+    departChange({ uid: UID_A, from: null, to: null }, { session, now: 1e12 });
+    assert.equal(takeTrip({ session, now: 1e12 + TRIP_MS }), null);
+    assert.equal(TRIP_MS, 2 * 3600000);
+  } finally { delete globalThis.sessionStorage; }
+});
+
+test('back from a change on a page not signed in: the plan before is the trip\'s own (never the guest\'s "none"), so a change Stripe did not make is never welcomed', async () => {
+  const { welcomeKind } = await import('../src/app/scenes/beyond-welcome.js');
+  const session = memSession();
+  globalThis.sessionStorage = session;
+  try {
+    // A on Beyond monthly picks Flow on Stripe's chooser; Stripe schedules it for the period end, so Beyond stays
+    const a = await account({ held: plan('ultra', 'monthly'), uid: UID_A });
+    a.server.portal = { http: 200, body: { url: 'https://billing.stripe.com/p/flow/choose', flow: 'subscription_update' } };
+    assert.deepEqual(await a.ent.manage({ intent: 'switch' }), { redirecting: true });
+    // the session lapsed on this tab: the way back lands on a guest's page
+    const away = await account({ signedIn: false, held: null, uid: null });
+    assert.equal(planNow(away.ent).tier, 'none', 'the web plan counts for nobody here');
+    const went = [];
+    assert.equal(await confirmChange({ ent: away.ent, go: (...x) => went.push(x) }, { kind: 'changed', to: null }, { before: planNow(away.ent), session, ui: fakeUi() }), 'signed-out');
+    assert.deepEqual(pendingChange({ session }).from, { tier: 'ultra', period: 'monthly', status: 'active' }, 'the trip\'s plan, never none');
+    assert.equal(pendingChange({ session }).uid, UID_A);
+    // signed in again: Stripe still says Beyond monthly (the move to Flow waits for the period end)
+    a.server.answers = [plan('ultra', 'monthly')];
+    const ui = fakeUi();
+    const out = await resumeChange({ ent: a.ent }, { before: planNow(a.ent), session, ui, sleep: async () => {} });
+    assert.notEqual(out, 'confirmed');
+    assert.ok(!kinds(ui).includes('welcome'), 'no "Welcome to hushmallow Beyond" for the plan being left');
+    // Beyond monthly → yearly on the same path: the smaller welcome, as from the page itself
+    resetPlanChange();
+    departChange({ uid: UID_A, from: plan('ultra', 'monthly'), to: 'ultra.yearly' }, { session });
+    assert.equal(await confirmChange({ ent: away.ent, go() {} }, { kind: 'changed', to: 'ultra.yearly' }, { before: planNow(away.ent), session, ui: fakeUi() }), 'signed-out');
+    a.server.answers = [plan('ultra', 'yearly')];
+    const y = fakeUi();
+    assert.equal(await resumeChange({ ent: a.ent }, { before: planNow(a.ent), session, ui: y, sleep: async () => {} }), 'confirmed');
+    assert.equal(welcomeKind(y.events.at(-1)[1]), 'plan', 'You\'re on hushmallow Beyond, yearly');
+  } finally { delete globalThis.sessionStorage; }
+  // no trip kept here (an old address, another tab): the plan before is not known on a page not signed in; after the
+  // sign-in it is the account's own plan kept on this phone, when it holds one
+  const t2 = memSession();
+  const guest = await account({ signedIn: false, held: null, uid: null });
+  for (const to of [null, 'ultra.yearly']) {
+    resetPlanChange();
+    assert.equal(await confirmChange({ ent: guest.ent, go() {} }, { kind: 'changed', to }, { before: planNow(guest.ent), session: t2, ui: fakeUi() }), 'signed-out');
+    assert.equal(pendingChange({ session: t2 }).from, null, 'not known');
+    // a fresh device for this account (nothing kept): a chooser change is never confirmed against nothing; an upgrade
+    // with its target is, by that target, with the smaller welcome (what came before is not known)
+    const fresh = await account({ held: plan('paid', 'monthly'), uid: UID_A, store: createStore({ backend: 'memory' }) });
+    fresh.server.answers = [plan('ultra', 'yearly')];
+    const ui = fakeUi();
+    const out = await resumeChange({ ent: fresh.ent }, { before: { tier: 'none', period: null, status: null }, session: t2, ui, sleep: async () => {} });
+    if (!to) { assert.notEqual(out, 'confirmed'); assert.ok(!kinds(ui).includes('welcome')); }
+    else {
+      assert.equal(out, 'confirmed');
+      assert.deepEqual(ui.events.at(-1)[1], { tier: 'ultra', period: 'yearly', from: null, fromUnknown: true, to: 'ultra.yearly' });
+      assert.equal(welcomeKind(ui.events.at(-1)[1]), 'plan');
+    }
+    forgetChangeIn(t2);
+  }
+  // the account's own plan kept here: the plan before, and Flow → Beyond gets Beyond's welcome
+  resetPlanChange();
+  assert.equal(await confirmChange({ ent: guest.ent, go() {} }, { kind: 'changed', to: 'ultra.yearly' }, { before: planNow(guest.ent), session: t2, ui: fakeUi() }), 'signed-out');
+  const kept = await account({ held: plan('paid', 'monthly'), uid: UID_A });
+  kept.server.answers = [plan('ultra', 'yearly')];
+  const ui = fakeUi();
+  assert.equal(await resumeChange({ ent: kept.ent }, { before: planNow(kept.ent), session: t2, ui, sleep: async () => {} }), 'confirmed');
+  assert.deepEqual(ui.events.at(-1)[1].from, { tier: 'paid', period: 'monthly', status: 'active' });
+  assert.equal(welcomeKind(ui.events.at(-1)[1]), 'beyond');
+  // the chooser's verdict against a plan not known, or none: never a change
+  for (const from of [null, { tier: 'none', period: null }]) assert.equal(verdict({ tier: 'paid', period: 'monthly', status: 'active' }, { to: null, from }), 'waiting', JSON.stringify(from));
+});
+const forgetChangeIn = (session) => session.removeItem(CHANGE_KEY);
+
+test('the back link (?billing=unchanged) with a plan kept here that counts for nobody (no owner, from before this release): "No change made", never a welcome', async () => {
+  const store = createStore({ backend: 'memory' });
+  store.set('entitlement', { tier: 'paid', source: 'billing', since: Date.now() - 86400000, checkedAt: Date.now() - 3600000, period: 'monthly', status: 'active' });
+  const a = await account({ held: null, uid: UID_A, store });
+  assert.equal(planNow(a.ent).tier, 'none', 'kept without an owner: it counts for nobody until the server answers');
+  const before = planNow(a.ent);
+  a.server.answers = [plan('paid', 'monthly')];
+  const ui = fakeUi();
+  assert.equal(await confirmChange({ ent: a.ent }, { kind: 'unchanged' }, { before, session: memSession(), ui }), 'unchanged');
+  assert.deepEqual(ui.events, [['say', 'No change made. You’re still on hushmallow Flow.', 'unchanged']]);
+  // older than the grace, or another account's: the same
+  for (const kept of [{ checkedAt: Date.now() - 4 * 86400000, owner: UID_A }, { checkedAt: Date.now() - 3600000, owner: UID_B }]) {
+    const st = createStore({ backend: 'memory' });
+    st.set('entitlement', { tier: 'ultra', source: 'billing', since: 1, period: 'yearly', status: 'active', ...kept });
+    const x = await account({ held: null, uid: UID_A, store: st });
+    const b4 = planNow(x.ent);
+    x.server.answers = [plan('ultra', 'yearly')];
+    const u = fakeUi();
+    assert.equal(await confirmChange({ ent: x.ent }, { kind: 'unchanged' }, { before: b4, session: memSession(), ui: u }), 'unchanged', JSON.stringify(kept));
+    assert.deepEqual(u.events, [['say', 'No change made. You’re still on hushmallow Beyond.', 'unchanged']]);
+  }
+});
+
 test('welcomeBack: a change\'s way back goes to the confirmation; a Beyond Checkout opens Beyond\'s welcome instead of the plain line', async () => {
   const { server, ent } = await account();
   server.answers = [plan('ultra', 'monthly')];
@@ -413,7 +584,11 @@ test('welcomeBack: a change\'s way back goes to the confirmation; a Beyond Check
 
 test('main.js: the way back first, else a change kept in this tab carries on; a quiet check when the app is back on screen', () => {
   const main = read('src/app/main.js');
-  assert.match(main, /if \(billingBack\) welcomeBack\(app, billingBack, \{ before: planBefore \}\)\.catch\(\(\) => \{\}\);\n {2}\/\/[^\n]*\n {2}else if \(billing\) resumeChange\(app\)\.catch\(\(\) => \{\}\);/);
+  assert.match(main, /if \(billingBack\) welcomeBack\(app, billingBack, \{ before: planBefore \}\)\.catch\(\(\) => \{\}\);\n {2}\/\/[^\n]*\n {2}else if \(billing\) resumeChange\(app, \{ before: planBefore \}\)\.catch\(\(\) => \{\}\);/);
+  // the plan kept before any check, whether or not this start is a way back (a change kept from a page not signed in
+  // is judged against the account's own plan)
+  assert.match(main, /const planBefore = billing \? planNow\(ent\) : null;/);
+  assert.ok(main.indexOf('const planBefore = billing') < main.indexOf('ent.refresh().catch'), 'taken before the first check');
   assert.match(main, /if \(billing\) document\.addEventListener\('visibilitychange', \(\) => \{ if \(document\.visibilityState === 'visible'\) resumeChange\(app, \{ quiet: true \}\)\.catch\(\(\) => \{\}\); \}\);/);
   assert.match(main, /app\.welcomePlan = async \(result\) => \{/);
   assert.match(main, /\(await import\('\.\/scenes\/beyond-welcome\.js'\)\)\.openPlanWelcome\(app, result\)/);

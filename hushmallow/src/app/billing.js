@@ -27,11 +27,13 @@
 //                              offers the whole window) | { needsAccount } | { manage } (has a plan)
 //                              | { pending } (a payment still going through) | { failed, reason, support? }
 //                              (support: the account's billing needs a person, 409 customer_conflict: BILLING_SUPPORT)
-//     portal(intent?)        → { redirecting } (Stripe's customer portal) | { framed } | { needsAccount } | { none } | { failed, reason };
+//     portal(intent?, trip?) → { redirecting } (Stripe's customer portal) | { framed } | { needsAccount } | { none } | { failed, reason };
 //                              intent 'switch' (the plans page, for a plan already held) opens Stripe's own plan chooser,
 //                              which comes back with ?billing=changed (or ?billing=unchanged by its back link), never the
 //                              portal's front page; Settings' Manage subscription (no intent) is the front page
-//     upgrade(plan, period)  → { redirecting, to } (Stripe's page confirming exactly that change, back with
+//                              trip: { uid, from } of the account changing its plan (ent.manage), kept for the way back
+//                              (plan-change.js departChange)
+//     upgrade(plan, period, trip?) → { redirecting, to } (Stripe's page confirming exactly that change, back with
 //                              ?billing=changed&to=<plan>.<period>) | { framed } | { needsAccount } | { none } | { failed, reason }
 //                              (reason: one of CHANGE_CODES as the server says it, or invalid, network, http_…, not_stripe)
 //     sync(sessionId)        → as status(): back from Checkout, the server reads that session from Stripe and records the
@@ -59,7 +61,7 @@
 
 import { BILLING_PRICES, deploySettings } from './config.js';
 import { PLANS } from './entitlements.js';
-import { confirmChange, forgetChange, PLAN_TO } from './plan-change.js';
+import { confirmChange, departChange, PLAN_TO } from './plan-change.js';
 
 export { PLAN_TO };
 
@@ -325,7 +327,7 @@ export function createBilling({
       if (r.http === 200 && open(r.data?.url)) return { redirecting: true };
       return { failed: true, reason: r.http === 200 ? 'not_stripe' : reasonOf(r) };
     },
-    async portal(intent) {
+    async portal(intent, trip = null) {
       if (framed) return { framed: true };
       if (!signedIn()) return { needsAccount: true };
       // { intent: 'switch' }: the server opens Stripe's change-plan page, never its front page (where that flow is off
@@ -337,8 +339,9 @@ export function createBilling({
       if (switching && changeCode(r)) return { failed: true, reason: changeCode(r) };
       // (an older server put the front page in its place and said so: not opened for a change of plan)
       if (switching && r.http === 200 && r.data?.flow === 'portal') return { failed: true, reason: 'plan_change_unavailable' };
-      // a new trip to change the plan: a change kept from before (said, or still on its way) is its way back no longer
-      if (switching && r.http === 200 && stripePage(r.data?.url)) forgetChange();
+      // a new trip to change the plan: a change kept from before (said, or still on its way) is its way back no longer,
+      // and the trip is kept with the account making it and its plan now (trip: from ent.manage)
+      if (switching && r.http === 200 && stripePage(r.data?.url)) departChange({ ...trip, to: null });
       if (r.http === 200 && open(r.data?.url)) return { redirecting: true };
       return { failed: true, reason: r.http === 200 ? 'not_stripe' : reasonOf(r) };
     },
@@ -347,7 +350,7 @@ export function createBilling({
      * with Stripe and opens Stripe's page confirming exactly that change (subscription_update_confirm), which comes back
      * with ?billing=changed&to=<plan>.<period> once Stripe has made it (and ?billing=unchanged by its back link).
      */
-    async upgrade(plan, period) {
+    async upgrade(plan, period, trip = null) {
       if (!isPlan(plan, period)) return { failed: true, reason: 'invalid' };
       // in a frame Stripe's confirmation page would never load, as with checkout and the portal: nothing is asked for
       if (framed) return { framed: true };
@@ -359,7 +362,7 @@ export function createBilling({
       const to = `${plan}.${period}`;
       // only Stripe's confirmation of exactly this change is opened: never another flow or another plan in its place
       if (r.http === 200 && (r.data?.flow !== 'subscription_update_confirm' || (r.data?.to != null && r.data.to !== to))) return { failed: true, reason: 'plan_change_unavailable' };
-      if (r.http === 200 && stripePage(r.data?.url)) forgetChange();
+      if (r.http === 200 && stripePage(r.data?.url)) departChange({ ...trip, to });
       if (r.http === 200 && open(r.data?.url)) return { redirecting: true, to };
       return { failed: true, reason: r.http === 200 ? 'not_stripe' : reasonOf(r) };
     },

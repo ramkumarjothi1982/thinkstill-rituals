@@ -12,8 +12,9 @@
 // moved in (to the heading) and given back on close, Escape and Back close them, what is behind is out of reach.
 // Every picture is the app's own (img-src 'self'); nothing is fetched from anywhere else.
 //
-//   openPlanWelcome(app, { tier, period, from }) → Promise<sheet handle>
-//   welcomeKind({ tier, from }) → 'beyond' | 'plan'
+//   openPlanWelcome(app, { tier, period, from, fromUnknown? }) → Promise<sheet handle>
+//   welcomeKind({ tier, from, fromUnknown? }) → 'beyond' | 'plan'   (fromUnknown: the plan before is not known, so the
+//     smaller one, which says only the plan as it is now: never "Welcome to hushmallow Beyond" to someone already on it)
 //   beyondLines() → the lines on what Beyond opens;  planLine({ tier, period }) → "You're on hushmallow Flow, yearly"
 import { h, icon, openSheet } from '../ui.js';
 import { PLANS, LIVE_FEATURES } from '../entitlements.js';
@@ -41,7 +42,7 @@ export function beyondLines() {
   ];
 }
 /** The full welcome for a move into Beyond; the smaller one for every other confirmed move. */
-export function welcomeKind({ tier, from } = {}) { return tier === 'ultra' && from?.tier !== 'ultra' ? 'beyond' : 'plan'; }
+export function welcomeKind({ tier, from, fromUnknown = false } = {}) { return tier === 'ultra' && !fromUnknown && from?.tier !== 'ultra' ? 'beyond' : 'plan'; }
 /** "You're on hushmallow Flow, yearly" (the period only when the server said it). */
 export function planLine({ tier, period } = {}) {
   const name = PLANS[tier]?.name;
@@ -82,9 +83,9 @@ function gathering(ids, spots, { label }) {
 
 let uid = 0;
 /** The welcome for a plan Stripe has confirmed (the CSS first, so it never shows unstyled). */
-export async function openPlanWelcome(app, { tier, period = null, from = null } = {}) {
+export async function openPlanWelcome(app, { tier, period = null, from = null, fromUnknown = false } = {}) {
   await ensurePlanCss();
-  const kind = welcomeKind({ tier, from });
+  const kind = welcomeKind({ tier, from, fromUnknown });
   const still = stillFor(app);
   const id = `pw-title-${++uid}`, lede = `pw-lede-${uid}`;
   const done = (then) => { s.close(); then?.(); };
