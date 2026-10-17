@@ -30,8 +30,10 @@
 //   inNativeShell(win?)     the App Store app's shell (window.HushNative or the hushStore message handler)
 //   takeReturn({ loc, hist }) → { kind: 'success' | 'cancel' | 'portal', sessionId } | null: the ?billing= Stripe sent
 //     the person back with (and Checkout's session_id), taken out of the address at once (Back never brings it again)
-//   welcomeBack(app, back)  after Stripe: the session is synced, then the plan is asked for again (a few times: the
-//     webhook can take a moment) and said once
+//   welcomeBack(app, back, { before }?)  after Stripe: the session is synced, then the plan is asked for again (a few
+//     times: the webhook can take a moment) and said once; after the portal, asked for quietly until it differs from
+//     `before` (planNow(ent) as kept before the trip, taken at start)
+//   planNow(ent)            → { tier, status, cancelAtPeriodEnd, endsAt }: what a trip to the portal can change
 //
 // Only Stripe's own pages are ever opened (STRIPE_PAGES: checkout.stripe.com,
 // billing.stripe.com, and our custom domain checkout.hushmallow.com, which Stripe
@@ -222,6 +224,17 @@ export function createBilling({
   };
 }
 
+/** Back from the portal: the plan is asked for at these waits (ms) until it differs from the plan before the trip (the
+ *  webhook for a change there can land after the first check), then no more. 14 s in all, quietly. */
+export const PORTAL_WAITS = Object.freeze([0, 2000, 4000, 8000]);
+
+/** What a trip to the portal can change (the tier, Stripe's status, cancelling, the end date), as kept on this phone now. */
+export function planNow(ent) {
+  const p = ent?.webPlan?.() || null;
+  return { tier: ent?.tier?.() ?? 'none', status: p?.status ?? null, cancelAtPeriodEnd: !!p?.cancelAtPeriodEnd, endsAt: p?.endsAt ?? null };
+}
+const samePlan = (a, b) => a.tier === b.tier && a.status === b.status && a.cancelAtPeriodEnd === b.cancelAtPeriodEnd && a.endsAt === b.endsAt;
+
 /**
  * The ?billing= Stripe sent the person back with ({ kind: 'success' | 'cancel' | 'portal', sessionId }), taken out of
  * the address with Checkout's session_id; null when none. sessionId: only on success, and only a well-formed one.
@@ -243,14 +256,25 @@ export function takeReturn({ loc = globalThis.location, hist = globalThis.histor
  * Back from Stripe (takeReturn's answer, or just its kind). 'success': the Checkout Session is synced first (the plan
  * at once, before the webhook), then the plan is asked for again, a few times (the webhook can take a moment), and
  * said once it is here, else a calm "on its way"; not signed in on this page, the sign-in screen says to sign in to
- * see it; 'cancel': nothing was charged; 'portal': the plan is asked for again quietly (it may have been cancelled
- * or changed there).
+ * see it; 'cancel': nothing was charged; 'portal': the plan is asked for again quietly, at PORTAL_WAITS until it
+ * differs from `before` (it may have been cancelled or changed there; main.js takes it at start, before any check).
  */
-export async function welcomeBack(app, back, { waits = [0, 2000, 4000, 8000, 15000], sleep = (ms) => new Promise((r) => setTimeout(r, ms)) } = {}) {
+export async function welcomeBack(app, back, {
+  before = null, waits = [0, 2000, 4000, 8000, 15000], portalWaits = PORTAL_WAITS, sleep = (ms) => new Promise((r) => setTimeout(r, ms)),
+} = {}) {
   const { kind, sessionId = null } = typeof back === 'string' ? { kind: back } : back || {};
   const { ent } = app;
   if (kind === 'cancel') { app.toast(RETURN_LINES.cancel); return 'cancel'; }
-  if (kind === 'portal') { try { await ent.refresh({ force: true }); } catch { /* the next check */ } return 'portal'; }
+  if (kind === 'portal') {
+    if (!ent.webSignedIn?.()) return 'portal';   // signed out here: nothing to ask
+    const was = before || planNow(ent);
+    for (const ms of portalWaits) {
+      if (ms) await sleep(ms);
+      try { await ent.refresh({ force: true }); } catch { /* the next try */ }
+      if (!samePlan(planNow(ent), was)) break;
+    }
+    return 'portal';
+  }
   if (kind !== 'success') return null;
   // not signed in here: nothing can be asked, and "on its way" would never come true on this page
   if (!ent.webSignedIn?.()) {

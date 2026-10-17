@@ -14,7 +14,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-import { createBilling, resolveBilling, inNativeShell, takeReturn, welcomeBack, stripePage, PATHS, RETURN_LINES, STRIPE_PAGES, CHECKOUT_DOMAIN } from '../src/app/billing.js';
+import { createBilling, resolveBilling, inNativeShell, takeReturn, welcomeBack, stripePage, planNow, PATHS, PORTAL_WAITS, RETURN_LINES, STRIPE_PAGES, CHECKOUT_DOMAIN } from '../src/app/billing.js';
 import { createEntitlements, BILLING_GRACE_MS, BILLING_RECHECK_MS, BILLING_CLOCK_SKEW_MS, PLANS } from '../src/app/entitlements.js';
 import { BILLING_PROVIDER, BILLING_ENDPOINT, BILLING_PRICES, ANGLE_ENDPOINT, ANGLE_ALLOWED_HOSTS } from '../src/app/config.js';
 import { createStore } from '../src/engine/storage.js';
@@ -92,7 +92,10 @@ test('the shipped config: off (then nothing is switched on), or switched on with
   assert.match(main, /const billing = createBilling\(\{ auth: \(\) => app\.auth, signIn: !!AUTH\.config\.enabled && !AUTH\.forwarding \}\);\nconst ent = createEntitlements\(\{ store, billing \}\);/);
   assert.match(main, /const billingBack = billing \? takeReturn\(\) : null;/);
   assert.match(main, /if \(billing\) document\.addEventListener\('visibilitychange'/);
-  assert.match(main, /if \(billingBack\) welcomeBack\(app, billingBack\)\.catch\(\(\) => \{\}\);/);
+  assert.match(main, /const planBefore = billingBack \? planNow\(ent\) : null;/);
+  assert.match(main, /if \(billingBack\) welcomeBack\(app, billingBack, \{ before: planBefore \}\)\.catch\(\(\) => \{\}\);/);
+  // the plan before the trip is taken before the first check at start
+  assert.ok(main.indexOf('const planBefore = billingBack ? planNow(ent) : null;') < main.indexOf('  ent.refresh().catch(() => {});'), 'before the first check');
 });
 
 test('off: the entitlements, Another Angle and the plans copy are exactly as before', async () => {
@@ -515,6 +518,62 @@ test('back from Checkout, not signed in on this page: the sign-in screen says to
   toasts.length = 0;
   assert.equal(await welcomeBack(app, { kind: 'cancel', sessionId: null }), 'cancel');
   assert.deepEqual(toasts, [RETURN_LINES.cancel]);
+});
+
+test('back from the portal: the plan is asked for quietly until it differs from the one before the trip, at most four times', async () => {
+  assert.deepEqual([...PORTAL_WAITS], [0, 2000, 4000, 8000]);
+  const FLOW = { tier: 'paid', status: 'active', current_period_end: '2026-11-12T09:00:00.000Z', ends_at: null, cancel_at_period_end: false, manageable: true };
+  /** A page back from the portal: the plan kept before the trip is FLOW; the server's answer turns to `after` at ask `at`. */
+  const run = async ({ after = FLOW, at = Infinity, signedIn = true, boot = false } = {}) => {
+    const server = billingServer({ status: FLOW });
+    const store = memStore();
+    await createEntitlements({ store, billing: setup({ server }).billing }).refresh({ force: true });   // the earlier visit
+    server.calls.length = 0;
+    let asks = 0;
+    const answer = server.fetch;
+    server.fetch = async (u, i) => { if (new URL(u).pathname === PATHS.status && ++asks >= at) server.status = after; return answer(u, i); };
+    const toasts = [], waits = [];
+    const ent = createEntitlements({ store, billing: setup({ server, signedIn }).billing });
+    const before = planNow(ent);   // main.js, before its first check
+    if (boot) await ent.refresh();   // that first check has already brought the change
+    const app = { ent, toast: (t) => toasts.push(t), haptic: () => {}, world: { react: () => {} } };
+    const out = await welcomeBack(app, { kind: 'portal', sessionId: null }, { before, sleep: async (ms) => { waits.push(ms); } });
+    return { out, toasts, waits, asks, ent };
+  };
+  assert.deepEqual(planNow((await run()).ent), { tier: 'paid', status: 'active', cancelAtPeriodEnd: false, endsAt: null });
+  // nothing changes (or the webhook is later still): four asks, then no more, and nothing said
+  const same = await run();
+  assert.equal(same.out, 'portal');
+  assert.equal(same.asks, 4);
+  assert.deepEqual(same.waits, [2000, 4000, 8000]);
+  assert.deepEqual(same.toasts, [], 'quietly');
+  // cancelled there, the webhook a moment behind: asked until it shows, then no more
+  const cancelled = await run({ after: { ...FLOW, cancel_at_period_end: true, ends_at: FLOW.current_period_end }, at: 3 });
+  assert.equal(cancelled.asks, 3);
+  assert.deepEqual(cancelled.waits, [2000, 4000]);
+  assert.equal(cancelled.ent.webPlan().cancelAtPeriodEnd, true);
+  assert.deepEqual(cancelled.toasts, []);
+  // each of the four is a change: the tier, Stripe's status, cancelling, the end date
+  for (const [name, after] of [
+    ['tier', { ...FLOW, tier: 'ultra' }], ['status', { ...FLOW, status: 'past_due' }],
+    ['cancelling', { ...FLOW, cancel_at_period_end: true }], ['end date', { ...FLOW, ends_at: '2027-02-12T09:00:00.000Z' }],
+  ]) {
+    const r = await run({ after, at: 2 });
+    assert.equal(r.asks, 2, name);
+  }
+  // the first check at start already brought it: one more ask sees the difference, then no more
+  const early = await run({ after: { ...FLOW, tier: 'ultra' }, at: 1, boot: true });
+  assert.equal(early.asks, 2);
+  assert.equal(early.ent.tier(), 'ultra');
+  // without `before` (a caller other than main.js): the plan as welcomeBack finds it
+  const server = billingServer({ status: FLOW });
+  const ent = createEntitlements({ store: memStore(), billing: setup({ server }).billing });
+  assert.equal(await welcomeBack({ ent, toast: () => {} }, 'portal', { sleep: async () => {} }), 'portal');
+  assert.equal(server.calls.length, 1, 'none kept here: the first answer (Flow) is the change');
+  // signed out on this page: nothing to ask
+  const away = await run({ signedIn: false });
+  assert.equal(away.asks, 0);
+  assert.equal(away.out, 'portal');
 });
 
 test('sync waits for a check already in flight: the older answer never lands after the session\'s', async () => {
