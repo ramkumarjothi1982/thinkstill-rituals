@@ -229,9 +229,14 @@ export function createBilling({
       if (!signedIn()) return { needsAccount: true };
       const r = await call(PATHS.checkout, { body: { plan, period } });
       if (r.signedOut || r.http === 401) return { needsAccount: true };
-      // 409, nothing new made: a plan already (already_subscribed: changed in the portal), or a payment still going
-      // through (payment_pending: a checkout just completed whose plan is not here yet, or a first payment unfinished)
-      if (r.http === 409) return r.data?.error?.code === 'payment_pending' ? { pending: true } : { manage: true };
+      // 409, nothing new made: a plan already (already_subscribed, or no code from an older server: changed in the
+      // portal), or a payment still going through (payment_pending: a checkout just completed whose plan is not here
+      // yet, or a first payment unfinished). Any other code (customer_conflict: the account's Stripe customer needs
+      // support) is no plan to change, so never the portal
+      if (r.http === 409) {
+        const code = r.data?.error?.code;
+        return code === 'payment_pending' ? { pending: true } : code === 'already_subscribed' || !code ? { manage: true } : { failed: true, reason: 'http_409' };
+      }
       if (r.http === 200 && open(r.data?.url)) return { redirecting: true };
       return { failed: true, reason: r.http === 200 ? 'not_stripe' : reasonOf(r) };
     },
