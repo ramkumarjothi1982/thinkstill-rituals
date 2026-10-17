@@ -21,13 +21,14 @@
 // The state machine (supersedes): for the same subscription, a newer answer
 // (as_of: when the server asked Stripe for it) replaces an older one and an
 // older one is ignored; another subscription of the same account replaces
-// the record only when it gives access and the current one does not, or
-// gives more (a higher plan), so a late event about an old, cancelled
-// subscription never takes access away from the one that replaced it. The
-// exception is the best of a fresh list of the customer's subscriptions
-// (bestOf; `covers` names the ones listed): read later than the record and
-// including its subscription, it knows that one's state too, so it replaces
-// it (Flow still billing after a second subscription, Beyond, ended).
+// the record only when it gives access and the current one does not (its
+// status, or its period over: periodOver), or gives more (a higher plan), so
+// a late event about an old, cancelled subscription never takes access away
+// from the one that replaced it. The exception is the best of a fresh list
+// of the customer's subscriptions (bestOf; `covers` names the ones listed):
+// read later than the record and including its subscription, it knows that
+// one's state too, so it replaces it (Flow still billing after a second
+// subscription, Beyond, ended).
 //
 // Access (effectiveTier): Stripe's active, trialing or past_due (Stripe is
 // still retrying the card; docs/PAYMENTS.md), until a day after the period
@@ -150,10 +151,17 @@ export function summarise(sub, prices, asOf) {
 /** When a past_due record's past_due began: the DO's mark, else (a record from before the mark) when it was read. @param {SubRecord} rec */
 const pastDueSince = (rec) => (typeof rec.past_due_since === 'number' ? rec.past_due_since : rec.as_of);
 
+/**
+ * The record's period ended more than PERIOD_GRACE_MS before `t`: whatever its status says, it is out of date (a
+ * renewal or an end whose events never landed), so it gives no access and decides nothing on its own.
+ * @param {SubRecord} rec @param {number} t
+ */
+export const periodOver = (rec, t) => rec.current_period_end != null && rec.current_period_end + PERIOD_GRACE_MS <= t;
+
 /** The plan this record gives right now. @param {SubRecord | null | undefined} rec @param {number} now */
 export function effectiveTier(rec, now) {
   if (!rec || !ACCESS.has(rec.status)) return 'none';
-  if (rec.current_period_end != null && rec.current_period_end + PERIOD_GRACE_MS <= now) return 'none';
+  if (periodOver(rec, now)) return 'none';
   if (rec.status === 'past_due' && now > pastDueSince(rec) + PAST_DUE_GRACE_MS) return 'none';
   return rec.tier;
 }
@@ -184,7 +192,9 @@ export function supersedes(cur, next, covers = null) {
   if (!cur) return true;
   if (cur.subscription === next.subscription) return next.as_of >= cur.as_of;
   if (covers && covers.includes(cur.subscription) && next.as_of >= cur.as_of) return true;
-  const a = ACCESS.has(cur.status), b = ACCESS.has(next.status);
+  // a record whose period was over when `next` was read gives nothing, whatever its status: a lower plan bought
+  // after it (its own end lost) replaces it
+  const a = ACCESS.has(cur.status) && !periodOver(cur, next.as_of), b = ACCESS.has(next.status) && !periodOver(next, next.as_of);
   if (a !== b) return b;
   if (RANK[next.tier] !== RANK[cur.tier]) return RANK[next.tier] > RANK[cur.tier];
   return next.as_of >= cur.as_of;

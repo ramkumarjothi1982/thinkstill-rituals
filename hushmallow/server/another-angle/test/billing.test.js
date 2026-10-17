@@ -672,6 +672,12 @@ test('Billing Durable Object: the state machine, one apply per event, old events
   assert.equal(supersedes(rec({ status: 'canceled' }), other({ status: 'active' })), true, 'a new active one replaces an ended one');
   assert.equal(supersedes(rec({ tier: 'paid' }), other({ tier: 'ultra' })), true, 'two active: the higher plan');
   assert.equal(supersedes(rec({ tier: 'ultra' }), other({ tier: 'paid' })), false);
+  // a record whose period was over a day before the other was read (its end never recorded) gives nothing: a lower plan replaces it
+  const stale = rec({ tier: 'ultra' }), after = stale.current_period_end + PERIOD_GRACE_MS;
+  const flow = (over = {}) => ({ ...other({ tier: 'paid', current_period_end: after + 30 * DAY, ...over }), as_of: after });
+  assert.equal(supersedes(stale, { ...flow(), as_of: after - 1 }), false, 'within the grace it still counts');
+  assert.equal(supersedes(stale, flow()), true);
+  assert.equal(supersedes(stale, flow({ status: 'canceled' })), false, 'neither gives anything: the higher plan stays, as before');
   assert.equal(typeof Billing, 'function');
 });
 

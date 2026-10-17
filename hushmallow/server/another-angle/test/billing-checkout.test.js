@@ -247,6 +247,49 @@ test('a subscription Stripe keeps unpaid or paused is still the account\'s: 409 
   assertClean(allLogs.flat());
 });
 
+test('a record whose period ended over a day ago (its last events lost) does not decide alone: Stripe\'s list does, and the new plan is recorded over it', async () => {
+  // a sign-in that outlives the period (the fixture's token lasts 30 days)
+  const LONG = jwt(UID, { exp: (CLOCK_START + 400 * DAY) / 1000 });
+  const long = () => track(setup({ up: upstream({ users: { [LONG]: { id: UID } } }) }));
+  // the record says Beyond monthly, active; Stripe cancelled it at once and customer.subscription.deleted never landed
+  const s = long();
+  const old = subscription({ id: 'sub_Stale1', customer: 'cus_Stale1' });
+  await subscribe(s, old);
+  s.up.subs.set(old.id, { ...old, status: 'canceled' });
+  // within a day of the period end the record still decides, Stripe not asked
+  s.now.advance(30 * DAY + DAY - 60000);
+  let n = calls(s).length;
+  assert.deepEqual(await code(await post(s, { plan: 'paid', period: 'monthly' }, LONG)), [409, 'already_subscribed']);
+  assert.equal(calls(s).length, n);
+  assert.equal(lastLog(s, 'checkout').err, 'record');
+  // past it: tier none, and Stripe's list (canceled) lets the account subscribe again, to Flow this time
+  s.now.advance(DAY);
+  assert.deepEqual([(await status(s, LONG)).tier, (await status(s, LONG)).status], ['none', 'active']);
+  n = calls(s).length;
+  const res = await post(s, { plan: 'paid', period: 'monthly' }, LONG);
+  assert.equal(res.status, 200, await res.clone().text());
+  assert.deepEqual(calls(s).slice(n), [`GET /v1/prices/${PRICES.paidMonthly}`, 'GET /v1/subscriptions', 'POST /v1/checkout/sessions']);
+  assert.equal(creates(s).at(-1).form.get('customer'), 'cus_Stale1');
+  // Flow is a lower plan than the stale record's Beyond: recorded all the same, since the stale one gives nothing
+  const flow = subscription({ id: 'sub_Flow1', customer: 'cus_Stale1' }, { price: PRICES.paidMonthly, end: (s.now() + 30 * DAY) / 1000 });
+  s.up.subs.set(flow.id, flow);
+  await deliver(s.app, s.env, event('checkout.session.completed', { id: sessionIds(s).at(-1), object: 'checkout.session', mode: 'subscription', status: 'complete', client_reference_id: UID, customer: 'cus_Stale1', subscription: flow.id }, s.now), { at: s.now() });
+  assert.deepEqual([(await status(s, LONG)).tier, (await status(s, LONG)).status], ['paid', 'active']);
+  assert.equal((await db(s).get(UID)).subscription, 'sub_Flow1');
+  // a late event about the stale one (a lost one, resent) never takes Flow away
+  await deliver(s.app, s.env, event('customer.subscription.updated', old, s.now), { at: s.now() });
+  assert.equal((await status(s, LONG)).tier, 'paid');
+  // the same stale record while Stripe still has it running (its renewal's events lost): the list stops a second one
+  const r = long();
+  await subscribe(r, subscription({ id: 'sub_Renewed1', customer: 'cus_Renewed1' }));
+  r.up.subs.set('sub_Renewed1', subscription({ id: 'sub_Renewed1', customer: 'cus_Renewed1' }, { end: (CLOCK_START + 60 * DAY) / 1000 }));
+  r.now.advance(32 * DAY);
+  assert.deepEqual(await code(await post(r, ULTRA_M, LONG)), [409, 'already_subscribed']);
+  assert.equal(lastLog(r, 'checkout').err, 'listed');
+  assert.equal(creates(r).length, 0);
+  assertClean(allLogs.flat());
+});
+
 test('one Stripe customer per account: made once (customer:<account>), linked and reused; a subscription\'s customer from before is adopted; one linked to another account is refused', async () => {
   const s = track(setup());
   assert.equal((await post(s, ULTRA_M)).status, 200);
