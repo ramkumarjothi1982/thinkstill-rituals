@@ -391,6 +391,20 @@ test('the app\'s hooks R3U, R7 and the recorder rely on are the app\'s own (the 
   assert.match(settings, /h\('p', \{ id: 'manage-hint', 'data-manage-hint': ''[^\n]*MANAGE_HINT\)/);
 });
 
+test('R1 reads "Sign in or create an account first…" where the app says it: the account screen\'s lede, never a toast over its buttons', async () => {
+  const src = readFileSync(DRIVER, 'utf8');
+  const i = src.indexOf('async function stepR1(X');
+  const r1 = src.slice(i, src.indexOf('\n}\n', i));
+  assert.match(r1, /document\.getElementById\('hm-account-lede'\)[^\n]*\) === repo\.signInFirst;\n\s+need\(await until\(ledeSays, 10000\), /);
+  assert.match(r1, /need\(!\(await toastSince\(page, repo\.signInFirst, t0, 1500\)\), /, 'and no toast says it');
+  assert.doesNotMatch(r1, /need\(await toastSince\(page, repo\.signInFirst/, 'the toast it once waited for is gone from the app');
+  // the app's own: the plans page sends a guest to welcome with it, which says it as its lede (tests/account-notice.test.mjs)
+  const { carriesNotice } = await import('../src/app/scenes/account.js');
+  assert.equal(carriesNotice('welcome', { view: 'welcome', notice: repo.signInFirst }), true);
+  assert.match(readFileSync(join(root, 'src/app/scenes/plans.js'), 'utf8'), /app\.go\('account', \{ view: 'welcome', notice: SIGN_IN_FIRST \}\);/);
+  assert.match(readFileSync(join(root, 'src/app/scenes/account.js'), 'utf8'), /const lede = h\('p', \{ class: 'hm-auth-lede', id: 'hm-account-lede' \}\);/);
+});
+
 test('the teardown\'s choice: only the subscription of a Checkout Session this run opened, the account\'s, made since the start, still running', () => {
   const since = 1000;
   const sess = (o) => ({ object: 'checkout.session', id: 'cs_test_Run1aaaaaaaaaa', livemode: false, customer: 'cus_Aaaa1', client_reference_id: 'uid-a', metadata: { user_id: 'uid-a' }, subscription: 'sub_Run1aaaa', ...o });

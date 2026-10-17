@@ -44,7 +44,9 @@
 //   openAccount(app, params)   opens this scene (params.view: 'signin' | 'create' | …)
 //   emailParts(text)           an address that breaks after "@" first, then a dot, never mid-word
 // An arrival (params.arrived, with params.notice from main.js) is said on the account card's lede
-// the first time it shows, never as a toast over the card (ARRIVALS, carriesArrival).
+// the first time it shows, never as a toast over the card (ARRIVALS, carriesArrival). A notice from
+// a screen that sent a guest here (the plans page's "Sign in or create an account first…") is said
+// on the first screen's lede too, never as a toast over its buttons (NOTICE_VIEWS, carriesNotice).
 import { h, iconBtn, toast } from '../ui.js';
 import { type, fitLabel } from '../../ui/type.js';
 import { brandTagline } from '../../brand.js';
@@ -132,6 +134,14 @@ function fillAccountRow(app, el, auth, u, signedIn) {
 export const ARRIVALS = Object.freeze(['signed-in', 'verified', 'password-updated', 'email-changed', 'guest-kept', 'device-cleared']);
 /** Whether the first screen says the arrival itself: the account card, or the guest question (which names the account). */
 export const carriesArrival = (view, kind) => (view === 'account' && ARRIVALS.includes(kind)) || (view === 'guest-choice' && (kind === 'signed-in' || kind === 'verified'));
+/**
+ * The guest screens that say a notice handed to this scene by another screen (params.notice with no arrival: the
+ * plans page's SIGN_IN_FIRST / SIGN_IN_TO_RESTORE, "Sign in to see your plan." from Stripe's way back) as their lede,
+ * in place of their own, whenever that first screen shows. A toast there sat over "Create an account" and took its
+ * tap for 3.6 s on a small phone (375×667). A notice from before a reload (main.js, with params.arrived) is as before.
+ */
+export const NOTICE_VIEWS = Object.freeze(['welcome', 'signin']);
+export const carriesNotice = (view, { notice = null, arrived = null } = {}) => !!notice && !arrived && NOTICE_VIEWS.includes(view);
 
 const PRIVACY_LINE = 'Nothing you write in hushmallow, no feeling and no photo is ever sent with your account.';
 // (exactly what public.delete_my_account() removes, supabase/migrations/0007: the profile row with its last-opened time, the
@@ -559,8 +569,8 @@ export default function account(app, params = {}) {
     body: [h('div', { class: 'hm-auth-actions' }, btn('Back to hushmallow', () => app.back(), { cls: 'primary', act: 'back' }))],
   });
 
-  V.welcome = () => ({
-    title: 'Your hushmallow account', lede: 'Optional. Everything works without one.',
+  V.welcome = (o = {}) => ({
+    title: 'Your hushmallow account', lede: o.notice || 'Optional. Everything works without one.',
     body: [
       h('ul', { class: 'hm-account-benefits' },
         h('li', {}, h('b', {}, 'Yours on a shared phone. '), 'Your favourites, Memory Garden and settings stay apart from anyone else’s.'),
@@ -652,7 +662,7 @@ export default function account(app, params = {}) {
     });
     pw.wrap.append(h('div', { class: 'hm-account-forgot' }, forgot));
     preload();
-    return { title: 'Welcome back', lede: 'Sign in to your hushmallow account.', body: [f.form] };
+    return { title: 'Welcome back', lede: o.notice || 'Sign in to your hushmallow account.', body: [f.form] };
   };
 
   V.forgot = (o) => {
@@ -1165,10 +1175,13 @@ export default function account(app, params = {}) {
         if (left) return;
       }
       const first = VM.initialView({ enabled: usable, status: usable ? lastStatus : 'off', pendingGuestChoice: !!auth?.pendingGuestChoice, view: params.view });
-      go(first, { arrived: params.arrived || null, email: params.email || '' });
+      // another screen's reason for sending a guest here: the first screen's lede (and read out), never a toast over it
+      const notice = carriesNotice(first, params) ? params.notice : null;
+      go(first, { arrived: params.arrived || null, email: params.email || '', notice });
+      if (notice) say(notice);
       if (params.arrived && ['signed-in', 'verified', 'password-updated', 'email-changed', 'guest-kept'].includes(params.arrived)) later(() => mood('happy'), 450);
       // the calm line from before the reload: on the card when this screen says it, else the usual toast
-      if (params.notice && !carriesArrival(first, params.arrived)) later(() => toast(params.notice, 3600), 500);
+      if (params.notice && !notice && !carriesArrival(first, params.arrived)) later(() => toast(params.notice, 3600), 500);
       if (auth?.enabled) off = auth.onChange(onAuthChange);
       vv?.addEventListener?.('resize', fitKeyboard); vv?.addEventListener?.('scroll', fitKeyboard);
       el.addEventListener('focusin', onFocusIn);
