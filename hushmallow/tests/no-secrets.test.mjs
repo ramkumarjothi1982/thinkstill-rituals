@@ -5,7 +5,8 @@
 // keys are public and pass. ALLOW holds only the two deliberate fakes, each by
 // its exact line. The site tools/build-site.sh assembles is scanned too, with
 // no allow-list (tools/site/check.mjs, section 7), and tools/hooks/pre-commit
-// (repository root) refuses a commit whose staged lines add one.
+// (repository root) refuses a commit whose staged lines add one. .env files,
+// like .dev.vars, are never tracked.
 // Every fixture is built at run time, so this file holds no secret-shaped string.
 // Run: node --test hushmallow/tests/
 import { test } from 'node:test';
@@ -218,4 +219,12 @@ test('addedLines: only added lines, numbered from each hunk, whatever they start
     { file: 't\u00e9st\tb.md', line: 1, text: '@@ -1 +1 @@' },
     { file: 'a b.md', line: 4, text: 'spaced' },
   ]);
+});
+
+test('.env and .env.* are gitignored like .dev.vars (an .example file stays committable), and none is tracked', () => {
+  const ignored = (p) => spawnSync('git', ['-C', repo, 'check-ignore', '--no-index', '-q', p], { env: gitEnv }).status === 0;
+  for (const p of ['hushmallow/.env', 'hushmallow/.env.local', 'hushmallow/.env.production', 'hushmallow/server/another-angle/.env', 'hushmallow/server/another-angle/.env.staging', 'hushmallow/tools/.env.development.local',
+    'hushmallow/.dev.vars', 'hushmallow/server/another-angle/.dev.vars', 'hushmallow/server/another-angle/.dev.vars.staging']) assert.ok(ignored(p), `${p} is ignored`);
+  for (const p of ['hushmallow/.env.example', 'hushmallow/server/another-angle/.dev.vars.example', 'hushmallow/src/app/config.js', 'hushmallow/src/app/env.js']) assert.ok(!ignored(p), `${p} is not ignored`);
+  assert.deepEqual(trackedFiles(repo).filter((f) => /(^|\/)\.(?:env|dev\.vars)(?:\.|$)/.test(f) && !f.endsWith('.example')), []);
 });
