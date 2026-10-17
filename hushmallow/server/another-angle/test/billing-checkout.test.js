@@ -1,11 +1,13 @@
 // Checkout (src/billing/routes.js), against the fake Stripe of test/billing-fixtures.js: the price check before
 // selling, one customer and one subscription per account (checked at Stripe), the previous Checkout Session settled
-// first, and the Stripe Tax switch on the session's form.
+// first, and the Stripe Tax switch and integration_identifier on the session's form.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { req, denyAll, allowAll, clock, ORIGIN, CLOCK_START } from './helpers.js';
-import { CHECKOUT_PRICE_RULES, CHECKOUT_PRICE_CACHE_MS, priceFault } from '../src/billing/routes.js';
+import {
+  CHECKOUT_PRICE_RULES, CHECKOUT_PRICE_CACHE_MS, CHECKOUT_INTEGRATION_IDENTIFIER, CHECKOUT_INTEGRATION_IDENTIFIER_SINCE, integrationIdentifierOn, priceFault,
+} from '../src/billing/routes.js';
 import { billingClient } from '../src/billing/store.js';
 import { createLogger } from '../src/log.js';
 import { STRIPE_API_VERSION_EXPECTED } from '../src/config.js';
@@ -27,7 +29,7 @@ const allLogs = [];
 const track = (s) => { allLogs.push(s.logs); return s; };
 
 // ------------------------------------------------------------ the form --
-test('checkout form: the customer always; tax on adds automatic_tax, customer_update and billing_address_collection; never payment_method_types', async () => {
+test('checkout form: the customer always; tax on adds automatic_tax, customer_update and billing_address_collection; a 2026-03-25+ pin adds integration_identifier; never payment_method_types', async () => {
   const formOf = async (over) => {
     const s = track(setup({ env: billingEnv(over) }));
     const res = await post(s, ULTRA_M);
@@ -49,8 +51,27 @@ test('checkout form: the customer always; tax on adds automatic_tax, customer_up
   // STRIPE_AUTOMATIC_TAX on: the customer is always passed, so the address typed at checkout is asked for and saved on it
   const on = await formOf({ STRIPE_AUTOMATIC_TAX: 'true' });
   assert.deepEqual(on.f, { ...base, ...tax });
+  // pinned as wrangler.toml pins it: integration_identifier, and the Stripe-Version header
+  const pinned = await formOf({ STRIPE_API_VERSION: STRIPE_API_VERSION_EXPECTED });
+  assert.deepEqual(pinned.f, { ...base, integration_identifier: CHECKOUT_INTEGRATION_IDENTIFIER });
+  assert.equal(pinned.c.headers['stripe-version'], STRIPE_API_VERSION_EXPECTED);
+  const both = await formOf({ STRIPE_API_VERSION: STRIPE_API_VERSION_EXPECTED, STRIPE_AUTOMATIC_TAX: 'on' });
+  assert.deepEqual(both.f, { ...base, ...tax, integration_identifier: CHECKOUT_INTEGRATION_IDENTIFIER });
+  // the first version that takes it does; an older pin sends the header but never the parameter
+  assert.equal((await formOf({ STRIPE_API_VERSION: '2026-03-25.dahlia' })).f.integration_identifier, CHECKOUT_INTEGRATION_IDENTIFIER);
+  for (const v of ['2026-02-25.clover', '2025-03-31.basil', '2024-06-20']) {
+    const o = await formOf({ STRIPE_API_VERSION: v });
+    assert.deepEqual(o.f, base, v);
+    assert.equal(o.c.headers['stripe-version'], v);
+  }
+  assert.equal(integrationIdentifierOn(''), false, 'unpinned');
+  assert.equal(integrationIdentifierOn('2026-03-24.clover'), false);
+  assert.equal(integrationIdentifierOn('2027-01-01.later'), true);
+  // the label: a fixed name and 8 letters, chosen once and committed
+  assert.match(CHECKOUT_INTEGRATION_IDENTIFIER, /^hushmallow_web_plans_[a-z]{8}$/);
+  assert.equal(CHECKOUT_INTEGRATION_IDENTIFIER_SINCE, '2026-03-25');
   // never payment_method_types (dynamic payment methods), and no trial, promotion code or email (D10, D13, D14)
-  for (const { f } of [off, on]) {
+  for (const { f } of [off, on, pinned, both]) {
     assert.deepEqual(Object.keys(f).filter((k) => /payment_method|trial|promotion|discounts|customer_email|email/.test(k)), []);
   }
   // the customer: the account id only, under customer:<account>

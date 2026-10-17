@@ -58,6 +58,13 @@ export const CHECKOUT_WINDOW_MS = 120000;
 export const CHECKOUT_PRICE_RULES = Object.freeze({ currency: 'aud', tax_behavior: 'inclusive', interval: Object.freeze({ monthly: 'month', yearly: 'year' }) });
 /** How long a price read for that check is trusted in this isolate: one read per price id in that time, and a price fixed in Stripe sells within it. */
 export const CHECKOUT_PRICE_CACHE_MS = 600000;
+/**
+ * Checkout's integration_identifier (Stripe's label for comparing checkout flows in the Dashboard): a fixed name and
+ * 8 random letters, chosen once. Stripe takes it from API version CHECKOUT_INTEGRATION_IDENTIFIER_SINCE on, so it is
+ * sent only when STRIPE_API_VERSION pins that or a later one: unpinned or older, Stripe would refuse the parameter.
+ */
+export const CHECKOUT_INTEGRATION_IDENTIFIER = 'hushmallow_web_plans_xzwztwqy';
+export const CHECKOUT_INTEGRATION_IDENTIFIER_SINCE = '2026-03-25';
 /** Stripe's default lifetime of a Checkout Session: for an answer without expires_at. */
 const CHECKOUT_SESSION_TTL_MS = 86400000;
 const PLANS = ['paid', 'ultra'];
@@ -328,6 +335,7 @@ export function createBilling({ logger, now, fetch: fetchImpl = (input, init) =>
       // Stripe Tax (D3: STRIPE_AUTOMATIC_TAX, off until the AU registration is Collecting). The customer is always
       // passed, so the address typed at checkout is asked for and saved on it; else Stripe taxes the saved one (none).
       ...(cfg.billing.automaticTax ? { automatic_tax: { enabled: true }, customer_update: { address: 'auto' }, billing_address_collection: 'required' } : {}),
+      ...(integrationIdentifierOn(cfg.billing.apiVersion) ? { integration_identifier: CHECKOUT_INTEGRATION_IDENTIFIER } : {}),
     }, { idempotencyKey });
     const url = r.ok ? httpsUrl(r.data?.url) : null;
     if (!r.ok || !url) return unavailable(r.ok ? 'no_url' : r.code, r.ok ? undefined : r.status);
@@ -513,6 +521,11 @@ export function priceFault(p, plan, period) {
   if (p.active !== true) return 'inactive';
   if (p.tax_behavior !== CHECKOUT_PRICE_RULES.tax_behavior) return 'tax_behavior';
   return '';
+}
+
+/** integration_identifier goes on a session: the pinned API version is CHECKOUT_INTEGRATION_IDENTIFIER_SINCE or later. @param {string} apiVersion */
+export function integrationIdentifierOn(apiVersion) {
+  return /^\d{4}-\d{2}-\d{2}/.test(apiVersion) && apiVersion.slice(0, 10) >= CHECKOUT_INTEGRATION_IDENTIFIER_SINCE;
 }
 
 /** An https URL from Stripe's answer, or null. @param {unknown} v */
