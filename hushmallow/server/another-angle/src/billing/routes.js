@@ -7,7 +7,8 @@
 //
 //   POST /v1/billing/checkout  { plan: 'paid'|'ultra', period: 'monthly'|'yearly' } with the account's
 //                              Supabase access token (Authorization: Bearer) → { url } (Stripe Checkout,
-//                              subscription mode, client_reference_id = the account id; back to APP_ORIGIN)
+//                              subscription mode, client_reference_id = the account id; back to APP_ORIGIN). Only a
+//                              price that is what its slot says (CHECKOUT_PRICE_RULES) is sold
 //   GET  /v1/billing/status    the account's token → { tier, status, current_period_end, cancel_at_period_end, ends_at, manageable }
 //   POST /v1/billing/portal    the account's token → { url } (Stripe's customer portal: cancel, change plan, card, receipts)
 //   POST /v1/billing/webhook   Stripe's events, signed (Stripe-Signature); no Origin, the signature is the check
@@ -46,6 +47,15 @@ export const WEBHOOK_MAX_BYTES = 262144;
  * the first answer to a key, a failure included.
  */
 export const CHECKOUT_WINDOW_MS = 120000;
+/**
+ * What a price must be in Stripe before checkout sells it (decisions D2, D3, D11). Its lookup key names the plan and
+ * period of the slot it sits in, so two ids swapped while pasting never sell Beyond at Flow's price, or the reverse;
+ * Australian dollars only (Adaptive Pricing off: the plans page and the terms say A$); GST-inclusive from day one,
+ * whether or not Stripe Tax is on; recurring every one month or one year, as its period; and active.
+ */
+export const CHECKOUT_PRICE_RULES = Object.freeze({ currency: 'aud', tax_behavior: 'inclusive', interval: Object.freeze({ monthly: 'month', yearly: 'year' }) });
+/** How long a price read for that check is trusted in this isolate: one read per price id in that time, and a price fixed in Stripe sells within it. */
+export const CHECKOUT_PRICE_CACHE_MS = 600000;
 const PLANS = ['paid', 'ultra'];
 const SUB = /^sub_/;
 const PERIODS = ['monthly', 'yearly'];
@@ -151,6 +161,29 @@ export function createBilling({ logger, now, fetch: fetchImpl = (input, init) =>
     manageable: !!rec.customer,
   } : { tier: 'none', status: 'none', current_period_end: null, cancel_at_period_end: false, ends_at: null, manageable: false });
 
+  /** @type {Map<string, { at: number, price: any }>} */
+  const priceCache = new Map();
+  /**
+   * The configured price as Stripe has it, against CHECKOUT_PRICE_RULES (read once per CHECKOUT_PRICE_CACHE_MS).
+   * → { ok: true } | { ok: false, fault } (not to be sold: the rule it breaks; not_found: no such price for this key)
+   *   | { ok: false, code, status } (Stripe did not answer it: nothing is cached)
+   * @param {Config} cfg @param {'paid' | 'ultra'} plan @param {'monthly' | 'yearly'} period @param {string} id
+   * @returns {Promise<{ ok: true } | { ok: false, fault?: string, code?: string, status?: number }>}
+   */
+  async function checkPrice(cfg, plan, period, id) {
+    const key = `${cfg.billing.keyMode}:${id}`;
+    let hit = priceCache.get(key);
+    if (!hit || now() - hit.at >= CHECKOUT_PRICE_CACHE_MS) {
+      const r = await stripeFor(cfg).retrievePrice(id);
+      if (!r.ok) return r.status === 404 ? { ok: false, fault: 'not_found' } : { ok: false, code: r.code, status: r.status };
+      if (priceCache.size >= 64) priceCache.clear();
+      hit = { at: now(), price: r.data };
+      priceCache.set(key, hit);
+    }
+    const fault = priceFault(hit.price, plan, period);
+    return fault ? { ok: false, fault } : { ok: true };
+  }
+
   /** @param {Request} request @param {Record<string, any>} env @param {Config} cfg @param {Record<string, string>} cors */
   async function checkout(request, env, cfg, cors) {
     const t0 = now();
@@ -171,6 +204,16 @@ export function createBilling({ logger, now, fetch: fetchImpl = (input, init) =>
     if (rec && ACCESS.has(rec.status) && effectiveTier(rec, now()) !== 'none') {
       log('checkout', t0, { status: 'already_subscribed', http: 409, plan, period, tier: rec.tier });
       return error(409, 'already_subscribed', 'This account already has a subscription; change it in the portal.', cors);
+    }
+    // the price is what its slot says, or nothing is sold
+    const checked = await checkPrice(cfg, plan, period, price);
+    if (!checked.ok && checked.fault) {
+      log('checkout', t0, { status: 'price_misconfigured', http: 503, plan, period, err: checked.fault });
+      return error(503, 'price_misconfigured', 'This plan is not on sale just now.', cors);
+    }
+    if (!checked.ok) {
+      log('checkout', t0, { status: 'stripe_error', http: 502, plan, period, err: `price:${checked.code}`.slice(0, 48), stripe_http: checked.status });
+      return error(502, 'billing_unavailable', 'The checkout could not be started just now.', cors);
     }
     const back = cfg.billing.appOrigin;
     const idempotencyKey = `checkout:${who.uid}:${plan}:${period}:${Math.floor(now() / CHECKOUT_WINDOW_MS)}`;
@@ -351,6 +394,21 @@ export function createBilling({ logger, now, fetch: fetchImpl = (input, init) =>
   }
 
   return { ready, checkout, status, portal, webhook, beyondAccess, recordSubscription };
+}
+
+/**
+ * Why a Stripe price may not be sold as this plan and period (CHECKOUT_PRICE_RULES): the first rule it breaks, or ''.
+ * @param {any} p @param {'paid' | 'ultra'} plan @param {'monthly' | 'yearly'} period
+ */
+export function priceFault(p, plan, period) {
+  if (p?.lookup_key !== `hushmallow.${plan}.${period}`) return 'lookup_key';
+  if (p.currency !== CHECKOUT_PRICE_RULES.currency) return 'currency';
+  if (p.type !== 'recurring') return 'type';
+  if (p.recurring?.interval !== CHECKOUT_PRICE_RULES.interval[period]) return 'interval';
+  if (p.recurring?.interval_count !== 1) return 'interval_count';
+  if (p.active !== true) return 'inactive';
+  if (p.tax_behavior !== CHECKOUT_PRICE_RULES.tax_behavior) return 'tax_behavior';
+  return '';
 }
 
 /** An https URL from Stripe's answer, or null. @param {unknown} v */

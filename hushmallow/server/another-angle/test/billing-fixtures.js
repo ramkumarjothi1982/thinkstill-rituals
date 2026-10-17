@@ -66,10 +66,24 @@ export function subscription(over = {}, { price = PRICES.ultraMonthly, end = (CL
   };
 }
 
+/** The four configured prices as the checkout's price check wants them (src/billing/routes.js CHECKOUT_PRICE_RULES). */
+export const PRICE_SLOTS = Object.freeze({
+  [PRICES.paidMonthly]: ['paid', 'monthly'], [PRICES.paidYearly]: ['paid', 'yearly'],
+  [PRICES.ultraMonthly]: ['ultra', 'monthly'], [PRICES.ultraYearly]: ['ultra', 'yearly'],
+});
+/** A Stripe price for that plan and period that may be sold (AUD, GST-inclusive, recurring, active, its lookup key), with `over` on top. */
+export function price(id, plan, period, over = {}) {
+  return {
+    id, object: 'price', active: true, currency: 'aud', type: 'recurring', tax_behavior: 'inclusive', lookup_key: `hushmallow.${plan}.${period}`,
+    recurring: { interval: period === 'monthly' ? 'month' : 'year', interval_count: 1, usage_type: 'licensed' }, ...over,
+  };
+}
+
 /**
  * A fake Stripe + sign-in project behind one fetch, recording every call. Stripe: checkout sessions (create, retrieve,
- * expire), portal sessions, customers, prices, subscriptions (retrieve, and list by customer). `fail` makes every call
- * whose path matches answer with that status and error (a restricted key without a permission, Stripe down).
+ * expire), portal sessions, customers, prices (the four configured ones, sellable), subscriptions (retrieve, and list
+ * by customer). `fail` makes every call whose path matches answer with that status and error (a restricted key without
+ * a permission, Stripe down).
  */
 export function upstream({ users = { [TOKEN]: { id: UID, email: 'ana@example.com' } } } = {}) {
   /** @type {{ url: string, path: string, method: string, headers: Record<string, string>, form: URLSearchParams | null, query: URLSearchParams }[]} */
@@ -82,6 +96,7 @@ export function upstream({ users = { [TOKEN]: { id: UID, email: 'ana@example.com
   const sessions = new Map();
   /** @type {Map<string, any>} */
   const customers = new Map();
+  for (const [id, [plan, period]] of Object.entries(PRICE_SLOTS)) prices.set(id, price(id, plan, period));
   const o = {
     calls, subs, prices, sessions, customers, users, checkoutUrl: 'https://checkout.stripe.com/c/pay/cs_test_a1',
     /** @type {{ path: RegExp, status: number, error: Record<string, string> } | null} */

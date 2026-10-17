@@ -16,6 +16,7 @@ import { verifyWebhookSignature, signWebhookPayload, formEncode, SIGNATURE_TOLER
 import { memoryBillingNamespace, billingClient, summarise, supersedes, effectiveTier, planForPrice, PERIOD_GRACE_MS, EVENT_KEEP_MS, Billing } from '../src/billing/store.js';
 import { createAccountVerifier } from '../src/billing/account.js';
 import { CHECKOUT_WINDOW_MS } from '../src/billing/routes.js';
+import { price as sellable, PRICE_SLOTS } from './billing-fixtures.js';
 import { readConfig, SUPABASE_PROJECT_URL, STAGING_SUPABASE_PROJECT_URL } from '../src/config.js';
 import { fromB64url } from '../src/auth/tokens.js';
 import worker from '../src/index.js';
@@ -82,6 +83,9 @@ function upstream({ users = { [TOKEN]: { id: UID, email: 'ana@example.com' } } }
     }
     if (u.origin !== 'https://api.stripe.com') throw new TypeError('unexpected host');
     if (o.stripeDown) return reply(500, { error: { type: 'api_error', message: 'down' } });
+    // checkout's price check: the four configured prices, sellable
+    const pm = /^\/v1\/prices\/(price_[A-Za-z0-9]+)$/.exec(u.pathname);
+    if (call.method === 'GET' && pm) return PRICE_SLOTS[pm[1]] ? reply(200, sellable(pm[1], ...PRICE_SLOTS[pm[1]])) : reply(404, { error: { code: 'resource_missing' } });
     if (call.method === 'POST' && u.pathname === '/v1/checkout/sessions') return reply(200, { id: 'cs_test_a1', object: 'checkout.session', url: o.checkoutUrl });
     if (call.method === 'POST' && u.pathname === '/v1/billing_portal/sessions') return reply(200, { id: 'bps_1', object: 'billing_portal.session', url: 'https://billing.stripe.com/p/session/test_1' });
     const m = /^\/v1\/subscriptions\/(sub_[A-Za-z0-9]+)$/.exec(u.pathname);
@@ -348,8 +352,10 @@ test('checkout: the account is checked with the sign-in project, then a subscrip
   assert.equal(sb.url, `${SUPABASE}/auth/v1/user`);
   assert.equal(sb.headers.apikey, PK);
   assert.equal(sb.headers.authorization, `Bearer ${TOKEN}`);
-  const [st] = s.up.stripe();
-  assert.equal(st.path, '/v1/checkout/sessions');
+  // the price is read first (src/billing/routes.js CHECKOUT_PRICE_RULES)
+  const sessions = () => s.up.stripe().filter((c) => c.method === 'POST' && c.path === '/v1/checkout/sessions');
+  assert.deepEqual(s.up.stripe().map((c) => `${c.method} ${c.path}`), [`GET /v1/prices/${PRICES.ultraYearly}`, 'POST /v1/checkout/sessions']);
+  const [st] = sessions();
   assert.equal(st.headers.authorization, `Bearer ${SK}`);
   assert.equal(st.headers['content-type'], 'application/x-www-form-urlencoded');
   const f = Object.fromEntries(st.form);
@@ -360,7 +366,7 @@ test('checkout: the account is checked with the sign-in project, then a subscrip
   });
   // Flow monthly maps to its own price
   await s.app.fetch(billingReq('/v1/billing/checkout', { body: { plan: 'paid', period: 'monthly' } }), s.env);
-  assert.equal(s.up.stripe()[1].form.get('line_items[0][price]'), PRICES.paidMonthly);
+  assert.equal(sessions()[1].form.get('line_items[0][price]'), PRICES.paidMonthly);
   // the account answer is kept a minute: no second question to the sign-in project, then asked again
   assert.equal(s.up.supabase().length, 1);
   s.now.advance(61000);
@@ -413,7 +419,7 @@ test('checkout: refusals (no account, a dead session, bad bodies, no price, Stri
 test('checkout: two tabs at once get one Checkout Session (one idempotency key per account, plan and period, for two minutes)', async () => {
   const s = setup();
   const post = (plan, period, token = TOKEN) => s.app.fetch(billingReq('/v1/billing/checkout', { body: { plan, period }, token }), s.env);
-  const keys = () => s.up.stripe().map((c) => c.headers['idempotency-key']);
+  const keys = () => s.up.stripe().filter((c) => c.path === '/v1/checkout/sessions').map((c) => c.headers['idempotency-key']);
   await Promise.all([post('ultra', 'monthly'), post('ultra', 'monthly')]);
   const [a, b] = keys();
   assert.ok(a && a === b, 'the same key, so Stripe gives back the same session: it can be paid once');
@@ -426,9 +432,10 @@ test('checkout: two tabs at once get one Checkout Session (one idempotency key p
   assert.equal(new Set(keys()).size, 5, 'another period, plan or account, or a later try: a key of its own');
   for (const k of keys()) assert.ok(k.length <= 255, 'within Stripe\'s limit');
   // the portal and the webhook's reads carry none
+  const before = s.up.stripe().length;
   await subscribe(s);
   await s.app.fetch(billingReq('/v1/billing/portal', { body: {} }), s.env);
-  assert.deepEqual(s.up.stripe().filter((c) => c.path !== '/v1/checkout/sessions').map((c) => c.headers['idempotency-key']), [undefined, undefined]);
+  assert.deepEqual(s.up.stripe().slice(before).map((c) => [c.path, c.headers['idempotency-key']]), [['/v1/subscriptions/sub_Test123', undefined], ['/v1/billing_portal/sessions', undefined]]);
   assertClean(s.logs);
 });
 
@@ -1031,7 +1038,7 @@ test('placeholder price ids (price_TODO…) count as unset: billing answers "not
   assert.equal(m.up.stripe().length, 0, 'a placeholder is never sent to Stripe');
   const mo = await m.app.fetch(billingReq('/v1/billing/checkout', { body: { plan: 'ultra', period: 'monthly' } }), m.env);
   assert.equal(mo.status, 200);
-  assert.equal(m.up.stripe()[0].form.get('line_items[0][price]'), PRICES.ultraMonthly);
+  assert.equal(m.up.stripe().find((c) => c.path === '/v1/checkout/sessions').form.get('line_items[0][price]'), PRICES.ultraMonthly);
   // nothing set at all: the general message, no word of placeholders
   const off = setup({ env: makeEnv({ PROVIDER: 'mock' }) });
   const r = await off.app.fetch(billingReq('/v1/billing/status'), off.env);
