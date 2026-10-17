@@ -686,11 +686,21 @@ test('director: a watchdog takes over when the shared Mallow loop stops ticking,
     tk.tick();
     assert.equal(D.debug.loop, 'rig-ticker');
     const t0 = D.debug.time;
-    await new Promise((r) => setTimeout(r, 650));              // the ticker never ticks
-    // (a busy runner can hold the 250 ms watchdog's timer, or its one probe frame, past those 650 ms: wait on, 5 s at most)
-    for (const t1 = Date.now(); !(D.debug.loop === 'raf' && D.debug.time > t0) && Date.now() - t1 < 5000;) await new Promise((r) => setTimeout(r, 10));
-    assert.equal(D.debug.loop, 'raf', 'own requestAnimationFrame');
-    assert.ok(D.debug.time > t0, 'the world kept moving');
+    // the ticker never ticks again. The watchdog's 250 ms interval, begun with the loop, sees it stale 250-500 ms after
+    // that tick, asks for one probe frame (16 ms) and then runs the world's own frames (16 ms to the first): 650 ms of
+    // the director's timers is the bound, as it always was. A busy runner can hold those timers back, so the bound also
+    // holds what the runner held back meanwhile, measured: the test polls every 10 ms and adds up how late each of its
+    // own timers fired (a stall that delays the director's timers delays these too). A slower watchdog still misses it.
+    const from = performance.now();
+    let lag = 0;
+    while (!(D.debug.loop === 'raf' && D.debug.time > t0) && performance.now() - from <= 650 + lag) {
+      const a = performance.now();
+      await new Promise((r) => setTimeout(r, 10));
+      lag += Math.max(0, performance.now() - a - 10);
+    }
+    const waited = `${(performance.now() - from).toFixed(0)} ms, ${lag.toFixed(0)} ms of it the runner's timer lag`;
+    assert.equal(D.debug.loop, 'raf', `own requestAnimationFrame (none after ${waited})`);
+    assert.ok(D.debug.time > t0, `the world kept moving (not after ${waited})`);
     tk.tick();                                                // the shared loop is back
     assert.equal(D.debug.loop, 'rig-ticker');
     D.destroy();
