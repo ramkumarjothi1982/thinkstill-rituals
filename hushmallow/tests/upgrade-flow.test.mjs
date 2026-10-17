@@ -772,6 +772,46 @@ test('the welcome is still with reduced motion or low stimulation; a yearly move
   await sleepFor(500);
 });
 
+test('the smaller welcome centres the Mallow on screen (app.world.mallowId: the Hushfold\'s mallowForNow() until one is picked), never always Noomi', async () => {
+  installDom();
+  const { openPlanWelcome, smallTrio } = await import('../src/app/scenes/beyond-welcome.js');
+  const trio = (world, mallow = null) => { const { app } = welcomeApp({ mallow }); app.world = { ...app.world, ...world }; return smallTrio(app); };
+  const i = MALLOW_IDS.indexOf('pipzi'), n = MALLOW_IDS.length;
+  assert.deepEqual(trio({ mallowId: 'pipzi' }), [MALLOW_IDS[(i + n - 1) % n], 'pipzi', MALLOW_IDS[(i + 1) % n]], 'no pick: the one on screen, its neighbours beside it');
+  assert.equal(trio({ mallowId: 'boppo' }, 'blubi')[1], 'boppo', 'the one on screen, over an older pick');
+  assert.equal(trio({ mallowId: 'nobody' }, 'blubi')[1], 'blubi', 'not a Mallow: the pick');
+  assert.equal(trio({})[1], 'noomi', 'nothing known: Noomi, as before');
+  const { app } = welcomeApp();
+  app.world = { ...app.world, mallowId: 'pipzi' };
+  const small = await openPlanWelcome(app, { tier: 'paid', period: 'yearly', from: { tier: 'paid', period: 'monthly' } });
+  assert.equal(all(small.el).filter((n) => n.tagName === 'IMG').map((i) => i.parentNode.attrs['data-mallow'])[1], 'pipzi');
+  small.close();
+  await sleepFor(500);
+});
+
+test('the gathering: all seven faces in sight (the back row raised over the front), and it gives way on a short screen or a large text size', async () => {
+  installDom();
+  const { openPlanWelcome } = await import('../src/app/scenes/beyond-welcome.js');
+  const { app } = welcomeApp();
+  const s = await openPlanWelcome(app, { tier: 'ultra', period: 'monthly', from: { tier: 'paid', period: 'monthly' } });
+  const spot = Object.fromEntries(all(s.el).filter((n) => n.attrs?.['data-mallow']).map((n) => [n.attrs['data-mallow'], { x: parseFloat(n.style.left), y: parseFloat(n.style.bottom), w: parseFloat(n.style.width), z: Number(n.style.zIndex) }]));
+  // Pipzi and Boppo stand behind Zuzu, Blubi and Loomi: raised so their faces (the upper half of each picture) clear them
+  const H = 56;   // the gathering's height, in % of its width (aspect-ratio 100 / 56)
+  const top = (id) => spot[id].y + (spot[id].w * 100) / H;   // the picture's top, in % of the gathering's height
+  for (const back of ['pipzi', 'boppo']) {
+    assert.ok(spot[back].z < spot.zuzu.z && spot[back].y >= 34, `${back}: raised (${spot[back].y}%)`);
+    // (a face sits in the upper part of its picture: its eyes about 14 points below the picture's top)
+    for (const front of ['zuzu', 'blubi', 'loomi']) assert.ok(top(back) - top(front) >= 14 || Math.abs(spot[back].x - spot[front].x) > (spot[back].w + spot[front].w) / 2, `${back}'s face clears ${front}`);
+  }
+  s.close();
+  const css = read('src/ui/plan-welcome.css');
+  assert.match(css, /@media \(max-height: 700px\) \{ \.is-beyond \.pw-gather \{ width: min\(100%, 400px, 34dvh\); \} \}/, 'a short screen: capped by height');
+  assert.match(css, /:root\[data-text-scale="large"\] \.is-beyond \.pw-gather \{ width: min\(100%, 400px, 40dvh\); \}/, 'a large text size (type.js setTextScale)');
+  assert.match(css, /@media \(max-height: 700px\) \{ :root\[data-text-scale="large"\] \.is-beyond \.pw-gather \{ width: min\(100%, 400px, 30dvh\); \} \}/);
+  assert.match(read('src/ui/type.js'), /if \(v > 1\.12\) root\.dataset\.textScale = 'large'/, 'the attribute the CSS reads');
+  await sleepFor(500);
+});
+
 test('the welcome\'s CSS: design tokens only, nothing from elsewhere, nothing moving when still, targets ≥ 44 px', () => {
   const css = read('src/ui/plan-welcome.css');
   assert.doesNotMatch(css, /url\(|https?:|@import/, 'no external request (CSP: self)');

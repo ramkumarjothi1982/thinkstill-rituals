@@ -57,17 +57,23 @@ export function planDetail({ period } = {}) {
 }
 
 // Where each Mallow stands in the gathering (centre x %, bottom y %, width %, depth): Zuzu, Another Angle's guide,
-// in front in the middle; the others close around, the back row a little raised.
+// in front in the middle; the others close around, the back row raised enough that Pipzi's and Boppo's faces show
+// over Zuzu, Blubi and Loomi (all seven faces in sight: "the seven Mallows, gathered together").
 const GATHER = Object.freeze([
-  ['glitzi', 10, 20, 19, 1], ['blubi', 23.5, 5, 23, 2], ['pipzi', 35, 25, 20, 1], ['zuzu', 50, 1, 30, 4],
-  ['boppo', 65, 25, 20, 1], ['loomi', 76.5, 5, 23, 2], ['noomi', 90, 20, 19, 1],
+  ['glitzi', 10, 20, 19, 1], ['blubi', 23.5, 5, 23, 2], ['pipzi', 35, 34, 20, 1], ['zuzu', 50, 1, 30, 4],
+  ['boppo', 65, 34, 20, 1], ['loomi', 76.5, 5, 23, 2], ['noomi', 90, 20, 19, 1],
 ]);
 const SMALL = Object.freeze([[30, 6, 30, 1], [50, 2, 38, 2], [70, 6, 30, 1]]);
 const SPARKS = Object.freeze([[6, 78], [22, 92], [41, 86], [60, 95], [79, 88], [95, 74]]);
 
-/** The three Mallows of the smaller welcome: the home Mallow in the middle, its two neighbours beside it. */
-function smallTrio(app) {
-  const home = MALLOWS[app?.prefs?.get?.('mallow')] ? app.prefs.get('mallow') : 'noomi';
+/**
+ * The three Mallows of the smaller welcome: the home Mallow in the middle (the one on screen, app.world.mallowId: the
+ * Hushfold shows mallowForNow() until someone picks one, and only a pick writes the 'mallow' pref), its two
+ * neighbours beside it.
+ */
+export function smallTrio(app) {
+  const pick = (id) => (typeof id === 'string' && MALLOWS[id] ? id : null);
+  const home = pick(app?.world?.mallowId) || pick(app?.prefs?.get?.('mallow')) || 'noomi';
   const i = MALLOW_IDS.indexOf(home), n = MALLOW_IDS.length;
   return [MALLOW_IDS[(i + n - 1) % n], home, MALLOW_IDS[(i + 1) % n]];
 }
