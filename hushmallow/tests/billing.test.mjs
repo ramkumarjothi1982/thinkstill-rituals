@@ -1420,7 +1420,8 @@ test('Another Angle: the account\'s token goes with /v1/session only when billin
   assert.match(consent, /sendsAccount\(app\) \? ACCOUNT_CHECK : ' Never your name or account\.'/);
   assert.match(consent, /export const sendsAccount = \(app\) => !!app\?\.billing;/, 'the same condition as the token');
   const { ACCOUNT_CHECK } = await import('../src/beyond/consent.js');
-  assert.equal(ACCOUNT_CHECK, ' When you’re signed in, it also sends a sign-in token for your account, so our server can check your plan. Never your name or email.');
+  // (17 Oct 2026) the token is a Supabase access token: it carries the email and the sign-up name, so the line says so
+  assert.equal(ACCOUNT_CHECK, ' When you’re signed in, it also sends your account’s sign-in token, so our server can check your plan. The token carries your email (and the name you gave at sign-up, if any); our server uses only your account’s id and doesn’t log or store it.');
   // a token that cannot be had (signed out, offline): the session goes without one
   const none = await run({ accountToken: async () => null });
   assert.equal(none.find((c) => c.path === '/v1/session').init.headers.authorization, undefined);
@@ -1447,6 +1448,16 @@ test('consent: with billing on, a yes given before (the notice did not name the 
   setConsent(store, 'yes', { account: true });
   assert.equal(consentState(store, { account: true }), 'yes');
   assert.equal(consentState(store), 'yes', 'a yes to the fuller notice counts with billing off too');
+  // (17 Oct 2026) a yes to the account line before it said what the token carries ("Never your name or email", recorded
+  // as account: true) is asked again, once, with billing on; it still counts with billing off (no token is sent then)
+  const { ACCOUNT_NOTICE } = await import('../src/beyond/consent.js');
+  assert.equal(ACCOUNT_NOTICE, 2);
+  assert.equal(store.get(STORE_KEYS.consent).account, ACCOUNT_NOTICE, 'Accept records the account line it showed');
+  store.set(STORE_KEYS.consent, { v: CONSENT_VERSION, choice: 'yes', at: '2026-10-16', account: true });
+  assert.equal(consentState(store, { account: true }), 'unasked', 'the older account line: asked again');
+  assert.equal(consentState(store), 'yes', 'billing off: it still counts');
+  setConsent(store, 'yes', { account: true });
+  assert.equal(consentState(store, { account: true }), 'yes', 'asked once');
   // a "Not now" stays one (nothing is sent then); off, the record is exactly as before
   store.set(STORE_KEYS.consent, { v: CONSENT_VERSION, choice: 'no', at: '2026-10-12' });
   assert.equal(consentState(store, { account: true }), 'no');

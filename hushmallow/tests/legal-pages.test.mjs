@@ -406,8 +406,20 @@ test('the Privacy Policy: "AI and sensitive information" says what Another Angle
   const client = read('src/beyond/angle-client.js');
   assert.match(client, /What is sent: POST \/v1\/session \{ device_id, platform, app_version, invite\? \}/);
   assert.match(ai, /a random code for this device, the app’s version and the type of device \(and any tester code\)/);
-  assert.match(C.ACCOUNT_CHECK, /sign-in token for your account, so our server can check your plan\. Never your name or email\./);
-  assert.match(ai, /the start also sends your account’s access token, so our server can check your plan[^.]*\. Never your name or email, and never with your words\./);
+  // the token is a Supabase access token: its claims carry the account's email and its user_metadata, which holds the name
+  // given at sign-up and the sign-up tick's record (client.js signUp's options.data; the fake issues the email claim too).
+  // The server forwards it to the account service and uses only the account id (billing/account.js: nothing logged, the
+  // token not kept, only a SHA-256 of it in memory for a minute). The card and the policy say so, never "not your email"
+  assert.match(read('src/auth/client.js'), /const data = \{ \.\.\.\(n \? \{ display_name: n \} : \{\}\), \.\.\.consentRecord\(now\(\)\) \};/);
+  assert.match(read('tools/auth/fake-supabase.mjs'), /sub: u\.id, email: u\.email, role: 'authenticated'/);
+  const verifier = readFileSync(resolve(root, 'server/another-angle/src/billing/account.js'), 'utf8');
+  assert.match(verifier, /under a SHA-256 of the token \(the\n\/\/ token itself is not kept\)\. Nothing here is logged\./);
+  assert.match(verifier, /return \{ ok: true, uid \};\n  \};\n\}/, 'the verifier answers with the account id alone');
+  for (const s of [C.ACCOUNT_CHECK, ai]) assert.doesNotMatch(s, /Never your name or email/, 'the token carries both');
+  assert.equal(C.ACCOUNT_CHECK, ' When you’re signed in, it also sends your account’s sign-in token, so our server can check your plan. The token carries your email (and the name you gave at sign-up, if any); our server uses only your account’s id and doesn’t log or store it.');
+  assert.match(ai, /the start also sends your account’s access token, so our server can confirm your account with our account service and check your plan\. Like any access token from our account service, it carries your account’s email address and what was recorded with your account when you signed up: your name, if you gave one, and your agreement to the Terms and this policy \(section 2\)\. Our server uses only your account’s id from it: it doesn’t log the token or what it carries, and keeps only a one-way scrambled code of it, in memory for up to a minute, so it needn’t ask again\. The token is never sent with your words, and never to Anthropic\./);
+  assert.doesNotMatch(ai, /Never your photos or your name/, 'the name may be in the token');
+  assert.match(ai, /Never your photos; and Anthropic is never sent your account, its email address or the name on it\./);
   // the session code: at most the server's testing-token lifetime (30 days by default)
   assert.match(readFileSync(resolve(root, 'server/another-angle/src/config.js'), 'utf8'), /testingTokenTtlMs: int\(env\.TESTING_TOKEN_TTL_DAYS, 30,/);
   assert.match(ai, /keeps on your device for up to 30 days/);

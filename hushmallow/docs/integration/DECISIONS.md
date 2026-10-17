@@ -190,6 +190,10 @@ Also on the pages since 17 October, from the code rather than the owner: the Ter
 | Accounts made before this release | No record, and not asked again. A version change does not ask existing accounts to accept again either: whether and how to ask (a prompt at sign-in, or notice under the Terms' "Changes to these terms") is the owner's decision |
 | Draft pages | Sign-ups record the draft versions (`…-draft`): the pages say they are not in force yet |
 
+**Corrections after review (17 Oct 2026).** Each one makes the pages say what the code does; `tests/legal-pages.test.mjs` checks it.
+
+- **Another Angle's account token** (web subscriptions on). It is the account's Supabase access token, whose claims carry the account's email and its `user_metadata` (the name given at sign-up and the tick's record). The consent card's account line (`ACCOUNT_CHECK`, `src/beyond/consent.js`) and the policy's §3 said "Never your name or email"; both now say what the token carries, and that the server uses only the account id from it and doesn't log or store it (`server/another-angle/src/billing/account.js`). A yes given to the older line is asked again, once, while billing is on (`ACCOUNT_NOTICE` 2); with billing off nothing changes.
+
 Placeholders left for the owner: the legal entity name and postal address (check ABN Lookup), confirming New South Wales, the effective dates, other privacy laws now that the market is worldwide (with a lawyer), Brevo's company name, location and agreement, how long Cloudflare keeps the Worker's logs, how long Supabase keeps its sign-in security records, whether to keep the GitHub Pages copy, the website's host and any analytics or cookies, the reply time for access and complaints and whether access is free, taxes, how a plan switch is charged, the price-change notice period, and (with a lawyer) the APP 8 basis for each overseas provider.
 
 ## Still open for the owner

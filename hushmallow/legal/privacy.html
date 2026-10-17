@@ -117,9 +117,9 @@
   <ul>
     <li><strong>For each angle:</strong> only the words you choose, the feeling and the kind of help you pick, and (for another angle) the lines you’ve already seen and what kind they were, with the app’s language and a one-off random code.</li>
     <li><strong>To start:</strong> a random code for this device, the app’s version and the type of device (and any tester code), so the daily allowance stays fair. Our server replies with a session code, which the app keeps on your device for up to 30 days and sends with each request.</li>
-    <li><strong>Signed in, with web subscriptions:</strong> on the web (not in the App Store app), when you’re signed in, the start also sends your account’s access token, so our server can check your plan with our account service. Never your name or email, and never with your words. The daily allowance is then counted for your account.</li>
+    <li><strong>Signed in, with web subscriptions:</strong> on the web (not in the App Store app), when you’re signed in, the start also sends your account’s access token, so our server can confirm your account with our account service and check your plan. Like any access token from our account service, it carries your account’s email address and what was recorded with your account when you signed up: your name, if you gave one, and your agreement to the Terms and this policy (section 2). Our server uses only your account’s id from it: it doesn’t log the token or what it carries, and keeps only a one-way scrambled code of it, in memory for up to a minute, so it needn’t ask again. The token is never sent with your words, and never to Anthropic. The daily allowance is then counted for your account.</li>
     <li><strong>For a feedback tap:</strong> which button, which Mallow and what kind of angle it was (and its version), never your words.</li>
-    <li><strong>Never</strong> your photos or your name, and Anthropic is never sent your account.</li>
+    <li><strong>Never</strong> your photos; and Anthropic is never sent your account, its email address or the name on it.</li>
   </ul>
   <h3 id="angle-server">What our server keeps</h3>
   <p><span class="brand-name">hushmallow</span> stores nothing you write and doesn’t log your words. Our server runs on Cloudflare (<a href="#hosting">section 5</a>) and keeps only:</p>
