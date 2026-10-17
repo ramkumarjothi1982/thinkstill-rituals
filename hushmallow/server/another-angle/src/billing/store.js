@@ -13,9 +13,9 @@
 // id (a read the server made itself, such as checkout's return).
 //
 // The record: { v, subscription, customer, status, tier, period,
-// current_period_end (ms), cancel_at_period_end, as_of (ms) }. Stripe ids,
-// Stripe's status and the plan only: never words, feelings, card details,
-// names or emails.
+// current_period_end (ms), cancel_at_period_end, as_of (ms), past_due_since
+// (ms, only while past_due) }. Stripe ids, Stripe's status and the plan only:
+// never words, feelings, card details, names or emails.
 //
 // The state machine (supersedes): for the same subscription, a newer answer
 // (as_of: when the server asked Stripe for it) replaces an older one and an
@@ -26,12 +26,14 @@
 //
 // Access (effectiveTier): Stripe's active, trialing or past_due (Stripe is
 // still retrying the card; docs/PAYMENTS.md), until a day after the period
-// ends (a renewal event running late never locks anyone out). Anything else
+// ends (a renewal event running late never locks anyone out), and past_due
+// for at most PAST_DUE_GRACE_MS from when it began. Anything else
 // (canceled, unpaid, incomplete, incomplete_expired, paused) is no plan.
 
 /**
  * @typedef {{ v: 1, subscription: string, customer: string | null, status: string, tier: 'none' | 'paid' | 'ultra',
- *   period: 'monthly' | 'yearly' | null, current_period_end: number | null, cancel_at_period_end: boolean, as_of: number }} SubRecord
+ *   period: 'monthly' | 'yearly' | null, current_period_end: number | null, cancel_at_period_end: boolean, as_of: number,
+ *   past_due_since?: number }} SubRecord
  * @typedef {{ get(key: string): Promise<any>, put(key: string, v: any): Promise<void>, delete(key: string | string[]): Promise<any>,
  *   list(opts?: { prefix?: string }): Promise<Map<string, any>> }} Storage
  */
@@ -40,6 +42,13 @@ const DAY_MS = 86400000;
 export const PERIOD_GRACE_MS = DAY_MS;
 export const EVENT_KEEP_MS = 30 * DAY_MS;
 export const ACCESS = new Set(['active', 'trialing', 'past_due']);
+/**
+ * Access while a renewal payment keeps failing (decision D5): past_due gives access for this long after the
+ * subscription first read past_due, then none, so "leave it past due" when retries run out can never mean a whole
+ * unpaid year (and its model cost). Keep it in step with the Smart Retries window (about two weeks), so a card fixed
+ * during the retries never loses access.
+ */
+export const PAST_DUE_GRACE_MS = 14 * DAY_MS;
 const STATUSES = new Set(['incomplete', 'incomplete_expired', 'trialing', 'active', 'past_due', 'canceled', 'unpaid', 'paused']);
 const RANK = { none: 0, paid: 1, ultra: 2 };
 const PRODUCT = /^hushmallow\.(paid|ultra)\.(monthly|yearly)$/;
@@ -119,16 +128,33 @@ export function summarise(sub, prices, asOf) {
   };
 }
 
+/** When a past_due record's past_due began: the DO's mark, else (a record from before the mark) when it was read. @param {SubRecord} rec */
+const pastDueSince = (rec) => (typeof rec.past_due_since === 'number' ? rec.past_due_since : rec.as_of);
+
 /** The plan this record gives right now. @param {SubRecord | null | undefined} rec @param {number} now */
 export function effectiveTier(rec, now) {
   if (!rec || !ACCESS.has(rec.status)) return 'none';
   if (rec.current_period_end != null && rec.current_period_end + PERIOD_GRACE_MS <= now) return 'none';
+  if (rec.status === 'past_due' && now > pastDueSince(rec) + PAST_DUE_GRACE_MS) return 'none';
   return rec.tier;
 }
 
 /** Until when this record gives access (for session tokens). @param {SubRecord} rec @param {number} now @param {number} fallbackMs */
 export function accessUntil(rec, now, fallbackMs) {
-  return rec.current_period_end != null ? rec.current_period_end + PERIOD_GRACE_MS : now + fallbackMs;
+  const until = rec.current_period_end != null ? rec.current_period_end + PERIOD_GRACE_MS : now + fallbackMs;
+  return rec.status === 'past_due' ? Math.min(until, pastDueSince(rec) + PAST_DUE_GRACE_MS) : until;
+}
+
+/**
+ * The record as kept: past_due_since set when the subscription first reads past_due, kept while it stays past_due,
+ * gone otherwise. Only the DO decides it (a caller's value is dropped).
+ * @param {SubRecord | null} cur @param {SubRecord} rec @returns {SubRecord}
+ */
+export function withPastDue(cur, rec) {
+  const { past_due_since: _caller, ...next } = rec;
+  if (next.status !== 'past_due') return next;
+  const still = !!cur && cur.subscription === next.subscription && cur.status === 'past_due';
+  return { ...next, past_due_since: still ? Math.min(pastDueSince(/** @type {SubRecord} */ (cur)), next.as_of) : next.as_of };
 }
 
 /** Does `next` replace `cur`? (the state machine in the header) @param {SubRecord | null} cur @param {SubRecord} next */
@@ -214,8 +240,9 @@ export class Billing {
   /** The state machine's write (supersedes): true when `record` replaced the account's. @param {SubRecord} record */
   async write(record) {
     const cur = (await this.storage.get('sub')) || null;
-    const applied = supersedes(cur, record);
-    if (applied) await this.storage.put('sub', record);
+    const next = withPastDue(cur, record);
+    const applied = supersedes(cur, next);
+    if (applied) await this.storage.put('sub', next);
     return applied;
   }
 

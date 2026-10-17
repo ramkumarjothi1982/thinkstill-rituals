@@ -675,7 +675,8 @@ test('subscription summary: price → plan, the period end (item or subscription
   assert.equal(summarise(subscription({}, { price: 'price_Unknown1' }), prices, 5).tier, 'none', 'an unknown price gives nothing');
   const end = CLOCK_START + 30 * DAY;
   for (const [st, tier] of [['active', 'ultra'], ['trialing', 'ultra'], ['past_due', 'ultra'], ['canceled', 'none'], ['unpaid', 'none'], ['incomplete', 'none'], ['incomplete_expired', 'none'], ['paused', 'none'], ['unknown', 'none']]) {
-    assert.equal(effectiveTier({ ...s, status: st }, CLOCK_START), tier, st);
+    // read just now (past_due counts 14 days from its read: test/billing-state.test.js)
+    assert.equal(effectiveTier({ ...s, status: st, as_of: CLOCK_START }, CLOCK_START), tier, st);
   }
   assert.equal(effectiveTier(s, end + PERIOD_GRACE_MS - 1), 'ultra');
   assert.equal(effectiveTier(s, end + PERIOD_GRACE_MS), 'none');

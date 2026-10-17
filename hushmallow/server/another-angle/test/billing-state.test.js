@@ -5,14 +5,14 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { clock, CLOCK_START } from './helpers.js';
+import { clock, req, CLOCK_START } from './helpers.js';
 import { createStripe, signWebhookPayload, SUBSCRIPTION_LIST_LIMIT } from '../src/billing/stripe.js';
-import { memoryBillingNamespace, billingClient, summarise, planForPrice, priceMismatch } from '../src/billing/store.js';
+import { memoryBillingNamespace, billingClient, summarise, planForPrice, priceMismatch, effectiveTier, accessUntil, PAST_DUE_GRACE_MS } from '../src/billing/store.js';
 import { createBilling, EVENTS } from '../src/billing/routes.js';
 import { readConfig, STRIPE_API_VERSION_EXPECTED } from '../src/config.js';
 import { createLogger } from '../src/log.js';
 import {
-  upstream, billingEnv, subscription, setup, event, deliver, subscribe, status, lines, jwt, assertClean, withStagingProject,
+  upstream, billingEnv, subscription, setup, TOKEN, event, deliver, subscribe, status, lines, jwt, assertClean, withStagingProject,
   UID, OTHER, TEST_KEY, WHSEC, DAY, STAGING_SUPABASE, PRICES,
 } from './billing-fixtures.js';
 
@@ -351,4 +351,63 @@ test('the lookup key decides the plan; a configured id that disagrees with it is
   await subscribe(ok, subscription({}, { price: PRICES.ultraMonthly, lookup: 'hushmallow.ultra.monthly' }));
   assert.equal(lines(ok.logs).some((l) => l.status === 'price_mismatch'), false);
   assertClean([...s.logs, ...ok.logs]);
+});
+
+// ----------------------------------------------------------- past_due cap --
+test('past_due: access for 14 days from when the subscription first read past_due, then none; back to active clears it', async () => {
+  assert.equal(PAST_DUE_GRACE_MS, 14 * DAY);
+  const s = setup({ env: billingEnv({ ENTITLEMENT_MODE: 'billing' }) });
+  const yearly = { price: PRICES.ultraYearly, end: (CLOCK_START + 365 * DAY) / 1000 };
+  await subscribe(s, subscription({}, yearly));
+  const fail = async () => {
+    s.up.subs.set('sub_Test123', subscription({ status: 'past_due' }, yearly));
+    assert.equal((await deliver(s.app, s.env, event('invoice.payment_failed', objectFor('invoice.payment_failed'), s.now), { at: s.now() })).status, 200);
+  };
+  s.now.advance(60000);
+  const since = s.now();
+  await fail();
+  const rec = () => s.env.BILLING.instances.get(`user:${UID}`).map.get('sub');
+  assert.equal(rec().past_due_since, since);
+  // Stripe retries (another failure on day 5): still the first day it read past_due
+  s.now.advance(5 * DAY);
+  await fail();
+  assert.equal(rec().past_due_since, since);
+  // day 13: still Beyond, and a session lasts at most until the cap
+  s.now.set(since + 13 * DAY);
+  assert.deepEqual([(await status(s)).tier, (await status(s)).status], ['ultra', 'past_due']);
+  const ses = await s.app.fetch(req('/v1/session', { body: { device_id: 'device-aaaaaaaaaaaaaaaa' }, headers: { authorization: `Bearer ${TOKEN}` } }), s.env);
+  assert.equal(ses.status, 200);
+  assert.equal(Date.parse((await ses.json()).expires_at), since + PAST_DUE_GRACE_MS);
+  // day 15 (the yearly period runs another 350 days): no plan, though Stripe still says past_due
+  s.now.set(since + 15 * DAY);
+  assert.deepEqual([(await status(s)).tier, (await status(s)).status], ['none', 'past_due']);
+  const denied = await s.app.fetch(req('/v1/session', { body: { device_id: 'device-aaaaaaaaaaaaaaaa' }, headers: { authorization: `Bearer ${TOKEN}` } }), s.env);
+  assert.equal(denied.status, 403);
+  // the card is fixed: active again, the mark is cleared, and a later failure starts a new 14 days
+  s.up.subs.set('sub_Test123', subscription({}, yearly));
+  await deliver(s.app, s.env, event('invoice.paid', objectFor('invoice.paid'), s.now), { at: s.now() });
+  assert.equal((await status(s)).tier, 'ultra');
+  assert.equal('past_due_since' in rec(), false);
+  s.now.advance(DAY);
+  const again = s.now();
+  await fail();
+  assert.equal(rec().past_due_since, again);
+  assert.equal((await status(s)).tier, 'ultra');
+  assertClean(s.logs);
+});
+
+test('past_due cap on its own: a record without the mark counts from when it was read; the caller never sets the mark', async () => {
+  const prices = readConfig(billingEnv()).billing.prices;
+  const r = summarise(subscription({ status: 'past_due' }, { end: (CLOCK_START + 365 * DAY) / 1000 }), prices, CLOCK_START);
+  assert.equal(effectiveTier(r, CLOCK_START + 14 * DAY), 'ultra');
+  assert.equal(effectiveTier(r, CLOCK_START + 14 * DAY + 1), 'none');
+  assert.equal(effectiveTier({ ...r, past_due_since: CLOCK_START - 10 * DAY }, CLOCK_START + 5 * DAY), 'none', 'the mark, when there is one');
+  assert.equal(accessUntil(r, CLOCK_START, DAY), CLOCK_START + PAST_DUE_GRACE_MS);
+  assert.equal(effectiveTier({ ...r, status: 'active' }, CLOCK_START + 300 * DAY), 'ultra', 'active: the period decides, as before');
+  const t = clock();
+  const db = billingClient(memoryBillingNamespace({ now: t }));
+  await db.apply(UID, 'evt_P1', { ...r, as_of: t(), past_due_since: 1 });
+  assert.equal((await db.get(UID)).past_due_since, t(), 'the DO keeps its own mark');
+  await db.sync(UID, { ...r, status: 'active', as_of: t() + 1, past_due_since: 1 });
+  assert.equal('past_due_since' in (await db.get(UID)), false);
 });
