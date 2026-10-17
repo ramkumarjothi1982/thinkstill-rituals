@@ -547,8 +547,11 @@ Only if Claude should run the sandbox driver from its cloud session; otherwise r
    * **Network access** → **Allowed domains**: `api.stripe.com`,
      `hushmallow-another-angle-staging.vibyfy-chat.workers.dev` and `<staging ref>.supabase.co`. Keep "Allow
      package managers" ticked.
-   * **Network secrets** (or environment variables): `STRIPE_E2E_KEY` (the key from 1), `STAGING_E2E_EMAIL`
-     and `STAGING_E2E_PASSWORD` (the account from 2). A new session picks them up.
+   * **Environment variables** (not Network secrets: the drivers read these values themselves, and a password
+     travels inside the sign-in request): `STRIPE_E2E_KEY` (the key from 1), `STAGING_E2E_EMAIL` and
+     `STAGING_E2E_PASSWORD` (the account from 2), and the rehearsal's `REHEARSAL_A_EMAIL` and
+     `REHEARSAL_A_PASSWORD` (E2E-A). Anyone who can edit the environment can read them: staging test values only,
+     never production's. A new session picks them up; Claude starts one to run the drivers.
 4. No Stripe key ever goes into GitHub Actions: the driver is not part of any workflow.
 
 ### B13. The custom domain checkout.hushmallow.com (10 min, only after Claude's go-ahead)

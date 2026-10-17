@@ -35,6 +35,10 @@
 //    bandwidth), each once; and the Hushfold's logo as its <img> asks for it
 //    (logoPreload: the same srcset and sizes, no href), every candidate a
 //    shipped file.
+// 9. 404.html, the answer to every path that is not a file: as inert as the
+//    legal pages (no script, handler or inline style; a strict CSP meta tag),
+//    and it names only "/" and absolute /v/<version>/ files, which are in the
+//    site.
 // Prints a short summary; exits 1 with the list of problems.
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, readdirSync, realpathSync, statSync } from 'node:fs';
@@ -180,6 +184,31 @@ export async function checkSite(outArg, ver, { env = process.env } = {}) {
       referrer.set(p, 'auth/callback/index.html'); queue.push(p);
     }
     if (!cbNamed.includes(`/v/${ver}/src/auth/callback.js`)) problems.push(`auth/callback/index.html does not load /v/${ver}/src/auth/callback.js`);
+  }
+
+  // 404.html (9.): every path that is not a file gets it, at any depth, so it names only "/" and absolute
+  // /v/<version>/ files (any quoting, every srcset candidate), and it is as inert as the legal pages: no script,
+  // handler or inline style, and a strict policy of its own. Without it Pages serves index.html there instead.
+  const nfPath = join(out, '404.html');
+  if (!isFile(nfPath)) problems.push('404.html is missing (Pages would answer unknown paths with index.html)');
+  else {
+    const nf = readFileSync(nfPath, 'utf8').replace(/<!--[\s\S]*?-->/g, '');
+    if (/<script\b/i.test(nf)) problems.push('404.html has a <script> (it runs none)');
+    if (/<style\b|\sstyle\s*=/i.test(nf)) problems.push('404.html has inline style');
+    if (/<[a-z][^>]*\son[a-z]+\s*=/i.test(nf)) problems.push('404.html has an inline event handler');
+    if (/<(?:iframe|object|embed|form|base)\b/i.test(nf)) problems.push('404.html has an iframe, object, embed, form or base element');
+    const csp = /<meta http-equiv="Content-Security-Policy" content="([^"]+)"/i.exec(nf)?.[1] || '';
+    if (!/(^|;)\s*default-src 'none'/.test(csp) || /script-src|unsafe-|https?:|\*/.test(csp)) problems.push("404.html: no strict Content-Security-Policy meta tag (default-src 'none', no script)");
+    for (const [, name, dq, sq, uq] of nf.matchAll(/\s(href|src|srcset|imagesrcset|poster|data|action|formaction)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+))/gi)) {
+      const value = dq ?? sq ?? uq;
+      for (const x of /srcset$/i.test(name) ? value.split(',').map((c) => c.trim().split(/\s+/)[0]).filter(Boolean) : [value]) {
+        if (x === '/' && name.toLowerCase() === 'href') continue;
+        if (!x.startsWith(`/v/${ver}/`)) { problems.push(`404.html names ${x} (not "/" or an absolute /v/${ver}/ path)`); continue; }
+        const p = join(out, bare(x));
+        if (!isFile(p)) { problems.push(`404.html names ${x}, which is not in the site`); continue; }
+        referrer.set(p, '404.html'); queue.push(p);
+      }
+    }
   }
 
   function checkManifest(p) {

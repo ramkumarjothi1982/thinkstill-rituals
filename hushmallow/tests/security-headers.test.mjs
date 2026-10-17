@@ -128,8 +128,9 @@ test('cache: v/<version>/ is immutable, pages / version.json / public-config.js 
   const imm = 'public, max-age=31536000, immutable';
   for (const p of ['/v/0123abcd/src/app/main.js', '/v/0123abcd/src/auth/client.js', '/v/0123abcd/src/brand.js', '/v/0123abcd/assets/mallows/blubi.webp', '/v/0123abcd/vendor/supabase/supabase.js', '/v/0123abcd/src/ui/app.css']) assert.equal(get(prod, p, 'Cache-Control'), imm, p);
   for (const p of ['/', '/index.html', '/version.json', '/manifest.webmanifest', '/src/app/main.js', '/v/0123abcd/src/auth/public-config.js']) assert.equal(get(prod, p, 'Cache-Control'), 'no-cache', p);
-  // an unknown path (the single-page fallback serves index.html) keeps Pages' default (max-age=0, must-revalidate),
-  // and so does ANOTHER version's folder: after a deploy or a rollback it is the fallback page, never immutable code
+  // an unknown path matches no cache rule and keeps Pages' default (max-age=0, must-revalidate), and so does ANOTHER
+  // version's folder (gone after a deploy or a rollback): never immutable code. Both are answered by 404.html, which
+  // Pages sends with no-store whatever the rules say (tests/not-found.test.mjs)
   for (const p of ['/something', '/v/oldversion/src/app/main.js', '/v/oldversion/vendor/supabase/supabase.js']) assert.equal(get(prod, p, 'Cache-Control'), 'public, max-age=0, must-revalidate', p);
   assert.ok(!headersFile(SUPA, { version: '0123abcd' }).includes(':version'));
   assert.throws(() => headersFile(SUPA, { version: '../x' }));

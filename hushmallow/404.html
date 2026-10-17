@@ -1,0 +1,32 @@
+<!doctype html>
+<!-- Cloudflare Pages answers every path that is not a file with this page (status 404). Without it, Pages treats the
+     site as a single-page app and answers with index.html, whose relative paths, under a nested path such as
+     /plans/yearly, point at that fallback again: a blank page that kept asking for thousands of files. The app
+     routes only by #hash, so nothing needs that fallback. tools/build-site.sh rewrites every src/ and assets/ path
+     below to an absolute /v/<version>/ one (this page is served at any depth). No script: it never runs code. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; font-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#0a0818">
+<meta name="color-scheme" content="dark">
+<title>Page not found · hushmallow</title>
+<link rel="icon" href="assets/brand/favicon-48.png" sizes="48x48" type="image/png">
+<link rel="stylesheet" href="src/ui/tokens.css">
+<link rel="stylesheet" href="src/ui/type.css">
+<link rel="stylesheet" href="src/ui/legal.css">
+</head>
+<body class="legal-page">
+<header class="legal-top">
+  <a class="legal-home" href="/"><img class="hm-logo hm-logo-light" src="assets/brand/hushmallow-logo-light-360.webp" alt="hushmallow, open the app" width="168" height="32"></a>
+</header>
+<main class="legal" id="legal-main">
+  <h1 class="legal-title">This page isn’t here</h1>
+  <p class="legal-lead">The link may be mistyped or out of date. Everything in <span class="brand-name">hushmallow</span> opens from its home page.</p>
+  <p><a href="/">Open <span class="brand-name">hushmallow</span></a></p>
+</main>
+</body>
+</html>

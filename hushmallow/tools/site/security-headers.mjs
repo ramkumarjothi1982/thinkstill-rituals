@@ -150,7 +150,7 @@ export const permissionsPolicy = (features = DENIED_FEATURES) => features.map((f
  */
 export function cacheRules({ dirs, files, authFiles }, version = ':version') {
   // The rules name THIS build's folder literally: a request for another version's folder (gone after a deploy or a
-  // rollback) gets Pages' single-page fallback, index.html with 200, and must never be cached as immutable code.
+  // rollback) gets 404.html with 404 (index.html with 200 before the site had one), never cached as immutable code.
   // (':version' only when no version is given: tests of the rule shapes.)
   if (version !== ':version' && !/^[0-9A-Za-z_-]+$/.test(version)) throw new Error(`bad version: ${version}`);
   const out = [];

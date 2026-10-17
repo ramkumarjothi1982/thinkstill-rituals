@@ -84,6 +84,12 @@ for f in "$here"/legal/*.html; do
   grep -q "\"../v/$ver/src/ui/legal.css\"" "$out/legal/$n" || { echo "legal/$n was not rewritten" >&2; exit 1; }
   if grep -nE '(href|src)="\.\./(src|assets)/' "$out/legal/$n"; then echo "unversioned path left in legal/$n" >&2; exit 1; fi
 done
+# 404.html: Pages answers every path that is not a file with it (404), not with index.html, whose relative paths
+# under a nested path (/plans/yearly) resolved to that fallback again and again. Absolute /v/<version>/ paths: it
+# is served at any depth. A page cached from an old deploy still gets a failing module (404) and moves on (hmStale).
+sed -e "s#\"src/#\"/v/$ver/src/#g; s#\"assets/#\"/v/$ver/assets/#g" "$here/404.html" > "$out/404.html"
+grep -q "\"/v/$ver/src/ui/legal.css\"" "$out/404.html" || { echo "404.html was not rewritten" >&2; exit 1; }
+if grep -nE '(href|src)="(\.\.?/|src/|assets/)' "$out/404.html"; then echo "relative path left in 404.html" >&2; exit 1; fi
 grep -q "v/$ver/src/app/main.js" "$out/index.html" || { echo "index.html was not rewritten" >&2; exit 1; }
 if grep -nE '(href|src)="(src|assets)/' "$out/index.html"; then echo "unversioned path left in index.html" >&2; exit 1; fi
 # every module the first screen statically needs, preloaded from index.html: fetched at once, not one import level at a time

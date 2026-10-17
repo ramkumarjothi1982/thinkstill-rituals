@@ -97,8 +97,10 @@ jobs:
       # the app only, in a folder named after this commit so every deploy
       # reaches people straight away instead of after their browser cache
       # expires (see hushmallow/tools/build-site.sh, which also checks it)
+      # without 404.html: this copy is served one folder down, where its absolute
+      # paths and home link would point outside the app (GitHub's own 404 instead)
       - name: Assemble site
-        run: bash hushmallow/tools/build-site.sh _site "${GITHUB_SHA::12}"
+        run: bash hushmallow/tools/build-site.sh _site "${GITHUB_SHA::12}" && rm _site/404.html
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

@@ -21,8 +21,10 @@
 //     Referrer-Policy "strict-origin-when-cross-origin", X-Content-Type-Options
 //     "nosniff".
 // Routing follows tools/auth/pages-serve.mjs (/dir/ → index.html, /x.html →
-// 308 /x, /dir → 308 /dir/, unknown paths → /index.html with 200 when no
-// 404.html: what Pages does for a single-page app).
+// 308 /x, /x/ → 308 /x, /dir/index → 308 /dir/, /dir → 308 /dir/; unknown
+// paths → 404.html with 404 and Cache-Control: no-store, which Pages forces on
+// every 404, or /index.html with 200 when there is no 404.html: what Pages
+// does for a single-page app).
 import http from 'node:http';
 import { createReadStream, existsSync, readFileSync, statSync } from 'node:fs';
 import { extname, join, normalize, resolve } from 'node:path';
@@ -119,11 +121,18 @@ export function createServer(dir, { intercept = null } = {}) {
     const p = join(root, path);
     if (path.endsWith('/index.html')) return redirect(path.slice(0, -'index.html'.length));
     if (path.endsWith('.html') && isFile(p)) return redirect(path.slice(0, -5));
+    if (path.endsWith('/index') && isFile(`${p}.html`)) return redirect(path.slice(0, -'index'.length));
+    if (path.length > 1 && path.endsWith('/') && isFile(`${p.slice(0, -1)}.html`)) return redirect(path.slice(0, -1));
     if (path.endsWith('/') && isFile(join(p, 'index.html'))) return send(join(p, 'index.html'));
     if (!path.endsWith('/') && isFile(p) && !path.endsWith('/_headers')) return send(p);
     if (!path.endsWith('/') && isFile(join(p, 'index.html'))) return redirect(`${path}/`);
     if (!path.endsWith('/') && isFile(`${p}.html`)) return send(`${p}.html`);
-    if (isFile(join(root, '404.html'))) return send(join(root, '404.html'), 404);
+    // Pages sends a 404 with Cache-Control: no-store, whatever the rules say
+    if (isFile(join(root, '404.html'))) {
+      for (const k of Object.keys(extra)) if (k.toLowerCase() === 'cache-control') delete extra[k];
+      extra['Cache-Control'] = 'no-store';
+      return send(join(root, '404.html'), 404);
+    }
     return send(join(root, 'index.html'));
   });
 }
