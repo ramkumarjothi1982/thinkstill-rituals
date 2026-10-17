@@ -14,6 +14,7 @@ import { createApp } from '../src/app.js';
 import { createMockProvider } from '../src/providers/mock.js';
 import { signWebhookPayload } from '../src/billing/stripe.js';
 import { memoryBillingNamespace } from '../src/billing/store.js';
+import { STRIPE_API_VERSION_EXPECTED } from '../src/config.js';
 
 export const SUPABASE = 'https://igbxbfuaoybfzsroxuln.supabase.co';
 export const APP = 'https://app.hushmallow.com';
@@ -253,6 +254,28 @@ export const PAYMENTS_MD = readFileSync(new URL('../../../docs/PAYMENTS.md', imp
 
 /** A made-up staging project (20-character ref) for "once the owner has created hushmallow-staging". */
 export const STAGING_SUPABASE = 'https://hmstagingtest0000000.supabase.co';
+/** The staging app's origin (the release branch's preview), its APP_ORIGIN. */
+export const STAGING_APP = 'https://claude-launch-rc.hushmallow.pages.dev';
+
+/**
+ * The staging Worker's env once the owner's values are in, as wrangler.toml [env.staging.vars] will have them
+ * (billing+testing, its own project, a test key, the pinned API version, Stripe Tax off), with the Worker's own
+ * in-memory limits (20 billing requests and 3 sessions a minute) on the app's clock. Billing is on only where
+ * src/config.js has a staging project (test/staging-loader.js).
+ * @param {Record<string, any>} [over]
+ */
+export function stagingWorkerEnv(over = {}) {
+  return makeEnv({
+    PROVIDER: 'mock', ALLOWED_ORIGINS: `https://ramkumarjothi1982.github.io,${STAGING_APP}`, ENTITLEMENT_MODE: 'billing+testing', TESTER_INVITE_CODES: 'hm-test-e2e-0001',
+    ACCOUNTS_STAGE: 'staging', SUPABASE_URL: STAGING_SUPABASE, SUPABASE_PUBLISHABLE_KEY: PK, APP_ORIGIN: STAGING_APP,
+    STRIPE_SECRET_KEY: TEST_KEY, STRIPE_WEBHOOK_SECRET: WHSEC,
+    STRIPE_PRICE_PAID_MONTHLY: PRICES.paidMonthly, STRIPE_PRICE_PAID_YEARLY: PRICES.paidYearly,
+    STRIPE_PRICE_ULTRA_MONTHLY: PRICES.ultraMonthly, STRIPE_PRICE_ULTRA_YEARLY: PRICES.ultraYearly,
+    STRIPE_API_VERSION: STRIPE_API_VERSION_EXPECTED, STRIPE_AUTOMATIC_TAX: 'false',
+    BILLING: memoryBillingNamespace(), BILLING_IP_LIMITER: undefined, SESSION_IP_LIMITER: undefined,
+    ...over,
+  });
+}
 /** A copy of src/config.js with only STAGING_SUPABASE_PROJECT_URL filled in (the one line the owner's values change). @param {string} url */
 export async function withStagingProject(url) {
   const line = "const STAGING_SUPABASE_PROJECT_URL = '';";
