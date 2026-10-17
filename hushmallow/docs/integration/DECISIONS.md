@@ -176,7 +176,7 @@ Their four ids are in `[env.staging.vars]` (`server/another-angle/wrangler.toml`
 
 **What changed with USD**
 
-- Checkout sells a price only in `usd` (`CHECKOUT_PRICE_RULES`, `server/another-angle/src/billing/routes.js`); the app shows US$ (`BILLING_PRICES`, display only: Checkout charges what Stripe holds).
+- Checkout sells a price only in `usd` (`CHECKOUT_PRICE_RULES`, `server/another-angle/src/billing/routes.js`), and never one with another currency added (`currency_options`: Checkout would charge some customers in theirs); the app shows US$ (`BILLING_PRICES`, display only: Checkout charges what Stripe holds).
 - A lookup key is optional: when a price has one it must be its slot's (`hushmallow.<plan>.<period>`), and a price with none is sold, its configured id then deciding the plan.
 - Default taken on the owner's behalf (review, 2026-10-17): with lookup keys optional, checkout also sells a price only at the owner's amount for its slot (`CHECKOUT_PRICE_RULES.unit_amount`: 999, 9999, 1999, 19999 US cents, the same as `BILLING_PRICES`), and never an id that sits in two slots, so two ids swapped or pasted twice can never sell Beyond at Flow's price or give Flow for Beyond's, in live mode too (where the sandbox driver cannot look). Before activation the owner checks each live price's product by hand (`docs/PAYMENTS.md` section 4).
 - Tax behaviour: any while `STRIPE_AUTOMATIC_TAX` is off (the default and the Studio's value); `inclusive` or `exclusive` once it is on, never `unspecified`.

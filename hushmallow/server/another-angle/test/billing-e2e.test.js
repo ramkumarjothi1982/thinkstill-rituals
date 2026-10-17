@@ -397,6 +397,16 @@ test('P0 with the owner\'s kind of prices: no lookup keys and any tax behaviour 
   assertQuiet([...off.out, ...s3.out, ...on.out, ...ok.out, ...pending.out]);
 });
 
+test('P0: a US-dollar price with another currency added (currency_options) fails, as the Worker refuses it; one with only USD passes', async () => {
+  const w = world({ box: { edit: (/** @type {any} */ s) => { s.prices.get(F.PRICES.paidMonthly).currency_options = { usd: { unit_amount: 999 }, aud: { unit_amount: 1499 } }; } } });
+  assert.equal(await w.drive(['--phases', 'P0']), 1);
+  // (the sandbox, as Stripe, sends currency_options only when the read expands it: the driver does)
+  assert.deepEqual(w.out.filter((l) => l.startsWith('FAIL')), ['FAIL  P0 price hushmallow.paid.monthly: USD, recurring every 1 month, its slot\'s amount, active, lookup key its own or none  breaks: currency_options']);
+  const u = world({ box: { edit: (/** @type {any} */ s) => { s.prices.get(F.PRICES.paidMonthly).currency_options = { usd: { unit_amount: 999 } }; } } });
+  assert.equal(await u.drive(['--phases', 'P0']), 0, u.out.join('\n'));
+  assertQuiet([...w.out, ...u.out]);
+});
+
 test('package.json runs the driver as npm run e2e:billing; the driver is never part of npm test or a workflow', async () => {
   const { readFileSync, readdirSync } = await import('node:fs');
   const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));

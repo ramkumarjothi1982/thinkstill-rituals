@@ -367,6 +367,9 @@ there; if they are only in live mode, make them here and send the new ids (B10).
   configured id decides the plan. Either way checkout sells a price only at its slot's amount (the table
   above; `CHECKOUT_PRICE_RULES.unit_amount`), so two ids swapped between slots are refused, and an id in two
   slots is never sold. The driver's preflight also checks each product's name.
+* **US dollars only**: add no other currency to a price ("Add more currencies"). Checkout refuses a price that
+  has one (`503 price_misconfigured`): Stripe would charge some customers in theirs. This is separate from
+  Adaptive Pricing (B5).
 * Tax behaviour: any is sold while `STRIPE_AUTOMATIC_TAX` is off. Before it goes on, each price needs
   **inclusive** or **exclusive** (never unspecified). A used price's tax behaviour may not be changeable later
   (from memory), so settle it with your accountant before launch.
@@ -562,7 +565,7 @@ while any of it is still a placeholder.
 
 | Phase | What it does |
 |---|---|
-| P0 | Reads only. Staging `/v1/health`: `billing+testing`, configured, webhook, `stripe_mode` test, `api_version` 2026-08-26.dahlia, `live_approved` false, `automatic_tax` as `[env.staging.vars]` says, no placeholders. Production's: billing off, `testing`. The four prices by the ids in `[env.staging.vars]` (a live-mode id fails here: not found with the test key): what the Worker sells (USD, every 1 month or year, its slot's amount, active, a lookup key of their own or none: none is said), a tax behaviour of inclusive or exclusive only if `automatic_tax` is on, US$9.99/99.99/19.99/199.99, the products' names, the same amounts in `BILLING_PRICES`. The webhook endpoint: enabled, 2026-08-26.dahlia, exactly the 11 events. The default portal configuration (B6). Tax: with `automatic_tax` on, settings Active and an active AU registration (off, both are only said); with one, a test calculation in USD for a Sydney address (`taxability_reason` not `not_collecting`; for an inclusive price, the total unchanged). |
+| P0 | Reads only. Staging `/v1/health`: `billing+testing`, configured, webhook, `stripe_mode` test, `api_version` 2026-08-26.dahlia, `live_approved` false, `automatic_tax` as `[env.staging.vars]` says, no placeholders. Production's: billing off, `testing`. The four prices by the ids in `[env.staging.vars]` (a live-mode id fails here: not found with the test key): what the Worker sells (USD with no other currency, every 1 month or year, its slot's amount, active, a lookup key of their own or none: none is said), a tax behaviour of inclusive or exclusive only if `automatic_tax` is on, US$9.99/99.99/19.99/199.99, the products' names, the same amounts in `BILLING_PRICES`. The webhook endpoint: enabled, 2026-08-26.dahlia, exactly the 11 events. The default portal configuration (B6). Tax: with `automatic_tax` on, settings Active and an active AU registration (off, both are only said); with one, a test calculation in USD for a Sydney address (`taxability_reason` not `not_collecting`; for an inclusive price, the total unchanged). |
 | P1 | The key-free checks (below), plus: `Origin: https://app.hushmallow.com` refused on staging (403), and a hushmallow1 token refused (401). |
 | S3 | Renewal: a test clock, a customer on it with `metadata.user_id`, a card, Flow monthly (tier `paid`); the clock past the period end; `invoice.paid` delivered (200); the period a month on, at the Worker too. |
 | S4 | A failed renewal, then recovery: Beyond monthly, the `…0341` card (`pm_card_chargeCustomerFail`); `invoice.payment_failed`, `past_due` with Beyond still open (`/v1/session` 200); a good card, the open invoice paid; `active` again. |

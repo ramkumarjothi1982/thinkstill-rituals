@@ -181,8 +181,11 @@ export function sandbox({ now, deliver, worker, afterRetries = 'cancel', retries
     if (method === 'GET' && (m = /^\/v1\/prices\/(price_\w+)$/.exec(p))) {
       const x = prices.get(m[1]);
       if (!x) return missing();
-      const expand = [...q].some(([k, v]) => /^expand\[\d*\]$/.test(k) && v === 'product');
-      return reply(200, { ...x, product: expand ? Object.values(products).find((y) => y.id === x.product) : x.product });
+      const expand = (/** @type {string} */ f) => [...q].some(([k, v]) => /^expand\[\d*\]$/.test(k) && v === f);
+      // currency_options only when expanded (as Stripe), then with the default currency in it
+      const { currency_options: options, ...rest } = x;
+      const currencies = expand('currency_options') ? { currency_options: options || { [x.currency]: { unit_amount: x.unit_amount, tax_behavior: x.tax_behavior } } } : {};
+      return reply(200, { ...rest, ...currencies, product: expand('product') ? Object.values(products).find((y) => y.id === x.product) : x.product });
     }
     if (method === 'GET' && p === '/v1/webhook_endpoints') return reply(200, listOf(s.endpoints));
     if (method === 'GET' && p === '/v1/billing_portal/configurations') return reply(200, listOf(s.portal ? [s.portal] : []));

@@ -311,7 +311,8 @@ export async function run({ env = process.env, args = [], fetch: f = (input, ini
     const read = {};
     for (const k of Object.keys(SANDBOX_AMOUNTS)) {
       const [, plan, period] = /** @type {[string, 'paid' | 'ultra', 'monthly' | 'yearly']} */ (/** @type {unknown} */ (/^hushmallow\.(paid|ultra)\.(monthly|yearly)$/.exec(k)));
-      const pr = await stripe.get(`/v1/prices/${encodeURIComponent(cfg.prices[plan][period])}`, { expand: ['product'] });
+      // with its product, and every currency it can be charged in (US dollars only: priceFault, as the Worker reads it)
+      const pr = await stripe.get(`/v1/prices/${encodeURIComponent(cfg.prices[plan][period])}`, { expand: ['product', 'currency_options'] });
       if (!check(pr.ok, `P0 price ${k}: the id in [env.staging.vars] is a price of this sandbox`, pr.ok ? '' : `${pr.status} ${pr.code}`)) continue;
       const x = read[k] = pr.data;
       const fault = priceFault(x, plan, period, cfg.automaticTax);

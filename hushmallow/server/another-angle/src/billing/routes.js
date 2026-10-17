@@ -55,7 +55,9 @@ export const WEBHOOK_MAX_BYTES = 262144;
 export const CHECKOUT_WINDOW_MS = 120000;
 /**
  * What a price must be in Stripe before checkout sells it (decisions D2, D3, D11, and the owner's USD decision of
- * 2026-10-17). US dollars only (Adaptive Pricing off: the plans page and the terms say US$); recurring every one month or
+ * 2026-10-17). US dollars only (Adaptive Pricing off: the plans page and the terms say US$), its default currency and
+ * every other it carries (currency_options, read expanded: Checkout would charge some customers in one of those, as
+ * the session sends no currency); recurring every one month or
  * one year, as its period; the owner's amount for its slot (unit_amount, in US cents: D2, the amounts the app's
  * BILLING_PRICES shows); and active. Its lookup key, if it has one, names the plan and period of the slot it sits in; a
  * price with no lookup key is sold, and its configured id is then what maps it to a plan (store.js planForPrice). The
@@ -692,6 +694,7 @@ export function priceFault(p, plan, period, automaticTax = false) {
   if (!p || typeof p !== 'object') return 'not_a_price';
   if (!noLookupKey(p.lookup_key) && p.lookup_key !== `hushmallow.${plan}.${period}`) return 'lookup_key';
   if (p.currency !== CHECKOUT_PRICE_RULES.currency) return 'currency';
+  if (p.currency_options && typeof p.currency_options === 'object' && Object.keys(p.currency_options).some((c) => c !== CHECKOUT_PRICE_RULES.currency)) return 'currency_options';
   if (p.type !== 'recurring') return 'type';
   if (p.recurring?.interval !== CHECKOUT_PRICE_RULES.interval[period]) return 'interval';
   if (p.recurring?.interval_count !== 1) return 'interval_count';

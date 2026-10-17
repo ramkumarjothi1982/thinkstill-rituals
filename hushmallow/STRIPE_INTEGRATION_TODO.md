@@ -39,8 +39,9 @@ The owner's prices (2026-10-17):
 | hushmallow Flow (`prod_VSG7mi9Err8Yxp`) | `paid` | US$9.99, `price_1URLbJL2iXNcXbZPceXTGXsH` | US$99.99, `price_1URLeGL2iXNcXbZPz31feM3V` |
 | hushmallow Beyond (`prod_VSGH3KuGjUAdQr`) | `ultra` | US$19.99, `price_1URLlFL2iXNcXbZPGjBOF6zy` | US$199.99, `price_1URLv2L2iXNcXbZP6vLFoAtV` |
 
-What checkout requires of a price (`CHECKOUT_PRICE_RULES`): `usd`, recurring every 1 month or 1 year as its
-slot, the owner's amount for its slot (`unit_amount` 999, 9999, 1999 or 19999 US cents), active. A lookup key
+What checkout requires of a price (`CHECKOUT_PRICE_RULES`): `usd`, and no other currency added to it
+(`currency_options`, which Checkout would otherwise charge some customers in), recurring every 1 month or 1
+year as its slot, the owner's amount for its slot (`unit_amount` 999, 9999, 1999 or 19999 US cents), active. A lookup key
 is optional: if the price has one it must be `hushmallow.<plan>.<period>` (for example
 `hushmallow.ultra.monthly`); with none, the configured id decides the plan. Since the four amounts differ, two
 ids pasted into each other's slots are refused with lookup keys or without, in test and live mode alike, and

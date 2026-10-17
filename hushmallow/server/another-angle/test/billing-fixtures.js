@@ -171,7 +171,12 @@ export function upstream({ users = { [TOKEN]: { id: UID, email: 'ana@example.com
       return first(c);
     }
     let m;
-    if (method === 'GET' && (m = /^\/v1\/prices\/(price_[A-Za-z0-9]+)$/.exec(p))) return prices.has(m[1]) ? reply(200, prices.get(m[1])) : missing();
+    if (method === 'GET' && (m = /^\/v1\/prices\/(price_[A-Za-z0-9]+)$/.exec(p))) {
+      if (!prices.has(m[1])) return missing();
+      // as Stripe: currency_options only when asked for (expand[]=currency_options), then with the default currency in it
+      const { currency_options: options, ...x } = prices.get(m[1]);
+      return reply(200, u.searchParams.getAll('expand[]').includes('currency_options') ? { ...x, currency_options: options || { [x.currency]: { unit_amount: x.unit_amount, tax_behavior: x.tax_behavior } } } : x);
+    }
     if (method === 'GET' && (m = /^\/v1\/checkout\/sessions\/(cs_[A-Za-z0-9_]+)$/.exec(p))) return sessions.has(m[1]) ? reply(200, sessions.get(m[1])) : missing();
     if (method === 'POST' && (m = /^\/v1\/checkout\/sessions\/(cs_[A-Za-z0-9_]+)\/expire$/.exec(p))) {
       const s = sessions.get(m[1]);

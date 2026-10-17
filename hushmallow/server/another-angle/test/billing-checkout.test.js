@@ -241,6 +241,19 @@ test('price check: US dollars only; a lookup key is optional (when set, its slot
   assert.deepEqual(await sell((p) => p), [200, null, 1]);
   assert.deepEqual(await sell((p) => ({ ...p, currency: 'aud' })), [503, 'currency', 0]);
   assert.deepEqual(await sell((p) => ({ ...p, currency: 'aud' }), TAX), [503, 'currency', 0]);
+  // US dollars by default, with another currency added ("Add more currencies"): Checkout would charge an Australian
+  // customer A$, so it is not sold. Stripe sends currency_options only expanded, and the Worker asks for it
+  const usdOnly = { usd: { unit_amount: 1999, tax_behavior: 'inclusive' } };
+  assert.deepEqual(await sell((p) => ({ ...p, currency_options: { ...usdOnly, aud: { unit_amount: 2999, tax_behavior: 'inclusive' } } })), [503, 'currency_options', 0]);
+  assert.deepEqual(await sell((p) => ({ ...p, currency_options: { aud: { unit_amount: 2999 } } })), [503, 'currency_options', 0]);
+  assert.deepEqual(await sell((p) => ({ ...p, currency_options: usdOnly })), [200, null, 1]);
+  const read = track(setup());
+  assert.equal((await post(read, ULTRA_M)).status, 200);
+  const priceCall = read.up.stripe().find((c) => c.path === `/v1/prices/${PRICES.ultraMonthly}`);
+  assert.deepEqual([...priceCall.query], [['expand[]', 'currency_options']]);
+  assert.equal(priceFault(price(PRICES.paidMonthly, 'paid', 'monthly', { currency_options: { usd: {}, eur: {} } }), 'paid', 'monthly'), 'currency_options');
+  assert.equal(priceFault(price(PRICES.paidMonthly, 'paid', 'monthly', { currency_options: { usd: {} } }), 'paid', 'monthly'), '');
+  assert.equal(priceFault(price(PRICES.paidMonthly, 'paid', 'monthly', { currency_options: null }), 'paid', 'monthly'), '');
   // no lookup key (Stripe sends null; '' or none at all): sold, with Stripe Tax off and on; the configured id is the mapping
   for (const change of [(p) => ({ ...p, lookup_key: null }), (p) => ({ ...p, lookup_key: '' }), ({ lookup_key: _k, ...p }) => p]) {
     assert.deepEqual(await sell(change), [200, null, 1]);
