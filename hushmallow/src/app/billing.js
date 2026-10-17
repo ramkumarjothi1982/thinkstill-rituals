@@ -12,33 +12,44 @@
 // This file holds hushmallow's ONE billing network call (tests/core.test.mjs
 // allows exactly the `netFetch` line below, only to the configured endpoint
 // and only these four paths). What is sent: the signed-in account's access
-// token (Authorization: Bearer) and, for a checkout, { plan, period }; back
-// from Checkout, the session's id Stripe put in the address. Never words,
-// feelings or photos, and nothing at all for a guest.
+// token (Authorization: Bearer) and, for a checkout or an upgrade, { plan, period }
+// (an upgrade with intent 'upgrade'); back from Checkout, the session's id Stripe
+// put in the address. Never words, feelings or photos, and nothing at all for a guest.
 //
 //   createBilling({ auth, signIn, config?, shell?, prices?, fetchImpl?, nav?, timeoutMs? }) → billing | null (off)
 //     signedIn()             the account is signed in on this device
 //     accountToken()         → its current access token, or null (Another Angle's session sends it too, src/beyond/angle-client.js)
-//     status()               → { ok: true, tier, status, periodEnd, endsAt, cancelAtPeriodEnd, manageable } | { ok: false, reason, off? }
-//                              (periodEnd, endsAt: ms or null; the server sends ISO or ms, both are read; off: the
+//     status()               → { ok: true, tier, period, status, periodEnd, endsAt, cancelAtPeriodEnd, manageable } | { ok: false, reason, off? }
+//                              (period: 'monthly' | 'yearly' from the plan's recorded price, null from a server without it;
+//                              periodEnd, endsAt: ms or null; the server sends ISO or ms, both are read; off: the
 //                              server's 503 saying it has no web billing at all, one of BILLING_OFF_CODES)
 //     checkout(plan, period) → { redirecting } (on to Stripe Checkout) | { framed } (inFrame: nothing made, outsideNote
 //                              offers the whole window) | { needsAccount } | { manage } (has a plan)
 //                              | { pending } (a payment still going through) | { failed, reason, support? }
 //                              (support: the account's billing needs a person, 409 customer_conflict: BILLING_SUPPORT)
 //     portal(intent?)        → { redirecting } (Stripe's customer portal) | { framed } | { needsAccount } | { none } | { failed, reason };
-//                              intent 'switch' (the plans page, for a plan already held) opens it on changing the plan
+//                              intent 'switch' (the plans page, for a plan already held) opens Stripe's own plan chooser,
+//                              which comes back with ?billing=changed (or ?billing=unchanged by its back link), never the
+//                              portal's front page; Settings' Manage subscription (no intent) is the front page
+//     upgrade(plan, period)  → { redirecting, to } (Stripe's page confirming exactly that change, back with
+//                              ?billing=changed&to=<plan>.<period>) | { framed } | { needsAccount } | { none } | { failed, reason }
+//                              (reason: one of CHANGE_CODES as the server says it, or invalid, network, http_…, not_stripe)
 //     sync(sessionId)        → as status(): back from Checkout, the server reads that session from Stripe and records the
 //                              plan at once (the webhook may be a moment behind); a malformed id is never sent
+//     refresh()              → as status(): the server reads the account's own subscription from Stripe now and records it
+//                              (POST sync {}), so a change made on Stripe's page shows without waiting for the webhook
 //     prices()               → { productId: 'US$…' }, from BILLING_PRICES (only those set)
 //   resolveBilling({ provider, endpoint, allowedHosts, loc, session }) → { provider, endpoint } | null
 //   inNativeShell(win?)     the App Store app's shell (window.HushNative or the hushStore message handler)
-//   takeReturn({ loc, hist }) → { kind: 'success' | 'cancel' | 'portal', sessionId } | null: the ?billing= Stripe sent
-//     the person back with (and Checkout's session_id), taken out of the address at once (Back never brings it again)
+//   takeReturn({ loc, hist }) → { kind: 'success' | 'cancel' | 'portal' | 'changed' | 'unchanged', sessionId, to? } | null:
+//     the ?billing= Stripe sent the person back with (and Checkout's session_id, a change's ?to=), taken out of the
+//     address at once (Back never brings it again); to: only on 'changed', only <plan>.<period> (PLAN_TO), else null
 //   welcomeBack(app, back, { before }?)  after Stripe: the session is synced, then the plan is asked for again (a few
-//     times: the webhook can take a moment) and said once; after the portal, asked for quietly until it differs from
-//     `before` (planNow(ent) as kept before the trip, taken at start)
-//   planNow(ent)            → { tier, status, cancelAtPeriodEnd, endsAt }: what a trip to the portal can change
+//     times: the webhook can take a moment) and said once (hushmallow Beyond: its welcome, app.welcomePlan); after the
+//     portal, asked for quietly until it differs from `before` (planNow(ent) as kept before the trip, taken at start);
+//     after a change of plan ('changed' / 'unchanged'): src/app/plan-change.js confirmChange, which says it only once
+//     Stripe has confirmed it
+//   planNow(ent)            → { tier, period, status, cancelAtPeriodEnd, endsAt }: what a trip to the portal can change
 //   rememberPlan(plan, period) / plannedPlan({ take? }) → { plan, period } | null: the plan a guest chose on the plans
 //     page before signing in (this tab only, for PLAN_INTENT_MS), offered on the account card after sign-in
 //
@@ -48,10 +59,20 @@
 
 import { BILLING_PRICES, deploySettings } from './config.js';
 import { PLANS } from './entitlements.js';
+import { confirmChange, forgetChange, PLAN_TO } from './plan-change.js';
+
+export { PLAN_TO };
 
 export const PATHS = Object.freeze({ checkout: '/v1/billing/checkout', status: '/v1/billing/status', portal: '/v1/billing/portal', sync: '/v1/billing/sync' });
 /** A Checkout Session id as Stripe makes them (the server checks the same shape, and that its mode is the key's). */
 export const SESSION_ID = /^cs_(test|live)_[A-Za-z0-9]{10,250}$/;
+/**
+ * Why the server would not open a change of plan (POST /v1/billing/portal, intent 'upgrade' or 'switch': 409, or 503
+ * plan_change_unavailable): already that plan; a payment to sort out first (past due, unpaid, incomplete); not an
+ * upgrade by its rule; a change already waiting on the subscription; a subscription it cannot change here; or Stripe
+ * refusing the flow (never the portal's front page instead). Only these, as { error: { code } }: anything else is a failure.
+ */
+export const CHANGE_CODES = Object.freeze(['already_on_plan', 'payment_issue', 'not_an_upgrade', 'plan_change_unavailable', 'change_pending', 'not_updatable']);
 /**
  * Our custom domain for Checkout and the customer portal (decision D12). Stripe moves both pages there the moment the
  * owner activates it, so this list must be live in production and staging before that, or every checkout and
@@ -102,6 +123,8 @@ function safeSession() { try { return globalThis.sessionStorage || null; } catch
 export const PLAN_INTENT_MS = 30 * 60000;
 const INTENT_KEY = 'hm2:planIntent';
 const isPlan = (plan, period) => ['paid', 'ultra'].includes(plan) && ['monthly', 'yearly'].includes(period);
+/** 'monthly' | 'yearly' as the server says it, or null. */
+const periodOf = (v) => (v === 'monthly' || v === 'yearly' ? v : null);
 /** The plans page, a guest's "Step into…": kept for after sign-in. */
 export function rememberPlan(plan, period, { session = safeSession(), now = Date.now() } = {}) {
   if (!isPlan(plan, period)) return;
@@ -245,6 +268,8 @@ export function createBilling({
     const d = r.data;
     return {
       ok: true, tier: ['none', 'paid', 'ultra'].includes(d.tier) ? d.tier : 'none',
+      // the plan's period, from the price Stripe has on the subscription (a monthly → yearly move shows here)
+      period: periodOf(d.period),
       status: typeof d.status === 'string' && /^[a-z_]{1,24}$/.test(d.status) ? d.status : 'none',
       // endsAt: the day the subscription ends (cancelled at the period end, or a date set for it); null while it renews
       periodEnd: dateMs(d.current_period_end), endsAt: dateMs(d.ends_at),
@@ -258,6 +283,11 @@ export function createBilling({
     nav(href);
     return true;
   }
+  /** The server's reason for not opening a change of plan (CHANGE_CODES), or null. */
+  const changeCode = (r) => {
+    const code = r.http === 409 || r.http === 503 ? r.data?.error?.code : null;
+    return CHANGE_CODES.includes(code) ? code : null;
+  };
 
   return {
     get endpoint() { return endpoint; },
@@ -297,12 +327,45 @@ export function createBilling({
     async portal(intent) {
       if (framed) return { framed: true };
       if (!signedIn()) return { needsAccount: true };
-      // { intent: 'switch' }: the server opens Stripe's change-plan page (a plain portal where that is off); Settings: {}
-      const r = await call(PATHS.portal, { body: intent === 'switch' ? { intent: 'switch' } : {} });
+      // { intent: 'switch' }: the server opens Stripe's change-plan page, never its front page (where that flow is off
+      // in the portal's settings it answers 503 plan_change_unavailable); Settings: {}, the front page
+      const switching = intent === 'switch';
+      const r = await call(PATHS.portal, { body: switching ? { intent: 'switch' } : {} });
       if (r.signedOut || r.http === 401) return { needsAccount: true };
       if (r.http === 404) return { none: true };
+      if (switching && changeCode(r)) return { failed: true, reason: changeCode(r) };
+      // (an older server put the front page in its place and said so: not opened for a change of plan)
+      if (switching && r.http === 200 && r.data?.flow === 'portal') return { failed: true, reason: 'plan_change_unavailable' };
+      // a new trip to change the plan: a change kept from before (said, or still on its way) is its way back no longer
+      if (switching && r.http === 200 && stripePage(r.data?.url)) forgetChange();
       if (r.http === 200 && open(r.data?.url)) return { redirecting: true };
       return { failed: true, reason: r.http === 200 ? 'not_stripe' : reasonOf(r) };
+    },
+    /**
+     * An upgrade the plans page offers for the plan already held (Flow → Beyond, monthly → yearly): the server checks it
+     * with Stripe and opens Stripe's page confirming exactly that change (subscription_update_confirm), which comes back
+     * with ?billing=changed&to=<plan>.<period> once Stripe has made it (and ?billing=unchanged by its back link).
+     */
+    async upgrade(plan, period) {
+      if (!isPlan(plan, period)) return { failed: true, reason: 'invalid' };
+      // in a frame Stripe's confirmation page would never load, as with checkout and the portal: nothing is asked for
+      if (framed) return { framed: true };
+      if (!signedIn()) return { needsAccount: true };
+      const r = await call(PATHS.portal, { body: { intent: 'upgrade', plan, period } });
+      if (r.signedOut || r.http === 401) return { needsAccount: true };
+      if (r.http === 404) return { none: true };
+      if (changeCode(r)) return { failed: true, reason: changeCode(r) };
+      const to = `${plan}.${period}`;
+      // only Stripe's confirmation of exactly this change is opened: never another flow or another plan in its place
+      if (r.http === 200 && (r.data?.flow !== 'subscription_update_confirm' || (r.data?.to != null && r.data.to !== to))) return { failed: true, reason: 'plan_change_unavailable' };
+      if (r.http === 200 && stripePage(r.data?.url)) forgetChange();
+      if (r.http === 200 && open(r.data?.url)) return { redirecting: true, to };
+      return { failed: true, reason: r.http === 200 ? 'not_stripe' : reasonOf(r) };
+    },
+    /** The account's subscription read from Stripe by the server now (POST sync {}); the answer is read as the status. */
+    async refresh() {
+      if (!signedIn()) return { ok: false, reason: 'signed-out' };
+      return readStatus(await call(PATHS.sync, { body: {} }));
     },
     prices() {
       const out = {};
@@ -316,16 +379,19 @@ export function createBilling({
  *  webhook for a change there can land after the first check), then no more. 14 s in all, quietly. */
 export const PORTAL_WAITS = Object.freeze([0, 2000, 4000, 8000]);
 
-/** What a trip to the portal can change (the tier, Stripe's status, cancelling, the end date), as kept on this phone now. */
+/** What a trip to the portal can change (the tier, its period, Stripe's status, cancelling, the end date), as kept on this phone now. */
 export function planNow(ent) {
   const p = ent?.webPlan?.() || null;
-  return { tier: ent?.tier?.() ?? 'none', status: p?.status ?? null, cancelAtPeriodEnd: !!p?.cancelAtPeriodEnd, endsAt: p?.endsAt ?? null };
+  return { tier: ent?.tier?.() ?? 'none', period: p?.period ?? null, status: p?.status ?? null, cancelAtPeriodEnd: !!p?.cancelAtPeriodEnd, endsAt: p?.endsAt ?? null };
 }
-const samePlan = (a, b) => a.tier === b.tier && a.status === b.status && a.cancelAtPeriodEnd === b.cancelAtPeriodEnd && a.endsAt === b.endsAt;
+const samePlan = (a, b) => a.tier === b.tier && (a.period ?? null) === (b.period ?? null) && a.status === b.status && a.cancelAtPeriodEnd === b.cancelAtPeriodEnd && a.endsAt === b.endsAt;
 
+/** The ways back from Stripe: Checkout paid or let go, the portal's front page, a change of plan made or not made. */
+export const RETURN_KINDS = Object.freeze(['success', 'cancel', 'portal', 'changed', 'unchanged']);
 /**
- * The ?billing= Stripe sent the person back with ({ kind: 'success' | 'cancel' | 'portal', sessionId }), taken out of
- * the address with Checkout's session_id; null when none. sessionId: only on success, and only a well-formed one.
+ * The ?billing= Stripe sent the person back with ({ kind, sessionId }, and on 'changed' its `to`), taken out of the
+ * address with Checkout's session_id and a change's ?to=; null when none. sessionId: only on success, and only a
+ * well-formed one; to: only on 'changed', only <plan>.<period> (PLAN_TO), else null (Stripe's own plan chooser).
  */
 export function takeReturn({ loc = globalThis.location, hist = globalThis.history } = {}) {
   let u;
@@ -333,26 +399,33 @@ export function takeReturn({ loc = globalThis.location, hist = globalThis.histor
   if (!u.searchParams.has('billing')) return null;
   const v = u.searchParams.get('billing');
   const id = u.searchParams.get('session_id');
+  const to = u.searchParams.get('to');
   u.searchParams.delete('billing');
   u.searchParams.delete('session_id');
+  u.searchParams.delete('to');
   try { hist.replaceState(hist.state ?? null, '', u.href); } catch { /* the address keeps it; nothing else reads it */ }
-  if (!['success', 'cancel', 'portal'].includes(v)) return null;
-  return { kind: v, sessionId: v === 'success' && typeof id === 'string' && SESSION_ID.test(id) ? id : null };
+  if (!RETURN_KINDS.includes(v)) return null;
+  const back = { kind: v, sessionId: v === 'success' && typeof id === 'string' && SESSION_ID.test(id) ? id : null };
+  if (v === 'changed') back.to = typeof to === 'string' && PLAN_TO.test(to) ? to : null;
+  return back;
 }
 
 /**
  * Back from Stripe (takeReturn's answer, or just its kind). 'success': the Checkout Session is synced first (the plan
  * at once, before the webhook), then the plan is asked for again, a few times (the webhook can take a moment), and
- * said once it is here, else a calm "on its way"; not signed in on this page, the sign-in screen says to sign in to
- * see it; 'cancel': nothing was charged; 'portal': the plan is asked for again quietly, at PORTAL_WAITS until it
- * differs from `before` (it may have been cancelled or changed there; main.js takes it at start, before any check).
+ * said once it is here (hushmallow Beyond with its welcome, app.welcomePlan, where the app has it), else a calm "on
+ * its way"; not signed in on this page, the sign-in screen says to sign in to see it; 'cancel': nothing was charged;
+ * 'portal': the plan is asked for again quietly, at PORTAL_WAITS until it differs from `before` (it may have been
+ * cancelled or changed there; main.js takes it at start, before any check); 'changed' / 'unchanged' (a change of plan
+ * on Stripe's page, made or not): plan-change.js confirmChange (`change`: its options, for tests).
  */
 export async function welcomeBack(app, back, {
-  before = null, waits = [0, 2000, 4000, 8000, 15000], portalWaits = PORTAL_WAITS, sleep = (ms) => new Promise((r) => setTimeout(r, ms)),
+  before = null, waits = [0, 2000, 4000, 8000, 15000], portalWaits = PORTAL_WAITS, sleep = (ms) => new Promise((r) => setTimeout(r, ms)), change = {},
 } = {}) {
-  const { kind, sessionId = null } = typeof back === 'string' ? { kind: back } : back || {};
+  const { kind, sessionId = null, to = null } = typeof back === 'string' ? { kind: back } : back || {};
   const { ent } = app;
   if (kind === 'cancel') { app.toast(RETURN_LINES.cancel); return 'cancel'; }
+  if (kind === 'changed' || kind === 'unchanged') return confirmChange(app, { kind, to }, { before, sleep, ...change });
   if (kind === 'portal') {
     if (!ent.webSignedIn?.()) return 'portal';   // signed out here: nothing to ask
     const was = before || planNow(ent);
@@ -381,6 +454,10 @@ export async function welcomeBack(app, back, {
     arrived = here();
   }
   if (!arrived) { app.toast(RETURN_LINES.pending, 4200); return 'pending'; }
+  // hushmallow Beyond, confirmed by Stripe through our server: its full welcome (with the Mallows), where the app has it
+  if (ent.tier() === 'ultra' && typeof app.welcomePlan === 'function') {
+    try { await app.welcomePlan({ tier: 'ultra', period: ent.webPlan?.()?.period ?? null, from: null }); return 'welcome'; } catch { /* the line, below */ }
+  }
   app.toast(`Welcome to ${PLANS[ent.tier()].name}`);
   app.haptic?.('success');
   app.world?.react?.('celebrate');

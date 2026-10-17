@@ -467,13 +467,13 @@ test('checkout after a cancelled subscription reuses the Stripe customer', async
 // ---------------------------------------------------------- status / portal --
 test('status and portal: nothing yet, then the plan the webhook recorded; the portal for its customer', async () => {
   const s = setup();
-  assert.deepEqual(await status(s), { tier: 'none', status: 'none', current_period_end: null, cancel_at_period_end: false, ends_at: null, manageable: false });
+  assert.deepEqual(await status(s), { tier: 'none', status: 'none', period: null, current_period_end: null, cancel_at_period_end: false, ends_at: null, manageable: false });
   assert.equal((await s.app.fetch(billingReq('/v1/billing/status', { token: null }), s.env)).status, 401);
   const none = await s.app.fetch(billingReq('/v1/billing/portal', { body: {} }), s.env);
   assert.equal(none.status, 404);
   assert.equal((await none.json()).error.code, 'no_subscription');
   await subscribe(s);
-  assert.deepEqual(await status(s), { tier: 'ultra', status: 'active', current_period_end: new Date(CLOCK_START + 30 * DAY).toISOString(), cancel_at_period_end: false, ends_at: null, manageable: true });
+  assert.deepEqual(await status(s), { tier: 'ultra', status: 'active', period: 'monthly', current_period_end: new Date(CLOCK_START + 30 * DAY).toISOString(), cancel_at_period_end: false, ends_at: null, manageable: true });
   const p = await s.app.fetch(billingReq('/v1/billing/portal', { body: {} }), s.env);
   assert.equal(p.status, 200);
   assert.deepEqual(await p.json(), { url: 'https://billing.stripe.com/p/session/test_1' });

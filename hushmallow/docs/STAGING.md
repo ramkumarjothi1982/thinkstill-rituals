@@ -395,17 +395,26 @@ there; if they are only in live mode, make them here and send the new ids (B10).
 
 * **Payment methods**: allow updates. **Invoice history**: on. **Customer information**: allow email and
   billing-address edits (Stripe Tax needs the address once it is on).
-* **Cancellations**: on, **At the end of the billing period**, no proration or refund on cancel (D7).
-* **Subscriptions** → **Customers can switch plans**: on, with hushmallow Flow (both prices) and hushmallow
-  Beyond (both prices); quantity changes off. Proration (D8): prorate and invoice upgrades immediately;
-  schedule downgrades (Beyond → Flow, yearly → monthly) at the end of the period if that option shows.
+* **Cancellations**: on, **At the end of the billing period**, no proration or refund on cancel (D7). This is
+  what Settings → Manage subscription opens (the portal's home, `?billing=portal`), unchanged: cancelling stays
+  there, one tap from Settings.
+* **Subscriptions** → **Customers can switch plans**: on, and under **products** both products with **all four
+  prices**: hushmallow Flow (monthly and yearly) and hushmallow Beyond (monthly and yearly); quantity changes
+  off. The plans page's upgrade opens Stripe's confirmation page for that one change
+  (`subscription_update_confirm`), and "choose a plan" the portal's plan choice (`subscription_update`); Stripe
+  refuses both for a price not listed here, and the app then says the change is not available (`503
+  plan_change_unavailable`). Neither ever shows the portal's home or its Cancel button. Proration (D8): prorate
+  and invoice upgrades immediately; schedule downgrades (Beyond → Flow, yearly → monthly) at the end of the
+  period if that option shows.
 * **Pause**: off.
 * **Business information**: the privacy policy and terms links. For the sandbox, the preview's drafts:
   `https://claude-launch-rc.hushmallow.pages.dev/legal/privacy.html` and
   `https://claude-launch-rc.hushmallow.pages.dev/legal/terms.html` (app.hushmallow.com's, in live mode, once
   they are approved).
 * **Default redirect link**: `https://claude-launch-rc.hushmallow.pages.dev/`. The server also sends its own
-  return address, `…/?billing=portal`.
+  return addresses, on the staging Worker's `APP_ORIGIN`: `…/?billing=portal` from Manage subscription, and from
+  a plan change `https://claude-launch-rc.hushmallow.pages.dev/?billing=changed` once done (`&to=ultra.yearly`
+  and so on for an upgrade) and `…/?billing=unchanged` by the portal's back link. Nothing to set for these.
 * **Customer portal link** (email login): **Activate**, and put the link on the support page.
 
 ### B7. Revenue recovery and emails (5 min)
@@ -589,7 +598,7 @@ while any of it is still a placeholder.
 | S3 | Renewal: a test clock, a customer on it with `metadata.user_id`, a card, Flow monthly (tier `paid`); the clock past the period end; `invoice.paid` delivered (200); the period a month on, at the Worker too. |
 | S4 | A failed renewal, then recovery: Beyond monthly, the `…0341` card (`pm_card_chargeCustomerFail`); `invoice.payment_failed`, `past_due` with Beyond still open (`/v1/session` 200); a good card, the open invoice paid; `active` again. |
 | S5 | Retries running out: fails again, then the clock follows each retry until Stripe cancels the subscription (`canceled`; never `unpaid` or left `past_due`: B7); tier `none`, `/v1/session` 403 `subscription_required`. The 14-day `past_due` cap runs on the Worker's own clock, which a test clock does not move: the server's tests cover it. |
-| S6 | Plan changes through the API: Flow (403 for Another Angle) → Beyond monthly (tier `ultra`, 200) → Flow yearly (tier `paid`, a year-long period, 403). |
+| S6 | Plan changes through the API: Flow (403 for Another Angle) → Beyond monthly (tier `ultra`, 200) → Flow yearly (tier `paid`, a year-long period, 403). On the way, the staging Worker is asked as the plans page asks it: an upgrade's confirmation page (`POST /v1/billing/portal` `{ intent: 'upgrade' }`: Flow → Beyond monthly, then Beyond monthly → yearly, each `subscription_update_confirm` and accepted by the sandbox's portal, B6), the plan choice (`subscription_update`), `409 already_on_plan` and `409 not_an_upgrade` (Beyond monthly → Flow yearly, Flow yearly → Beyond monthly), Manage subscription's home; and `POST /v1/billing/sync` `{ refresh: true }` says Flow while nothing is confirmed, then Beyond monthly and Flow yearly (`period`) from Stripe at once. Pressing confirm on Stripe's page needs a browser: the API makes that change. |
 | S7 | Cancellations: at the period end (`ends_at` the period end, tier unchanged), `cancel_at` 90 days on (`ends_at` that date), past it (tier `none`); a cancel at once (`none` at the next check). |
 | S8 | A resend of an applied event (status unchanged; the Worker's log says `"duplicate":true`); a second, higher subscription for the same customer, then cancelled (the remaining Flow one is recorded). |
 | S9 | A renewal that needs authentication (`pm_card_authenticationRequired`): `invoice.payment_action_required` delivered, `past_due`. |
@@ -681,20 +690,22 @@ sandbox driver's (above). Use three hushmallow-staging test accounts: **E2E-A** 
 
 **3. Choose a plan and pay** (S1, S2)
 
-- [ ] (S1, E2E-A) Plans → Monthly → "Step into hushmallow Beyond" opens Stripe Checkout on
+- [ ] (S1, E2E-A) Plans → Monthly → "Step into hushmallow Flow" opens Stripe Checkout on
       `checkout.stripe.com` (on `checkout.hushmallow.com` once B13 is done), in test mode, for **hushmallow
-      Beyond, US$19.99 a month**. Pay with `4242 4242 4242 4242`.
+      Flow, US$9.99 a month**. Pay with `4242 4242 4242 4242`. (Section 3a upgrades this same subscription.)
 - [ ] The Checkout page has the owner's Checkout Studio settings: Stripe's hosted page, no phone number, no
       promotion code field, a billing address only where Stripe asks for one (with `STRIPE_AUTOMATIC_TAX` off).
 - [ ] Back on the preview, the address loses `?billing=success`, and within about 30 seconds the app says
-      "Welcome to hushmallow Beyond". (The server records the plan at once through `POST /v1/billing/sync`;
+      "Welcome to hushmallow Flow" (a hushmallow Beyond checkout, as E2E-C's below, opens Beyond's welcome with
+      the Mallows instead). (The server records the plan at once through `POST /v1/billing/sync`;
       the app calls it, and takes `session_id` out of the address, from the client release that follows
       these server changes. Until then `session_id` stays in the address and the app waits for the webhook.)
 - [ ] Stripe → Webhooks → the staging endpoint: every event was delivered with `200`. Customers: the account
       has **one** customer, with `metadata.user_id` and the email typed at Checkout (D13: the Worker sends no
       email).
-- [ ] (S1) Then "Step into hushmallow Flow": the server answers `409 already_subscribed`, and the app opens
-      the portal instead of a second Checkout.
+- [ ] (S1) Then, in a browser that has not heard of the plan yet, "Step into hushmallow Beyond": the server
+      answers `409 already_subscribed`, and the app opens Stripe's plan choice (`subscription_update`) instead
+      of a second Checkout. Choose nothing there.
 - [ ] (S2, E2E-C) Pay with `4000 0000 0000 9995`: Stripe declines it on its own page, and nothing is charged.
       Use Checkout's back link: the app says "No problem. Nothing was charged." No plan.
 - [ ] (S2) `4000 0025 0000 3155` with "Fail authentication": no plan; again with "Complete authentication":
@@ -702,10 +713,29 @@ sandbox driver's (above). Use three hushmallow-staging test accounts: **E2E-A** 
 - [ ] (S2) Two tabs, before paying: Flow monthly in tab 1, then Beyond monthly in tab 2. Tab 1's Checkout
       page now says it has expired; only one subscription is possible.
 
+**3a. Upgrade from the plans page** (the owner's request of 17 Oct: never the portal's home or its Cancel
+button on the way)
+
+- [ ] (Back-navigation) Plans → Monthly → "Upgrade to hushmallow Beyond" opens Stripe's page confirming that
+      one change on `billing.stripe.com` (test mode): a Confirm button, and no Cancel subscription. A quick
+      double tap opens it once. Take Stripe's return link instead of Confirm: back on the preview
+      (`?billing=unchanged`), the app says "No change made. You’re still on hushmallow Flow.", and the plan
+      is still hushmallow Flow monthly.
+- [ ] (Flow → Beyond monthly) "Upgrade to hushmallow Beyond" again, then Confirm: Stripe sends you straight
+      back to the preview (`?billing=changed&to=ultra.monthly`, gone from the address at once), "Confirming
+      your new plan with Stripe…" shows first, and only then the welcome: "Welcome to hushmallow Beyond" with
+      the seven Mallows. A reload says nothing again.
+- [ ] (Monthly → yearly) Plans → Yearly → "Switch to yearly" on hushmallow Beyond, then Confirm: back on the
+      preview, "Confirming…", then "You’re on hushmallow Beyond, yearly".
+- [ ] (Optional, a second test account on Flow) With `4000 0000 0000 0341` as its card, an upgrade's payment
+      fails: the app never says the new plan; it says the payment did not go through, with Manage
+      subscription.
+
 **4. Use the plan**
 
 - [ ] Flow's rituals and worlds open; Beyond's do too.
-- [ ] Settings → Plan shows hushmallow Beyond and "Renews on …", and a "Manage subscription" button.
+- [ ] Settings → Plan shows hushmallow Beyond and "Renews on …" (a year on, after 3a), and a "Manage
+      subscription" button with "Change plan, update your card or cancel." under it.
 
 **5. Another Angle, the real model** (S11)
 
@@ -738,9 +768,10 @@ sandbox driver's (above). Use three hushmallow-staging test accounts: **E2E-A** 
 
 **8. Manage the subscription** (S6, S7 by hand)
 
-- [ ] Settings → **Manage subscription** opens Stripe's portal on `billing.stripe.com` (test mode; from
-      memory, on the custom domain once B13 is done).
-- [ ] Switch to hushmallow Flow (or yearly) there and return: the app shows the new plan.
+- [ ] Settings → **Manage subscription** opens Stripe's portal home on `billing.stripe.com` (test mode; from
+      memory, on the custom domain once B13 is done), with **Cancel subscription** there.
+- [ ] (Optional) Switch to hushmallow Flow there and return (`?billing=portal`): the app shows the new plan (a
+      downgrade may wait for the period end, D8).
 - [ ] Cancel (at the period end) and return: Settings shows "Ends on …. Nothing more is charged."
 - [ ] (Optional) Cancel a test subscription **immediately** in the Stripe dashboard: at the next check (open
       the app again) the plan goes, and Another Angle stays with the authored angles.
@@ -775,8 +806,9 @@ sandbox driver's (above). Use three hushmallow-staging test accounts: **E2E-A** 
 
 ### Automated rehearsal driver
 
-`tools/staging/rehearsal.cjs` runs sections 1 to 8 and S12 of the checklist above in Chromium, at a phone's size
-(390×844), through the app's own screens on the preview and Stripe's own hosted pages, in Stripe test mode only. It
+`tools/staging/rehearsal.cjs` runs sections 1 to 8 (3a's upgrades included) and S12 of the checklist above in
+Chromium, at a phone's size (390×844), through the app's own screens on the preview and Stripe's own hosted pages, in
+Stripe test mode only. It
 prints one PASS, FAIL or SKIP line a step, and screenshots only failures, to `--out` (a new folder in the system's
 temporary directory by default, never inside the repository; every field, the address on the account screens and any
 secret's text are masked in them).
@@ -784,7 +816,7 @@ secret's text are masked in them).
 ```
 node --env-file=hushmallow/server/another-angle/.dev.vars.rehearsal hushmallow/tools/staging/rehearsal.cjs
 # or, from Claude's cloud session with the rehearsal's own values as network secrets (below, not B12's E2E-B):
-timeout 1200 node hushmallow/tools/staging/rehearsal.cjs [--steps R0,R1,R3] [--out DIR] [--viewport 390x844]
+timeout 1800 node hushmallow/tools/staging/rehearsal.cjs [--steps R0,R2,R3,R3U,R7] [--out DIR] [--viewport 390x844]
 ```
 
 **What it needs.** The network to the preview, the staging Worker, the staging project
@@ -821,16 +853,18 @@ opens. A step that runs out of its time is stopped the same way before the next 
 | R0 | Before you start | `/v1/health` (test mode, `live_approved` false, configured, webhook, accounts; its `provider` printed); the preview's published sign-in is the staging project; the version line says `staging` |
 | R1 | 1 | as a guest: nothing asks to sign in; the four US-dollar prices; "Step into hushmallow Beyond" → "Sign in or create an account first…" |
 | R2 | 2 | signs in by password on the account screen; the Settings → Privacy row; with `REHEARSAL_SIGNUP_EMAIL`, a sign-up (18+ tick) up to "Check your email" |
-| R3 | 3, 4 (S1) | Monthly → Beyond → Checkout (only `checkout.stripe.com` or `checkout.hushmallow.com` and a `cs_test_…` session, else it stops), US$19.99, no phone or promotion code field; `4242…`; "Welcome to hushmallow Beyond", `?billing=success` gone; Settings → Plan; the customer (with the key); a second browser that has not heard of the plan yet → "Step into hushmallow Flow" → `409 already_subscribed` → the portal |
+| R3 | 3, 4 (S1) | Monthly → Flow → Checkout (only `checkout.stripe.com` or `checkout.hushmallow.com` and a `cs_test_…` session, else it stops), US$9.99, no phone or promotion code field; `4242…`; "Welcome to hushmallow Flow", `?billing=success` gone; Settings → Plan: Flow monthly; the customer (with the key); a second browser that has not heard of the plan yet → "Step into hushmallow Beyond" → `409 already_subscribed` → Stripe's plan choice (`subscription_update`), nothing chosen |
+| R3U | 3a | only R3's own subscription (skipped otherwise), through the plans page's own buttons. **Back-navigation**: "Upgrade to hushmallow Beyond" tapped twice quickly (one request), Stripe's page confirming that one change (`subscription_update_confirm`: a Confirm button, never the portal's home with its Cancel subscription), then Stripe's return link: back on `?billing=unchanged`, "No change made. You’re still on hushmallow Flow.", Flow monthly still. **Flow → Beyond monthly**: Confirm; Stripe sends the browser back to the preview by itself (`?billing=changed&to=ultra.monthly`, never left on `billing.stripe.com`); "Confirming your new plan with Stripe…" first, then the welcome with the seven Mallows only after the Worker's answer read from Stripe says Beyond monthly, active (the page's own record, timed by its clock); a reload says nothing again. **Monthly → yearly**: "Switch to yearly" the same way ("You’re on hushmallow Beyond, yearly"); Settings → Plan: Beyond, a year ahead |
 | R4 | 3 (S2) | with E2E-C: `…9995` declined, the back link → "No problem. Nothing was charged."; `…3155` Fail, then Complete authentication |
-| R5 | 5 | Another Angle with the real model (it fails at once when `/v1/health` says the provider is `mock` or has no key): the consent card, a made-up everyday situation, an angle and "Show me another angle"; the crisis test sentence of `tests/safety-qa.probes.mjs` gets the support response, and nothing is sent for it |
-| R6 | 6, 7 | both "Keep with my account" switches, a favourite world, sent by a run of the app's own sync that began after it; a new page: still signed in, still Beyond, the favourite and the switches kept |
-| R7 | 8 | only the subscription this run's R3 bought (skipped otherwise, so a plan you bought by hand is never changed). With R8 in the run it first reads the delete screen while that plan still renews. Manage subscription → the portal (test mode): switch to Flow, back: Flow; cancel at the period end, back: "Ends on …" |
+| R5 | 5 | (Beyond: after R3U) Another Angle with the real model (it fails at once when `/v1/health` says the provider is `mock` or has no key): the consent card, a made-up everyday situation, an angle and "Show me another angle"; the crisis test sentence of `tests/safety-qa.probes.mjs` gets the support response, and nothing is sent for it |
+| R6 | 6, 7 | both "Keep with my account" switches, a favourite world, sent by a run of the app's own sync that began after it; a new page: still signed in, still on the run's plan (Beyond after R3U), the favourite and the switches kept |
+| R7 | 8 | only the subscription this run's R3 bought (skipped otherwise, so a plan you bought by hand is never changed). With R8 in the run it first reads the delete screen while that plan still renews. Settings → Manage subscription (with "Change plan, update your card or cancel." under it) → the portal's **home** (test mode; the Worker's answer has no flow, and the page has Cancel subscription): cancel at the period end, back on `?billing=portal`: "Ends on …. Nothing more is charged." |
 | R8 | 9 (S12) | the delete screen's "Not touched" line; "Cancel your subscription first" with Delete off while the plan renews (seen in R7 before its cancel, or now); after the cancel, Delete turns on once the word is typed (then cleared). With no renewing plan in the run S12 is not checked: SKIP. Deletes nothing unless `--delete-account` |
-| teardown | Afterwards | with the key: cancels at once the subscription of each Checkout Session this run opened (the session holding the test account's id, the subscription made since the run started, still running; only ids printed), and looks for nothing else; without it, lists those Checkout Sessions to see to by hand |
+| teardown | Afterwards | with the key: cancels at once the subscription of each Checkout Session this run opened (the session holding the test account's id, the subscription made since the run started, still running; only ids printed), and looks for nothing else; R3U's upgrades change that same subscription (its price, never its id), so the session still names it; without the key, lists those Checkout Sessions to see to by hand |
 
 **Still by hand:** clicking the email links (the sign-up confirmation and a reset), S10 (tax), S13 (the custom domain),
-S14 (the Worker's log search), and the parts of the checklist it does not drive: the Stripe dashboard's webhook deliveries,
+S14 (the Worker's log search), and the parts of the checklist it does not drive: 3a's failed upgrade payment (a second
+account with the `…0341` card), the Stripe dashboard's webhook deliveries,
 the two-tab expiry (S2), Flow's rituals and worlds, the paused Hushflow and the Memory Garden in 6 and 7, a second device,
 and S11's Flow-only account and `ENTITLEMENT_MODE` switch. Stripe's hosted pages are driven by their labels as remembered:
 watch its first run; a changed label fails with a screenshot.
@@ -840,9 +874,14 @@ watch its first run; a changed label fails with a screenshot.
 `--base http://127.0.0.1:PORT --allow-local-for-testing` (a flag refused with any other base), then stops two more runs
 half way, by a Ctrl-C to the process group and by SIGTERM, and checks each stops its step, skips the rest, runs the
 teardown, exits 1 on its own and leaves no browser behind. Stripe and the real model cannot be reached there and
-nothing of theirs is faked: R3, R4, R5, R7 and R8 only ever run against the preview, and until their first run there
-they have been checked only by `tests/staging-rehearsal.test.mjs` (the refusals, the checks of Stripe's addresses and
-of `/v1/health`, the teardown's choice and its Stripe calls against a stand-in, S12's verdict, the masking).
+nothing of theirs is faked: R3, R3U, R4, R5, R7 and R8 only ever run against the preview, and until their first run
+there they have been checked only by `tests/staging-rehearsal.test.mjs` (the refusals, the checks of Stripe's
+addresses and of `/v1/health`, R3U's verdicts on the page's own record and the recorder that makes it, the order of
+R3U's and R7's steps, the teardown's choice and its Stripe calls against a stand-in, S12's verdict, the masking). The
+app's half of the upgrade against the real staging Worker and an in-memory Stripe is
+`server/another-angle/test/billing-upgrade-app.test.js` (Flow → Beyond monthly → yearly, back-navigation, a way back
+before Stripe has the change, a failed payment, abandoned, repeated and reloaded upgrades, and cancelling from Manage
+subscription).
 
 ## What staging does not change, and what is still open
 

@@ -1,9 +1,9 @@
 // The rehearsal driver for the hushmallow STAGING preview: docs/STAGING.md "The rehearsal checklist", sections 1 to 8
-// and S12, in a browser ("Automated rehearsal driver" there says how to run it and what stays by hand). Chromium
+// (the upgrade of 8 included) and S12, in a browser ("Automated rehearsal driver" there says how to run it and what stays by hand). Chromium
 // (Playwright) drives the real preview through the app's own screens at a phone's size, and Stripe's own hosted pages
 // in TEST mode only. Nothing here ever talks to production.
 //
-//   timeout 1200 node hushmallow/tools/staging/rehearsal.cjs [--steps R0,R1,…] [--out DIR] [--base URL] [--worker URL]
+//   timeout 1800 node hushmallow/tools/staging/rehearsal.cjs [--steps R0,R1,…] [--out DIR] [--base URL] [--worker URL]
 //        [--viewport 390x844] [--delete-account]
 //   offline, a local build with the fake sign-in server (R1, R2, R6 only): node hushmallow/tools/staging/rehearsal-dryrun.mjs
 //     (it passes --base http://127.0.0.1:PORT --allow-local-for-testing, a flag refused with any other --base)
@@ -21,12 +21,21 @@
 //       Beyond" opens the account screen with "Sign in or create an account first…".
 //   R2  sign in (REHEARSAL_A_EMAIL / _PASSWORD) through the account screen, by password; Settings → Privacy shows the
 //       account row. With REHEARSAL_SIGNUP_EMAIL: a fresh browser signs up (the 18+ tick) and sees "Check your email".
-//   R3  Plans → Monthly → Beyond → Stripe Checkout (checkout.stripe.com or checkout.hushmallow.com and a cs_test_ session,
-//       else FAIL and stop at once): hushmallow Beyond, US$19.99, no phone or promotion code field; 4242…; back on the
-//       preview "Welcome to hushmallow Beyond" and ?billing=success gone (90 s); Settings → Plan: Beyond and Manage
+//   R3  Plans → Monthly → Flow → Stripe Checkout (checkout.stripe.com or checkout.hushmallow.com and a cs_test_ session,
+//       else FAIL and stop at once): hushmallow Flow, US$9.99, no phone or promotion code field; 4242…; back on the
+//       preview "Welcome to hushmallow Flow" and ?billing=success gone (90 s); Settings → Plan: Flow and Manage
 //       subscription; with STRIPE_E2E_KEY the customer is read (one, with the account's metadata.user_id). Then a second
-//       browser that has not heard of the plan yet (its plan check held back) taps "Step into hushmallow Flow": 409
-//       already_subscribed, and the app opens the portal instead of a second Checkout.
+//       browser that has not heard of the plan yet (its plan check held back) taps "Step into hushmallow Beyond": 409
+//       already_subscribed, and the app opens Stripe's plan choice (subscription_update) instead of a second Checkout.
+//   R3U only on the subscription this run's R3 bought (else SKIP), through the plans page's own buttons. Back-navigation
+//       first: "Upgrade to hushmallow Beyond" tapped twice (one request, one Stripe page), Stripe's confirmation page
+//       (subscription_update_confirm: a Confirm button, never the portal's home with its Cancel subscription), then
+//       Stripe's return link instead of Confirm: back on ?billing=unchanged, "No change made. You're still on hushmallow
+//       Flow.", Flow monthly still. Then Flow monthly → Beyond monthly: Confirm on that page, back on the preview with
+//       ?billing=changed&to=ultra.monthly (never left on billing.stripe.com), "Confirming your new plan with Stripe…"
+//       first, the Beyond welcome with the seven Mallows only after the Worker's answer read from Stripe says Beyond
+//       monthly, active (the page's own answers, timed in the page); a reload says nothing again. Then monthly → yearly
+//       the same way ("Switch to yearly" on Beyond's yearly card, the smaller welcome); Settings → Plan: Beyond.
 //   R4  (with REHEARSAL_C_EMAIL / _PASSWORD only) 4000 0000 0000 9995 declined on Stripe's page, its back link → "No
 //       problem. Nothing was charged.", no plan; 4000 0025 0000 3155: Fail authentication, then Complete authentication.
 //   R5  Another Angle with the real staging model (FAIL when /v1/health says its provider is not the real one): the
@@ -36,8 +45,10 @@
 //       after it; a new page in the same browser: still signed in, still Beyond (after R3), the favourite kept, both
 //       switches still on.
 //   R7  only on the subscription this run's R3 bought (else SKIP). With R8 in the run, first a look at the delete screen
-//       while that plan still renews (S12's first half, judged in R8). Settings → Manage subscription → billing.stripe.com
-//       (test): switch to hushmallow Flow, back: Flow; cancel at the period end, back: Settings says "Ends on …".
+//       while that plan still renews (S12's first half, judged in R8). Settings → Manage subscription (with "Change plan,
+//       update your card or cancel." under it) → the portal's HOME on billing.stripe.com (test; the Worker's answer has
+//       no flow, and the page has Cancel subscription): cancel at the period end, back on ?billing=portal: Settings says
+//       "Ends on …. Nothing more is charged.".
 //   R8  (S12) the delete screen: its "Not touched" list says to cancel a web subscription first; while a plan renews
 //       (now, or in R7's look before its cancel) "Cancel your subscription first" shows and Delete stays off; after the
 //       cancel Delete turns on once the word is typed (the word is then cleared). With no renewing plan in the run S12
@@ -45,7 +56,8 @@
 //   teardown  with STRIPE_E2E_KEY: the subscription of each Checkout Session this run opened (session.subscription, the
 //       session holding the test account's id, the subscription made since the run started), still running, is
 //       cancelled at once (only ids are printed); nothing else is touched, and no other subscription is ever looked
-//       for. Any Stripe object with livemode true stops everything at once (exit 3). It runs once, also after a Ctrl-C
+//       for. R3U's upgrades change that same subscription (its item's price, never its id), so the session still names
+//       it. Any Stripe object with livemode true stops everything at once (exit 3). It runs once, also after a Ctrl-C
 //       or the outer `timeout`'s SIGTERM.
 //
 // Secrets and inputs come from the environment only. They are never printed (every line goes through the mask in
@@ -74,12 +86,16 @@ const { pathToFileURL } = require('url');
 
 const ROOT = path.resolve(__dirname, '../..');          // hushmallow/
 const REPO_ROOT = path.resolve(ROOT, '..');              // the repository (hushmallow/ is one folder down)
-const STEPS = Object.freeze(['R0', 'R1', 'R2', 'R3', 'R4', 'R5', 'R6', 'R7', 'R8']);
+const STEPS = Object.freeze(['R0', 'R1', 'R2', 'R3', 'R3U', 'R4', 'R5', 'R6', 'R7', 'R8']);
 /** Steps that sign in as E2E-A. */
-const A_STEPS = Object.freeze(['R2', 'R3', 'R5', 'R6', 'R7', 'R8']);
+const A_STEPS = Object.freeze(['R2', 'R3', 'R3U', 'R5', 'R6', 'R7', 'R8']);
 /** Steps that need Stripe (and the real Worker): never run in the local test mode. */
-const STRIPE_STEPS = Object.freeze(['R3', 'R4', 'R7']);
-const ONLINE_ONLY = Object.freeze(['R3', 'R4', 'R5', 'R7']);
+const STRIPE_STEPS = Object.freeze(['R3', 'R3U', 'R4', 'R7']);
+const ONLINE_ONLY = Object.freeze(['R3', 'R3U', 'R4', 'R5', 'R7']);
+/** Stripe's statuses that confirm a change of plan (src/app/plan-change.js OK_STATUSES). */
+const CONFIRMED_STATUSES = Object.freeze(['active', 'trialing']);
+/** How long the app may take to confirm a change after Stripe's way back (plan-change.js CONFIRM_WAITS, about 85 s). */
+const CONFIRM_WAIT_MS = 110000;
 /**
  * Every environment value this driver treats as secret: masked wherever it would appear. The accounts are the
  * rehearsal's own (REHEARSAL_A_…, REHEARSAL_C_…); STAGING_E2E_… is the sandbox driver's E2E-B (scripts/billing-e2e.mjs),
@@ -99,8 +115,8 @@ const CARDS = Object.freeze({ ok: '4242 4242 4242 4242', declined: '4000 0000 00
 const EVERYDAY = 'My friend hasn\'t replied to my message since yesterday, so she must be annoyed with me.';
 /** R6's favourite: one of the Hushfold's worlds (src/hushfold/flow/registry.js). */
 const WORLD = 'static-storm';
-/** Each step's whole time budget (ms); the outer `timeout 1200` is the run's. */
-const BUDGET = Object.freeze({ R0: 120000, R1: 150000, R2: 200000, R3: 420000, R4: 480000, R5: 420000, R6: 200000, R7: 420000, R8: 150000 });
+/** Each step's whole time budget (ms); the outer `timeout 1800` is the run's. */
+const BUDGET = Object.freeze({ R0: 120000, R1: 150000, R2: 200000, R3: 420000, R3U: 720000, R4: 480000, R5: 420000, R6: 200000, R7: 420000, R8: 150000 });
 const CHROMIUM = '/opt/pw-browsers/chromium';
 /** After a step was stopped (out of time, Ctrl-C), how long its abandoned work may take to notice (ms). */
 const SETTLE_MS = 15000;
@@ -130,13 +146,16 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms)).then(checkpoint);
 async function loadRepo() {
   const imp = (rel) => import(pathToFileURL(path.join(ROOT, rel)).href);
   const src = (rel) => fs.readFileSync(path.join(ROOT, rel), 'utf8');
-  const [app, auth, billing, ent, lines, vm, e2e, checks, srv, probes] = await Promise.all([
+  const [app, auth, billing, ent, lines, vm, e2e, checks, srv, probes, change, welcome, plans, mallows, routes] = await Promise.all([
     imp('src/app/config.js'), imp('src/auth/config.js'), imp('src/app/billing.js'), imp('src/app/entitlements.js'),
     imp('src/beyond/lines.js'), imp('src/auth/view-model.js'), imp('server/another-angle/scripts/billing-e2e.mjs'),
     imp('server/another-angle/scripts/billing-checks.mjs'), imp('server/another-angle/src/config.js'), imp('tests/safety-qa.probes.mjs'),
+    imp('src/app/plan-change.js'), imp('src/app/scenes/beyond-welcome.js'), imp('src/app/scenes/plans.js'), imp('src/mallows/registry.js'),
+    imp('server/another-angle/src/billing/routes.js'),
   ]);
   const constOf = (text, name) => (new RegExp(`export const ${name} = '([^'\\n]+)'`).exec(text) || [])[1] || null;
   const plansSrc = src('src/app/scenes/plans.js'), accountSrc = src('src/app/scenes/account.js'), angleSrc = src('src/beyond/another-angle.js');
+  const settingsSrc = src('src/app/scenes/settings.js');
   const staging = checks.varsTables(checks.readWrangler()).staging || {};
   const repo = {
     appOrigin: staging.APP_ORIGIN || null,
@@ -154,6 +173,13 @@ async function loadRepo() {
     feedbackAsk: lines.FEEDBACK.ask, anotherLabel: (lines.FEEDBACK.options.find((o) => o.value === 'another') || {}).label || null,
     crisisSentence: pickCrisisSentence(probes.POSITIVE),
     expectedFlags: checks.expectedFlags('staging'), apiVersion: srv.STRIPE_API_VERSION_EXPECTED,
+    // R3U and R7: the change of plan's own words and hooks (src/app/plan-change.js, beyond-welcome.js, plans.js, settings.js)
+    confirmingLine: change.CHANGE_LINES.confirming,
+    unchangedFlow: change.CHANGE_LINES.unchanged(ent.PLANS.paid.name), okStatuses: [...change.OK_STATUSES],
+    beyondTitle: welcome.WELCOME_LINES.beyondTitle, yearlyLine: welcome.planLine({ tier: 'ultra', period: 'yearly' }),
+    mallowCount: mallows.MALLOW_IDS.length, changeLabels: { upgrade: `${plans.CHANGE_LABELS.upgrade} ${ent.PLANS.ultra.name}`, yearly: plans.CHANGE_LABELS.yearly },
+    // where the staging Worker sends people back from the portal (its APP_ORIGIN and these): the home, a change made, none made
+    manageHint: constOf(settingsSrc, 'MANAGE_HINT'), portalReturn: { ...routes.PORTAL_RETURN },
   };
   for (const [k, v] of Object.entries(repo)) if (v == null || v === '') throw new Error(`the repository's ${k} could not be read`);
   return Object.freeze(repo);
@@ -383,6 +409,57 @@ function portalVerdict(href) {
   return { ok: true, live: false, test, why: '' };
 }
 
+/** The buttons on a page that confirms one change of plan (Stripe's subscription_update_confirm). */
+const CONFIRM_LABELS = Object.freeze([/^confirm$/i, /^confirm and pay$/i, /^(confirm|update) (plan|subscription|changes?)$/i]);
+/** The portal home's own cancel control (Settings → Manage subscription's page; never part of an upgrade). */
+const CANCEL_LABEL = /^cancel (plan|subscription)$/i;
+/**
+ * What a Stripe portal page is, from the names of its visible buttons and links: 'home' (the portal's home: a Cancel
+ * subscription or Cancel plan control), 'confirm' (a page confirming one change: a Confirm button, no cancel control),
+ * else 'other'.
+ */
+function stripePageKind(names) {
+  const n = (Array.isArray(names) ? names : []).map(norm);
+  if (n.some((x) => CANCEL_LABEL.test(x))) return 'home';
+  if (n.some((x) => CONFIRM_LABELS.some((re) => re.test(x)))) return 'confirm';
+  return 'other';
+}
+
+const lastAnswer = (answers) => { const a = answers[answers.length - 1]; return a ? `${a.http} ${a.tier}${a.period ? `.${a.period}` : ''} ${a.status}` : 'no answer'; };
+/**
+ * A change of plan's way back, as the page recorded it (the recorder's notes, welcomes and the Worker's billing answers
+ * the page received, each timed by the page's clock): { ok, why, said }. ok: the welcome of `kind` for `to` opened once,
+ * after "Confirming…" showed and after an answer of the Worker's said exactly that plan and period, active or trialing
+ * (read from Stripe: the sync {} the app asks); never a welcome before that answer, never a payment line.
+ */
+function judgeConfirm({ to, kind, notes = [], welcomes = [], answers = [], confirmingLine, okStatuses = CONFIRMED_STATUSES }) {
+  const [plan, period] = String(to).split('.');
+  const pay = notes.find((x) => x.state === 'payment_issue');
+  if (pay) return { ok: false, why: `the app said the payment needs a look${pay.text ? ` ("${pay.text}")` : ''}` };
+  const confirmed = answers.find((a) => a.http === 200 && a.tier === plan && a.period === period && okStatuses.includes(a.status));
+  const w = welcomes[0];
+  const late = notes.filter((x) => x.state === 'timeout' && x.text).pop();
+  if (!w) return { ok: false, why: confirmed ? `the Worker said ${to} ${confirmed.status}, yet no welcome opened` : `no welcome, and the Worker never said ${to} active (last answer: ${lastAnswer(answers)})${late ? `; the app said "${late.text}"` : ''}` };
+  if (welcomes.length > 1) return { ok: false, why: `the welcome opened ${welcomes.length} times` };
+  if (w.kind !== kind || w.to !== to) return { ok: false, why: `the welcome was "${w.kind}" for ${w.to || 'no plan'}, not "${kind}" for ${to}` };
+  const c = notes.find((x) => x.state === 'confirming');
+  if (!c || c.at > w.at) return { ok: false, why: `"${confirmingLine}" did not show before the welcome` };
+  const wrong = notes.find((x) => x.state === 'confirming' && x.text && x.text !== confirmingLine);
+  if (wrong) return { ok: false, why: `the confirming line said "${wrong.text}", not "${confirmingLine}"` };
+  if (!confirmed || confirmed.at > w.at) return { ok: false, why: `the welcome opened before the Worker said ${to} active (never before Stripe confirms; answers: ${answers.map((a) => `${a.tier}.${a.period} ${a.status}`).join(', ') || 'none'})` };
+  const before = answers.filter((a) => a.at < confirmed.at).length;
+  return { ok: true, why: '', said: `"${confirmingLine}" first, then the welcome ${w.at - confirmed.at} ms after the Worker's ${confirmed.path} said ${to} ${confirmed.status}${before ? ` (${before} answer(s) before it said the old plan)` : ''}` };
+}
+/** Stripe's return link instead of Confirm: "No change made. You're still on …" (its words, once in), never a welcome. */
+function judgeUnchanged({ notes = [], welcomes = [], line }) {
+  if (welcomes.length) return { ok: false, why: `a welcome opened (${welcomes[0].kind} ${welcomes[0].to || ''}) though nothing was confirmed` };
+  if (notes.some((x) => x.state === 'payment_issue')) return { ok: false, why: 'the app said the payment needs a look' };
+  const u = notes.filter((x) => x.state === 'unchanged');
+  if (!u.length) return { ok: false, why: `no "${line}"` };
+  if (!u.some((x) => x.text === line)) return { ok: false, why: `the app said "${u.map((x) => x.text).filter(Boolean).pop() || '(no words)'}", not "${line}"` };
+  return { ok: true, why: '' };
+}
+
 /** Any object (at any depth) with livemode true. */
 function hasLive(v, depth = 0) {
   if (!v || typeof v !== 'object' || depth > 12) return false;
@@ -425,12 +502,19 @@ const bare = (p) => String(p).split('?')[0].replace(/\b[a-z]{2,8}_[A-Za-z0-9_]{6
 
 // ------------------------------------------------------------------------------------------------ the browser parts --
 
-/** Installed in every page of the base host before its own scripts: the toasts and Mallow lines seen, and the load. */
+/**
+ * Installed in every page of the base host before its own scripts: the toasts and Mallow lines seen, the load and the
+ * address it was loaded with (Stripe's way back, before the app takes it out), and for a change of plan the app's
+ * status line (data-plan-confirm: confirming, timeout, unchanged, payment_issue) and its welcome sheets as they show,
+ * and the staging Worker's billing answers (sync, status) as the page receives them. Every time is the page's own
+ * clock. The page's fetch is only listened to (the same response goes on to the app, untouched).
+ */
 function recorder(host) {
   if (location.host !== host) return;
-  const rh = { toasts: [], said: [], loadedAt: `${Date.now()}-${Math.random()}` };
+  const rh = { toasts: [], said: [], notes: [], welcomes: [], answers: [], loadedAt: `${Date.now()}-${Math.random()}`, arrived: location.search.replace(/session_id=[^&]+/, 'session_id=…') };
   window.__rh = rh;
   const seen = new WeakSet();
+  const noteSeen = new WeakMap();
   const n = (s) => String(s || '').replace(/\s+/g, ' ').trim();
   const scan = () => {
     for (const t of document.querySelectorAll('body > .toast')) if (!seen.has(t) && n(t.textContent)) { seen.add(t); rh.toasts.push({ t: n(t.textContent), at: Date.now() }); }
@@ -438,8 +522,38 @@ function recorder(host) {
       const t = n(e.textContent);
       if (t && !rh.said.slice(-6).includes(t)) rh.said.push(t);
     }
+    for (const e of document.querySelectorAll('[data-plan-confirm]')) {
+      const state = e.getAttribute('data-plan-confirm');
+      const text = n((e.querySelector('.plan-note-text, .plan-sheet-line') || {}).textContent);
+      if (noteSeen.get(e) !== `${state}|${text}`) { noteSeen.set(e, `${state}|${text}`); rh.notes.push({ state, text, at: Date.now() }); }
+    }
+    for (const e of document.querySelectorAll('.sheet[data-plan-welcome]')) {
+      if (seen.has(e)) continue;
+      seen.add(e);
+      rh.welcomes.push({ kind: e.getAttribute('data-plan-welcome'), to: e.getAttribute('data-to'), title: n((e.querySelector('.pw-title') || {}).textContent), mallows: e.querySelectorAll('.pw-mallow img').length, at: Date.now() });
+    }
   };
-  new MutationObserver(scan).observe(document, { subtree: true, childList: true, characterData: true });
+  new MutationObserver(scan).observe(document, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['data-plan-confirm', 'data-plan-welcome'] });
+  const fetch0 = window.fetch;
+  if (typeof fetch0 === 'function') {
+    window.fetch = function (input, init) {
+      const p = fetch0.apply(this, arguments);
+      try {
+        const u = new URL(typeof input === 'string' ? input : input && input.url ? input.url : String(input), location.href);
+        if (/^\/v1\/billing\/(sync|status)$/.test(u.pathname)) {
+          // listened to first (before the app's own reading of it): a copy is read, the response goes on untouched
+          p.then((res) => {
+            const at = Date.now();   // the answer is here: before the app has read a word of it
+            const push = (j) => rh.answers.push({ path: u.pathname, http: res.status, tier: j ? j.tier : null, period: j ? j.period : null, status: j ? j.status : null, at });
+            let copy = null;
+            try { copy = res.clone(); } catch { copy = null; }
+            if (copy) copy.json().then(push, () => push(null)); else push(null);
+          }, () => {});
+        }
+      } catch { /* not a billing call */ }
+      return p;
+    };
+  }
 }
 
 async function until(fn, timeout, every = 250) {
@@ -550,6 +664,8 @@ function planRow(page) {
 
 /** The plan as the billing server says it now (a forced check, read-only), then the tier this page holds. */
 const refreshTier = (page) => page.evaluate(async () => { try { await window.__hush.ent.refresh({ force: true }); } catch { /* the kept answer */ } return window.__hush.ent.tier(); });
+/** The web plan this page holds now (the server's last answer): { tier, period, status, periodEnd, cancelAtPeriodEnd }. */
+const webPlanOf = (page) => page.evaluate(() => { const e = window.__hush.ent, p = e.webPlan?.() || {}; return { tier: e.tier(), period: p.period ?? null, status: p.status ?? null, periodEnd: p.periodEnd ?? null, cancelAtPeriodEnd: !!p.cancelAtPeriodEnd }; });
 
 /** This page's own version folder (/v/<version>/), from the script that started it. */
 const pageVersion = (page) => page.evaluate(() => {
@@ -580,7 +696,7 @@ async function main(argv = process.argv.slice(2), env = process.env, { write = (
     opts, repo, pre, log, out, baseHost, workerHost, local: pre.local, base: pre.base, worker: pre.worker,
     startMs: Date.now(), sessions: [], uids: {}, live: false, stopped: null, interrupted: null, interruptStep: null,
     workerUp: false, billingReady: false, signInReady: false, realModel: false, modelWhy: 'R0 did not read /v1/health',
-    beyondA: false, cancelAttempted: false, s12: null, ctxA: null, pageA: null, shots: 0, teardownP: null, teardownDone: false,
+    boughtA: false, cancelAttempted: false, s12: null, ctxA: null, pageA: null, shots: 0, teardownP: null, teardownDone: false,
   };
   bindStepState(X);
   const counts = { PASS: 0, FAIL: 0, SKIP: 0 };
@@ -598,7 +714,7 @@ async function main(argv = process.argv.slice(2), env = process.env, { write = (
   // browser and exit before the teardown): the step running stops at once, the rest are skipped, the teardown runs
   // once, then the driver exits 1 (3 after a live object). A second signal at least SIGNAL_AGAIN_MS after the first, or
   // the teardown taking over 150 s, quits at once with the Checkout Sessions to cancel by hand. (One Ctrl-C under
-  // `timeout 1200 node …` often arrives twice within a few ms: the terminal's SIGINT to the group, and timeout passing it
+  // `timeout 1800 node …` often arrives twice within a few ms: the terminal's SIGINT to the group, and timeout passing it
   // on. That second copy is not a second Ctrl-C.)
   const quit = (why) => {
     log.info(`${why}: quitting at once${X.teardownDone ? '' : `; cancel by hand ${handList(X)}`}`);
@@ -683,8 +799,8 @@ function gate(X, id) {
     if (!X.pre.returnsHere) return `Stripe sends people back to the staging Worker's APP_ORIGIN (${X.repo.appOrigin}), not to ${X.base}`;
   }
   if (id === 'R4' && !X.pre.C) return 'REHEARSAL_C_EMAIL / REHEARSAL_C_PASSWORD (E2E-C) are not set';
-  // R7 changes and cancels a subscription: only the one this run's R3 bought, never a plan E2E-A held before
-  if (id === 'R7' && !X.beyondA) return 'E2E-A has no plan this run bought (R3 did not run or did not pass): R7 only ever changes a subscription this run created';
+  // R3U upgrades and R7 cancels a subscription: only the one this run's R3 bought, never a plan E2E-A held before
+  if ((id === 'R3U' || id === 'R7') && !X.boughtA) return `E2E-A has no plan this run bought (R3 did not run or did not pass): ${id} only ever changes a subscription this run created`;
   if (id === 'R4' && !X.signInReady) return 'R0: the preview has no working staging sign-in';
   if (id === 'R5' && !X.workerUp) return 'R0: the staging Worker did not answer';
   return null;
@@ -1109,41 +1225,65 @@ async function toCheckout(X, page, plan = 'ultra', who = 'A') {
   return v;
 }
 
-/** Back on the preview after paying: "Welcome to <plan>" and ?billing=success gone, within 90 s. */
-async function welcomed(X, page, planName, since) {
+/**
+ * Back on the preview after paying, ?billing=success gone, within 90 s: hushmallow Flow says "Welcome to hushmallow
+ * Flow"; hushmallow Beyond opens its welcome (the sheet with the seven Mallows, src/app/scenes/beyond-welcome.js), which
+ * is then closed by its Continue.
+ */
+async function welcomed(X, page, plan, since) {
   await page.waitForLoadState('domcontentloaded').catch(() => {});
   await waitApp(page);
-  const want = `Welcome to ${planName}`;
-  const ok = await until(() => page.evaluate(({ want, since }) => (window.__rh?.toasts || []).some((x) => x.t === want && x.at >= since) && !/billing=success/.test(location.search), { want, since }), 90000, 400);
-  if (ok) return true;
-  const st = await page.evaluate(() => ({ search: location.search.replace(/session_id=[^&]+/, 'session_id=…'), toasts: (window.__rh?.toasts || []).slice(-3).map((x) => x.t) })).catch(() => ({}));
-  throw new Fail(`back on the preview: no "${want}" within 90 s (address ${st.search || '(clean)'}; the app said ${JSON.stringify(st.toasts || [])})`);
+  const name = X.repo.plans[plan];
+  const want = plan === 'ultra' ? `the ${X.repo.beyondTitle} sheet` : `"Welcome to ${name}"`;
+  const ok = await until(() => page.evaluate(({ plan, line, since }) => {
+    const rh = window.__rh || {};
+    const here = plan === 'ultra' ? (rh.welcomes || []).some((x) => x.kind === 'beyond' && x.at >= since) : (rh.toasts || []).some((x) => x.t === line && x.at >= since);
+    return here && !/billing=success/.test(location.search);
+  }, { plan, line: `Welcome to ${name}`, since }), 90000, 400);
+  if (ok) {
+    if (plan === 'ultra') await closeWelcome(page);
+    return true;
+  }
+  const st = await page.evaluate(() => ({ search: location.search.replace(/session_id=[^&]+/, 'session_id=…'), toasts: (window.__rh?.toasts || []).slice(-3).map((x) => x.t), welcomes: (window.__rh?.welcomes || []).map((x) => x.kind) })).catch(() => ({}));
+  throw new Fail(`back on the preview: no ${want} within 90 s (address ${st.search || '(clean)'}; the app said ${JSON.stringify(st.toasts || [])}${st.welcomes?.length ? `, welcome ${st.welcomes.join(', ')}` : ''})`);
+}
+/** The welcome sheet's Continue; gone within 10 s. */
+async function closeWelcome(page) {
+  await tapEl(page, '.sheet[data-plan-welcome] [data-act="continue"]', { timeout: 20000 });
+  need(await until(async () => !(await visibleNow(page, '.sheet[data-plan-welcome]')), 10000), 'the welcome did not close with Continue');
 }
 
 // ----------------------------------------------------------------------------------------------------- R3 --
+/** A price as Checkout shows it ("US$9.99" → 9.99, never inside 19.99 or 99.99). */
+const amountRe = (price) => new RegExp(`(?<![\\d.])${String(price).replace(/^[^\d]+/, '').replace(/\./g, '\\.')}(?![\\d])`);
+
 async function stepR3(X) {
   const { repo } = X;
   const said = [];
   const page = await ensureA(X);
   const tier0 = await refreshTier(page);
   need(tier0 === 'none', `E2E-A already has ${tier0 === 'ultra' ? repo.plans.ultra : tier0 === 'paid' ? repo.plans.paid : tier0} before checkout: cancel it first (the teardown, or the sandbox's dashboard)`);
-  const v = await toCheckout(X, page, 'ultra', 'A');
+  // hushmallow Flow monthly: R3U then upgrades this same subscription (Beyond monthly, then yearly)
+  const price = repo.billingPrices['hushmallow.paid.monthly'];
+  const v = await toCheckout(X, page, 'paid', 'A');
   said.push(`Checkout on ${v.host}, a cs_test_ session`);
   const co = await readCheckout(page);
-  need(co.text.includes(repo.plans.ultra) && /19\.99/.test(co.text), `Checkout does not show ${repo.plans.ultra} at US$19.99`);
+  need(co.text.includes(repo.plans.paid) && amountRe(price).test(co.text), `Checkout does not show ${repo.plans.paid} at ${price}`);
   need(!co.phone, 'Checkout has a phone number field (the Checkout Studio settings say none)');
   need(!co.promo, 'Checkout has a promotion code field (the Checkout Studio settings say none)');
-  said.push(`${repo.plans.ultra} US$19.99${co.testBadge ? ', test mode shown' : ''}, no phone or promotion code field`);
+  said.push(`${repo.plans.paid} ${price}${co.testBadge ? ', test mode shown' : ''}, no phone or promotion code field`);
   const t0 = Date.now();
   await payCard(page, CARDS.ok, { email: X.pre.A.email });
   const o = await outcome(X, page, 120000);
   need(o.kind === 'returned', `paying with 4242…: ${o.kind}${o.text ? ` ("${o.text}")` : ''}`);
-  await welcomed(X, page, repo.plans.ultra, t0);
-  said.push(`4242… paid; "Welcome to ${repo.plans.ultra}", ?billing=success gone`);
+  await welcomed(X, page, 'paid', t0);
+  said.push(`4242… paid; "Welcome to ${repo.plans.paid}", ?billing=success gone`);
   await openSettings(page);
-  const plan = await until(async () => { const r = await planRow(page); return r.name === repo.plans.ultra && r.manage ? r : null; }, 20000);
-  need(plan, `Settings → Plan does not show ${repo.plans.ultra} with Manage subscription`);
-  X.beyondA = true;
+  const plan = await until(async () => { const r = await planRow(page); return r.name === repo.plans.paid && r.manage ? r : null; }, 20000);
+  need(plan, `Settings → Plan does not show ${repo.plans.paid} with Manage subscription`);
+  const held = await webPlanOf(page);
+  need(held.tier === 'paid' && held.period === 'monthly', `the app holds ${held.tier}.${held.period}, not Flow monthly`);
+  X.boughtA = true;
   said.push(`Settings → Plan: ${plan.name}, "${plan.note}", Manage subscription`);
   if (X.stripe) said.push(await confirmCustomer(X, v.id));
   said.push(await alreadySubscribed(X));
@@ -1172,9 +1312,10 @@ async function confirmCustomer(X, sessionId) {
 }
 
 /**
- * "Step into hushmallow Flow" with Beyond already there. The plans page shows a plan the app knows as included (no
- * button), so this is a second browser that has not heard of the plan yet: its GET /v1/billing/status is held back.
- * The server's own 409 already_subscribed must answer, and the app opens the portal instead of a second Checkout.
+ * "Step into hushmallow Beyond" with Flow already there. The plans page offers a plan the app knows is held as a change
+ * of it (Upgrade…), so this is a second browser that has not heard of the plan yet: its GET /v1/billing/status is held
+ * back. The server's own 409 already_subscribed must answer, and the app opens Stripe's plan choice
+ * (subscription_update; never the portal's home) instead of a second Checkout. Nothing is chosen there.
  */
 async function alreadySubscribed(X) {
   return inContext(X, async (ctx) => {
@@ -1187,7 +1328,7 @@ async function alreadySubscribed(X) {
     need(r.ok, `409 check: E2E-A could not sign in in a second browser: ${r.why}`);
     await openPlans(p);
     const t0 = Date.now();
-    await tapEl(p, '.invite-flow .invite-buy');
+    await tapEl(p, '.invite-beyond .invite-buy');
     const ans = await until(() => ctx.__net.find((x) => x.m === 'POST' && x.p === '/v1/billing/checkout' && x.at >= t0), 30000);
     need(ans, '409 check: no answer from /v1/billing/checkout within 30 s');
     need(ans.s === 409 && ans.json?.error?.code === 'already_subscribed', `409 check: checkout answered ${ans.s} ${ans.json?.error?.code || ''} (want 409 already_subscribed)`);
@@ -1196,8 +1337,171 @@ async function alreadySubscribed(X) {
     const pv = portalVerdict(away);
     if (pv.live) throw new LiveStop('the portal opened a live session');
     need(pv.ok && !checkoutVerdict(away).id, `409 check: the app opened ${new URL(away).host}, not the portal (${pv.why})`);
-    return `a second browser without the plan yet: "Step into ${X.repo.plans.paid}" → 409 already_subscribed → the portal (${new URL(away).host}), no second Checkout`;
+    const opened = ctx.__net.find((x) => x.m === 'POST' && x.p === '/v1/billing/portal' && x.at >= t0);
+    need(opened?.s === 200 && opened.json?.flow === 'subscription_update', `409 check: the portal opened as ${opened ? `${opened.s} ${opened.json?.flow || 'the home'}` : 'nothing the Worker said'} (want Stripe's plan choice, subscription_update)`);
+    return `a second browser without the plan yet: "Step into ${X.repo.plans.ultra}" → 409 already_subscribed → Stripe's plan choice (subscription_update, ${new URL(away).host}), no second Checkout; nothing chosen there`;
   });
+}
+
+// ----------------------------------------------------------------------------------------------------- R3U --
+/** The names of a page's visible buttons and links (a Stripe portal page: its home, or a page confirming one change). */
+const controlNames = (page) => page.evaluate(() => {
+  const vis = (e) => { const r = e.getBoundingClientRect(), cs = getComputedStyle(e); return r.width > 1 && r.height > 1 && cs.visibility !== 'hidden' && cs.display !== 'none'; };
+  return [...document.querySelectorAll('button, a, [role="button"], [role="link"]')].filter(vis)
+    .map((e) => (e.getAttribute('aria-label') || e.textContent || '').replace(/\s+/g, ' ').trim()).filter(Boolean).slice(0, 80);
+}).catch(() => []);
+
+/** Two touches on the app's element 90 ms apart (a quick double tap), once it is visible and has stopped moving. */
+async function tapTwice(page, selector) {
+  const at = await until(async () => {
+    const a = await findRect(page, selector, null, true);
+    if (!a) return null;
+    await sleep(220);
+    const b = await findRect(page, selector, null, false);
+    return b && Math.abs(a.x - b.x) <= 1 && Math.abs(a.y - b.y) <= 1 ? b : null;
+  }, 30000, 200);
+  if (!at) throw new Fail(`nothing to tap: ${selector}`);
+  await page.touchscreen.tap(at.x, at.y);
+  await sleep(90);
+  await page.touchscreen.tap(at.x, at.y);
+}
+
+/**
+ * The plans page's own button for a change of the plan held (data-plan-action, data-to, on the card at that period),
+ * its words checked, tapped (twice: a quick double tap), on to Stripe. → { answer, requests, host }: the Worker's
+ * answer to the app's POST /v1/billing/portal, and how many such requests the taps sent.
+ */
+async function toChange(X, page, { card, action, to, label, twice = false }) {
+  const ctx = X.ctxA;
+  await openPlans(page);
+  await tapEl(page, '.seg .seg-opt', { text: to.endsWith('.yearly') ? /^Yearly$/ : /^Monthly$/ });
+  const sel = `${card} .invite-buy[data-plan-action="${action}"][data-to="${to}"]`;
+  const words = await until(() => page.evaluate((sel) => { const b = document.querySelector(sel); return b ? b.textContent.replace(/\s+/g, ' ').trim() : null; }, sel), 15000);
+  need(words === label, `the plans page's ${card.replace('.invite-', '')} card ${words ? `says "${words}"` : `has no ${action} button for ${to}`} (want "${label}")`);
+  const t0 = Date.now();
+  if (twice) await tapTwice(page, sel); else await tapEl(page, sel);
+  const left = await until(() => { try { return new URL(page.url()).host !== X.baseHost; } catch { return false; } }, 30000);
+  const answer = ctx.__net.find((x) => x.m === 'POST' && x.p === '/v1/billing/portal' && x.at >= t0) || null;
+  if (!left) {
+    const line = await page.evaluate((card) => (document.querySelector(`${card} .invite-change-line`)?.textContent || '').trim(), card).catch(() => '');
+    throw new Fail(`"${label}" did not open Stripe's page within 30 s (the Worker answered ${answer ? `${answer.s} ${answer.json?.error?.code || answer.json?.flow || ''}` : 'nothing'}${line ? `; the plans page said "${line}"` : ''})`);
+  }
+  const requests = ctx.__reqs.filter((x) => x.m === 'POST' && x.p === '/v1/billing/portal' && x.at >= t0).length;
+  need(answer?.s === 200 && answer.json?.flow === 'subscription_update_confirm' && answer.json?.to === to,
+    `"${label}": the Worker answered ${answer ? `${answer.s} ${answer.json?.flow || answer.json?.error?.code || ''}` : 'nothing'} (want 200 subscription_update_confirm to ${to}: Stripe's page confirming that one change)`);
+  return { answer, requests, host: new URL(page.url()).host };
+}
+
+/**
+ * Stripe's page for an upgrade: Stripe's own host in test mode, a page confirming one change (a Confirm button), never
+ * the portal's home (its Cancel subscription), naming the plan. → its text.
+ */
+async function readFlowPage(X, page, planName) {
+  const pv = portalVerdict(page.url());
+  if (pv.live) throw new LiveStop('a change of plan opened a live portal session');
+  need(pv.ok, pv.why);
+  await page.waitForLoadState('domcontentloaded').catch(() => {});
+  const names = (await until(async () => { const n = await controlNames(page); return stripePageKind(n) !== 'other' ? n : null; }, 45000, 800)) || await controlNames(page);
+  const text = norm(await page.locator('body').innerText({ timeout: 30000 }).catch(() => ''));
+  need(pv.test === true || /test mode|sandbox/i.test(text), 'Stripe\'s page does not say it is in test mode');
+  const kind = stripePageKind(names);
+  need(kind !== 'home', 'an upgrade opened the portal\'s HOME (with its Cancel subscription): it must be Stripe\'s page confirming that one change');
+  need(kind === 'confirm', `Stripe's page has no Confirm button (it shows ${names.slice(0, 8).map((x) => `"${x}"`).join(', ') || 'no controls'})`);
+  need(text.includes(planName), `Stripe's page does not name ${planName}`);
+  return text;
+}
+
+/** Stripe's return link on a change of plan's page (its top-level return_url), instead of Confirm; back on the preview. */
+async function leaveByReturnLink(X, page) {
+  const link = page.locator('a[href*="billing=unchanged"], [data-testid="return-to-business-link"]').first();
+  if (await visible(link)) await link.click(); else await clickFirst(page, [/^return to/i, /^back to/i], 30000);
+  need(await until(() => { try { return new URL(page.url()).host === X.baseHost; } catch { return false; } }, 45000), 'Stripe\'s return link did not come back to the preview');
+  await page.waitForLoadState('domcontentloaded').catch(() => {});
+  await waitApp(page);
+}
+
+/** Confirm on Stripe's page; Stripe must send the person back to the preview (after_completion redirect), never keep them there. */
+async function confirmOnStripe(X, page) {
+  await clickFirst(page, CONFIRM_LABELS, 30000);
+  const o = await outcome(X, page, 120000);
+  need(o.kind === 'returned', `after Confirm on Stripe's page: ${o.kind === 'timeout' ? 'still on Stripe after 120 s (it must come back to the preview by itself)' : o.kind}${o.text ? ` ("${o.text}")` : ''}`);
+  await page.waitForLoadState('domcontentloaded').catch(() => {});
+  await waitApp(page);
+}
+
+/**
+ * Back on the preview from a confirmed change: Stripe's address was ?billing=changed&to=<to>, then (judgeConfirm, on
+ * the page's own record) "Confirming…", the Worker's answer read from Stripe, and only then the welcome (`kind`, its
+ * heading `title`; Beyond's with every Mallow), once; the address cleaned. The welcome is closed by its Continue.
+ */
+async function confirmedBack(X, page, { to, kind, title }) {
+  const { repo } = X;
+  const arrived = new URLSearchParams(await page.evaluate(() => window.__rh?.arrived || ''));
+  need(arrived.get('billing') === 'changed' && arrived.get('to') === to, `Stripe sent the person back with "${arrived.toString() || '(nothing)'}", not ${repo.portalReturn.changed}&to=${to}`);
+  await until(() => page.evaluate(() => { const rh = window.__rh || {}; return (rh.welcomes || []).length > 0 || (rh.notes || []).some((x) => x.state === 'payment_issue' || x.state === 'timeout'); }), CONFIRM_WAIT_MS, 500);
+  await sleep(1500);   // a second welcome, had there been one, would show by now
+  const rec = await page.evaluate(() => ({ notes: window.__rh.notes, welcomes: window.__rh.welcomes, answers: window.__rh.answers, search: location.search }));
+  const j = judgeConfirm({ to, kind, ...rec, confirmingLine: repo.confirmingLine, okStatuses: repo.okStatuses });
+  need(j.ok, `back on ?billing=changed&to=${to}: ${j.why}`);
+  need(!/[?&](billing|to)=/.test(rec.search), `the way back stayed in the address (${rec.search})`);
+  const w = rec.welcomes[0];
+  need(w.title === title, `the welcome says "${w.title}" (want "${title}")`);
+  if (kind === 'beyond') need(w.mallows === repo.mallowCount, `the welcome shows ${w.mallows} Mallows (want all ${repo.mallowCount})`);
+  await closeWelcome(page);
+  return j.said;
+}
+
+async function stepR3U(X) {
+  const { repo } = X;
+  const said = [];
+  const page = await ensureA(X);
+  await refreshTier(page);
+  const held = await webPlanOf(page);
+  need(held.tier === 'paid' && held.period === 'monthly', `E2E-A holds ${held.tier}.${held.period}, not the ${repo.plans.paid} monthly R3 bought`);
+  // 1. back-navigation: "Upgrade to hushmallow Beyond" (a quick double tap: one request, one Stripe page), then Stripe's
+  //    return link instead of Confirm: no change, and the app says so
+  const b = await toChange(X, page, { card: '.invite-beyond', action: 'upgrade', to: 'ultra.monthly', label: repo.changeLabels.upgrade, twice: true });
+  need(b.requests === 1, `a double tap on "${repo.changeLabels.upgrade}" sent ${b.requests} requests (want one: the second tap waits)`);
+  await readFlowPage(X, page, repo.plans.ultra);
+  said.push(`"${repo.changeLabels.upgrade}" (a double tap: one request) → Stripe's page confirming Beyond monthly on ${b.host} (Confirm, no Cancel subscription)`);
+  await leaveByReturnLink(X, page);
+  const back = new URLSearchParams(await page.evaluate(() => window.__rh?.arrived || ''));
+  need(back.get('billing') === 'unchanged', `Stripe's return link came back with "${back.toString() || '(nothing)'}", not ${repo.portalReturn.unchanged}`);
+  await until(() => page.evaluate((line) => (window.__rh?.notes || []).some((x) => x.state === 'unchanged' && x.text === line), repo.unchangedFlow), 20000);
+  await sleep(1000);
+  const ju = judgeUnchanged({ ...(await page.evaluate(() => ({ notes: window.__rh.notes, welcomes: window.__rh.welcomes }))), line: repo.unchangedFlow });
+  need(ju.ok, `back by Stripe's return link: ${ju.why}`);
+  await refreshTier(page);
+  const still = await webPlanOf(page);
+  need(still.tier === 'paid' && still.period === 'monthly', `after Stripe's return link the plan is ${still.tier}.${still.period}, not ${repo.plans.paid} monthly`);
+  said.push(`its return link instead: back on ${repo.portalReturn.unchanged}, "${repo.unchangedFlow}", ${repo.plans.paid} monthly still`);
+  // 2. Flow monthly → Beyond monthly: Confirm
+  const c = await toChange(X, page, { card: '.invite-beyond', action: 'upgrade', to: 'ultra.monthly', label: repo.changeLabels.upgrade });
+  await readFlowPage(X, page, repo.plans.ultra);
+  await confirmOnStripe(X, page);
+  const s1 = await confirmedBack(X, page, { to: 'ultra.monthly', kind: 'beyond', title: repo.beyondTitle });
+  said.push(`Flow monthly → Beyond monthly: Confirm on ${c.host} → back on the preview (?billing=changed&to=ultra.monthly); ${s1}; "${repo.beyondTitle}" with all ${repo.mallowCount} Mallows`);
+  // a reload of the page afterwards: nothing is said again
+  await page.reload({ timeout: 90000 });
+  await waitApp(page);
+  await sleep(6000);
+  const again = await page.evaluate(() => ({ welcomes: (window.__rh?.welcomes || []).length, confirming: (window.__rh?.notes || []).filter((x) => x.state === 'confirming').length }));
+  need(!again.welcomes && !again.confirming, `after a reload the app said it again (${again.welcomes} welcome(s), ${again.confirming} "Confirming…")`);
+  said.push('a reload says nothing again');
+  // 3. Beyond monthly → yearly: "Switch to yearly" on Beyond's yearly card
+  const d = await toChange(X, page, { card: '.invite-beyond', action: 'yearly', to: 'ultra.yearly', label: repo.changeLabels.yearly });
+  await readFlowPage(X, page, repo.plans.ultra);
+  await confirmOnStripe(X, page);
+  const s2 = await confirmedBack(X, page, { to: 'ultra.yearly', kind: 'plan', title: repo.yearlyLine });
+  said.push(`monthly → yearly ("${repo.changeLabels.yearly}", ${d.host}): ${s2}; "${repo.yearlyLine}"`);
+  await openSettings(page);
+  const row = await until(async () => { const r = await planRow(page); return r.name === repo.plans.ultra && r.manage ? r : null; }, 20000);
+  need(row, `Settings → Plan does not show ${repo.plans.ultra} with Manage subscription`);
+  const yp = await webPlanOf(page);
+  need(yp.tier === 'ultra' && yp.period === 'yearly' && repo.okStatuses.includes(yp.status) && Number(yp.periodEnd) - Date.now() > 300 * 86400000,
+    `the app holds ${yp.tier}.${yp.period} ${yp.status}, its period ending ${yp.periodEnd ? new Date(yp.periodEnd).toISOString().slice(0, 10) : 'never'} (want Beyond yearly, active, a year ahead)`);
+  said.push(`Settings → Plan: ${row.name}, "${row.note}"`);
+  return { reason: said.join('; ') };
 }
 
 // ----------------------------------------------------------------------------------------------------- R4 --
@@ -1255,8 +1559,8 @@ async function stepR4(X) {
     await ok.click();
     const o5 = await outcome(X, page, 120000, { skipChallenge: true });
     need(o5.kind === 'returned', `after "Complete authentication": ${o5.kind}${o5.text ? ` ("${o5.text}")` : ''}`);
-    await welcomed(X, page, repo.plans.ultra, t2);
-    said.push(`then Complete authentication: "Welcome to ${repo.plans.ultra}" (E2E-C's subscription goes in the teardown)`);
+    await welcomed(X, page, 'ultra', t2);
+    said.push(`then Complete authentication: ${repo.beyondTitle}, the welcome with the Mallows (E2E-C's subscription goes in the teardown)`);
     return { reason: said.join('; ') };
   });
 }
@@ -1327,7 +1631,7 @@ async function stepR5(X) {
   need(X.realModel, `${X.modelWhy}: R5 checks the real staging model only`);
   const page = await ensureA(X);
   const tier = await refreshTier(page);
-  if (tier !== 'ultra') return { status: 'SKIP', reason: `E2E-A has no ${repo.plans.ultra} (${tier}): Another Angle needs it (R3 gives it)` };
+  if (tier !== 'ultra') return { status: 'SKIP', reason: `E2E-A has no ${repo.plans.ultra} (${tier}): Another Angle needs it (R3U's upgrade gives it)` };
   const ctx = X.ctxA;
   const via = await openAngle(X, page);
   const card = await until(() => visibleNow(page, '[data-bx="consent"]'), 30000);
@@ -1447,8 +1751,9 @@ async function stepR6(X) {
   let plan = 'plan not checked (no web billing here)';
   if (!X.local) {
     const tier = await refreshTier(page);
-    if (X.beyondA) need(tier === 'ultra', `after coming back the plan is ${tier}, not ${repo.plans.ultra}`);
-    plan = X.beyondA ? `still ${repo.plans.ultra}` : `plan ${tier} (R3 did not run in this browser)`;
+    // the plan this run bought (and R3U upgraded): the same after coming back as before the page closed
+    if (X.boughtA) need(tier !== 'none' && tier === before.tier, `after coming back the plan is ${repo.plans[tier] || tier}, not ${repo.plans[before.tier] || before.tier}`);
+    plan = X.boughtA ? `still ${repo.plans[tier]}` : `plan ${tier} (R3 did not run in this browser)`;
   }
   const v2 = await openAccountScreen(page);
   need(v2 === 'account', `after coming back the account screen shows ${v2}`);
@@ -1510,49 +1815,34 @@ async function stepR7(X) {
   // S12's first half, while this run's plan still renews (R8 judges it, after this step's cancel)
   if (X.opts.steps.includes('R8')) {
     try {
-      X.s12 = { ...(await readDeleteScreen(X, page)), expect: X.beyondA && !X.cancelAttempted };
+      X.s12 = { ...(await readDeleteScreen(X, page)), expect: X.boughtA && !X.cancelAttempted };
       said.push('the delete screen read while the plan renews (R8 judges it)');
     } catch (e) {
       if (e instanceof LiveStop || e instanceof Cancelled) throw e;
       X.s12 = { error: String(e?.message || e).split('\n')[0] };
     }
   }
-  // switch to hushmallow Flow
-  const text = await toPortal(X, page);
-  need(text.includes(repo.plans.ultra) || text.includes(repo.plans.paid), 'the portal does not name the plan');
-  said.push('Manage subscription → billing.stripe.com, test mode');
-  await clickFirst(page, [/^update (plan|subscription)/i, /^change (plan|subscription)/i]);
-  await sleep(2000);
-  const picked = await page.evaluate((name) => {
-    const vis = (e) => { const r = e.getBoundingClientRect(); return r.width > 1 && r.height > 1; };
-    const btns = [...document.querySelectorAll('button, a[role="button"]')].filter((b) => vis(b) && /^select$/i.test(b.textContent.trim()));
-    for (const b of btns) {
-      let el = b;
-      for (let i = 0; i < 8 && el; i++, el = el.parentElement) {
-        const inside = [...el.querySelectorAll('button, a[role="button"]')].filter((x) => /^select$/i.test(x.textContent.trim()));
-        if (inside.length > 1) break;
-        if ((el.textContent || '').includes(name)) { b.setAttribute('data-rh-pick', '1'); return true; }
-      }
-    }
-    return false;
-  }, repo.plans.paid);
-  need(picked, `the portal's plan list has no "Select" for ${repo.plans.paid}`);
-  await page.locator('[data-rh-pick="1"]').first().click();
-  await clickFirst(page, [/^continue$/i]);
-  await clickFirst(page, [/^confirm$/i, /^(update|confirm) (plan|subscription)$/i]);
-  await sleep(3000);
-  await returnFromPortal(X, page);
-  const flow = await planUntil(page, 'paid', 45000);
+  // Settings → Manage subscription, with what it is for under it (cancelling included), opens the portal's HOME
   await openSettings(page);
-  const p1 = await planRow(page);
-  need(flow && p1.name === repo.plans.paid, `back from the portal the app shows ${p1.name || 'nothing'}, not ${repo.plans.paid} (if the portal schedules a downgrade at the period end, B6/D8, the switch waits until then)`);
-  said.push(`switched to ${repo.plans.paid} there; back: Settings → Plan: ${p1.name}`);
+  const hint = await page.evaluate(() => {
+    const b = document.querySelector('.settings [data-act="manage-subscription"]');
+    const id = b?.getAttribute('aria-describedby');
+    return { button: !!b, hint: id ? (document.getElementById(id)?.textContent || '').trim() : null };
+  });
+  need(hint.button && hint.hint === repo.manageHint, `Settings → Manage subscription ${hint.button ? `has "${hint.hint}" under it` : 'is not there'} (want "${repo.manageHint}")`);
+  const t0 = Date.now();
+  const text = await toPortal(X, page);
+  const home = X.ctxA?.__net?.find((x) => x.m === 'POST' && x.p === '/v1/billing/portal' && x.at >= t0) || null;
+  need(home?.s === 200 && home.json && !('flow' in home.json), `Manage subscription: the Worker answered ${home ? `${home.s} ${home.json?.flow || home.json?.error?.code || ''}` : 'nothing'} (want the portal's home: no flow)`);
+  const names = await until(async () => { const n = await controlNames(page); return stripePageKind(n) === 'home' ? n : null; }, 30000, 800);
+  need(names, 'the portal\'s home has no Cancel subscription (B6: cancellations on)');
+  need(text.includes(repo.plans.ultra) || text.includes(repo.plans.paid), 'the portal does not name the plan');
+  said.push(`Settings → Manage subscription ("${repo.manageHint}") → the portal's home on billing.stripe.com, test mode, Cancel subscription there`);
   // cancel at the period end (from here on, whether the plan still renews is the app's to say: R8)
   X.cancelAttempted = true;
-  await toPortal(X, page);
-  await clickFirst(page, [/^cancel (plan|subscription)$/i]);
+  await clickFirst(page, [CANCEL_LABEL]);
   await sleep(1500);
-  await clickFirst(page, [/^cancel (plan|subscription)$/i, /^confirm cancellation$/i]);
+  await clickFirst(page, [CANCEL_LABEL, /^confirm cancellation$/i]);
   await sleep(2500);
   // a cancellation survey, if the portal asks one
   for (const re of [/^skip$/i, /^no thanks$/i]) {
@@ -1561,11 +1851,14 @@ async function stepR7(X) {
   }
   await sleep(1500);
   await returnFromPortal(X, page);
+  const back = new URLSearchParams(await page.evaluate(() => window.__rh?.arrived || ''));
+  need(back.get('billing') === 'portal', `the portal's return link came back with "${back.toString() || '(nothing)'}", not ${repo.portalReturn.home}`);
   const ends = await planUntil(page, 'ends', 45000);
   await openSettings(page);
   const p2 = await planRow(page);
   need(ends && /^Ends on .+\. Nothing more is charged\.$/.test(p2.note), `after cancelling, Settings → Plan says "${p2.note}" (want "Ends on …. Nothing more is charged.")`);
-  said.push(`cancelled at the period end; Settings: "${p2.note}"`);
+  need(p2.name === repo.plans[tier] && p2.manage, `after cancelling, Settings → Plan shows ${p2.name || 'nothing'}, not ${repo.plans[tier]} (the plan stays until its end), ${p2.manage ? 'with' : 'without'} Manage subscription`);
+  said.push(`cancelled at the period end; back on ${repo.portalReturn.home}: Settings: ${p2.name}, "${p2.note}"`);
   return { reason: said.join('; ') };
 }
 
@@ -1649,7 +1942,7 @@ async function stepR8(X) {
   const page = await ensureA(X);
   const del = X.opts.deleteAccount;
   const now = await readDeleteScreen(X, page, { tryWord: true, stay: del });
-  const j = judgeS12({ now, before: X.s12, expectNow: X.beyondA && !X.cancelAttempted, cancelFirstTitle: X.repo.cancelFirstTitle });
+  const j = judgeS12({ now, before: X.s12, expectNow: X.boughtA && !X.cancelAttempted, cancelFirstTitle: X.repo.cancelFirstTitle });
   if (!del) return { status: j.status, reason: `${j.reason}; nothing deleted (no --delete-account)` };
   if (j.status === 'FAIL') { await tapEl(page, '[data-act="cancel"]').catch(() => {}); return j; }
   need(!now.renewing, '--delete-account: the plan still renews, so the app refuses (cancel it first)');
@@ -1713,12 +2006,12 @@ async function tearDown(X) {
   return failed;
 }
 
-const STEP_FNS = { R1: stepR1, R2: stepR2, R3: stepR3, R4: stepR4, R5: stepR5, R6: stepR6, R7: stepR7, R8: stepR8 };
+const STEP_FNS = { R1: stepR1, R2: stepR2, R3: stepR3, R3U: stepR3U, R4: stepR4, R5: stepR5, R6: stepR6, R7: stepR7, R8: stepR8 };
 
 module.exports = {
   STEPS, A_STEPS, SECRET_ENV, PRODUCTION_HOSTS, CHECKOUT_HOSTS, CARDS, EVERYDAY, WORLD,
   loadRepo, pickCrisisSentence, parseArgs, preflight, proxyFromEnv, createLog, judgeHealth, parsePublicConfig, judgeAuthConfig,
-  checkoutVerdict, portalVerdict, hasLive, teardownPick, isSignalAgain, SIGNAL_AGAIN_MS, TEARDOWN_OPEN_WAIT_MS, judgeS12, gate, runStep, bindStepState, teardown, handList, checkpoint, sleep, until, newPage, newContext,
+  checkoutVerdict, portalVerdict, stripePageKind, judgeConfirm, judgeUnchanged, amountRe, recorder, CONFIRM_LABELS, CANCEL_LABEL, CONFIRM_WAIT_MS, hasLive, teardownPick, isSignalAgain, SIGNAL_AGAIN_MS, TEARDOWN_OPEN_WAIT_MS, judgeS12, gate, runStep, bindStepState, teardown, handList, checkpoint, sleep, until, newPage, newContext,
   LiveStop, Cancelled, Fail, STEP, BUDGET, main,
 };
 

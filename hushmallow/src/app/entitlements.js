@@ -134,7 +134,7 @@ export function createEntitlements({ store, billing = null, now = () => Date.now
   /** The billing server's answer, kept with when it was checked. */
   const setWeb = (r) => {
     const since = state.source === 'billing' && state.tier === r.tier && state.since ? state.since : now();
-    state = { tier: r.tier, source: 'billing', since, checkedAt: now(), status: r.status, periodEnd: r.periodEnd, endsAt: r.endsAt ?? null, cancelAtPeriodEnd: r.cancelAtPeriodEnd, manageable: r.manageable, ...(ns ? { owner } : {}) };
+    state = { tier: r.tier, source: 'billing', since, checkedAt: now(), period: r.period ?? null, status: r.status, periodEnd: r.periodEnd, endsAt: r.endsAt ?? null, cancelAtPeriodEnd: r.cancelAtPeriodEnd, manageable: r.manageable, ...(ns ? { owner } : {}) };
     store.set('entitlement', state);
     listeners.forEach((fn) => fn(state));
   };
@@ -166,6 +166,11 @@ export function createEntitlements({ store, billing = null, now = () => Date.now
     while (webCheck) await webCheck.catch(() => {});
     return askWeb(() => web.sync(sessionId));
   }
+  /** Back from a change of plan: the subscription as Stripe has it now (billing.js refresh), after any check in flight. */
+  async function rereadWeb() {
+    while (webCheck) await webCheck.catch(() => {});
+    return askWeb(() => web.refresh());
+  }
 
   const api = {
     get isNative() { return !!native; },
@@ -187,13 +192,15 @@ export function createEntitlements({ store, billing = null, now = () => Date.now
     /** Web subscriptions: the last check's answer was that the billing server has no web billing at all (a 503
      *  billing_not_configured or accounts_not_configured): no plan can be bought or managed there. */
     webOff: () => !!web && webOff,
-    /** A web plan's details for Settings: { status, periodEnd, endsAt, cancelAtPeriodEnd, manageable } | null. */
+    /** A web plan's details for Settings and the plans page: { period, status, periodEnd, endsAt, cancelAtPeriodEnd, manageable } | null. */
     webPlan() {
       const s = cur();
-      return s.source === 'billing' ? { status: s.status || null, periodEnd: s.periodEnd ?? null, endsAt: s.endsAt ?? null, cancelAtPeriodEnd: !!s.cancelAtPeriodEnd, manageable: !!s.manageable } : null;
+      return s.source === 'billing' ? { period: s.period === 'monthly' || s.period === 'yearly' ? s.period : null, status: s.status || null, periodEnd: s.periodEnd ?? null, endsAt: s.endsAt ?? null, cancelAtPeriodEnd: !!s.cancelAtPeriodEnd, manageable: !!s.manageable } : null;
     },
     /** Web subscriptions, back from Checkout: the plan from that session (src/app/billing.js sync), at once. */
     async sync(sessionId) { return web ? syncWeb(sessionId) : cur(); },
+    /** Web subscriptions, back from a change of plan: the server reads the subscription from Stripe now (billing.js refresh). */
+    async refreshFromStripe() { return web ? rereadWeb() : cur(); },
     async refresh({ force = false } = {}) {
       if (web) return refreshWeb(force);
       if (!native) return state;
@@ -233,9 +240,14 @@ export function createEntitlements({ store, billing = null, now = () => Date.now
     cancelTest() { if (state.source === 'test') set('none', null); },
     /**
      * Web subscriptions: Stripe's customer portal (cancel as easily as subscribing, change plan, card, receipts).
-     * { intent: 'switch' }: straight to changing the plan (the plans page, when the account has one already).
+     * { intent: 'switch' }: straight to Stripe's plan chooser (the plans page, when the account has one already);
+     * { intent: 'upgrade', plan, period }: Stripe's page confirming exactly that upgrade (billing.js upgrade).
      */
-    async manage({ intent } = {}) { return web ? web.portal(intent === 'switch' ? 'switch' : undefined) : { failed: true, reason: 'off' }; },
+    async manage({ intent, plan, period } = {}) {
+      if (!web) return { failed: true, reason: 'off' };
+      if (intent === 'upgrade') return web.upgrade(plan, period);
+      return web.portal(intent === 'switch' ? 'switch' : undefined);
+    },
   };
   // the plans page shows these under each button (src/app/scenes/plans.js); only with web subscriptions on
   if (web) api.prices = () => web.prices();

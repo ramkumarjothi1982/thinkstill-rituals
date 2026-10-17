@@ -79,8 +79,8 @@ const MS_TIME_MIN = 1e11;
  * @typedef {{ plan: 'paid' | 'ultra', period: 'monthly' | 'yearly' }} Plan
  */
 
-/** The configured slot a price id sits in, or null. @param {string | undefined} id @param {Prices} prices @returns {Plan | null} */
-function slotOf(id, prices) {
+/** The configured slot a price id sits in, or null. @param {string | undefined | null} id @param {Prices} prices @returns {Plan | null} */
+export function slotOf(id, prices) {
   for (const plan of /** @type {const} */ (['paid', 'ultra'])) {
     for (const period of /** @type {const} */ (['monthly', 'yearly'])) if (id && prices[plan][period] === id) return { plan, period };
   }

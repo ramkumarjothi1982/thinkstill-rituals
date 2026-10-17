@@ -1,7 +1,8 @@
-// A Stripe sandbox in memory, for test/billing-e2e.test.js: what scripts/billing-e2e.mjs reads and makes (prices with
+// A Stripe sandbox in memory, for test/billing-e2e.test.js (and test/billing-upgrade-app.test.js, the app's own billing
+// code against the staging Worker): what scripts/billing-e2e.mjs reads and makes (prices with
 // their products, the webhook endpoint, the default portal configuration, Stripe Tax, test clocks with their
 // customers, cards, subscriptions, invoices and events) and what the Worker reads back (a subscription, a customer's
-// list). Moving a clock renews, retries, fails and cancels in outline as Stripe does, and each event goes, signed, to
+// list) or asks for (a customer-portal session, its flow checked against the portal configuration). Moving a clock renews, retries, fails and cancels in outline as Stripe does, and each event goes, signed, to
 // the Worker's webhook (deliver); its pending_webhooks drops to 0 once the Worker answers 2xx.
 //
 // Shapes follow API 2026-08-26.dahlia (the period on the items, an invoice's subscription under parent). The retry
@@ -65,6 +66,7 @@ export function sandbox({ now, deliver, worker, afterRetries = 'cancel', retries
     /** @type {Map<string, any>} */ subs: new Map(),
     /** @type {Map<string, any>} */ invoices: new Map(),
     /** @type {any[]} */ events: [],
+    /** @type {{ customer: string, return_url: string, flow: string | null, form: URLSearchParams }[]} the portal sessions made */ portalSessions: [],
     /** @type {{ method: string, path: string, key: string, version: string, form: URLSearchParams, at: number }[]} */ calls: [],
   };
   edit(s);
@@ -191,6 +193,36 @@ export function sandbox({ now, deliver, worker, afterRetries = 'cancel', retries
     }
     if (method === 'GET' && p === '/v1/webhook_endpoints') return reply(200, listOf(s.endpoints));
     if (method === 'GET' && p === '/v1/billing_portal/configurations') return reply(200, listOf(s.portal ? [s.portal] : []));
+    // a portal session (the Worker's), checked as Stripe checks it: the customer, https return addresses, and a plan
+    // change only where the default configuration lets it (subscription_update on; for a confirm, the subscription's
+    // own one item, to a price under its products, quantity 1)
+    if (method === 'POST' && p === '/v1/billing_portal/sessions') {
+      const cus = String(form.get('customer'));
+      if (!s.customers.has(cus)) return reply(400, { error: { code: 'resource_missing', param: 'customer', type: 'invalid_request_error', message: 'No such customer.' } });
+      const https = (/** @type {string | null} */ v) => { try { return new URL(String(v)).protocol === 'https:'; } catch { return false; } };
+      if (!https(form.get('return_url'))) return invalid('Not a valid URL.');
+      const type = form.get('flow_data[type]');
+      if (type) {
+        if (!['subscription_update', 'subscription_update_confirm'].includes(type)) return invalid('This flow is not supported here.');
+        const ft = s.portal?.features?.subscription_update;
+        if (!ft?.enabled) return invalid('This feature is not enabled for the portal configuration.');
+        const sub = s.subs.get(String(form.get(`flow_data[${type}][subscription]`)));
+        if (!sub || sub.customer !== cus || ['canceled', 'incomplete_expired'].includes(sub.status)) return invalid('This subscription cannot be updated.');
+        if (type === 'subscription_update_confirm') {
+          const to = String(form.get('flow_data[subscription_update_confirm][items][0][price]'));
+          const offered = (ft.products || []).flatMap((/** @type {any} */ x) => x.prices || []);
+          if (form.get('flow_data[subscription_update_confirm][items][0][id]') !== item(sub).id || form.has('flow_data[subscription_update_confirm][items][1][id]')) return invalid('No such subscription item.');
+          if (!offered.includes(to)) return invalid('The price is not in the portal configuration.');
+          if (form.get('flow_data[subscription_update_confirm][items][0][quantity]') !== '1') return invalid('Quantity changes are not enabled.');
+        }
+        const after = form.get('flow_data[after_completion][type]');
+        if (after && !['redirect', 'hosted_confirmation', 'portal_homepage'].includes(after)) return invalid('Not a valid after_completion type.');
+        if (after === 'redirect' && !https(form.get('flow_data[after_completion][redirect][return_url]'))) return invalid('Not a valid URL.');
+      }
+      s.portalSessions.push({ customer: cus, return_url: String(form.get('return_url')), flow: type, form });
+      const bps = id('bps');
+      return reply(200, { id: bps, object: 'billing_portal.session', customer: cus, return_url: form.get('return_url'), flow: type ? { type } : null, livemode: false, url: `https://billing.stripe.com/p/session/test_${bps.slice(4)}` });
+    }
     if (method === 'GET' && p === '/v1/tax/settings') return reply(200, s.taxSettings);
     if (method === 'GET' && p === '/v1/tax/registrations') return reply(200, listOf(s.registrations.filter((r) => !q.get('status') || r.status === q.get('status'))));
     if (method === 'POST' && p === '/v1/tax/calculations') {

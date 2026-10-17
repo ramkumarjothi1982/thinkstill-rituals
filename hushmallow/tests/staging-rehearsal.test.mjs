@@ -3,7 +3,9 @@
 // a key that is not a test key, the local flag with anything but a loopback base); what it makes of /v1/health, the
 // published sign-in config (and whether its model is the real one) and Stripe's addresses; that its defaults are the
 // staging ones and never production's; that its accounts are its own, never the sandbox driver's E2E-B; the sentences
-// R5 types; the teardown (only the subscriptions of this run's own Checkout Sessions, once); S12's verdict; a step out
+// R5 types; R3U's upgrade (Stripe's confirm page told from the portal's home, the welcome only after "Confirming…" and
+// the Worker's answer of the new plan, the page's own recorder) and R7's cancel from Manage subscription's home; the
+// teardown (only the subscriptions of this run's own Checkout Sessions, once, upgraded or not); S12's verdict; a step out
 // of time or interrupted being stopped, not only no longer waited for; Playwright's signal handlers off; and that no
 // secret is ever printed (the log helper, and the driver itself refusing with fake secrets in its environment). The
 // browser part, and the signals for real, is tools/staging/rehearsal-dryrun.mjs (offline, a local build and the fake
@@ -61,9 +63,10 @@ test('the defaults are the staging preview and the staging Worker, read from the
 });
 
 test('arguments: steps (R0 always first), viewport, values, and anything else refused', () => {
-  assert.deepEqual(opts().steps, ['R0', 'R1', 'R2', 'R3', 'R4', 'R5', 'R6', 'R7', 'R8']);
+  assert.deepEqual(opts().steps, ['R0', 'R1', 'R2', 'R3', 'R3U', 'R4', 'R5', 'R6', 'R7', 'R8']);
   assert.deepEqual(opts('--steps', 'r6,R1').steps, ['R0', 'R1', 'R6']);
   assert.deepEqual(opts('--steps=R3').steps, ['R0', 'R3']);
+  assert.deepEqual(opts('--steps', 'r7,r3u,R3').steps, ['R0', 'R3', 'R3U', 'R7'], 'the run\'s own order: the upgrades after the purchase, the cancel last');
   assert.deepEqual(opts('--viewport', '375x812').viewport, { width: 375, height: 812 });
   assert.equal(opts('--out', '/tmp/x', '--delete-account').deleteAccount, true);
   assert.equal(opts('--allow-local-for-testing').allowLocal, true);
@@ -216,6 +219,177 @@ test('Checkout and the portal: Stripe\'s own hosts and a test session only; a li
   assert.equal(D.portalVerdict('https://billing.stripe.com/p/login/abc').test, null, 'cannot tell: the page must say test mode');
 });
 
+test('the upgrade\'s words and hooks come from the app and the Worker (never written twice in the driver)', () => {
+  assert.equal(repo.confirmingLine, 'Confirming your new plan with Stripe…');
+  assert.equal(repo.unchangedFlow, 'No change made. You’re still on hushmallow Flow.');
+  assert.equal(repo.beyondTitle, 'Welcome to hushmallow Beyond');
+  assert.equal(repo.yearlyLine, 'You’re on hushmallow Beyond, yearly');
+  assert.deepEqual(repo.changeLabels, { upgrade: 'Upgrade to hushmallow Beyond', yearly: 'Switch to yearly' });
+  assert.equal(repo.manageHint, 'Change plan, update your card or cancel.');
+  assert.equal(repo.mallowCount, 7);
+  assert.deepEqual(repo.okStatuses, ['active', 'trialing']);
+  assert.deepEqual(repo.portalReturn, { home: '/?billing=portal', changed: '/?billing=changed', unchanged: '/?billing=unchanged' }, 'the staging Worker\'s own return addresses (src/billing/routes.js PORTAL_RETURN)');
+  // R3's price, read as Checkout shows it: US$9.99, never found inside US$19.99 or US$99.99
+  const re = D.amountRe(repo.billingPrices['hushmallow.paid.monthly']);
+  assert.ok(re.test('hushmallow Flow US$9.99 per month'));
+  assert.ok(re.test('$9.99'));
+  for (const no of ['US$19.99', 'US$99.99', '9.995', '29.99']) assert.ok(!re.test(no), no);
+  // the step's budget covers the app's own confirmation waits, twice over
+  assert.ok(D.CONFIRM_WAIT_MS > 85500 && D.BUDGET.R3U >= 3 * D.CONFIRM_WAIT_MS);
+});
+
+test('the upgrade (R3U): Stripe\'s page confirming one change is told from the portal\'s home; the welcome only after "Confirming…" and the Worker\'s answer of the new plan, once', () => {
+  assert.equal(D.stripePageKind(['Confirm', 'Return to hushmallow']), 'confirm');
+  assert.equal(D.stripePageKind(['Update plan', 'Cancel subscription', 'Add payment method']), 'home');
+  assert.equal(D.stripePageKind(['Confirm', 'Cancel plan']), 'home', 'a cancel control anywhere: never taken for the upgrade\'s page');
+  assert.equal(D.stripePageKind(['Cancel', '  Confirm ']), 'confirm', 'a plain Cancel (going back) is not the subscription\'s cancel');
+  assert.equal(D.stripePageKind([]), 'other');
+  assert.equal(D.stripePageKind(['Continue', 'Select']), 'other');
+  assert.equal(D.stripePageKind(['Confirm and pay']), 'confirm');
+  const line = repo.confirmingLine;
+  const notes = [{ state: 'confirming', text: '', at: 100 }, { state: 'confirming', text: line, at: 150 }];
+  const answer = (o) => ({ path: '/v1/billing/sync', http: 200, tier: 'ultra', period: 'monthly', status: 'active', at: 400, ...o });
+  const welcome = (o) => ({ kind: 'beyond', to: 'ultra.monthly', title: repo.beyondTitle, mallows: 7, at: 600, ...o });
+  const j = (o) => D.judgeConfirm({ to: 'ultra.monthly', kind: 'beyond', confirmingLine: line, okStatuses: repo.okStatuses, notes, ...o });
+  const ok = j({ answers: [answer({ tier: 'paid', at: 200 }), answer()], welcomes: [welcome()] });
+  assert.equal(ok.ok, true, ok.why);
+  assert.equal(ok.said, '"Confirming your new plan with Stripe…" first, then the welcome 200 ms after the Worker\'s /v1/billing/sync said ultra.monthly active (1 answer(s) before it said the old plan)');
+  assert.equal(j({ answers: [answer({ status: 'trialing' })], welcomes: [welcome()] }).ok, true, 'trialing confirms too');
+  assert.equal(j({ answers: [answer({ path: '/v1/billing/status', at: 120 })], welcomes: [welcome()] }).ok, true, 'the recorded plan (the webhook, from Stripe) at the start counts');
+  for (const [o, why] of [
+    [{ answers: [answer({ at: 700 })], welcomes: [welcome()] }, /the welcome opened before the Worker said ultra\.monthly active \(never before Stripe confirms/],
+    [{ answers: [answer({ status: 'past_due' })], welcomes: [welcome()] }, /the welcome opened before the Worker said ultra\.monthly active/],
+    [{ answers: [answer({ period: 'yearly' })], welcomes: [welcome()] }, /the welcome opened before the Worker said ultra\.monthly active/],
+    [{ answers: [answer({ http: 502 })], welcomes: [welcome()] }, /the welcome opened before/],
+    [{ answers: [answer()], welcomes: [] }, /the Worker said ultra\.monthly active, yet no welcome opened/],
+    [{ answers: [answer({ tier: 'paid' })], welcomes: [] }, /no welcome, and the Worker never said ultra\.monthly active \(last answer: 200 paid\.monthly active\)/],
+    [{ answers: [answer()], welcomes: [welcome(), welcome({ at: 900 })] }, /the welcome opened 2 times/],
+    [{ answers: [answer()], welcomes: [welcome({ kind: 'plan' })] }, /the welcome was "plan" for ultra\.monthly, not "beyond" for ultra\.monthly/],
+    [{ answers: [answer()], welcomes: [welcome({ to: 'ultra.yearly' })] }, /for ultra\.yearly, not "beyond" for ultra\.monthly/],
+    [{ answers: [answer()], welcomes: [welcome()], notes: [] }, /"Confirming your new plan with Stripe…" did not show before the welcome/],
+    [{ answers: [answer()], welcomes: [welcome()], notes: [{ state: 'confirming', text: '', at: 650 }] }, /did not show before the welcome/],
+    [{ answers: [answer()], welcomes: [welcome()], notes: [{ state: 'confirming', text: 'All done!', at: 100 }] }, /the confirming line said "All done!"/],
+    [{ answers: [answer()], welcomes: [], notes: [...notes, { state: 'payment_issue', text: 'Your payment didn’t go through…', at: 500 }] }, /the app said the payment needs a look/],
+  ]) {
+    const r = j(o);
+    assert.equal(r.ok, false, JSON.stringify(o));
+    assert.match(r.why, why);
+  }
+  // back by Stripe's return link
+  const u = (o) => D.judgeUnchanged({ line: repo.unchangedFlow, notes: [{ state: 'unchanged', text: '', at: 1 }, { state: 'unchanged', text: repo.unchangedFlow, at: 2 }], welcomes: [], ...o });
+  assert.deepEqual(u(), { ok: true, why: '' });
+  assert.match(u({ welcomes: [welcome()] }).why, /a welcome opened \(beyond ultra\.monthly\) though nothing was confirmed/);
+  assert.match(u({ notes: [] }).why, /^no "No change made\. You’re still on hushmallow Flow\."/);
+  assert.match(u({ notes: [{ state: 'unchanged', text: 'No change made. You’re still on hushmallow Beyond.', at: 1 }] }).why, /the app said "No change made\. You’re still on hushmallow Beyond\."/);
+});
+
+test('the recorder in the page: Stripe\'s way back as it arrived, the status line and the welcome as they show, and the Worker\'s billing answers as they arrive (the app\'s own response untouched)', async () => {
+  const keep = ['window', 'document', 'location', 'MutationObserver'].map((k) => [k, Object.getOwnPropertyDescriptor(globalThis, k)]);
+  const set = (k, v) => Object.defineProperty(globalThis, k, { value: v, configurable: true, writable: true });
+  let scan = null;
+  const els = { notes: [], sheets: [] };
+  const host = 'claude-launch-rc.hushmallow.pages.dev';
+  const sent = [];
+  const win = {
+    fetch: async (url) => {
+      sent.push(String(url));
+      await new Promise((r) => setTimeout(r, 5));
+      return new Response(JSON.stringify(String(url).endsWith('/sync') ? { tier: 'ultra', period: 'monthly', status: 'active' } : { url: 'https://billing.stripe.com/p/session/test_x' }), { status: 200, headers: { 'content-type': 'application/json' } });
+    },
+  };
+  try {
+    set('location', { host, search: '?billing=changed&to=ultra.monthly', href: `https://${host}/?billing=changed&to=ultra.monthly` });
+    set('document', { querySelectorAll: (sel) => (sel === '[data-plan-confirm]' ? els.notes : sel === '.sheet[data-plan-welcome]' ? els.sheets : []) });
+    set('MutationObserver', class { constructor(fn) { scan = fn; } observe() {} });
+    set('window', win);
+    D.recorder('another.example');
+    assert.equal(win.__rh, undefined, 'only on the preview\'s own host');
+    D.recorder(host);
+    const rh = win.__rh;
+    assert.equal(rh.arrived, '?billing=changed&to=ultra.monthly', 'the address Stripe sent, before the app takes it out');
+    // the status line shows (its words a moment later), then the welcome
+    const note = { state: 'confirming', words: '', getAttribute() { return this.state; }, querySelector() { return { textContent: this.words }; } };
+    els.notes.push(note); scan(); scan();
+    note.words = repo.confirmingLine; scan();
+    const sheet = { attrs: { 'data-plan-welcome': 'beyond', 'data-to': 'ultra.monthly' }, getAttribute(k) { return this.attrs[k]; }, querySelector: () => ({ textContent: ' Welcome to  hushmallow Beyond ' }), querySelectorAll: () => ({ length: 7 }) };
+    els.sheets.push(sheet); scan(); scan();
+    assert.deepEqual(rh.notes.map((x) => [x.state, x.text]), [['confirming', ''], ['confirming', repo.confirmingLine]], 'each change once');
+    assert.deepEqual(rh.welcomes.map((x) => [x.kind, x.to, x.title, x.mallows]), [['beyond', 'ultra.monthly', repo.beyondTitle, 7]], 'once');
+    // a billing answer: recorded when it arrives; the app gets the very response, its body unread
+    const t0 = Date.now();
+    const res = await win.fetch('https://hushmallow-another-angle-staging.vibyfy-chat.workers.dev/v1/billing/sync', { method: 'POST' });
+    assert.equal(res.bodyUsed, false);
+    assert.deepEqual(await res.json(), { tier: 'ultra', period: 'monthly', status: 'active' });
+    for (let i = 0; i < 50 && !rh.answers.length; i++) await new Promise((r) => setTimeout(r, 2));
+    assert.equal(rh.answers.length, 1);
+    const [a] = rh.answers;
+    assert.deepEqual({ ...a, at: 0 }, { path: '/v1/billing/sync', http: 200, tier: 'ultra', period: 'monthly', status: 'active', at: 0 });
+    assert.ok(a.at >= t0 && a.at <= Date.now());
+    // other calls go through, unrecorded
+    await (await win.fetch('https://hushmallow-another-angle-staging.vibyfy-chat.workers.dev/v1/billing/portal', { method: 'POST' })).json();
+    await new Promise((r) => setTimeout(r, 10));
+    assert.equal(rh.answers.length, 1);
+    assert.equal(sent.length, 2);
+  } finally {
+    for (const [k, d] of keep) { if (d) Object.defineProperty(globalThis, k, d); else delete globalThis[k]; }
+  }
+});
+
+test('R3 buys hushmallow Flow monthly; R3U upgrades that same subscription only through the plans page\'s buttons, reading Stripe\'s page before pressing anything there; R7 cancels only from Settings → Manage subscription\'s home', () => {
+  const src = readFileSync(DRIVER, 'utf8');
+  const body = (name) => { const i = src.indexOf(`async function ${name}(X`); assert.ok(i > 0, name); return src.slice(i, src.indexOf('\n}\n', i)); };
+  const inOrder = (text, res, what) => { let at = 0; for (const re of res) { const m = re.exec(text.slice(at)); assert.ok(m, `${what}: ${re} after the one before`); at += m.index + m[0].length; } };
+  const r3 = body('stepR3');
+  assert.match(r3, /toCheckout\(X, page, 'paid', 'A'\)/);
+  assert.match(r3, /welcomed\(X, page, 'paid', t0\)/);
+  assert.match(r3, /X\.boughtA = true;/);
+  const r3u = body('stepR3U');
+  inOrder(r3u, [
+    /toChange\(X, page, \{ card: '\.invite-beyond', action: 'upgrade', to: 'ultra\.monthly', label: repo\.changeLabels\.upgrade, twice: true \}\)/, /b\.requests === 1/,
+    /readFlowPage\(X, page, repo\.plans\.ultra\)/, /leaveByReturnLink\(X, page\)/, /judgeUnchanged\(/,
+    /toChange\(X, page, \{ card: '\.invite-beyond', action: 'upgrade', to: 'ultra\.monthly'/, /readFlowPage\(X, page, repo\.plans\.ultra\)/, /confirmOnStripe\(X, page\)/,
+    /confirmedBack\(X, page, \{ to: 'ultra\.monthly', kind: 'beyond', title: repo\.beyondTitle \}\)/, /page\.reload\(/,
+    /toChange\(X, page, \{ card: '\.invite-beyond', action: 'yearly', to: 'ultra\.yearly', label: repo\.changeLabels\.yearly \}\)/, /readFlowPage\(X, page, repo\.plans\.ultra\)/, /confirmOnStripe\(X, page\)/,
+    /confirmedBack\(X, page, \{ to: 'ultra\.yearly', kind: 'plan', title: repo\.yearlyLine \}\)/,
+  ], 'R3U');
+  for (const f of [r3u, body('toChange'), body('readFlowPage'), body('confirmOnStripe'), body('confirmedBack'), body('leaveByReturnLink')]) {
+    assert.doesNotMatch(f.replace(/need\(kind !== 'home'[^\n]*/, ''), /CANCEL_LABEL|cancel \(plan|clickFirst\(page, \[\/\^cancel/i, 'an upgrade never presses a cancel control');
+  }
+  assert.match(body('readFlowPage'), /need\(kind !== 'home', 'an upgrade opened the portal\\'s HOME/);
+  assert.match(body('confirmOnStripe'), /clickFirst\(page, CONFIRM_LABELS, 30000\)[\s\S]*outcome\(X, page, 120000\)[\s\S]*need\(o\.kind === 'returned'/);
+  assert.match(body('confirmedBack'), /judgeConfirm\(\{ to, kind, \.\.\.rec/);
+  const r7 = body('stepR7');
+  inOrder(r7, [/readDeleteScreen\(X, page\)/, /repo\.manageHint/, /toPortal\(X, page\)/, /!\('flow' in home\.json\)/, /stripePageKind\(n\) === 'home'/, /X\.cancelAttempted = true/, /clickFirst\(page, \[CANCEL_LABEL\]\)/, /returnFromPortal\(X, page\)/, /back\.get\('billing'\) === 'portal'/, /Ends on/], 'R7');
+  assert.doesNotMatch(r7, /update \(plan|change \(plan|data-rh-pick/i, 'R7 no longer switches plans in the portal (R3U\'s upgrades do that through the plans page)');
+  // Beyond's Checkout (R4, E2E-C) is welcomed by Beyond's welcome sheet, Flow's by its line
+  assert.match(body('stepR4'), /welcomed\(X, page, 'ultra', t2\)/);
+  assert.match(src.slice(src.indexOf('async function welcomed('), src.indexOf('async function closeWelcome(')), /plan === 'ultra' \? \(rh\.welcomes \|\| \[\]\)\.some\(\(x\) => x\.kind === 'beyond'/);
+});
+
+test('the app\'s hooks R3U, R7 and the recorder rely on are the app\'s own (the plans page\'s buttons, the status line, the welcome, Manage subscription\'s hint)', () => {
+  const read = (p) => readFileSync(join(root, p), 'utf8');
+  const plans = read('src/app/scenes/plans.js'), change = read('src/app/plan-change.js'), welcome = read('src/app/scenes/beyond-welcome.js'), settings = read('src/app/scenes/settings.js');
+  assert.match(plans, /class: `invite \$\{beyond \? 'invite-beyond' : 'invite-flow'\}/);
+  assert.match(plans, /class: `btn block invite-buy invite-change-buy\$\{tone\}`, 'data-plan-action': kind, 'data-to': `\$\{p\.id\}\.\$\{period\}`/);
+  assert.match(plans, /h\('p', \{ class: 'invite-change-line' \}/);
+  assert.match(change, /h\('span', \{ class: 'plan-note-text' \}\)/);
+  assert.match(change, /'data-plan-confirm': state \}, dot, words\)/);
+  assert.match(change, /el\.setAttribute\('data-plan-confirm', nextState\)/);
+  assert.match(change, /s\.el\.setAttribute\('data-plan-confirm', 'payment_issue'\)/);
+  assert.match(change, /h\('p', \{ class: 'plan-sheet-line' \}, line\)/);
+  assert.match(change, /confirming: \(\) => planNote\(app, CHANGE_LINES\.confirming, \{ busy: true, state: 'confirming' \}\)/);
+  assert.match(change, /say: \(text, ms, state\) => planNote\(app, text, \{ ms, state \}\)/);
+  assert.match(change, /CHANGE_LINES\.unchanged\([^)]*\)[^\n]*'unchanged'\)/);
+  assert.match(welcome, /s\.el\.setAttribute\('data-plan-welcome', kind\)/);
+  assert.match(welcome, /if \(tier && period\) s\.el\.setAttribute\('data-to', `\$\{tier\}\.\$\{period\}`\)/);
+  assert.match(welcome, /h\('h2', \{ class: 'pw-title'/);
+  assert.match(welcome, /h\('span', \{ class: 'pw-mallow'[\s\S]*?h\('img', \{ src: m\.file/);
+  assert.equal((welcome.match(/'data-act': 'continue'/g) || []).length, 2, 'Continue on both welcomes');
+  assert.match(settings, /'data-act': 'manage-subscription', 'aria-describedby': 'manage-hint'/);
+  assert.match(read('src/app/ui.js'), /const sheet = h\('div', \{ class: `sheet\$\{full \? ' full' : ''\}`/);
+  assert.match(settings, /h\('p', \{ id: 'manage-hint', 'data-manage-hint': ''[^\n]*MANAGE_HINT\)/);
+});
+
 test('the teardown\'s choice: only the subscription of a Checkout Session this run opened, the account\'s, made since the start, still running', () => {
   const since = 1000;
   const sess = (o) => ({ object: 'checkout.session', id: 'cs_test_Run1aaaaaaaaaa', livemode: false, customer: 'cus_Aaaa1', client_reference_id: 'uid-a', metadata: { user_id: 'uid-a' }, subscription: 'sub_Run1aaaa', ...o });
@@ -223,6 +397,9 @@ test('the teardown\'s choice: only the subscription of a Checkout Session this r
   const pick = (s, b, uid = 'uid-a') => D.teardownPick(s, b, { uid, sinceSec: since });
   assert.deepEqual(pick(sess(), sub()), { cancel: 'sub_Run1aaaa' });
   assert.deepEqual(pick(sess(), sub({ status: 'past_due', cancel_at_period_end: true })), { cancel: 'sub_Run1aaaa' }, 'cancelled at the period end in R7: still running, cancelled at once');
+  // R3U's upgrades change the same subscription (its item's price, never its id): the session still names it
+  const upgraded = sub({ items: { object: 'list', data: [{ id: 'si_Run1aaaa', price: { id: 'price_BeyondYearly1', lookup_key: 'hushmallow.ultra.yearly', livemode: false } }] }, cancel_at_period_end: true });
+  assert.deepEqual(pick(sess(), upgraded), { cancel: 'sub_Run1aaaa' }, 'Flow monthly bought, upgraded to Beyond yearly, cancelled at the period end: cancelled at once');
   assert.equal(pick(sess(), sub({ created: 999 })).cancel, null, 'made before the run started: no margin');
   assert.equal(pick(sess({ subscription: null, status: 'expired' }), null).cancel, null, 'declined or abandoned, then expired: nothing to cancel');
   assert.equal(pick(sess({ subscription: null, status: 'expired' }), null).done, true);
@@ -370,13 +547,19 @@ test('S12: "Cancel your subscription first" while a plan renews is checked (now,
     assert.equal(r.status, 'FAIL', JSON.stringify(o));
     assert.match(r.reason, why);
   }
-  // R7 looks at the delete screen before it cancels when R8 is in the run, and only R3's own plan is ever changed
+  // R7 looks at the delete screen before it cancels when R8 is in the run, and only R3's own plan is ever changed (R3U
+  // upgrades it, R7 cancels it)
   const src = readFileSync(DRIVER, 'utf8');
   const r7 = src.slice(src.indexOf('async function stepR7(X)'), src.indexOf('// cancel at the period end'));
   assert.match(r7, /X\.opts\.steps\.includes\('R8'\)[\s\S]*readDeleteScreen\(X, page\)[\s\S]*toPortal\(X, page\)/);
-  const gx = (o) => ({ local: false, signInReady: true, billingReady: true, workerUp: true, pre: { returnsHere: true, C: null }, repo, base: repo.appOrigin, beyondA: false, ...o });
-  assert.match(D.gate(gx(), 'R7') || '', /no plan this run bought .*R7 only ever changes a subscription this run created/);
-  assert.equal(D.gate(gx({ beyondA: true }), 'R7'), null);
+  const gx = (o) => ({ local: false, signInReady: true, billingReady: true, workerUp: true, pre: { returnsHere: true, C: null }, repo, base: repo.appOrigin, boughtA: false, ...o });
+  for (const id of ['R3U', 'R7']) {
+    assert.match(D.gate(gx(), id) || '', new RegExp(`no plan this run bought .*${id} only ever changes a subscription this run created`));
+    assert.equal(D.gate(gx({ boughtA: true }), id), null);
+    assert.match(D.gate(gx({ boughtA: true, local: true }), id) || '', /^local test mode/);
+    assert.match(D.gate(gx({ boughtA: true, billingReady: false }), id) || '', /^R0: billing/);
+    assert.match(D.gate(gx({ boughtA: true, pre: { returnsHere: false } }), id) || '', /^Stripe sends people back to the staging Worker's APP_ORIGIN/);
+  }
 });
 
 test('a step out of time is stopped, not only no longer waited for: its later waits throw, its page closes, it cannot set the next step\'s page', async () => {

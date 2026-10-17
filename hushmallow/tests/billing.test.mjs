@@ -232,7 +232,7 @@ test('our custom domain (D12): checkout and the portal open on checkout.hushmall
 test('status and portal: the server\'s answer, read strictly; the portal opens only Stripe\'s page', async () => {
   const s = setup();
   s.server.status = { tier: 'ultra', status: 'active', current_period_end: '2026-11-16T09:00:00.000Z', cancel_at_period_end: true, manageable: true };
-  assert.deepEqual(await s.billing.status(), { ok: true, tier: 'ultra', status: 'active', periodEnd: Date.parse('2026-11-16T09:00:00Z'), endsAt: null, cancelAtPeriodEnd: true, manageable: true }, 'a server from before ends_at');
+  assert.deepEqual(await s.billing.status(), { ok: true, tier: 'ultra', period: null, status: 'active', periodEnd: Date.parse('2026-11-16T09:00:00Z'), endsAt: null, cancelAtPeriodEnd: true, manageable: true }, 'a server from before ends_at (and period)');
   const [c] = s.server.calls;
   assert.equal(c.url, `${EP}/v1/billing/status`);
   assert.equal(c.init.method, 'GET');
@@ -249,8 +249,13 @@ test('status and portal: the server\'s answer, read strictly; the portal opens o
     s.server.status = { tier: 'ultra', status: 'active', current_period_end: null, ends_at: v, cancel_at_period_end: false, manageable: true };
     assert.equal((await s.billing.status()).endsAt, null, String(v));
   }
+  // the plan's period (the upgrade contract, C): 'monthly' | 'yearly' only, anything else none
+  for (const [v, want] of [['monthly', 'monthly'], ['yearly', 'yearly'], ['weekly', null], ['YEARLY', null], [1, null], [null, null], [{}, null]]) {
+    s.server.status = { tier: 'ultra', status: 'active', period: v, current_period_end: null, cancel_at_period_end: false, manageable: true };
+    assert.equal((await s.billing.status()).period, want, String(v));
+  }
   s.server.status = { tier: 'gold', status: '<b>', current_period_end: 'soon' };
-  assert.deepEqual(await s.billing.status(), { ok: true, tier: 'none', status: 'none', periodEnd: null, endsAt: null, cancelAtPeriodEnd: false, manageable: false });
+  assert.deepEqual(await s.billing.status(), { ok: true, tier: 'none', period: null, status: 'none', periodEnd: null, endsAt: null, cancelAtPeriodEnd: false, manageable: false });
   s.server.down = true;
   assert.deepEqual(await s.billing.status(), { ok: false, reason: 'network' });
   s.server.down = false;
@@ -311,8 +316,17 @@ test('entitlement source "billing": the server\'s answer, kept with when it was 
   assert.equal(ent.source(), 'billing');
   assert.equal(ent.has('ultra'), true);
   const kept = store.get('entitlement');
-  assert.deepEqual(kept, { tier: 'ultra', source: 'billing', since: NOW, checkedAt: NOW, status: 'active', periodEnd: Date.parse('2026-11-16T09:00:00Z'), endsAt: null, cancelAtPeriodEnd: false, manageable: true });
-  assert.deepEqual(ent.webPlan(), { status: 'active', periodEnd: Date.parse('2026-11-16T09:00:00Z'), endsAt: null, cancelAtPeriodEnd: false, manageable: true });
+  assert.deepEqual(kept, { tier: 'ultra', source: 'billing', since: NOW, checkedAt: NOW, period: null, status: 'active', periodEnd: Date.parse('2026-11-16T09:00:00Z'), endsAt: null, cancelAtPeriodEnd: false, manageable: true });
+  assert.deepEqual(ent.webPlan(), { period: null, status: 'active', periodEnd: Date.parse('2026-11-16T09:00:00Z'), endsAt: null, cancelAtPeriodEnd: false, manageable: true });
+  // the period the server says (the plans page reads it to offer an upgrade): kept with the plan
+  s.server.status = { ...s.server.status, period: 'yearly' };
+  await ent.refresh({ force: true });
+  assert.equal(store.get('entitlement').period, 'yearly');
+  assert.equal(ent.webPlan().period, 'yearly');
+  assert.equal(createEntitlements({ store, billing: s.billing, now }).webPlan().period, 'yearly', 'kept on this phone');
+  s.server.status = { ...s.server.status, period: undefined };
+  await ent.refresh({ force: true });
+  assert.equal(ent.webPlan().period, null);
   // at most one check a minute (start, back to the foreground) unless forced
   const n = s.server.calls.length;
   await ent.refresh();
@@ -472,7 +486,7 @@ test('sync: the session id goes to /v1/billing/sync with the token (only a well-
   const id = `cs_test_${'a1B2'.repeat(15)}`;
   const s = setup();
   s.server.sync = { http: 200, body: { tier: 'ultra', status: 'active', current_period_end: '2026-11-16T09:00:00.000Z', ends_at: null, cancel_at_period_end: false, manageable: true } };
-  assert.deepEqual(await s.billing.sync(id), { ok: true, tier: 'ultra', status: 'active', periodEnd: Date.parse('2026-11-16T09:00:00Z'), endsAt: null, cancelAtPeriodEnd: false, manageable: true });
+  assert.deepEqual(await s.billing.sync(id), { ok: true, tier: 'ultra', period: null, status: 'active', periodEnd: Date.parse('2026-11-16T09:00:00Z'), endsAt: null, cancelAtPeriodEnd: false, manageable: true });
   const [c] = s.server.calls;
   assert.equal(c.url, `${EP}/v1/billing/sync`);
   assert.equal(c.init.method, 'POST');
@@ -577,7 +591,7 @@ test('back from the portal: the plan is asked for quietly until it differs from 
     const out = await welcomeBack(app, { kind: 'portal', sessionId: null }, { before, sleep: async (ms) => { waits.push(ms); } });
     return { out, toasts, waits, asks, ent };
   };
-  assert.deepEqual(planNow((await run()).ent), { tier: 'paid', status: 'active', cancelAtPeriodEnd: false, endsAt: null });
+  assert.deepEqual(planNow((await run()).ent), { tier: 'paid', period: null, status: 'active', cancelAtPeriodEnd: false, endsAt: null });
   // nothing changes (or the webhook is later still): four asks, then no more, and nothing said
   const same = await run();
   assert.equal(same.out, 'portal');
@@ -590,9 +604,9 @@ test('back from the portal: the plan is asked for quietly until it differs from 
   assert.deepEqual(cancelled.waits, [2000, 4000]);
   assert.equal(cancelled.ent.webPlan().cancelAtPeriodEnd, true);
   assert.deepEqual(cancelled.toasts, []);
-  // each of the four is a change: the tier, Stripe's status, cancelling, the end date
+  // each of the five is a change: the tier, its period (monthly → yearly in the portal), Stripe's status, cancelling, the end date
   for (const [name, after] of [
-    ['tier', { ...FLOW, tier: 'ultra' }], ['status', { ...FLOW, status: 'past_due' }],
+    ['tier', { ...FLOW, tier: 'ultra' }], ['period', { ...FLOW, period: 'yearly' }], ['status', { ...FLOW, status: 'past_due' }],
     ['cancelling', { ...FLOW, cancel_at_period_end: true }], ['end date', { ...FLOW, ends_at: '2027-02-12T09:00:00.000Z' }],
   ]) {
     const r = await run({ after, at: 2 });
@@ -1638,6 +1652,7 @@ test('framed: no checkout or portal starts in a frame; the plan is still shown, 
   assert.deepEqual(await billing.checkout('ultra', 'monthly'), { framed: true });
   assert.deepEqual(await billing.portal(), { framed: true });
   assert.deepEqual(await billing.portal('switch'), { framed: true });
+  assert.deepEqual(await billing.upgrade('ultra', 'monthly'), { framed: true }, 'the upgrade\'s confirm page neither');
   assert.deepEqual([navs, server.calls.length], [[], 0], 'nothing made at Stripe, the frame never navigated');
   assert.equal((await billing.status()).tier, 'ultra', 'the plan is still asked for');
   // the default reads the window it runs in
@@ -1649,6 +1664,7 @@ test('framed: no checkout or portal starts in a frame; the plan is still shown, 
   const ent = createEntitlements({ store: memStore(), billing });
   assert.deepEqual(await ent.purchase('ultra', 'yearly'), { ok: false, test: false, framed: true });
   assert.deepEqual(await ent.manage(), { framed: true });
+  assert.deepEqual(await ent.manage({ intent: 'upgrade', plan: 'ultra', period: 'yearly' }), { framed: true });
   // the way out: this same app, on the account card, in the whole window
   const loc = { origin: 'https://app.hushmallow.com', pathname: '/', host: 'app.hushmallow.com' };
   assert.equal(outsideHref(loc), 'https://app.hushmallow.com/#account');

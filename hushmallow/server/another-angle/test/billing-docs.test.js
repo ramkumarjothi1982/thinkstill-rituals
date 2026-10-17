@@ -1,16 +1,19 @@
 // docs/PAYMENTS.md and docs/STAGING.md say what the code does: the webhook's events, the pinned API version, the
-// restricted key, the past_due cap, the approval word, the custom domain and its order. A change to one of these in
-// the code fails here until the docs say the same.
+// restricted key, the past_due cap, the approval word, the custom domain and its order, and the portal's flows
+// (with STRIPE_INTEGRATION_TODO.md and the Worker's README). A change to one of these in the code fails here until
+// the docs say the same.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { EVENTS } from '../src/billing/routes.js';
+import { EVENTS, PORTAL_RETURN } from '../src/billing/routes.js';
 import { STRIPE_API_VERSION_EXPECTED, BILLING_LIVE_APPROVED } from '../src/config.js';
 import { PAST_DUE_GRACE_MS } from '../src/billing/store.js';
 
 const doc = (/** @type {string} */ name) => readFileSync(new URL(`../../../docs/${name}`, import.meta.url), 'utf8');
 const PAYMENTS = doc('PAYMENTS.md'), STAGING = doc('STAGING.md');
+const TODO = readFileSync(new URL('../../../STRIPE_INTEGRATION_TODO.md', import.meta.url), 'utf8');
+const README = readFileSync(new URL('../README.md', import.meta.url), 'utf8');
 
 test('both docs name exactly the webhook events the Worker handles, and the local `stripe listen` asks for exactly those', () => {
   assert.equal(EVENTS.length, 11);
@@ -68,4 +71,27 @@ test('the defaults the docs state are the code\'s: the 14-day past_due cap, the 
   const order = /10\. \*\*The custom domain[\s\S]*?1\. First the app release[\s\S]*?2\. Then DNS[\s\S]*?3\. Then activation/;
   assert.match(PAYMENTS, order);
   assert.match(STAGING, /The order is: that client release, then DNS, then activation/);
+});
+
+test('the portal: every doc says the same: upgrades confirm and come back (?billing=changed / unchanged), never the home; all four prices in the portal; cancelling stays on Manage subscription', () => {
+  const docs = [['PAYMENTS.md', PAYMENTS], ['STAGING.md', STAGING], ['STRIPE_INTEGRATION_TODO.md', TODO], ['README.md', README]];
+  for (const [name, text] of docs) {
+    for (const x of ['subscription_update_confirm', 'subscription_update`', PORTAL_RETURN.home.slice(1), PORTAL_RETURN.changed.slice(1), PORTAL_RETURN.unchanged.slice(1), 'plan_change_unavailable']) {
+      assert.ok(text.includes(x), `${name}: ${x}`);
+    }
+    // the old fallback to the portal's home is gone everywhere
+    assert.doesNotMatch(text, /falling back to the portal's home|the home opens instead|flow: "subscription_update" \| "portal"/, `${name}: no home fallback`);
+  }
+  // the owner's portal setting: both products, all four prices, switching on; cancellation at the period end (D7)
+  for (const [name, text] of docs.slice(0, 3)) {
+    assert.match(text, /all four\s+prices/, `${name}: all four prices in the portal`);
+    assert.match(text, /[Cc]ancel(?:lations)?\*{0,2}:? (?:on, )?\*\*[Aa]t the end of the billing period\*\*|\*\*cancel at the end of\s+the billing period\*\*/, `${name}: cancel at the period end`);
+  }
+  // the routes, and every answer the app reads, in the owner guide and the Worker's README
+  for (const [name, text] of [['PAYMENTS.md', PAYMENTS], ['README.md', README]]) {
+    for (const c of ['payment_issue', 'no_subscription', 'not_updatable', 'change_pending', 'already_on_plan', 'not_an_upgrade', 'plan_change_unavailable']) assert.ok(text.includes(`409 ${c}`) || text.includes(`404 ${c}`) || text.includes(`503 ${c}`), `${name}: ${c}`);
+    assert.match(text, /"intent": "upgrade"/, name);
+    assert.match(text, /"refresh": true/, name);
+  }
+  assert.match(STAGING, /https:\/\/claude-launch-rc\.hushmallow\.pages\.dev\/\?billing=changed/);
 });

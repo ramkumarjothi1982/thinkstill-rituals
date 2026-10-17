@@ -16,7 +16,10 @@
 // What it does: P0 reads (health, the four prices, the webhook endpoint, the default portal configuration, Stripe
 // Tax); P1 sends the key-free checks (scripts/billing-checks.mjs); S3-S9 each make a test clock with one customer on
 // it, give the customer a test card and a subscription with metadata.user_id = the test account, move the clock on,
-// and wait for the Worker's GET /v1/billing/status to follow. It never creates prices, products, registrations,
+// and wait for the Worker's GET /v1/billing/status to follow. S6 also asks the Worker, as the plans page does, for an
+// upgrade's confirmation page and the plan choice (POST /v1/billing/portal: the sandbox's portal configuration must
+// take both, and neither is the portal's home) and confirms each change through POST /v1/billing/sync { refresh: true };
+// pressing confirm on Stripe's page needs a browser, so the change itself is made by the API. It never creates prices, products, registrations,
 // settings or webhook endpoints. Every object it makes carries metadata[e2e_run] (a clock, its name), only those ids
 // are printed, and its test clocks are deleted at the end (which deletes their customers and subscriptions), after
 // any of its subscriptions still running (a run stopped half way, Ctrl-C) is cancelled, so the Worker records it. Any
@@ -50,6 +53,19 @@ export const SANDBOX_AMOUNTS = Object.freeze(Object.fromEntries((/** @type {cons
   (/** @type {const} */ (['monthly', 'yearly'])).map((period) => [`hushmallow.${plan}.${period}`, CHECKOUT_PRICE_RULES.unit_amount[plan][period]])
 ))));
 export const PRODUCT_NAMES = Object.freeze({ paid: 'hushmallow Flow', ultra: 'hushmallow Beyond' });
+/** Where a customer-portal session opens: Stripe's own host, or the custom domain once activated (STAGING.md B13). */
+export const PORTAL_HOSTS = Object.freeze(['billing.stripe.com', 'checkout.hushmallow.com']);
+/**
+ * A portal session's address as the Worker answers it: https on PORTAL_HOSTS, nothing else in it. 'live' for a live
+ * session (the run stops), else true or false. @param {unknown} href @returns {boolean | 'live'}
+ */
+export function portalPage(href) {
+  /** @type {URL} */
+  let u;
+  try { u = new URL(String(href)); } catch { return false; }
+  if (u.protocol !== 'https:' || !PORTAL_HOSTS.includes(u.hostname) || u.port || u.username || u.password) return false;
+  return /\/p\/session\/live_/.test(u.pathname) ? 'live' : true;
+}
 /** One status read per 5 s at most: the billing routes allow 20 a minute per network (BILLING_IP_LIMITER). */
 export const STATUS_POLL_MS = 5000;
 /** How long a change may take to reach the Worker (Stripe's delivery, then its own read of the subscription). */
@@ -456,6 +472,22 @@ export async function run({ env = process.env, args = [], fetch: f = (input, ini
     const r = await staging('/v1/billing/status', { method: 'GET', token: await token() });
     return r.status === 200 ? r.json : null;
   }
+  /**
+   * A billing route the plans page and its return call (POST, the account's token), paced with the status reads: the
+   * billing routes share one limit (BILLING_IP_LIMITER). A live portal session in the answer stops the run.
+   * @param {string} path @param {unknown} body
+   */
+  async function billing(path, body) {
+    const wait = lastStatus + STATUS_POLL_MS - now();
+    if (wait > 0) await nap(wait);
+    lastStatus = now();
+    const r = await staging(path, { body, token: await token() });
+    const page = r.json && 'url' in r.json ? portalPage(r.json.url) : null;
+    if (page === 'live') throw new Abort(`POST ${path} answered a live portal session`);
+    return { status: r.status, code: String(r.json?.error?.code || ''), json: r.json || {}, page };
+  }
+  /** What a billing answer was, for a check's line (never its address). @param {Awaited<ReturnType<typeof billing>>} r */
+  const said = (r) => `${r.status} ${r.code || [r.json.flow, r.json.to].filter(Boolean).join(' ') || (r.json.tier ? desc(r.json) : '')}`.trim();
   /** @param {(s: any) => boolean} pred */
   async function waitStatus(pred) {
     const until = now() + WAIT_MS;
@@ -661,12 +693,30 @@ export async function run({ env = process.env, args = [], fetch: f = (input, ini
       await mustStatus('S6: Flow monthly: tier paid', (s) => s.tier === 'paid' && s.status === 'active');
       const flow = await session();
       check(flow.status === 403 && flow.code === 'subscription_required', 'S6: Flow alone: /v1/session 403 subscription_required (Zuzu\'s authored angles)', `${flow.status} ${flow.code}`);
+      // the plans page's upgrade: Stripe's confirmation of that one change, never the portal's home; asking changes nothing
+      const conf = await billing('/v1/billing/portal', { intent: 'upgrade', plan: 'ultra', period: 'monthly' });
+      check(conf.status === 200 && conf.json.flow === 'subscription_update_confirm' && conf.json.to === 'ultra.monthly' && conf.page === true, 'S6: upgrade to Beyond monthly: the Worker opens Stripe\'s confirmation page (subscription_update_confirm)', said(conf));
+      const pick = await billing('/v1/billing/portal', { intent: 'switch' });
+      check(pick.status === 200 && pick.json.flow === 'subscription_update' && pick.page === true, 'S6: choose a plan: the portal\'s plan choice (subscription_update)', said(pick));
+      const same = await billing('/v1/billing/portal', { intent: 'upgrade', plan: 'paid', period: 'monthly' });
+      check(same.status === 409 && same.code === 'already_on_plan', 'S6: an upgrade to the plan it has: 409 already_on_plan', said(same));
+      const left = await billing('/v1/billing/sync', { refresh: true });
+      check(left.status === 200 && left.json.tier === 'paid' && left.json.period === 'monthly', 'S6: left unconfirmed, refresh says Flow monthly still (no change before Stripe has one)', said(left));
       const item = sub.items?.data?.[0]?.id;
+      // what pressing confirm on that page does (prorated at once, D8)
       const up = await stripe.post(`/v1/subscriptions/${sub.id}`, { items: [{ id: item, price: cfg.prices.ultra.monthly }], proration_behavior: 'always_invoice' });
       need(up.ok, 'S6: the item changed to Beyond monthly', up.ok ? '' : `${up.status} ${up.code}`);
+      // back on ?billing=changed: the app's refresh reads Stripe at once, whether or not the webhook has landed
+      const fresh = await billing('/v1/billing/sync', { refresh: true });
+      check(fresh.status === 200 && fresh.json.tier === 'ultra' && fresh.json.period === 'monthly' && fresh.json.status === 'active', 'S6: refresh (sync { refresh: true }): Beyond monthly, active, read from Stripe', said(fresh));
       await mustStatus('S6: Flow → Beyond monthly: tier ultra', (s) => s.tier === 'ultra' && s.status === 'active');
       const beyond = await session();
       check(beyond.status === 200 && beyond.source === 'billing', 'S6: Beyond: /v1/session 200 (source billing)', `${beyond.status} ${beyond.code || beyond.source}`);
+      // monthly → yearly is an upgrade; Beyond monthly → Flow yearly is not (Manage subscription)
+      const yearly1 = await billing('/v1/billing/portal', { intent: 'upgrade', plan: 'ultra', period: 'yearly' });
+      check(yearly1.status === 200 && yearly1.json.flow === 'subscription_update_confirm' && yearly1.json.to === 'ultra.yearly' && yearly1.page === true, 'S6: monthly → yearly: the confirmation page for Beyond yearly', said(yearly1));
+      const down1 = await billing('/v1/billing/portal', { intent: 'upgrade', plan: 'paid', period: 'yearly' });
+      check(down1.status === 409 && down1.code === 'not_an_upgrade', 'S6: Beyond monthly → Flow yearly: 409 not_an_upgrade (a downgrade is for Manage subscription)', said(down1));
       const down = await stripe.post(`/v1/subscriptions/${sub.id}`, { items: [{ id: item, price: cfg.prices.paid.yearly }], proration_behavior: 'always_invoice' });
       need(down.ok, 'S6: the item changed to Flow yearly', down.ok ? '' : `${down.status} ${down.code}`);
       const c = await stripe.get(`/v1/test_helpers/test_clocks/${clk.id}`);
@@ -674,7 +724,14 @@ export async function run({ env = process.env, args = [], fetch: f = (input, ini
       await mustStatus('S6: → Flow yearly: tier paid, a period of a year', (s) => s.tier === 'paid' && s.status === 'active' && Date.parse(s.current_period_end) / 1000 - t >= 360 * DAY_S);
       const yearly = await session();
       check(yearly.status === 403 && yearly.code === 'subscription_required', 'S6: Flow yearly: /v1/session 403 subscription_required', `${yearly.status} ${yearly.code}`);
-      info('S6: the same switch in the portal (Settings → Manage subscription) is an app check, by hand');
+      const period = await billing('/v1/billing/sync', { refresh: true });
+      check(period.status === 200 && period.json.tier === 'paid' && period.json.period === 'yearly', 'S6: refresh: Flow yearly (the status body\'s period)', said(period));
+      const cross = await billing('/v1/billing/portal', { intent: 'upgrade', plan: 'ultra', period: 'monthly' });
+      check(cross.status === 409 && cross.code === 'not_an_upgrade', 'S6: Flow yearly → Beyond monthly (one up, one down): 409 not_an_upgrade', said(cross));
+      // Settings → Manage subscription: the portal's home, where cancelling is (S7 cancels through the API)
+      const home = await billing('/v1/billing/portal', {});
+      check(home.status === 200 && home.page === true && !('flow' in home.json), 'S6: Manage subscription: the portal\'s home (cancel, change plan, card, receipts)', said(home));
+      info('S6: pressing confirm on Stripe\'s page and the welcome back on ?billing=changed are the browser rehearsal\'s (STAGING.md)');
     });
   }
 
