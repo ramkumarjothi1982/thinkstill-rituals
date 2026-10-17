@@ -241,25 +241,32 @@ The owner sent the Project URL and the publishable key, and they are committed: 
 `server/another-angle/deploy/STAGING`). Never send the secret key (`sb_secret_…`), the service_role key or the
 database password: nothing needs them.
 
-### A5. Cloudflare Pages: the Preview variables (nothing required; 1 min to tidy)
+### A5. Cloudflare Pages: the Preview variables (nothing to do; 1 min to check)
 
-**Preview** holds production's values (the "hushmallow pages env" workflow sets both environments). Since
-17 Oct a branch build never publishes them: it publishes the staging project committed in
-`src/auth/config.js` instead, and its log says
+**Preview** holds neither sign-in value. The "hushmallow pages env" workflow
+(`.github/workflows/hushmallow-pages-env.yml`) sets production's `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` on
+**Production only**, removes both from **Preview**, and fails unless Preview reads back with neither; running it
+again clears Preview again. So a branch build publishes the staging project committed in `src/auth/config.js`, and
+its log says
+`auth config: sign-in on: https://oghzabvkrxsejkkjdsuc.supabase.co (the staging project hushmallow-staging,
+from src/auth/config.js: the build environment sets no SUPABASE_URL / SUPABASE_PUBLISHABLE_KEY)`.
+Production's values never reach a preview: were they ever put back on Preview by hand, a release-candidate build
+would still refuse them, saying
 `auth config: WARNING: SUPABASE_URL is the production project hushmallow1 … this build uses the staging
 project in src/auth/config.js instead` and then
 `auth config: sign-in on: https://oghzabvkrxsejkkjdsuc.supabase.co (the staging project hushmallow-staging,
-from src/auth/config.js: production's values in the build environment were refused)`. (Before, such a build
-had no sign-in at all.) Nothing reaches production's accounts either way.
+from src/auth/config.js: production's values in the build environment were refused)`; a branch cut before the
+release candidate has no such guard, which is why Preview is kept empty.
 
-Optional tidy-up, to silence the warning:
+To check (nothing to change):
 
 1. **dash.cloudflare.com** → **Workers & Pages** → **hushmallow** → **Settings** → **Environment variables**
    (newer dashboards: **Variables and Secrets**).
-2. Choose **Preview**. **Delete** both `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` there. (Setting both,
-   as **Text**, to `https://oghzabvkrxsejkkjdsuc.supabase.co` and
-   `sb_publishable_Sn4YKE3TRTzMkWVN9i45_A_MYYxxirc` works too; never only one of them.)
-3. **Production** keeps production's values. Do not change them:
+2. Choose **Preview**: neither `SUPABASE_URL` nor `SUPABASE_PUBLISHABLE_KEY` is there. If either is,
+   **Delete** both `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` there (or run the workflow again). (Setting both,
+   as **Text**, to `https://oghzabvkrxsejkkjdsuc.supabase.co` and `sb_publishable_Sn4YKE3TRTzMkWVN9i45_A_MYYxxirc`
+   works too; never only one of them, and never production's.)
+3. **Production** holds production's values (the workflow sets them). Do not change them:
    * `SUPABASE_URL` = `https://igbxbfuaoybfzsroxuln.supabase.co`
    * `SUPABASE_PUBLISHABLE_KEY` = `sb_publishable_NSv1Liou2yjKjauX09U5qQ_CxwzDuiw`
 

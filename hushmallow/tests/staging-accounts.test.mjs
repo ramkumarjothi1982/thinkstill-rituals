@@ -518,3 +518,18 @@ test('the Pages env workflow: production\'s values on Production only; Preview i
   assert.equal(check({ env_vars: { SUPABASE_URL: { value: 'https://igbxbfuaoybfzsroxuln.supabase.co' } } }), false, 'the job fails while Preview has either');
   assert.equal(check({ env_vars: { SUPABASE_PUBLISHABLE_KEY: { value: 'sb_publishable_x' } } }), false);
 });
+
+test('STAGING.md A5 says what the Pages env workflow does: Production only, Preview cleared (never "both environments")', () => {
+  const doc = readFileSync(`${repo}hushmallow/docs/STAGING.md`, 'utf8');
+  const a5 = doc.slice(doc.indexOf('### A5.'), doc.indexOf('### A6.'));
+  assert.ok(a5.length > 200, 'A5 is there');
+  assert.doesNotMatch(a5, /sets both environments|Preview\*\* holds production's values|Optional tidy-up/, 'the old claim is gone');
+  assert.match(a5, /\*\*Preview\*\* holds neither sign-in value/);
+  assert.match(a5, /on\s+\*\*Production only\*\*, removes both from \*\*Preview\*\*, and fails unless Preview reads back with neither/);
+  // the build log for an empty Preview is the one tools/site/auth-config.mjs writes
+  assert.ok(a5.includes('from src/auth/config.js: the build environment sets no SUPABASE_URL / SUPABASE_PUBLISHABLE_KEY'));
+  assert.ok(read('tools/site/auth-config.mjs').includes(', from src/auth/config.js: the build environment sets no SUPABASE_URL / SUPABASE_PUBLISHABLE_KEY'));
+  // the workflow it describes
+  const wf = readFileSync(`${repo}.github/workflows/hushmallow-pages-env.yml`, 'utf8');
+  assert.match(wf, /preview: \{ env_vars: \{ SUPABASE_URL: null, SUPABASE_PUBLISHABLE_KEY: null \} \}/);
+});
