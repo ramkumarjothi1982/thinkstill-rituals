@@ -22,10 +22,11 @@
 //     status()               → { ok: true, tier, status, periodEnd, endsAt, cancelAtPeriodEnd, manageable } | { ok: false, reason, off? }
 //                              (periodEnd, endsAt: ms or null; the server sends ISO or ms, both are read; off: the
 //                              server's 503 saying it has no web billing at all, one of BILLING_OFF_CODES)
-//     checkout(plan, period) → { redirecting } (on to Stripe Checkout) | { needsAccount } | { manage } (has a plan)
+//     checkout(plan, period) → { redirecting } (on to Stripe Checkout) | { framed } (inFrame: nothing made, outsideNote
+//                              offers the whole window) | { needsAccount } | { manage } (has a plan)
 //                              | { pending } (a payment still going through) | { failed, reason, support? }
 //                              (support: the account's billing needs a person, 409 customer_conflict: BILLING_SUPPORT)
-//     portal(intent?)        → { redirecting } (Stripe's customer portal) | { needsAccount } | { none } | { failed, reason };
+//     portal(intent?)        → { redirecting } (Stripe's customer portal) | { framed } | { needsAccount } | { none } | { failed, reason };
 //                              intent 'switch' (the plans page, for a plan already held) opens it on changing the plan
 //     sync(sessionId)        → as status(): back from Checkout, the server reads that session from Stripe and records the
 //                              plan at once (the webhook may be a moment behind); a malformed id is never sent
@@ -173,9 +174,34 @@ export function inNativeShell(win = globalThis.window) {
   try { return !!win && !!(win.HushNative || win.webkit?.messageHandlers?.hushStore); } catch { return false; }
 }
 
+/**
+ * This page runs inside a frame (the owner's Framer site embeds the app: FRAME_ANCESTORS). Stripe's Checkout and
+ * customer portal refuse to load in a frame, so a framed page never starts either (checkout() and portal() answer
+ * { framed }, nothing sent): the person is offered a real link to this same app in the whole window (outsideNote).
+ * A frame whose parent cannot be read counts as framed.
+ */
+export function inFrame(win = globalThis.window) {
+  try { return !!win && win.top !== win.self; } catch { return true; }
+}
+/** Said, framed, where a checkout or the portal would have opened. */
+export const FRAMED_LINE = 'Plans and your subscription open in a full window, not inside this page.';
+/** This same app in the whole window, on the account card (#account is the deep link the app honours). */
+export function outsideHref(loc = globalThis.location) {
+  try { return `${loc.origin}${loc.pathname}#account`; } catch { return null; }
+}
+/**
+ * Framed: FRAMED_LINE and a real link out (target _top: the person's own tap takes the whole window there, which a
+ * frame may do; opening it from code after an answer arrives is refused by some browsers). h: src/app/ui.js's.
+ */
+export function outsideNote(h, { loc = globalThis.location } = {}) {
+  const href = outsideHref(loc);
+  return h('span', { 'data-framed': '' }, FRAMED_LINE, href ? ' ' : null,
+    href ? h('a', { href, target: '_top', rel: 'noopener' }, `Continue on ${loc.host}`) : null);
+}
+
 export function createBilling({
   auth, signIn = false, config = resolveBilling(), shell = inNativeShell(), prices = BILLING_PRICES, fetchImpl = netFetch,
-  nav = (url) => globalThis.location.assign(url), timeoutMs = TIMEOUT_MS,
+  nav = (url) => globalThis.location.assign(url), timeoutMs = TIMEOUT_MS, framed = inFrame(),
 } = {}) {
   if (!config || !signIn || shell) return null;
   const { endpoint } = config;
@@ -235,6 +261,8 @@ export function createBilling({
 
   return {
     get endpoint() { return endpoint; },
+    /** Framed (inFrame): no checkout or portal starts here; the plan is still asked for and shown. */
+    get framed() { return !!framed; },
     signedIn,
     accountToken,
     async status() {
@@ -248,6 +276,8 @@ export function createBilling({
     },
     async checkout(plan, period) {
       if (!['paid', 'ultra'].includes(plan) || !['monthly', 'yearly'].includes(period)) return { failed: true, reason: 'invalid' };
+      // in a frame Stripe's page would never load (it refuses framing): nothing is made, the page offers the way out
+      if (framed) return { framed: true };
       if (!signedIn()) return { needsAccount: true };
       const r = await call(PATHS.checkout, { body: { plan, period } });
       if (r.signedOut || r.http === 401) return { needsAccount: true };
@@ -265,6 +295,7 @@ export function createBilling({
       return { failed: true, reason: r.http === 200 ? 'not_stripe' : reasonOf(r) };
     },
     async portal(intent) {
+      if (framed) return { framed: true };
       if (!signedIn()) return { needsAccount: true };
       // { intent: 'switch' }: the server opens Stripe's change-plan page (a plain portal where that is off); Settings: {}
       const r = await call(PATHS.portal, { body: intent === 'switch' ? { intent: 'switch' } : {} });

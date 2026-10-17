@@ -22,8 +22,12 @@
 //              BILLING_TOKEN_TTL_HOURS). No invite code is accepted.
 //   billing+testing — billing, or a valid tester invite code (a testing
 //              session exactly as in testing mode, with its caps, its token
-//              marked inv: 1). Only with TESTER_INVITE_CODES set; without
-//              codes it is billing alone, never open to anyone.
+//              marked inv: 1 and with a keyed tag of the code that minted it,
+//              ic, so removing that one code ends its sessions: src/app.js
+//              sessionSuperseded). Only with TESTER_INVITE_CODES set; without
+//              codes it is billing alone, never open to anyone. Testers' angles
+//              stop at TESTING_SPEND_SHARE of the day's spending cap, so the
+//              rest is always there for subscribers.
 //
 // Either way /v1/angle only ever checks the server's own signed token.
 
@@ -31,7 +35,7 @@ import { verifySignedTransaction } from './storekit.js';
 import { keyedHash, safeEqual } from './tokens.js';
 
 /**
- * @typedef {{ ok: true, subject: string, source: 'testing' | 'storekit' | 'billing', expiresAt: number, invited?: true }
+ * @typedef {{ ok: true, subject: string, source: 'testing' | 'storekit' | 'billing', expiresAt: number, invited?: true, inviteTag?: string }
  *         | { ok: false, status: number, code: string, message: string }} EntitlementResult
  * @typedef {{ accountToken?: string | null,
  *   beyond?: (token: string) => Promise<{ ok: true, uid: string, until: number } | { ok: false, status: number, code: string, message: string }> }} BillingDeps
@@ -66,11 +70,21 @@ export async function checkEntitlement(body, cfg, now, deps = {}) {
   return { ok: true, subject, source: 'testing', expiresAt: now + cfg.testingTokenTtlMs };
 }
 
-/** @param {string | null} invite @param {import('../config.js').Config} cfg */
+/** The configured code the invite is (every code compared, in constant time), or null. @param {string | null} invite @param {import('../config.js').Config} cfg */
 async function inviteMatches(invite, cfg) {
-  let match = false;
-  for (const code of cfg.inviteCodes) if (invite && (await safeEqual(invite.trim(), code, cfg.hashKey))) match = true;
+  /** @type {string | null} */
+  let match = null;
+  for (const code of cfg.inviteCodes) if (invite && (await safeEqual(invite.trim(), code, cfg.hashKey))) match = code;
   return match;
+}
+
+/**
+ * A short keyed tag of a tester code (never the code), carried in the testing sessions it mints under billing+testing
+ * (ic): a session whose code is no longer in TESTER_INVITE_CODES is refused (src/app.js sessionSuperseded).
+ * @param {import('../config.js').Config} cfg @param {string} code
+ */
+export function inviteTag(cfg, code) {
+  return keyedHash(cfg.hashKey, `invite:${code}`, 8);
 }
 
 /**
@@ -92,9 +106,10 @@ async function billingEntitlement(body, cfg, now, { accountToken = null, beyond 
   // a tester's invite code (billing+testing with codes set): the testing session, as in testing mode, marked as minted
   // with a code (invited), so the testing sessions from before the switch can be told apart and refused
   if (testers && body.invite) {
-    if (await inviteMatches(body.invite, cfg)) {
+    const code = await inviteMatches(body.invite, cfg);
+    if (code) {
       const subject = body.deviceId ? `dev_${await keyedHash(cfg.hashKey, `device:${body.deviceId}`)}` : `dev_${crypto.randomUUID()}`;
-      return { ok: true, subject, source: 'testing', expiresAt: now + cfg.testingTokenTtlMs, invited: true };
+      return { ok: true, subject, source: 'testing', expiresAt: now + cfg.testingTokenTtlMs, invited: true, inviteTag: await inviteTag(cfg, code) };
     }
     if (!refused) return { ok: false, status: 403, code: 'invite_required', message: 'That tester invite code is not one of ours.' };
   }

@@ -188,6 +188,8 @@ export function readConfig(env) {
     sessionDailyCap: int(env.SESSION_DAILY_CAP, 500, 1, 1000000),
     sessionsPerIpDaily: int(env.SESSIONS_PER_IP_DAILY, 10, 1, 10000),
     dailySpendCapMicros: Math.round(num(env.DAILY_SPEND_CAP_USD, 10, 0, 100000) * 1e6),
+    // billing+testing: the part of the day's spending cap testers' angles may use (the rest is always there for subscribers)
+    testingSpendShare: num(env.TESTING_SPEND_SHARE, 0.3, 0, 1),
     promptTokenEstimate: int(env.PROMPT_TOKEN_ESTIMATE, 4800, 500, 50000),
     apple: {
       bundleId: String(env.APPLE_BUNDLE_ID || ''),

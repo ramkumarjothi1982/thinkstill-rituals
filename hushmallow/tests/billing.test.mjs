@@ -1617,3 +1617,72 @@ test('the sign-in client hands out its own account\'s access token, and nothing 
     await fake.close();
   }
 });
+
+// -------------------------------------------- framed (the Framer site) --
+// Security review (17 Oct 2026): the app may run framed in the owner's Framer site (FRAME_ANCESTORS), and Stripe's
+// Checkout and customer portal refuse to load in a frame: location.assign there left a dead frame where the app was,
+// on the plans page, Manage subscription and the delete screen's "Cancel your subscription first". Framed, nothing is
+// started at Stripe; a real link (target _top) opens this same app in the whole window instead.
+test('framed: no checkout or portal starts in a frame; the plan is still shown, and a real link opens the app in the whole window', async () => {
+  const { inFrame, outsideNote, outsideHref, FRAMED_LINE } = await import('../src/app/billing.js');
+  const w = {}; w.top = w; w.self = w;
+  assert.equal(inFrame(w), false, 'the whole window');
+  assert.equal(inFrame({ top: {}, self: {} }), true);
+  assert.equal(inFrame({ get top() { throw new Error('cross-origin'); }, self: {} }), true, 'a parent that cannot be read: framed');
+  assert.equal(inFrame(undefined), false);
+  const server = billingServer({ status: { tier: 'ultra', status: 'active', current_period_end: '2026-11-16T09:00:00.000Z', cancel_at_period_end: false, manageable: true } });
+  const auth = authHandle();
+  const navs = [];
+  const billing = createBilling({ auth: () => auth, signIn: true, config: CONFIG, fetchImpl: server.fetch, nav: (u) => navs.push(u), framed: true });
+  assert.equal(billing.framed, true);
+  assert.deepEqual(await billing.checkout('ultra', 'monthly'), { framed: true });
+  assert.deepEqual(await billing.portal(), { framed: true });
+  assert.deepEqual(await billing.portal('switch'), { framed: true });
+  assert.deepEqual([navs, server.calls.length], [[], 0], 'nothing made at Stripe, the frame never navigated');
+  assert.equal((await billing.status()).tier, 'ultra', 'the plan is still asked for');
+  // the default reads the window it runs in
+  const prevWin = globalThis.window;
+  globalThis.window = { top: {}, self: {} };
+  try { assert.equal(createBilling({ auth: () => auth, signIn: true, config: CONFIG, fetchImpl: server.fetch, shell: false }).framed, true); } finally { if (prevWin === undefined) delete globalThis.window; else globalThis.window = prevWin; }
+  assert.equal(setup().billing.framed, false, 'the whole window: as before');
+  // entitlements pass it on
+  const ent = createEntitlements({ store: memStore(), billing });
+  assert.deepEqual(await ent.purchase('ultra', 'yearly'), { ok: false, test: false, framed: true });
+  assert.deepEqual(await ent.manage(), { framed: true });
+  // the way out: this same app, on the account card, in the whole window
+  const loc = { origin: 'https://app.hushmallow.com', pathname: '/', host: 'app.hushmallow.com' };
+  assert.equal(outsideHref(loc), 'https://app.hushmallow.com/#account');
+  const prevLoc = globalThis.location;
+  globalThis.location = loc;
+  try {
+    const p = await plansPage(createEntitlements({ store: memStore(), billing }));
+    const before = server.calls.length;
+    const beyond = p.buttons().find((b) => text(b) === 'Step into hushmallow Beyond');
+    await click(beyond);
+    assert.deepEqual([navs, server.calls.length - before], [[], 0]);
+    assert.equal(beyond.disabled, false, 'the buttons wake again');
+    const note = all(p.body).find((n) => n.attrs?.['data-framed'] === '');
+    assert.ok(note && text(note).startsWith(FRAMED_LINE), 'said where the plan opens');
+    const a = all(note).find((n) => n.tagName === 'A');
+    assert.deepEqual([a.attrs.href, a.attrs.target, a.attrs.rel, text(a)], ['https://app.hushmallow.com/#account', '_top', 'noopener', 'Continue on app.hushmallow.com']);
+    p.view.leave?.();
+    // the delete screen's "Cancel your subscription first": its Manage subscription says the same, in place
+    const A = await import('../src/app/scenes/account.js');
+    const kept = createEntitlements({ store: memStore(), billing });
+    await kept.refresh({ force: true });
+    const guard = A.deleteGuard({ billing, ent: kept }, { submit: new FakeEl('button'), confirmed: () => false });
+    await guard.checked;
+    const manage = all(guard.el).find((n) => n.tagName === 'BUTTON' && text(n) === 'Manage subscription');
+    await click(manage);
+    assert.deepEqual(navs, []);
+    const said = all(guard.el).find((n) => n.attrs?.['data-framed'] === '');
+    assert.ok(said, 'the way out, under the button');
+    assert.equal(all(said).find((n) => n.tagName === 'A').attrs.target, '_top');
+    assert.equal(manage.disabled, false);
+    guard.stop?.();
+  } finally { if (prevLoc === undefined) delete globalThis.location; else globalThis.location = prevLoc; }
+  // Settings' Manage subscription says it too (a toast with the same link)
+  assert.match(read('src/app/scenes/settings.js'), /if \(r\?\.framed\) \{ toast\(outsideNote\(h\), 9000\); return; \}/);
+  const fake = (tag, attrs, ...kids) => ({ tag, attrs, kids: kids.filter((k) => k != null) });
+  assert.deepEqual(outsideNote(fake, { loc }).kids.at(-1), { tag: 'a', attrs: { href: 'https://app.hushmallow.com/#account', target: '_top', rel: 'noopener' }, kids: ['Continue on app.hushmallow.com'] });
+});

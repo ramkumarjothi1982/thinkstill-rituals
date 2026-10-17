@@ -489,3 +489,32 @@ test('another-angle-staging.yml: the staging Worker gets the STAGING model key a
   assert.match(prod, /ANTHROPIC_API_KEY: \$\{\{ secrets\.ANTHROPIC_API_KEY \}\}/);
   assert.doesNotMatch(prod, /_STAGING/);
 });
+
+// Security review (17 Oct 2026): .github/workflows/hushmallow-pages-env.yml used to put production's sign-in values on
+// Preview too. Only release-candidate branches refuse them at build time: main and every branch cut before the RC have
+// no guard, and Cloudflare builds every branch as a public preview, so those previews signed into production's
+// accounts, and re-running the workflow put the values back after the owner removed them. Now it sets Production and
+// clears Preview, and fails unless Preview holds neither.
+test('the Pages env workflow: production\'s values on Production only; Preview is cleared and checked empty', (t) => {
+  const wf = readFileSync(`${repo}.github/workflows/hushmallow-pages-env.yml`, 'utf8');
+  let jq = true;
+  try { execFileSync('jq', ['--version'], { stdio: 'ignore' }); } catch { jq = false; }
+  const program = /jq -n --arg u "\$SUPABASE_URL" --arg k "\$SUPABASE_PUBLISHABLE_KEY" '([\s\S]*?)'\)"/.exec(wf)?.[1];
+  assert.ok(program, 'the PATCH body is built with jq');
+  assert.doesNotMatch(program, /preview:\s*\{\s*env_vars:\s*\$v/, 'never production\'s values on Preview');
+  const verify = /jq -e '(\(\.result\.deployment_configs\.preview\.env_vars[^']*)' after\.json/.exec(wf)?.[1];
+  assert.ok(verify, 'Preview is read back');
+  if (!jq) { t.diagnostic('jq not installed: the jq programs were not run'); return; }
+  const body = JSON.parse(execFileSync('jq', ['-n', '-c', '--arg', 'u', 'https://igbxbfuaoybfzsroxuln.supabase.co', '--arg', 'k', 'sb_publishable_x', program], { encoding: 'utf8' }));
+  assert.deepEqual(body.deployment_configs.production.env_vars, {
+    SUPABASE_URL: { type: 'plain_text', value: 'https://igbxbfuaoybfzsroxuln.supabase.co' }, SUPABASE_PUBLISHABLE_KEY: { type: 'plain_text', value: 'sb_publishable_x' },
+  });
+  assert.deepEqual(body.deployment_configs.preview.env_vars, { SUPABASE_URL: null, SUPABASE_PUBLISHABLE_KEY: null }, 'Preview: both removed');
+  const check = (preview) => {
+    try { execFileSync('jq', ['-e', verify], { input: JSON.stringify({ result: { deployment_configs: { preview } } }), stdio: ['pipe', 'ignore', 'ignore'] }); return true; } catch { return false; }
+  };
+  assert.equal(check({ env_vars: { NODE_VERSION: { value: '22' } } }), true);
+  assert.equal(check({}), true);
+  assert.equal(check({ env_vars: { SUPABASE_URL: { value: 'https://igbxbfuaoybfzsroxuln.supabase.co' } } }), false, 'the job fails while Preview has either');
+  assert.equal(check({ env_vars: { SUPABASE_PUBLISHABLE_KEY: { value: 'sb_publishable_x' } } }), false);
+});

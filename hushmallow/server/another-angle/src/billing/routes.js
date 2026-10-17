@@ -308,12 +308,12 @@ export function createBilling({ logger, now, fetch: fetchImpl = (input, init) =>
    * the same session, once). Open for anything else: expired first. Already paid: its subscription is on its way
    * (payment_pending), unless Stripe's list shows that subscription ended. Gone, past its expiry, or of the other
    * Stripe mode (this key can neither read nor pay it): nothing to do.
-   * @param {string} uid @param {ReturnType<typeof billingClient>} store @param {ReturnType<typeof createStripe>} stripe
+   * @param {{ id: string, expires_at: number } | null} last the account's last session, as checkout read it
+   * @param {ReturnType<typeof createStripe>} stripe
    * @param {Config} cfg @param {{ plan: string, period: string, price: string, customer: string }} want @param {any[]} subs the customer's, as listed
    * @returns {Promise<{ prev: string | null, reuse?: string, pending?: true, err?: string, stripeHttp?: number }>}
    */
-  async function settlePrevious(uid, store, stripe, cfg, want, subs) {
-    const last = await store.lastCheckout(uid);
+  async function settlePrevious(last, stripe, cfg, want, subs) {
     const m = last ? SESSION_ID.exec(last.id) : null;
     if (!last || !m || m[1] !== cfg.billing.keyMode || last.expires_at <= now()) return { prev: null };
     const prev = last.id;
@@ -411,7 +411,9 @@ export function createBilling({ logger, now, fetch: fetchImpl = (input, init) =>
       if (subs.some((x) => HELD_STATUSES.has(x.status))) return taken('already_subscribed', 'listed');
       if (subs.some((x) => x.status === 'incomplete')) return taken('payment_pending', 'incomplete');
     }
-    const prev = await settlePrevious(who.uid, store, stripe, cfg, { plan, period, price, customer }, subs);
+    // read once: the new session is stored only while this is still the account's last one (a compare-and-swap below)
+    const last = await store.lastCheckout(who.uid);
+    const prev = await settlePrevious(last, stripe, cfg, { plan, period, price, customer }, subs);
     if (prev.err) return unavailable(prev.err, prev.stripeHttp);
     if (prev.pending) return taken('payment_pending', 'session_complete');
     if (prev.reuse) { log('checkout', t0, { status: 'reused', http: 200, plan, period }); return json(200, { url: prev.reuse }, cors); }
@@ -450,7 +452,15 @@ export function createBilling({ logger, now, fetch: fetchImpl = (input, init) =>
     const id = String(r.data?.id || '');
     if (SESSION_ID.test(id)) {
       const exp = Number(r.data.expires_at);
-      await store.setCheckout(who.uid, { id, expires_at: exp > 0 ? exp * 1000 : now() + CHECKOUT_SESSION_TTL_MS });
+      const kept = await store.setCheckout(who.uid, { id, expires_at: exp > 0 ? exp * 1000 : now() + CHECKOUT_SESSION_TTL_MS }, last?.id ?? null);
+      // another checkout for this account (another tab or device, another plan or period) stored its session while this
+      // one was being made: this one is expired at once and its address never handed out, so the account never has two
+      // sessions it could pay (the person tries again, and that request settles the other one as usual)
+      if (kept?.conflict) {
+        const x = await stripe.expireCheckoutSession(id);
+        log('checkout', t0, { status: 'in_progress', http: 409, plan, period, ...(x.ok ? {} : { err: `expire:${x.code}`.slice(0, 48), stripe_http: x.status }) });
+        return error(409, 'checkout_in_progress', 'Another checkout for this account was just started. Try again.', cors);
+      }
     }
     log('checkout', t0, { status: 'ok', http: 200, plan, period });
     return json(200, { url }, cors);

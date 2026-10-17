@@ -88,9 +88,17 @@ const INTENTION_ID = /^[a-z][a-z_-]{1,39}$/;
 const ok200 = (r) => r && r.http === 200 && r.data && typeof r.data === 'object';
 
 export function createAngleClient({ store, endpoint = resolveEndpoint(), fetchImpl = netFetch, timeouts = TIMEOUTS, random, now = () => Date.now(), platform = null, accountToken = null } = {}) {
-  let session = null;   // { token, exp }
+  let session = null;   // { token, exp, endpoint, owner? }
   let sessionReason = null;
-  try { const s = store?.get(STORE_KEYS.session, null); if (s && typeof s.token === 'string' && s.exp > now() + 60000 && s.endpoint === endpoint) session = s; } catch { /* none */ }
+  // 'beyond.session' is a device-level key (src/auth/namespace.js), but with web subscriptions on a session the server
+  // minted for an account's Beyond subscription is that account's (its subject is the account): a session is kept with
+  // the namespace it was minted in (owner: the account's uid, null for a guest) and used only there. A guest or another
+  // account on this browser asks for its own; one kept without an owner (from before) is never used. A store without a
+  // namespace (sign-in off) keeps the rule it always had.
+  const ns = store?.namespace || null;
+  const owner = ns ? (ns.mode === 'account' && typeof ns.uid === 'string' ? ns.uid : null) : undefined;
+  const ownSession = (s) => !ns || (Object.prototype.hasOwnProperty.call(s, 'owner') && s.owner === owner);
+  try { const s = store?.get(STORE_KEYS.session, null); if (s && typeof s.token === 'string' && s.exp > now() + 60000 && s.endpoint === endpoint && ownSession(s)) session = s; } catch { /* none */ }
 
   function deviceId() {
     let id = null;
@@ -166,7 +174,7 @@ export function createAngleClient({ store, endpoint = resolveEndpoint(), fetchIm
     const r = await post(PATHS.session, body, { token: typeof account === 'string' && account ? account : null, timeout: timeouts.session });
     if (ok200(r) && r.data.status === 'ok' && typeof r.data.token === 'string') {
       const exp = Date.parse(r.data.expires_at);
-      session = { token: r.data.token, exp: Number.isFinite(exp) ? exp : now() + 3600000, endpoint };
+      session = { token: r.data.token, exp: Number.isFinite(exp) ? exp : now() + 3600000, endpoint, ...(ns ? { owner } : {}) };
       try { store?.set(STORE_KEYS.session, session); } catch { /* memory only */ }
       inviteBlock = null;
       try { store?.remove(STORE_KEYS.inviteNeeded); } catch { /* ignore */ }
