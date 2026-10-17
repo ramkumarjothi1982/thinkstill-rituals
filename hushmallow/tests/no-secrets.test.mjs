@@ -4,18 +4,19 @@
 // tokens, Anthropic keys and private keys (tools/secret-scan.mjs). Publishable
 // keys are public and pass. ALLOW holds only the two deliberate fakes, each by
 // its exact line. The site tools/build-site.sh assembles is scanned too, with
-// no allow-list (tools/site/check.mjs, section 7).
+// no allow-list (tools/site/check.mjs, section 7), and tools/hooks/pre-commit
+// (repository root) refuses a commit whose staged lines add one.
 // Every fixture is built at run time, so this file holds no secret-shaped string.
 // Run: node --test hushmallow/tests/
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { appendFileSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { appendFileSync, mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { ALLOW, SECRET_PATTERNS, describe, findSecrets, lineHash, scanFiles, scanTree, secretsInLine, trackedFiles } from '../tools/secret-scan.mjs';
+import { ALLOW, SECRET_PATTERNS, addedLines, describe, findSecrets, lineHash, scanFiles, scanTree, secretsInLine, trackedFiles } from '../tools/secret-scan.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const repo = fileURLToPath(new URL('../../', import.meta.url));
@@ -136,4 +137,85 @@ test('the built site is scanned too, with no allow-list: a key in any published 
     assert.match(cli.stderr, /check: 3 problems/);
     for (const v of [rk, wh, allowedLine.match(/sb_secret_\w+/)[0]]) assert.ok(!cli.stderr.includes(v) && !cli.stdout.includes(v), 'a secret is never printed');
   } finally { rmSync(out, { recursive: true, force: true }); }
+});
+
+test('tools/hooks/pre-commit: a commit whose staged lines add a secret is refused (ALLOW applied); a clean one goes through', () => {
+  const hooks = join(repo, 'tools/hooks');
+  assert.match(git(repo, 'ls-files', '-s', 'tools/hooks/pre-commit'), /^100755 /, 'tracked as executable');
+  assert.ok(readFileSync(join(root, 'README.md'), 'utf8').includes('run `git config core.hooksPath tools/hooks` (from the repository root)'), 'the README says how to turn it on');
+  const d = tempRepo();
+  try {
+    git(d, 'config', 'core.hooksPath', hooks);
+    const commit = (msg) => spawnSync('git', ['-c', 'user.name=test', '-c', 'user.email=test@example.invalid', '-c', 'commit.gpgsign=false', 'commit', '-q', '-m', msg], { cwd: d, env: gitEnv, encoding: 'utf8' });
+    const count = () => git(d, 'rev-list', '--count', 'HEAD').trim();
+    const pk = `pk_live_${'P'.repeat(24)}`, sk = `sk_live_${'K'.repeat(24)}`, wh = `whsec_${'w'.repeat(32)}`;
+    const lines = Array.from({ length: 12 }, (_, i) => `const v${i} = ${i};`);
+    writeFileSync(join(d, 'app.js'), `${[`const PK = '${pk}';`, ...lines].join('\n')}\n`);
+    git(d, 'add', 'app.js');
+    let r = commit('a publishable key is public');
+    assert.equal(r.status, 0, r.stderr);
+    assert.equal(r.stdout + r.stderr, '', 'quiet on a clean commit');
+
+    // a key on line 3 and line 12 of a changed file (two hunks, a line removed between), a new file with a
+    // quoted name whose added line starts with "++ ", and the allowed fake in its own file and in another one
+    const changed = [`const PK = '${pk}';`, ...lines];
+    changed.splice(2, 0, `const SK = '${sk}';`);
+    changed.splice(6, 1);
+    changed.splice(11, 0, `const SK2 = '${sk}';`);
+    writeFileSync(join(d, 'app.js'), `${changed.join('\n')}\n`);
+    writeFileSync(join(d, 'notes "copy".md'), `# notes\n++ ${wh}\n`);
+    const [a] = ALLOW.filter((x) => x.file.startsWith('hushmallow/'));
+    const allowedLine = readFileSync(join(repo, a.file), 'utf8').split('\n').find((l) => lineHash(l) === a.sha256);
+    mkdirSync(join(d, 'hushmallow/tests'), { recursive: true });
+    writeFileSync(join(d, a.file), `${allowedLine}\n`);
+    writeFileSync(join(d, 'hushmallow/tests/other.test.mjs'), `${allowedLine}\n`);
+    git(d, 'add', '-A');
+    r = commit('secrets');
+    assert.notEqual(r.status, 0, 'refused');
+    assert.equal(count(), '1', 'nothing was committed');
+    const reported = r.stderr.split('\n').filter((l) => l.startsWith('  ')).map((l) => l.trim());
+    assert.deepEqual(reported, [
+      'app.js:3: a Stripe secret or restricted key (sk_live_…)',
+      'app.js:12: a Stripe secret or restricted key (sk_live_…)',
+      'hushmallow/tests/other.test.mjs:1: a Supabase secret key (sb_secret_…)',
+      'notes "copy".md:2: a Stripe webhook signing secret (whsec_…)',
+    ]);
+    assert.match(r.stderr, /commit refused/);
+    for (const v of [sk, wh]) assert.ok(!r.stderr.includes(v) && !r.stdout.includes(v), 'a secret is never printed');
+
+    // the values taken out: the commit goes through, the allowed line in its own file included
+    writeFileSync(join(d, 'app.js'), `${changed.map((l) => l.replace(`'${sk}'`, 'env.STRIPE_SECRET_KEY')).join('\n')}\n`);
+    writeFileSync(join(d, 'notes "copy".md'), '# notes\n++ the whsec_ value is a Worker secret\n');
+    rmSync(join(d, 'hushmallow/tests/other.test.mjs'));
+    git(d, 'add', '-A');
+    r = commit('no secrets');
+    assert.equal(r.status, 0, r.stderr);
+    assert.equal(count(), '2');
+
+    // no node on PATH: the hook refuses rather than letting a commit through unchecked
+    const bin = join(d, 'bin');
+    mkdirSync(bin);
+    symlinkSync(execFileSync('sh', ['-c', 'command -v dirname'], { encoding: 'utf8' }).trim(), join(bin, 'dirname'));
+    const nonode = spawnSync('/bin/sh', [join(hooks, 'pre-commit')], { cwd: d, env: { ...gitEnv, PATH: bin }, encoding: 'utf8' });
+    assert.equal(nonode.status, 1);
+    assert.match(nonode.stderr, /node is not on PATH, so the secret scan cannot run/);
+  } finally { rmSync(d, { recursive: true, force: true }); }
+});
+
+test('addedLines: only added lines, numbered from each hunk, whatever they start with', () => {
+  const diff = [
+    'diff --git a/x.js b/x.js', 'index 1..2 100644', '--- a/x.js', '+++ b/x.js',
+    '@@ -2 +2 @@', '-old', '+++ looks like a header', '@@ -9,2 +9,0 @@', '-gone', '-gone too', '@@ -20,0 +19,2 @@', '+-- looks removed', '+\\ looks like a note',
+    '\\ No newline at end of file',
+    'diff --git a/"t\\303\\251st\\tb.md" b/"t\\303\\251st\\tb.md"', 'new file mode 100644', '--- /dev/null', '+++ "b/t\\303\\251st\\tb.md"', '@@ -0,0 +1 @@', '+@@ -1 +1 @@',
+    'diff --git a/a b.md b/a b.md', '--- a/a b.md\t', '+++ b/a b.md\t', '@@ -3,0 +4 @@', '+spaced',
+    'diff --git a/gone.js b/gone.js', 'deleted file mode 100644', '--- a/gone.js', '+++ /dev/null', '@@ -1 +0,0 @@', '-x',
+  ].join('\n');
+  assert.deepEqual(addedLines(diff), [
+    { file: 'x.js', line: 2, text: '++ looks like a header' },
+    { file: 'x.js', line: 19, text: '-- looks removed' },
+    { file: 'x.js', line: 20, text: '\\ looks like a note' },
+    { file: 't\u00e9st\tb.md', line: 1, text: '@@ -1 +1 @@' },
+    { file: 'a b.md', line: 4, text: 'spaced' },
+  ]);
 });

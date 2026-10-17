@@ -1,0 +1,12 @@
+#!/bin/sh
+# Refuses a commit whose staged changes add a secret: a Stripe sk_/rk_ key or
+# whsec_ signing secret, a Supabase secret, service_role JWT or access token,
+# an Anthropic key or a private key (hushmallow/tools/secret-scan.mjs, the
+# patterns tests/no-secrets.test.mjs and the site check use too).
+# Turn it on once per clone, from the repository root:
+#   git config core.hooksPath tools/hooks
+# A deliberate fake: build it at run time, or add its exact line to ALLOW there.
+here="$(cd "$(dirname "$0")/../.." && pwd)" || exit 1
+# no node, no check: refuse rather than let a key through unchecked
+command -v node >/dev/null 2>&1 || { echo "pre-commit: node is not on PATH, so the secret scan cannot run (hushmallow/tools/secret-scan.mjs)" >&2; exit 1; }
+exec node "$here/hushmallow/tools/secret-scan.mjs" --staged

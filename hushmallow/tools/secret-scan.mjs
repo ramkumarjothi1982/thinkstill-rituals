@@ -83,6 +83,7 @@ export const scanTree = (root) => scanFiles(root, trackedFiles(root));
 
 /** A path in a diff header (b/<path>, quoted when git must), or null for /dev/null. */
 function diffPath(s) {
+  s = s.replace(/\t$/, '');   // git ends the header with a tab when the name has a space
   if (s === '/dev/null') return null;
   if (s.startsWith('"')) {
     const bytes = [];
@@ -119,7 +120,7 @@ export function addedLines(diff) {
 export const scanDiff = (diff) => addedLines(diff).flatMap((a) => (a.file && !isAllowed(a.file, a.text) ? secretsInLine(a.text).map((s) => ({ file: a.file, line: a.line, ...s })) : []));
 
 /** The staged changes of the repository at cwd, with fixed prefixes and no user diff settings, so the parse never depends on config. */
-export const stagedDiff = (cwd = process.cwd()) => execFileSync('git', ['-c', 'core.quotePath=false', 'diff', '--cached', '--no-color', '--no-ext-diff', '--no-textconv', '--src-prefix=a/', '--dst-prefix=b/', '-U0', '--diff-filter=ACMR'], { cwd, encoding: 'utf8', maxBuffer: 256 << 20 });
+export const stagedDiff = (cwd = process.cwd()) => execFileSync('git', ['-c', 'core.quotePath=false', 'diff', '--cached', '--no-color', '--no-ext-diff', '--no-textconv', '--src-prefix=a/', '--dst-prefix=b/', '-U0', '--diff-filter=ACMRT'], { cwd, encoding: 'utf8', maxBuffer: 256 << 20 });
 
 /** One report line: where, and what kind (the prefix only, never the value). */
 export const describe = (f) => `${f.file}:${f.line}: ${f.kind} (${f.head.startsWith('-----') ? f.head : `${f.head}…`})`;
@@ -131,11 +132,12 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     found = staged ? scanDiff(stagedDiff()) : scanTree(execFileSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' }).trim());
   } catch (e) { console.error(`secret scan: ${e.message}`); process.exit(2); }
   if (found.length) {
-    console.error(`secret scan: ${found.length} secret${found.length === 1 ? '' : 's'} in ${staged ? 'the staged changes' : 'tracked files'}:`);
+    console.error(`secret scan: ${found.length} secret${found.length === 1 ? '' : 's'} in ${staged ? 'the staged changes (commit refused)' : 'tracked files'}:`);
     for (const f of found) console.error(`  ${describe(f)}`);
+    if (staged) console.error('Take the value out of the file and git add it again.');
     console.error('A secret belongs in a Worker secret or a gitignored .dev.vars, never in git. If it was ever pushed or shared, roll it (Stripe: Developers → API keys).');
     console.error('A deliberate fake: build it at run time in a test, or add its exact line to ALLOW in hushmallow/tools/secret-scan.mjs.');
     process.exit(1);
   }
-  console.log(`secret scan: no secrets in ${staged ? 'the staged changes' : 'tracked files'}`);
+  if (!staged) console.log('secret scan: no secrets in tracked files');   // the hook stays quiet on a clean commit
 }
