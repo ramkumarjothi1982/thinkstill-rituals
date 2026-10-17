@@ -27,6 +27,7 @@ import { SAFETY, GRIEF } from '../src/beyond/lines.js';
 import { DEATH_CARE } from '../src/app/scenes/hushfold.js';
 import { visit, STUBS, ALL_SCENE_STUBS } from './probes/r10-replay.mjs';
 import * as P from './probes/r4.mjs';
+import { cpuPerCall, within, readings } from './helpers/cost.mjs';
 
 await loadGrief();
 const read = (p) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
@@ -266,16 +267,16 @@ test('rules, not phrases: no test sentence is written into grief.js or death-wor
 });
 
 test('the new rules stay cheap: 2,000 characters built to make them work hard take a few ms', () => {
-  // the fastest of seven runs (see r5.test.mjs): a CI runner's pauses inflate any one run; a bad backtrack slows them all
-  const best = (xs) => Math.min(...xs);
+  // the CPU time of seven runs, per run (tests/helpers/cost.mjs): the other test files' turns on a CI runner's cores never
+  // count (three files on two cores read 42 ms for 22 ms of work), while a bad backtrack costs CPU on every run. Read again
+  // at most twice if it misses: a slow rule misses all three
   for (const seed of ['i i i i ', 'it would be better it would be ', 'if i if i was ', 'wherever wherever where he ', 'god god take take me ', 'everyone would be so much better off if ',
     'i keep thinking about driving ', 'hope i dont hope i ', 'in heaven and i want to go ', "i'm dead lol i'm dying haha ", 'let me let me let me ', 'over over here here not ']) {
     const t = seed.repeat(Math.ceil(2000 / seed.length)).slice(0, 2000);
     for (const f of [GR.keepLocal, GR.selfEnding]) {
       f(t);
-      const xs = [];
-      for (let i = 0; i < 7; i++) { const t0 = performance.now(); f(t); xs.push(performance.now() - t0); }
-      assert.ok(best(xs) < 40, `${f.name} ${seed}: ${best(xs).toFixed(1)} ms (fastest of 7)`);
+      const r = within(40, () => cpuPerCall(() => f(t), 7));
+      assert.ok(r.ok, `${f.name} ${seed}: ${readings(r.seen)} ms of CPU per run (7 runs a reading)`);
     }
   }
 });

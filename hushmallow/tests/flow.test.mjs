@@ -556,9 +556,16 @@ function installFakeDom() {
   globalThis.addEventListener = () => {}; globalThis.removeEventListener = () => {};
   globalThis.requestAnimationFrame = (fn) => setTimeout(() => fn(performance.now()), 16);
   globalThis.cancelAnimationFrame = (id) => clearTimeout(id);
+  // (every director made on it is destroyed before it goes, even when an assertion stopped the test first: a live one keeps
+  // its 250 ms watchdog interval going, and the file then never exits — CI's job time limit instead of a 'not ok')
+  const made = [];
   return {
     el,
-    restore() { for (const [k, d] of Object.entries(saved)) { if (d) Object.defineProperty(globalThis, k, d); else delete globalThis[k]; } },
+    keep(D) { made.push(D); return D; },
+    restore() {
+      for (const D of made.splice(0)) { try { D.destroy(); } catch { /* (the test's own failure is the one to read) */ } }
+      for (const [k, d] of Object.entries(saved)) { if (d) Object.defineProperty(globalThis, k, d); else delete globalThis[k]; }
+    },
   };
 }
 /** A playable test world that records the ctx it was made with. */
@@ -590,7 +597,7 @@ test('director: `thoughts` (an array or a ThoughtLayer) gives worlds ctx.thought
     const made = [];
     const registry = createRegistry([testWorld('t1', { made })]);
     const h = { id: 'h', token: 'a' }, h2 = { id: 'h2' }, h3 = { id: 'h3' };
-    const D = createHushflow({ worldEl: dom.el(), fxEl: dom.el(), thoughts: [h], registry, ticker: fakeTicker(), store: memStore() });
+    const D = dom.keep(createHushflow({ worldEl: dom.el(), fxEl: dom.el(), thoughts: [h], registry, ticker: fakeTicker(), store: memStore() }));
     await D.start({ worldId: 't1' });
     const ctx = made[0].ctx;
     assert.equal(ctx.thought, h, 'createHushflow({thoughts:[h]}) → ctx.thought === h');
@@ -618,7 +625,7 @@ test('director: `thoughts` (an array or a ThoughtLayer) gives worlds ctx.thought
     D.destroy();
     // the single-handle form still works
     const made2 = [];
-    const D2 = createHushflow({ worldEl: dom.el(), fxEl: dom.el(), thought: h2, registry: createRegistry([testWorld('t2', { made: made2 })]), ticker: fakeTicker(), store: memStore() });
+    const D2 = dom.keep(createHushflow({ worldEl: dom.el(), fxEl: dom.el(), thought: h2, registry: createRegistry([testWorld('t2', { made: made2 })]), ticker: fakeTicker(), store: memStore() }));
     await D2.start({ worldId: 't2' });
     assert.equal(made2[0].ctx.thought, h2);
     D2.destroy();
@@ -631,7 +638,7 @@ test('director: a next world that fails to build is never re-picked; one error; 
     const { createHushflow } = await import('../src/hushfold/flow/director.js');
     const made = [];
     const registry = createRegistry([testWorld('a', { made }), testWorld('b', { failPrepare: true, made })]);
-    const D = createHushflow({ worldEl: dom.el(), fxEl: dom.el(), registry, ticker: fakeTicker(), store: memStore() });
+    const D = dom.keep(createHushflow({ worldEl: dom.el(), fxEl: dom.el(), registry, ticker: fakeTicker(), store: memStore() }));
     const errors = [];
     D.on('error', (e) => errors.push(e));
     await D.start({ worldId: 'a' });
@@ -653,7 +660,7 @@ test('director: the quality governor steps down on slow frames and back up after
   const dom = installFakeDom();
   try {
     const { createHushflow } = await import('../src/hushfold/flow/director.js');
-    const D = createHushflow({ worldEl: dom.el(), fxEl: dom.el(), registry: createRegistry([testWorld('a')]), ticker: fakeTicker(), store: memStore() });
+    const D = dom.keep(createHushflow({ worldEl: dom.el(), fxEl: dom.el(), registry: createRegistry([testWorld('a')]), ticker: fakeTicker(), store: memStore() }));
     const q = [];
     D.on('quality', (e) => q.push(e.level));
     await D.start({ worldId: 'a' });
@@ -672,13 +679,28 @@ test('director: a watchdog takes over when the shared Mallow loop stops ticking,
   try {
     const { createHushflow } = await import('../src/hushfold/flow/director.js');
     const tk = fakeTicker();
-    const D = createHushflow({ worldEl: dom.el(), fxEl: dom.el(), registry: createRegistry([testWorld('a')]), ticker: tk, store: memStore() });
+    const D = dom.keep(createHushflow({ worldEl: dom.el(), fxEl: dom.el(), registry: createRegistry([testWorld('a')]), ticker: tk, store: memStore() }));
     await D.start({ worldId: 'a' });
+    // (the shared loop ticks once, as it does every frame, then stops: a build on a busy runner can outlast the watchdog's
+    // 250 ms, and this ticker had not ticked at all)
+    tk.tick();
     assert.equal(D.debug.loop, 'rig-ticker');
     const t0 = D.debug.time;
-    await new Promise((r) => setTimeout(r, 650));              // the ticker never ticks
-    assert.equal(D.debug.loop, 'raf', 'own requestAnimationFrame');
-    assert.ok(D.debug.time > t0, 'the world kept moving');
+    // the ticker never ticks again. The watchdog's 250 ms interval, begun with the loop, sees it stale 250-500 ms after
+    // that tick, asks for one probe frame (16 ms) and then runs the world's own frames (16 ms to the first): 650 ms of
+    // the director's timers is the bound, as it always was. A busy runner can hold those timers back, so the bound also
+    // holds what the runner held back meanwhile, measured: the test polls every 10 ms and adds up how late each of its
+    // own timers fired (a stall that delays the director's timers delays these too). A slower watchdog still misses it.
+    const from = performance.now();
+    let lag = 0;
+    while (!(D.debug.loop === 'raf' && D.debug.time > t0) && performance.now() - from <= 650 + lag) {
+      const a = performance.now();
+      await new Promise((r) => setTimeout(r, 10));
+      lag += Math.max(0, performance.now() - a - 10);
+    }
+    const waited = `${(performance.now() - from).toFixed(0)} ms, ${lag.toFixed(0)} ms of it the runner's timer lag`;
+    assert.equal(D.debug.loop, 'raf', `own requestAnimationFrame (none after ${waited})`);
+    assert.ok(D.debug.time > t0, `the world kept moving (not after ${waited})`);
     tk.tick();                                                // the shared loop is back
     assert.equal(D.debug.loop, 'rig-ticker');
     D.destroy();

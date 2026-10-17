@@ -18,6 +18,7 @@ import { DEATH_CARE } from '../src/app/scenes/hushfold.js';
 import { SAFETY } from '../src/beyond/lines.js';
 import { visit, STUBS } from './probes/r10-replay.mjs';
 import * as P from './probes/r6.mjs';
+import { cpuPerCall, within, readings } from './helpers/cost.mjs';
 
 await loadGrief();
 const read = (p) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
@@ -161,12 +162,12 @@ test('main screen: typed and closed, or seen while typing, a note is care too (t
 });
 
 test('cheap: noteShape on 600 characters (the Tell\'s limit) of its own worst repeats stays well under 50 ms', () => {
+  // the CPU time of five runs, per run (tests/helpers/cost.mjs: the other test files' turns on the cores never count, a bad
+  // backtrack costs CPU on every run), read again at most twice if it misses
   for (const s of ['goodbye everyone ', 'tell mum i love ', 'i won\'t be here ', 'by the time you read this ', 'when i\'m ', 'i\'ll be gone ', 'sorry for everything ', 'not ']) {
     const t = s.repeat(Math.ceil(600 / s.length)).slice(0, 600);
     noteShape(t);
-    const runs = [];
-    for (let k = 0; k < 5; k++) { const a = performance.now(); noteShape(t); runs.push(performance.now() - a); }
-    runs.sort((x, y) => x - y);
-    assert.ok(runs[2] < 50, `${JSON.stringify(s)}: ${runs[2].toFixed(1)} ms`);
+    const r = within(50, () => cpuPerCall(() => noteShape(t), 5));
+    assert.ok(r.ok, `${JSON.stringify(s)}: ${readings(r.seen)} ms of CPU per run (5 runs a reading)`);
   }
 });
