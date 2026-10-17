@@ -133,6 +133,11 @@ test('plans page: each refusal said calmly, with Manage subscription (the full p
   await click(manageButton());
   assert.deepEqual(server.calls.map((c) => c.body), [{}]);
   assert.equal(navs.at(-1), 'https://billing.stripe.com/p/session/test_home');
+  // a plan set to end (cancelled in Manage subscription): the real reason, and Manage subscription, where it is renewed
+  await tryWith({ http: 409, body: { status: 'error', error: { code: 'plan_ending' } } });
+  assert.equal(p.said(), `${CHANGE_ERRORS.plan_ending}Manage subscription`);
+  assert.equal(text(manageButton()), 'Manage subscription');
+  assert.match(CHANGE_ERRORS.plan_ending, /set to end, so it can’t be changed here\. You can renew it in Manage subscription\./);
   for (const code of ['not_an_upgrade', 'plan_change_unavailable', 'change_pending', 'not_updatable']) {
     await tryWith({ http: code === 'plan_change_unavailable' ? 503 : 409, body: { status: 'error', error: { code } } });
     assert.equal(p.said(), `${CHANGE_ERRORS[code]}${MANAGE_TO_CHANGE}`, code);

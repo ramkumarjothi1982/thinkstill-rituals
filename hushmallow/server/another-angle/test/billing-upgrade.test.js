@@ -306,6 +306,82 @@ test('cancellation stays on Settings → Manage subscription: the home, after an
 });
 
 // -------------------------------------------------------- the refusals --
+test('a plan set to end (cancelled in Manage subscription) is never changed: 409 plan_ending on Stripe\'s copy, for an upgrade and the plan chooser; renewed at Stripe, both open again', async () => {
+  const s = await account('paid.monthly');
+  // cancelled at the period end, as the pinned dahlia version has it: the flag, and cancel_at on the period end
+  const end = (CLOCK_START + 30 * DAY) / 1000;
+  s.now.advance(1000);
+  s.up.subs.set('sub_Test123', on('paid.monthly', { cancel_at_period_end: true, cancel_at: end }, end));
+  const st = await (await refresh(s)).json();
+  assert.deepEqual([st.tier, st.status, st.ends_at], ['paid', 'active', new Date(end * 1000).toISOString()], 'the record knows it ends');
+  for (const [name, send] of [['upgrade', () => upgrade(s, 'ultra.yearly')], ['switch', () => portal(s, { intent: 'switch' })]]) {
+    const n = portals(s).length, k = s.up.stripe().length;
+    assert.deepEqual(await code(await send()), [409, 'plan_ending'], name);
+    assert.equal(portals(s).length, n, `${name}: no portal session, so nothing is paid that would still end on the old date`);
+    assert.deepEqual(calls(s).slice(k), ['GET /v1/subscriptions/sub_Test123'], `${name}: Stripe's copy decides`);
+    assert.equal(lastLog(s, 'portal').err, 'stripe:cancel_at_period_end', name);
+    assert.equal((await code(await send()))[1], 'plan_ending', `${name}: a second tap the same`);
+  }
+  const body = await (await upgrade(s, 'ultra.monthly')).json();
+  assert.equal(body.error.code, 'plan_ending');
+  assert.match(body.error.message, /set to end: renew it in Manage subscription first/);
+  // Manage subscription still opens (renewing, or the receipts, are there)
+  assert.deepEqual(await (await portal(s, {})).json(), { url: URL_ });
+  // a cancel_at of its own (a date set for it, not the period end): the same
+  s.up.subs.set('sub_Test123', on('paid.monthly', { cancel_at: end - 7 * DAY / 1000 }, end));
+  assert.deepEqual(await code(await upgrade(s, 'ultra.monthly')), [409, 'plan_ending']);
+  assert.equal(lastLog(s, 'portal').err, 'stripe:cancel_at');
+  // renewed in Manage subscription: Stripe's copy renews, and the change opens before the webhook says so
+  s.up.subs.set('sub_Test123', on('paid.monthly'));
+  assert.equal((await status(s)).ends_at, new Date(end * 1000).toISOString(), 'the record still behind');
+  assert.equal((await upgrade(s, 'ultra.yearly')).status, 200);
+  assert.deepEqual(portals(s).at(-1), confirmForm('ultra.yearly'));
+  assert.equal((await portal(s, { intent: 'switch' })).status, 200);
+  assertClean(allLogs.flat());
+});
+
+test('the plan chooser (intent "switch") is checked on Stripe\'s own copy too: a record behind Stripe never opens it on a failing card or another account\'s subscription', async () => {
+  const s = await account('paid.monthly');
+  // the record says active; Stripe has past_due (invoice.payment_failed not delivered yet: Stripe is retrying it)
+  s.up.subs.set('sub_Test123', on('paid.monthly', { status: 'past_due' }));
+  assert.equal((await status(s)).status, 'active', 'the record is behind');
+  let k = s.up.stripe().length;
+  assert.deepEqual(await code(await portal(s, { intent: 'switch' })), [409, 'payment_issue']);
+  assert.deepEqual(calls(s).slice(k), ['GET /v1/subscriptions/sub_Test123'], 'Stripe read, no portal session');
+  assert.deepEqual([lastLog(s, 'portal').err, lastLog(s, 'portal').intent], ['stripe:past_due', 'switch']);
+  for (const st of ['unpaid', 'incomplete', 'paused']) {
+    s.up.subs.set('sub_Test123', on('paid.monthly', { status: st }));
+    assert.deepEqual(await code(await portal(s, { intent: 'switch' })), [409, 'payment_issue'], st);
+  }
+  s.up.subs.set('sub_Test123', on('paid.monthly', { status: 'canceled' }));
+  assert.deepEqual(await code(await portal(s, { intent: 'switch' })), [404, 'no_subscription']);
+  // not the account's at Stripe: another account's metadata, another customer, or another subscription answered
+  for (const [over, want, err] of [[{ metadata: { user_id: OTHER } }, [403, 'not_yours'], 'subscription'], [{ customer: 'cus_Elsewhere1' }, [403, 'not_yours'], 'subscription'], [{ id: 'sub_Other1234' }, [502, 'billing_unavailable'], 'id_mismatch']]) {
+    s.up.subs.set('sub_Test123', on('paid.monthly', over));
+    assert.deepEqual(await code(await portal(s, { intent: 'switch' })), want, JSON.stringify(over));
+    assert.equal(lastLog(s, 'portal').err, err);
+  }
+  // Stripe has no such subscription, or does not answer
+  s.up.subs.delete('sub_Test123');
+  assert.deepEqual(await code(await portal(s, { intent: 'switch' })), [404, 'no_subscription']);
+  s.up.subs.set('sub_Test123', on('paid.monthly'));
+  s.up.fail = { path: /^\/v1\/subscriptions\//, status: 500, error: { type: 'api_error' } };
+  assert.deepEqual(await code(await portal(s, { intent: 'switch' })), [502, 'billing_unavailable']);
+  s.up.fail = null;
+  assert.deepEqual(portals(s), [], 'no plan chooser opened for any of them');
+  // paid up at Stripe: the chooser opens, after the one read
+  k = s.up.stripe().length;
+  const ok = await portal(s, { intent: 'switch' });
+  assert.deepEqual(await ok.json(), { url: URL_, flow: 'subscription_update' });
+  assert.deepEqual(calls(s).slice(k), ['GET /v1/subscriptions/sub_Test123', 'POST /v1/billing_portal/sessions']);
+  // Manage subscription (the home) is never behind any of this
+  s.up.subs.set('sub_Test123', on('paid.monthly', { status: 'past_due' }));
+  k = s.up.stripe().length;
+  assert.deepEqual(await (await portal(s, {})).json(), { url: URL_ });
+  assert.deepEqual(calls(s).slice(k), ['POST /v1/billing_portal/sessions'], 'the home reads nothing first');
+  assertClean(allLogs.flat());
+});
+
 test('upgrade refusals on Stripe\'s copy: another account\'s subscription, several items, a change waiting, an unknown price, Stripe not having it or not answering', async () => {
   /** @param {string} name @param {Record<string, any>} over @param {[number, string]} want @param {string} err */
   const refused = async (name, over, want, err) => {

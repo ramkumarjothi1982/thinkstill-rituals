@@ -89,7 +89,7 @@ test('upgrade: { intent: "upgrade", plan, period } with the token, and only Stri
     server.portal = { http: code === 'plan_change_unavailable' ? 503 : 409, body: { status: 'error', error: { code, message: 'x' } } };
     assert.deepEqual(await billing.upgrade('ultra', 'yearly'), { failed: true, reason: code }, code);
   }
-  assert.deepEqual([...CHANGE_CODES], ['already_on_plan', 'payment_issue', 'not_an_upgrade', 'plan_change_unavailable', 'change_pending', 'not_updatable']);
+  assert.deepEqual([...CHANGE_CODES], ['already_on_plan', 'payment_issue', 'not_an_upgrade', 'plan_change_unavailable', 'change_pending', 'not_updatable', 'plan_ending']);
   server.portal = { http: 409, body: { error: { code: 'something_else' } } };
   assert.deepEqual(await billing.upgrade('ultra', 'yearly'), { failed: true, reason: 'http_409' });
   server.portal = { http: 503, body: { error: { code: 'billing_not_configured' } } };

@@ -89,7 +89,7 @@ test('the portal: every doc says the same: upgrades confirm and come back (?bill
   }
   // the routes, and every answer the app reads, in the owner guide and the Worker's README
   for (const [name, text] of [['PAYMENTS.md', PAYMENTS], ['README.md', README]]) {
-    for (const c of ['payment_issue', 'no_subscription', 'not_updatable', 'change_pending', 'already_on_plan', 'not_an_upgrade', 'plan_change_unavailable']) assert.ok(text.includes(`409 ${c}`) || text.includes(`404 ${c}`) || text.includes(`503 ${c}`), `${name}: ${c}`);
+    for (const c of ['payment_issue', 'no_subscription', 'not_updatable', 'change_pending', 'plan_ending', 'already_on_plan', 'not_an_upgrade', 'plan_change_unavailable']) assert.ok(text.includes(`409 ${c}`) || text.includes(`404 ${c}`) || text.includes(`503 ${c}`), `${name}: ${c}`);
     assert.match(text, /"intent": "upgrade"/, name);
     assert.match(text, /"refresh": true/, name);
   }

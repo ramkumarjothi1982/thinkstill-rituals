@@ -69,10 +69,11 @@ export const SESSION_ID = /^cs_(test|live)_[A-Za-z0-9]{10,250}$/;
 /**
  * Why the server would not open a change of plan (POST /v1/billing/portal, intent 'upgrade' or 'switch': 409, or 503
  * plan_change_unavailable): already that plan; a payment to sort out first (past due, unpaid, incomplete); not an
- * upgrade by its rule; a change already waiting on the subscription; a subscription it cannot change here; or Stripe
- * refusing the flow (never the portal's front page instead). Only these, as { error: { code } }: anything else is a failure.
+ * upgrade by its rule; a change already waiting on the subscription; a subscription it cannot change here; a plan set
+ * to end (cancelled in Manage subscription: renewed there first, plan_ending); or Stripe refusing the flow (never the
+ * portal's front page instead). Only these, as { error: { code } }: anything else is a failure.
  */
-export const CHANGE_CODES = Object.freeze(['already_on_plan', 'payment_issue', 'not_an_upgrade', 'plan_change_unavailable', 'change_pending', 'not_updatable']);
+export const CHANGE_CODES = Object.freeze(['already_on_plan', 'payment_issue', 'not_an_upgrade', 'plan_change_unavailable', 'change_pending', 'not_updatable', 'plan_ending']);
 /**
  * Our custom domain for Checkout and the customer portal (decision D12). Stripe moves both pages there the moment the
  * owner activates it, so this list must be live in production and staging before that, or every checkout and

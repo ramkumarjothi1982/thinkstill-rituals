@@ -82,6 +82,7 @@ export const CHANGE_ERRORS = Object.freeze({
   plan_change_unavailable: 'Plan changes can’t open here just now. You can change your plan in Manage subscription.',
   change_pending: 'A change to your plan is already on its way. You can see it in Manage subscription.',
   not_updatable: 'This subscription can be changed in Manage subscription.',
+  plan_ending: 'Your plan is set to end, so it can’t be changed here. You can renew it in Manage subscription.',
   none: 'There’s no subscription on this account yet.',
   offline: 'Couldn’t open Stripe just now. Try again.',
 });
@@ -309,7 +310,7 @@ export default function plans(app, params = {}) {
     const reason = r?.none ? 'none' : r?.reason;
     let line, more = null;
     if (reason === 'already_on_plan') line = CHANGE_ERRORS.already_on_plan(PLANS[want.plan].name);
-    else if (reason === 'payment_issue') { line = CHANGE_ERRORS.payment_issue; more = 'Manage subscription'; }
+    else if (reason === 'payment_issue' || reason === 'plan_ending') { line = CHANGE_ERRORS[reason]; more = 'Manage subscription'; }
     else if (TO_PORTAL.includes(reason)) { line = CHANGE_ERRORS[reason]; more = MANAGE_TO_CHANGE; }
     else if (reason === 'none') line = CHANGE_ERRORS.none;
     else line = CHANGE_ERRORS.offline;
