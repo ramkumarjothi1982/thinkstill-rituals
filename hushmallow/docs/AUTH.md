@@ -553,13 +553,13 @@ once the file is on `main`). About 10 minutes. Steps:
 3. Supabase CLI **2.117.0** (pinned, `supabase/setup-cli` pinned to a
    commit): `supabase start` in `hushmallow/` with `supabase/config.toml`
    (Postgres 17, Auth, PostgREST, Kong, Mailpit; Studio, Realtime, Storage,
-   Functions, analytics off; the migrations `0001`…`0009` applied in order
+   Functions, analytics off; the migrations `0001`…`0010` applied in order
    as `postgres`, like the SQL editor; no seed).
 4. `tools/auth/e2e-stack-env.mjs` keeps only the stack's **public** values
    from `supabase status -o json` (API URL, publishable key, the local
    database URL, Mailpit) and refuses anything not on the runner; the
    stack's secret / service-role keys are never read or stored.
-5. psql: the 9 migrations are recorded; `supabase/tests/rls_check.sql`
+5. psql: every migration in `supabase/migrations/` is recorded (10 now); `supabase/tests/rls_check.sql`
    must print `ALL … CHECKS PASSED` with no `FAIL` and leave no account
    behind, or the job stops.
 6. `tools/build-site.sh` with `HM_AUTH_MODE=ci` and the stack's URL and
@@ -738,7 +738,7 @@ production and never Supabase itself.
 
 The account screens open from Settings → Privacy (the top row) or at
 `https://app.hushmallow.com/#account`.
-1. SQL editor: run `0001` … `0009` (already ran `0001`–`0008`? run just `0009`), then `tests/rls_check.sql` → `ALL 35 CHECKS PASSED`.
+1. SQL editor: run `supabase/production/ALL_MIGRATIONS.sql` (`0001` … `0010`; safe to run again over an earlier run), then `supabase/production/RLS_CHECK.sql` → `ALL 35 CHECKS PASSED`. Only `0001`–`0009` ran? The check then prints `1 OF 35 CHECKS FAILED` on the owner-rights line, until `0010` runs.
 2. Dashboard settings above (URL configuration, email provider, templates, sessions, **custom SMTP**).
 3. Cloudflare Pages: the two variables for Production only (never on Preview: Preview has the staging project's, `docs/STAGING.md`); deploy. Then `node hushmallow/tools/auth/prod-readiness.mjs --app https://app.hushmallow.com` (the key in `SUPABASE_PUBLISHABLE_KEY`): every line PASS.
 4. `curl -sI https://app.hushmallow.com/auth/callback/` → `cache-control: no-store`, `x-frame-options: DENY`, `referrer-policy: no-referrer`; `curl -sI https://app.hushmallow.com/auth/callback` → a redirect to `/auth/callback/` (Pages serves the folder), with the query kept.

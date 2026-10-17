@@ -104,6 +104,7 @@ for target in production staging; do
   left="$(psql_as postgres -d "$db" -A -t -c "select (select count(*) from auth.users) + (select count(*) from public.profiles) + (select count(*) from public.sync_consents)")"
   [ "$left" = 0 ] || { echo "$target/RLS_CHECK.sql left $left rows behind" >&2; exit 1; }
   out="$(dashboard_delete "$db")" || { echo "$target: the dashboard's Delete user failed: $out" >&2; exit 1; }
+  echo "$out" | grep -qx 'kept 4' || { echo "$target: the user's 4 rows were not there to delete: $out" >&2; exit 1; }
   echo "$out" | grep -qx 'left 0' || { echo "$target: deleting the user left rows behind: $out" >&2; exit 1; }
   echo "    $target: the dashboard's Delete user works with sync on"
 done
