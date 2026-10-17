@@ -1594,7 +1594,7 @@ test('the sign-in client hands out its own account\'s access token, and nothing 
     const ls = memoryStorage();
     const first = page(ls);
     assert.equal(await first.accessToken(), null, 'a guest has none');
-    const r = await first.signUp({ email: 'ana@example.com', password: 'gentle-moon-42', name: 'Ana' });
+    const r = await first.signUp({ email: 'ana@example.com', password: 'gentle-moon-42', name: 'Ana', agreed: true });
     assert.equal(r.ok, true);
     const signed = page(ls);   // the reload into the account
     assert.equal(signed.namespace.mode, 'account');

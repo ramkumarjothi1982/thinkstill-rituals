@@ -324,6 +324,9 @@ async function tapView(p, selector, view) {
 }
 async function tapNav(p, selector) { await Promise.all([p.waitForNavigation({ timeout: 60000 }), tap(p, selector)]); await appReady(p); }
 async function fill(p, name, value) { const s = `[data-auth-view] input[name="${name}"]`; await p.waitForSelector(s, { timeout: 20000 }); await p.fill(s, value); }
+/** The sign-up form's required tick (18 or older, the Terms and the Privacy Policy): a real touch on the box, then it is ticked. */
+async function agree(p) { await tap(p, '[data-auth-view] input[name="agree"]'); await p.waitForFunction(() => document.querySelector('[data-auth-view] input[name="agree"]')?.checked === true, null, { timeout: 10000 }); }
+const createOff = (p) => p.evaluate(() => document.querySelector('[data-act="create-submit"]')?.disabled === true);
 /** A fresh load of the app at /#account (the query keeps it from being a same-page hash change). */
 async function openAccount(p) { await p.goto(`${SITE}/?n=${++loads}#account`); await appReady(p); await p.waitForFunction(() => document.querySelector('[data-auth-view]') && window.__account?.mallow, null, { timeout: 60000 }); }
 /** Sign in through the screens; resolves 'nav' (into the account) or 'choice' (the guest question). */
@@ -406,6 +409,9 @@ async function signup() {
   check((await viewOf(p)) === 'welcome', '/#account as a guest: the welcome screen');
   await tapView(p, '[data-act="create"]', 'create');
   await fill(p, 'email', A); await fill(p, 'password', PASS1); await fill(p, 'name', 'Ana');
+  check(await createOff(p), 'Create my account stays off until the 18+ / Terms and Privacy Policy box is ticked');
+  await agree(p);
+  check(!(await createOff(p)), 'ticked: Create my account wakes');
   const seen = await mail.seen(A);
   await tap(p, '[data-act="create-submit"]');
   await waitView(p, 'check-email');
@@ -748,7 +754,7 @@ async function people() {
   await openAccount(p);
   if (await status(p) === 'signed-in') { await signOutUi(p); await openAccount(p); }   // only if the expiry section could not end it
   await tapView(p, '[data-act="create"]', 'create');
-  await fill(p, 'email', B); await fill(p, 'password', PASS1);
+  await fill(p, 'email', B); await fill(p, 'password', PASS1); await agree(p);
   const seen = await mail.seen(B);
   await tap(p, '[data-act="create-submit"]'); await waitView(p, 'check-email');
   const m = await mail.next(B, seen, 'signup');
@@ -895,7 +901,7 @@ async function unconfirmed() {
   const u = await newPage(ctx, 'unconfirmed-375');
   await openAccount(u);
   await tapView(u, '[data-act="create"]', 'create');
-  await fill(u, 'email', C); await fill(u, 'password', PASS1);
+  await fill(u, 'email', C); await fill(u, 'password', PASS1); await agree(u);
   const seen = await mail.seen(C);
   await tap(u, '[data-act="create-submit"]'); await waitView(u, 'check-email');
   const first = await mail.next(C, seen, 'signup');

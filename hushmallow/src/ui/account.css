@@ -46,9 +46,15 @@
   text-decoration-color: rgba(255, 217, 138, .45); cursor: pointer; border-radius: 12px; }
 .hm-auth-actions .hm-auth-link { justify-self: center; }
 .hm-auth-error .hm-auth-link { padding: 0 4px; color: #ffe7a8; }
-/* the sign-up form's agreement, just above its button: "Terms" and "Privacy Policy" open the legal pages in a new tab */
-.hm-auth-agree { margin: 0; text-wrap: pretty; }
-.hm-auth-agree a { padding: 6px 0; color: var(--text-1); text-decoration: underline; text-underline-offset: 3px; text-decoration-color: rgba(255, 217, 138, .55); border-radius: 6px; }
+/* the sign-up form's required tick, just above its button: "I’m 18 or older, and I agree to the Terms and the Privacy
+   Policy" (account.js consentTick). The label holds the box, so the whole row, at least 44 px tall, is the target; the
+   box is drawn at 24 px; "Terms" and "Privacy Policy" open the legal pages in a new tab and leave the tick alone */
+.hm-auth-tick { display: flex; align-items: flex-start; gap: 12px; min-height: 44px; padding: 10px 0; cursor: pointer;
+  color: var(--text-2); font: var(--type-label); letter-spacing: var(--type-label-ls); text-wrap: pretty; -webkit-tap-highlight-color: transparent; }
+.hm-auth-tick input { flex: 0 0 auto; width: 24px; height: 24px; margin: -1px 0 0; accent-color: var(--accent); cursor: pointer; }
+.hm-auth-tick input[aria-invalid="true"] { outline: 2px solid #ffb4b4; outline-offset: 3px; }
+.hm-auth-tick a { padding: 6px 0; color: var(--text-1); text-decoration: underline; text-underline-offset: 3px; text-decoration-color: rgba(255, 217, 138, .55); border-radius: 6px; }
+.hm-auth-tickhint:empty { min-height: 0; }
 .hm-account-forgot { display: flex; justify-content: flex-end; margin-top: -6px; }
 
 /* buttons this scene adds */

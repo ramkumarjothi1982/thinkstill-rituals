@@ -61,7 +61,7 @@ async function main() {
   check(await p.evaluate(() => window.__hush.auth.status()) === 'guest', 'the app boots as a guest with sign-in on');
   check(await p.evaluate(() => !document.querySelector('script[src*="vendor/supabase"]')), 'a guest never downloads supabase-js');
   await p.evaluate(() => { window.__hush.prefs.set('textScale', 1.12); });   // a guest setting on this phone
-  const su = await p.evaluate(({ email, password }) => window.__hush.auth.load().then((a) => a.signUp({ email, password, name: 'Ana' })), { email, password });
+  const su = await p.evaluate(({ email, password }) => window.__hush.auth.load().then((a) => a.signUp({ email, password, name: 'Ana', agreed: true })), { email, password });
   check(su.ok && su.needsConfirmation, 'sign up asks to check email', JSON.stringify(su));
   const m1 = await lastMail(email, 'signup');
   check(m1 && m1.redirect_to === `${SITE}/auth/callback`, 'the email returns to /auth/callback', m1?.redirect_to);
@@ -149,7 +149,7 @@ async function main() {
   const d = await browser.newContext(ctxOpts);
   const dp = await newPage(d, 'pkce');
   await dp.goto(`${SITE}/`); await appReady(dp);
-  await dp.evaluate(({ e3 }) => window.__hush.auth.load().then((a) => a.signUp({ email: e3, password: 'gentle-moon-42' })), { e3 });
+  await dp.evaluate(({ e3 }) => window.__hush.auth.load().then((a) => a.signUp({ email: e3, password: 'gentle-moon-42', agreed: true })), { e3 });
   const m3 = await lastMail(e3, 'signup');
   await dp.goto(m3.confirmation_url);   // Supabase's own {{ .ConfirmationURL }} → 303 → /auth/callback?code=
   await dp.waitForFunction(() => window.__hush?.auth?.status?.() === 'signed-in' || /You’re in/.test(document.querySelector('#hm-auth-title')?.textContent || ''), null, { timeout: 30000 });
@@ -159,7 +159,7 @@ async function main() {
   await Promise.all([dp.waitForNavigation({ timeout: 60000 }), dp.evaluate(() => window.__hush.auth.load().then((a) => a.signOut()))]);
   await appReady(dp);
   await dp.waitForFunction(() => window.__hush?.auth?.status?.() === 'guest', null, { timeout: 60000 });
-  await dp.evaluate(({ e4 }) => window.__hush.auth.load().then((a) => a.signUp({ email: e4, password: 'gentle-moon-42' })), { e4 });
+  await dp.evaluate(({ e4 }) => window.__hush.auth.load().then((a) => a.signUp({ email: e4, password: 'gentle-moon-42', agreed: true })), { e4 });
   const m4 = await lastMail(e4, 'signup');
   const other = await browser.newContext(ctxOpts);
   const op = await newPage(other, 'pkce-other');

@@ -7,8 +7,10 @@
 //
 //   welcome        sign in / create an account / continue as a guest
 //   create         email, password (a gentle strength hint), optional name; above
-//                  its button, "By creating an account you agree to the Terms and
-//                  Privacy Policy." with both linked (src/app/legal.js)
+//                  its button the required tick "I’m 18 or older, and I agree to the
+//                  Terms and the Privacy Policy" with both linked (src/app/legal.js
+//                  CONSENT_LINE; consentTick below). The button stays off until it is
+//                  ticked, and the account records the acceptance (src/auth/client.js)
 //   check-email    the link is on its way; send it again (cooldown); sign in
 //   signin         email, password (show / hide), forgot password
 //   forgot         email → reset-sent (the same answer whether or not the
@@ -51,7 +53,7 @@ import { createAuthMallow } from '../../auth/mallow.js';
 import { checkEmail, checkPassword, friendlyError, passwordStrength, MESSAGES } from '../../auth/errors.js';
 import * as VM from '../../auth/view-model.js';
 import { NOTICE_TEXT } from '../../auth/boot.js';
-import { agreeLine } from '../legal.js';
+import { consentLabel, CONSENT_LINE } from '../legal.js';
 import { PLANS } from '../entitlements.js';
 import { plannedPlan, CHANGE_PLAN, PAYMENT_PENDING, BILLING_SUPPORT } from '../billing.js';
 
@@ -302,6 +304,33 @@ export function continuePlan(app) {
   return { el, stop };
 }
 
+/**
+ * The sign-up form's required tick (owner, 17 Oct 2026): "I’m 18 or older, and I agree to the Terms and the Privacy
+ * Policy", the two names linked (new tabs). The label is tied to the box (for = id) and holds it, so the whole row, at
+ * least 44 px tall (account.css .hm-auth-tick), ticks it; a tap on a link opens that page and leaves the tick alone.
+ * The box's name is the visible words (aria-label = CONSENT_LINE, WCAG 2.5.3), without the links' "(opens a new tab)".
+ * Never ticked for the person. → a form field: { name, input, hintEl, wrap, tick: true } (form() reads input.checked).
+ */
+export function consentTick(id, name = 'agree') {
+  const hintId = `${id}-hint`;
+  const input = h('input', { type: 'checkbox', id, name, required: true, 'aria-required': 'true', 'aria-describedby': hintId, 'aria-label': CONSENT_LINE });
+  const label = h('label', { class: 'hm-auth-tick', for: id }, input, h('span', {}, ...consentLabel()));
+  const hintEl = h('div', { class: 'hm-auth-hint hm-auth-tickhint', id: hintId });
+  return { name, input, hintEl, tick: true, wrap: h('div', { class: 'hm-auth-field', 'data-field': name }, label, hintEl) };
+}
+
+/**
+ * Keeps a form's submit button off until every required tick is ticked → { ready(), sync() }. ready() reads each box
+ * itself (only checked === true counts); sync() makes the button follow, except while the form is busy (busy()).
+ */
+export function tickGate(submitBtn, ticks, { busy = () => false } = {}) {
+  const ready = () => ticks.every((x) => x.input.checked === true);
+  const sync = () => { if (!busy()) submitBtn.disabled = !ready(); };
+  for (const x of ticks) x.input.addEventListener('change', sync);
+  sync();
+  return { ready, sync };
+}
+
 export default function account(app, params = {}) {
   const cssReady = ensureCss();
   const auth = app.auth;
@@ -442,7 +471,9 @@ export default function account(app, params = {}) {
 
   /**
    * A form whose submit runs onSubmit(values) → { ok } | { ok, hold } (stays busy: the next screen is coming) | { ok:false, error, action? }.
-   * note: a line between the fields and the button (the sign-up form's agreement), above any error.
+   * note: a line between the fields and the button, above any error.
+   * A required tick among the fields (consentTick): the button stays off until it is ticked (tickGate), and a submit
+   * without it is refused here, before onSubmit; its value is the box's own checked state.
    */
   function form({ fields, submit, busy, onSubmit, before = [], after = [], note = null, act = 'submit', danger = false, quiet = false }) {
     const errEl = h('p', { class: 'hm-auth-error', role: 'alert', id: uid('err') });
@@ -450,6 +481,14 @@ export default function account(app, params = {}) {
     const actionsEl = h('div', { class: 'hm-auth-actions' }, submitBtn, ...after);
     const f = h('form', { class: 'hm-auth-form', novalidate: true },
       ...before, ...fields.map((x) => x.wrap), note, errEl, actionsEl);
+    const ticks = fields.filter((x) => x.tick);
+    const gate = ticks.length ? tickGate(submitBtn, ticks, { busy: () => !!f.dataset.busy }) : null;
+    // ticked after an error: the box is no longer marked, and a worried Mallow settles
+    for (const x of ticks) x.input.addEventListener('change', () => {
+      x.input.removeAttribute('aria-invalid');
+      x.input.setAttribute('aria-describedby', x.hintEl.id);
+      if (mallow?.mood === 'concerned' && !sombre()) mood('idle');
+    });
     const clear = () => { errEl.replaceChildren(); actionsEl.before(errEl); for (const x of fields) { x.input.removeAttribute('aria-invalid'); x.input.setAttribute('aria-describedby', x.hintEl.id); } };
     function fail(error, action) {
       const e = error || friendlyError({}, 'unknown');
@@ -469,7 +508,8 @@ export default function account(app, params = {}) {
       e.preventDefault();
       if (f.dataset.busy) return;
       clear();
-      const values = Object.fromEntries(fields.map((x) => [x.name, x.input.value]));
+      if (gate && !gate.ready()) { fail(friendlyError({ code: 'agree_needed' }, 'signup')); return; }
+      const values = Object.fromEntries(fields.map((x) => [x.name, x.tick ? x.input.checked === true : x.input.value]));
       f.dataset.busy = '1'; f.setAttribute('aria-busy', 'true');
       submitBtn.disabled = true; submitBtn.textContent = busy;
       mood('busy');
@@ -478,7 +518,7 @@ export default function account(app, params = {}) {
       if (!f.isConnected || left) return;   // a successful step moved on
       if (r?.hold) { submitBtn.textContent = 'One moment…'; return; }   // success: the next screen (or a reload) is on its way
       delete f.dataset.busy; f.removeAttribute('aria-busy');
-      submitBtn.disabled = false; submitBtn.textContent = submit;
+      submitBtn.disabled = gate ? !gate.ready() : false; submitBtn.textContent = submit;
       if (r && r.ok === false) fail(r.error, r.action);
       else if (mallow?.mood === 'busy') mood('idle');
     });
@@ -534,14 +574,15 @@ export default function account(app, params = {}) {
     const email = field({ name: 'email', label: 'Email', kind: 'email', autocomplete: 'email', inputmode: 'email', enterkeyhint: 'next', value: o.email, maxlength: 254 });
     const pw = field({ name: 'password', label: 'Password', autocomplete: 'new-password', enterkeyhint: 'next', password: true, meter: true, maxlength: 72 });
     const name = field({ name: 'name', label: 'Your name', autocomplete: 'nickname', enterkeyhint: 'go', optional: true, maxlength: 40, hintText: 'Kept with your account. Only you see it.' });
+    // 18 or older, and the Terms and the Privacy Policy: required, never ticked for them; the button waits for it
+    const agree = consentTick(uid('agree'));
     const f = form({
-      fields: [email, pw, name], submit: 'Create my account', busy: 'Creating your account…', act: 'create-submit',
-      note: agreeLine('hm-auth-hint hm-auth-center hm-auth-agree'),
+      fields: [email, pw, name, agree], submit: 'Create my account', busy: 'Creating your account…', act: 'create-submit',
       onSubmit: async (v) => {
         const bad = checkEmail(v.email) || checkPassword(v.password);
         if (bad) return { ok: false, error: bad };
         const a = await api();
-        const r = await a.signUp({ email: v.email, password: v.password, name: v.name });
+        const r = await a.signUp({ email: v.email, password: v.password, name: v.name, agreed: v.agree === true });
         if (!r.ok) return r;
         mood('happy');
         if (r.signedIn) return signedIn(r);

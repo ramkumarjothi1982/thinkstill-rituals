@@ -10,7 +10,11 @@
 //     user()              { id, email, emailConfirmed, createdAt, name } | null
 //     onChange(fn)        fn({ status, user, event }) → unsubscribe
 //     init()              boot: check the persisted session with the server
-//     signUp({ email, password, name })      → { ok, needsConfirmation, email } | { ok, signedIn, uid, needsGuestChoice }
+//     signUp({ email, password, name, agreed })  → { ok, needsConfirmation, email } | { ok, signedIn, uid, needsGuestChoice }
+//                         agreed: the sign-up form's required tick (18 or older, the Terms and the Privacy Policy;
+//                         src/app/legal.js CONSENT_LINE). Only `true` counts: anything else is refused before
+//                         anything loads or is sent. The acceptance is recorded on the account through signUp's
+//                         options.data (user_metadata): consentRecord(), with the name if one was given
 //     signIn({ email, password })            → { ok, signedIn, uid, email, needsGuestChoice } | { ok:false, error }
 //     chooseGuestData('keep'|'fresh')        the once-only question after a first sign-in on this device
 //     enter(hash)                            reload into the signed-in account's namespace
@@ -27,7 +31,8 @@
 //     addQuiescer({ pause, resume })  the opt-in sync, paused (and waited for) before a sign-out,
 //                         a deletion or "Remove this device's data"; the account's store is sealed then
 //     profile.get/update/touch, consents.get/set, sync.* (opt-in gated)
-//     signInWithProvider('google')           a hook: off until the provider is configured (no button yet)
+//     signInWithProvider('google', { agreed })  a hook: off until the provider is configured (no button yet); like
+//                         signUp it needs the tick (agreed: true) before it redirects, since it can make an account
 //   Every failure is { ok: false, error: friendlyError(…) } (src/auth/errors.js).
 //
 // Sessions: persistSession + autoRefreshToken (supabase-js refreshes before
@@ -50,6 +55,7 @@
 import { friendlyError, errorCode, checkEmail, checkPassword } from './errors.js';
 import { isUid, readPersistedSession, removeAccountData, removeSupabaseKeys, settleNamespace, applyGuestChoice, needsGuestChoice, readMarker, guestHasData, sealAccount, unsealAccount, isSealed, MARKER_KEY, writeWipe, wipedSince, honourWipe, settleWipe, wipeKey, WIPE_RELOAD } from './namespace.js';
 import * as S from './sync.js';
+import { consentRecord } from '../app/legal.js';
 import { FLOW_KEYS } from '../engine/flow-store.js';
 import { GARDEN_KEY } from '../engine/garden.js';
 
@@ -65,7 +71,11 @@ export const TOUCH_EVERY_MS = 6 * 60 * 60 * 1000;
 export const VERIFIED_MS = 10 * 60 * 1000;
 /** The most a sign-out or deletion waits for a sync already running. */
 export const QUIESCE_MS = 5000;
-/** Providers ready for a sign-in button. Google: set true once it is configured in Supabase (Auth → Providers). */
+/**
+ * Providers ready for a sign-in button. Google: set true once it is configured in Supabase (Auth → Providers), and
+ * once its return records the tick's acceptance on the account (options.data cannot carry it through a redirect:
+ * updateUser({ data: consentRecord() }) after the callback). tests/signup-consent.test.mjs keeps every one off until then.
+ */
 export const PROVIDERS = Object.freeze({ google: false });
 const NOTICE_KEY = 'hm2:auth.notice';
 const COOLDOWN_KEY = 'hm2:auth.cooldown';
@@ -172,6 +182,7 @@ export function createAuth({
   passive = false,
   storage,   // Node tests: the Storage supabase-js keeps its session in (the browser: localStorage)
   readiness = null,   // () → Promise<boolean>: the project is ready for sign-in (src/auth/readiness.js); null: not asked
+  providers = PROVIDERS,   // tests only: a provider switched on, to check its hook
 } = {}) {
   const enabled = !!config?.enabled;
   const mode = ns?.mode || 'off';
@@ -540,19 +551,23 @@ export function createAuth({
       return status;
     },
 
-    async signUp({ email, password, name = '' } = {}) {
+    async signUp({ email, password, name = '', agreed = false } = {}) {
+      // the required tick first (defence in depth: the form keeps its button off until it is ticked)
+      if (agreed !== true) return fail(friendlyError({ code: 'agree_needed' }, 'signup'));
       const e = normEmail(email);
       const n = cleanName(name);
       const bad = checkEmail(e) || checkPassword(password) || (n.length > 40 ? friendlyError({ code: 'name_long' }) : null);
       if (bad) return fail(bad);
+      // what the account keeps of the tick: when, and which versions of the Terms and the Privacy Policy
+      const data = { ...(n ? { display_name: n } : {}), ...consentRecord(now()) };
       return flow('signup', async (c) => {
-        const { data, error } = await c.auth.signUp({ email: e, password, options: { emailRedirectTo: callbackUrl(loc), data: n ? { display_name: n } : {} } });
+        const { data: d, error } = await c.auth.signUp({ email: e, password, options: { emailRedirectTo: callbackUrl(loc), data } });
         if (error) {
           const f = friendlyError(error, 'signup');
           if (f.code === 'neutral_sent') { startCooldown(); return { ok: true, needsConfirmation: true, email: e }; }
           return fail(f);
         }
-        if (data?.session?.user) return afterSignIn(data.session);   // email confirmation switched off (local stacks only)
+        if (d?.session?.user) return afterSignIn(d.session);   // email confirmation switched off (local stacks only)
         startCooldown();
         return { ok: true, needsConfirmation: true, email: e };
       });
@@ -570,9 +585,10 @@ export function createAuth({
       });
     },
 
-    /** Google (and others) later: a clean hook, no button yet. */
-    async signInWithProvider(provider) {
-      if (!PROVIDERS[provider]) return fail(friendlyError({ code: 'provider_disabled' }, 'signin'));
+    /** Google (and others) later: a clean hook, no button yet. It can make an account, so it needs the same tick first. */
+    async signInWithProvider(provider, { agreed = false } = {}) {
+      if (!providers[provider]) return fail(friendlyError({ code: 'provider_disabled' }, 'signin'));
+      if (agreed !== true) return fail(friendlyError({ code: 'agree_needed' }, 'signin'));
       return flow('signin', async (c) => {
         const { error } = await c.auth.signInWithOAuth({ provider, options: { redirectTo: callbackUrl(loc) } });
         return error ? fail(friendlyError(error, 'signin')) : { ok: true, redirecting: true, keepIntent: true };

@@ -298,6 +298,7 @@ const SCENES = [
     await page.fill('[data-auth-view] input[name="email"]', email);
     await page.fill('[data-auth-view] input[name="password"]', 'a-long-sweep-password-1');
     await page.fill('[data-auth-view] input[name="name"]', 'Sweep').catch(() => {});
+    await page.check('[data-auth-view] input[name="agree"]');   // the required 18+ / Terms and Privacy Policy tick
     await tapSel(page, '[data-act="create-submit"]');
     if (!(await waitFor(page, () => document.querySelector('[data-auth-view="check-email"]'), null, 30000))) throw new Error('no check-email screen');
     const m = await mail(email, 'signup');

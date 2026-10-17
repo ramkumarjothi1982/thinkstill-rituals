@@ -38,7 +38,7 @@ const guestPage = (ls) => { const g = createAuth({ config, ns: bootNamespace({ c
 async function sharedBrowser() {
   const ls = memoryStorage();
   const g = guestPage(ls);
-  assert.equal((await g.signUp({ email: 'ana@example.com', password: 'gentle-moon-42' })).signedIn, true);
+  assert.equal((await g.signUp({ email: 'ana@example.com', password: 'gentle-moon-42', agreed: true })).signedIn, true);
   g.chooseGuestData('fresh');
   const reloads = [];
   const a = createAuth({ config, ns: bootNamespace({ config, ls }), ls, ss: memoryStorage(), loader: async () => supabaseLib(), storage: ls, ...fakeDom(), loc, onReload: (r) => reloads.push(r) });
@@ -47,7 +47,7 @@ async function sharedBrowser() {
   assert.equal(a.status(), 'signed-in');
   const lsB = memoryStorage();
   const gb = guestPage(lsB);
-  assert.equal((await gb.signUp({ email: 'bo@example.com', password: 'gentle-moon-42' })).signedIn, true);
+  assert.equal((await gb.signUp({ email: 'bo@example.com', password: 'gentle-moon-42', agreed: true })).signedIn, true);
   const bSession = lsB.getItem(config.storageKey);
   return { ls, a, reloads, bSession, bToken: JSON.parse(bSession).access_token };
 }

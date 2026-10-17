@@ -17,8 +17,9 @@
 //      passes, and fails on a page that breaks the rules); _headers gives
 //      /legal/* the strict policy;
 //   6. the app links to them: Settings → Privacy and About, the plans page's
-//      foot, and the sign-up form's "By creating an account you agree to the
-//      Terms and Privacy Policy."
+//      foot, and the sign-up form's required tick "I’m 18 or older, and I agree
+//      to the Terms and the Privacy Policy" (tests/signup-consent.test.mjs has
+//      the tick itself, the versions and what the account records).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, existsSync, mkdtempSync, rmSync, cpSync, writeFileSync, unlinkSync } from 'node:fs';
@@ -468,7 +469,8 @@ test('the build publishes both pages at /legal/ (versioned styles, check.mjs pas
       const pp = join(bad, 'legal/privacy.html');
       writeFileSync(pp, readFileSync(pp, 'utf8')
         .replace('</head>', '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter">\n<script>1</script>\n</head>')
-        .replace('<a href="#device">', '<a href="#nowhere" onclick="x()">'));
+        .replace('<a href="#device">', '<a href="#nowhere" onclick="x()">')
+        .replace(/<meta name="legal-version" content="[^"]*">/, '<meta name="legal-version" content="1999-01-01">'));
       unlinkSync(join(bad, 'legal/terms.html'));
       const r = await checkSite(bad, 'legal1');
       const has = (re) => r.problems.some((x) => re.test(x));
@@ -478,6 +480,7 @@ test('the build publishes both pages at /legal/ (versioned styles, check.mjs pas
       assert.ok(has(/links to #nowhere, which is not an id/), 'a broken fragment');
       assert.ok(has(/legal\/terms\.html \(the app links to it\) is not in the site/), 'a missing page');
       assert.ok(has(/links to terms\.html, which is not in the site/), 'a broken link');
+      assert.ok(has(/legal\/privacy\.html says legal-version 1999-01-01, not \d{4}-\d{2}-\d{2}/), 'another version than the one a sign-up records');
     } finally { rmSync(bad, { recursive: true, force: true }); }
   } finally { rmSync(out, { recursive: true, force: true }); }
 });
@@ -493,7 +496,7 @@ class FakeEl {
 const text = (n) => (n.nodeType === 3 ? n.textContent : n.children.map(text).join(''));
 const find = (n, pred, out = []) => { if (n.nodeType === 1 && pred(n)) out.push(n); for (const k of n.children || []) find(k, pred, out); return out; };
 
-test('the app links to both pages in a new tab: legalLink, "Terms · Privacy Policy" and the sign-up line', async () => {
+test('the app links to both pages in a new tab: legalLink, "Terms · Privacy Policy" and the sign-up tick', async () => {
   globalThis.document = { createElement: (t) => new FakeEl(t), createElementNS: (_, t) => new FakeEl(t), createTextNode: (t) => Object.assign(new FakeEl('#text'), { textContent: String(t) }) };
   try {
     const L = await import('../src/app/legal.js');
@@ -516,12 +519,13 @@ test('the app links to both pages in a new tab: legalLink, "Terms · Privacy Pol
     assert.equal(text(pair), 'Terms · Privacy Policy');
     assert.equal(pair.attrs.class, 'legal-links');
     assert.deepEqual(find(pair, (n) => n.tagName === 'A').map((n) => n.attrs['data-legal']), ['terms', 'privacy']);
-    const agree = L.agreeLine('hm-auth-hint');
-    assert.equal(text(agree), 'By creating an account you agree to the Terms and Privacy Policy.');
-    assert.equal(text(agree), L.AGREE_LINE);
-    assert.deepEqual(find(agree, (n) => n.tagName === 'A').map((n) => [text(n), n.attrs.href]), [['Terms', 'legal/terms.html'], ['Privacy Policy', 'legal/privacy.html']]);
+    const agree = L.consentLabel();
+    assert.equal(agree.map((x) => (typeof x === 'string' ? x : text(x))).join(''), 'I’m 18 or older, and I agree to the Terms and the Privacy Policy');
+    assert.equal(agree.map((x) => (typeof x === 'string' ? x : text(x))).join(''), L.CONSENT_LINE);
+    assert.deepEqual(agree.filter((x) => typeof x !== 'string').map((n) => [text(n), n.attrs.href]), [['Terms', 'legal/terms.html'], ['Privacy Policy', 'legal/privacy.html']]);
+    assert.equal(L.agreeLine, undefined, 'the old "By creating an account…" line is merged into the tick');
     // never "AI" or the provider in the app's own words for them
-    for (const s of [...Object.values(L.LEGAL_LABELS), L.AGREE_LINE]) assert.doesNotMatch(s, /\bAI\b|Anthropic/);
+    for (const s of [...Object.values(L.LEGAL_LABELS), L.CONSENT_LINE]) assert.doesNotMatch(s, /\bAI\b|Anthropic/);
   } finally { delete globalThis.document; }
 });
 
@@ -537,12 +541,13 @@ test('the links sit where people look: Settings → Privacy and About, the plans
   const foot = plans.slice(plans.indexOf("h('div', { class: 'plans-foot' }"));
   assert.match(foot, /legalLinks\('legal-links plans-legal'\)\)\)\);/, 'the last thing in the plans foot');
   const account = read('src/app/scenes/account.js');
-  assert.match(account, /import \{ agreeLine \} from '\.\.\/legal\.js';/);
+  assert.match(account, /import \{ consentLabel, CONSENT_LINE \} from '\.\.\/legal\.js';/);
   const create = account.slice(account.indexOf('V.create = '), account.indexOf("V['check-email']"));
-  assert.match(create, /note: agreeLine\('hm-auth-hint hm-auth-center hm-auth-agree'\),/);
-  // the form puts the note after the fields and before the error and the button
+  assert.match(create, /const agree = consentTick\(uid\('agree'\)\);/);
+  // the tick is the form's last field: after the others and before the error and the button
+  assert.match(create, /fields: \[email, pw, name, agree\],/);
   assert.match(account, /\.\.\.before, \.\.\.fields\.map\(\(x\) => x\.wrap\), note, errEl, actionsEl\);/);
   // styled where each screen can see it: app.css (Settings, plans) and account.css (the account screens)
   assert.match(read('src/ui/app.css'), /^\.legal-links a \{ display: inline-flex; align-items: center; min-height: 44px;/m, '44 px targets');
-  assert.match(read('src/ui/account.css'), /^\.hm-auth-agree a \{/m);
+  assert.match(read('src/ui/account.css'), /^\.hm-auth-tick a \{/m);
 });
