@@ -29,7 +29,7 @@
 //                              intent 'switch' (the plans page, for a plan already held) opens it on changing the plan
 //     sync(sessionId)        → as status(): back from Checkout, the server reads that session from Stripe and records the
 //                              plan at once (the webhook may be a moment behind); a malformed id is never sent
-//     prices()               → { productId: 'A$…' }, from BILLING_PRICES (only those set)
+//     prices()               → { productId: 'US$…' }, from BILLING_PRICES (only those set)
 //   resolveBilling({ provider, endpoint, allowedHosts, loc, session }) → { provider, endpoint } | null
 //   inNativeShell(win?)     the App Store app's shell (window.HushNative or the hushStore message handler)
 //   takeReturn({ loc, hist }) → { kind: 'success' | 'cancel' | 'portal', sessionId } | null: the ?billing= Stripe sent

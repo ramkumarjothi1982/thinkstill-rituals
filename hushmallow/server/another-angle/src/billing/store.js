@@ -87,8 +87,8 @@ function slotOf(id, prices) {
   return null;
 }
 
-/** A price with no lookup key (Stripe sends null). @param {unknown} k */
-const noLookupKey = (k) => k == null || k === '';
+/** A price with no lookup key (Stripe sends null): its configured id decides its plan; checkout sells it (routes.js priceFault). @param {unknown} k */
+export const noLookupKey = (k) => k == null || k === '';
 
 /**
  * Which plan a Stripe price is. Its lookup key decides when it is one of the app's product ids

@@ -70,7 +70,7 @@ test('the shipped config: off (then nothing is switched on), or switched on with
   if (BILLING_PROVIDER === '') {
     assert.equal(BILLING_ENDPOINT, '');
     // the owner's provisional test prices (docs/STAGING.md): shown only where billing is on (a branch preview)
-    for (const [id, v] of Object.entries(BILLING_PRICES)) assert.match(v, /^(?:A\$\d{1,3}(?:,\d{3})*(?:\.\d{2})?)?$/, `${id}: '' or an AUD price`);
+    for (const [id, v] of Object.entries(BILLING_PRICES)) assert.match(v, /^(?:US\$\d{1,3}(?:,\d{3})*(?:\.\d{2})?)?$/, `${id}: '' or a US-dollar price (US$9.99)`);
     assert.equal(resolveBilling({ loc: { hostname: 'app.hushmallow.com', protocol: 'https:', search: '' } }), null);
     assert.equal(resolveBilling(), null);
     assert.equal(resolveBilling({ loc: { hostname: 'app.hushmallow.com', search: '' } }), null);
@@ -80,7 +80,7 @@ test('the shipped config: off (then nothing is switched on), or switched on with
     const on = resolveBilling({ loc: { hostname: 'app.hushmallow.com', search: '' } });
     assert.ok(on && ANGLE_ALLOWED_HOSTS.includes(new URL(on.endpoint).hostname), 'BILLING_ENDPOINT: our own Worker (ANGLE_ALLOWED_HOSTS, https)');
     assert.deepEqual(resolveBilling(), on);
-    for (const [id, v] of Object.entries(BILLING_PRICES)) assert.match(v, /^(?:A\$\d{1,3}(?:,\d{3})*(?:\.\d{2})?)?$/, `${id}: '' or the AUD price as Stripe shows it`);
+    for (const [id, v] of Object.entries(BILLING_PRICES)) assert.match(v, /^(?:US\$\d{1,3}(?:,\d{3})*(?:\.\d{2})?)?$/, `${id}: '' or the US-dollar price as Stripe shows it`);
     assert.notEqual(createBilling({ auth: () => authHandle(), signIn: true, shell: false }), null);
   }
   // either way: a development host without ?billingDev never has billing (its test purchases stay)…
@@ -288,10 +288,10 @@ test('prices come from configuration only; none set, none shown', () => {
   assert.deepEqual(setup().billing.prices(), shipped, 'the shipped BILLING_PRICES (none while billing is off)');
   assert.deepEqual(setup({ prices: Object.fromEntries(Object.keys(BILLING_PRICES).map((k) => [k, ''])) }).billing.prices(), {}, 'none set: none shown');
   assert.deepEqual(setup({ prices: {} }).billing.prices(), {}, 'none set: none shown');
-  const s = setup({ prices: { 'hushmallow.paid.monthly': ' A$9.99 ', 'hushmallow.ultra.yearly': 'A$149.99', 'hushmallow.paid.yearly': '', 'something.else': 'A$1' } });
-  assert.deepEqual(s.billing.prices(), { 'hushmallow.paid.monthly': 'A$9.99', 'hushmallow.ultra.yearly': 'A$149.99' });
+  const s = setup({ prices: { 'hushmallow.paid.monthly': ' US$9.99 ', 'hushmallow.ultra.yearly': 'US$149.99', 'hushmallow.paid.yearly': '', 'something.else': 'US$1' } });
+  assert.deepEqual(s.billing.prices(), { 'hushmallow.paid.monthly': 'US$9.99', 'hushmallow.ultra.yearly': 'US$149.99' });
   const ent = createEntitlements({ store: memStore(), billing: s.billing });
-  assert.deepEqual(ent.prices(), { 'hushmallow.paid.monthly': 'A$9.99', 'hushmallow.ultra.yearly': 'A$149.99' });
+  assert.deepEqual(ent.prices(), { 'hushmallow.paid.monthly': 'US$9.99', 'hushmallow.ultra.yearly': 'US$149.99' });
   // no amount is written into any customer copy: the plans page reads ent.prices()
   for (const p of ['src/app/scenes/plans.js', 'src/app/billing.js', 'src/app/scenes/settings.js', 'src/app/entitlements.js']) assert.doesNotMatch(read(p), /(?:[A-Z]{1,2}\$|[$£€])\s?\d/, p);
 });
@@ -780,13 +780,13 @@ test('plans page, web subscriptions on: a guest goes to sign in; signed in, the 
 });
 
 test('plans page, web subscriptions on: a plan already goes to the portal; configured prices show, absent ones do not', async () => {
-  const s = setup({ prices: { 'hushmallow.paid.monthly': 'A$9.99' } });
+  const s = setup({ prices: { 'hushmallow.paid.monthly': 'US$9.99' } });
   s.server.checkout = { http: 409, body: { error: { code: 'already_subscribed' } } };
   const p = await plansPage(createEntitlements({ store: memStore(), billing: s.billing }));
   await p.view.enter().catch(() => {});
   await tick();
   const prices = all(p.view.el).filter((n) => n.attrs?.class === 'invite-price');
-  assert.deepEqual(prices.map((n) => [n.textContent, n.hidden]), [['A$9.99 a month', false], ['', true]]);
+  assert.deepEqual(prices.map((n) => [n.textContent, n.hidden]), [['US$9.99 a month', false], ['', true]]);
   await click(p.buttons().find((b) => text(b) === 'Step into hushmallow Beyond'));
   assert.deepEqual(s.server.calls.map((c) => new URL(c.url).pathname), ['/v1/billing/checkout', '/v1/billing/portal']);
   assert.deepEqual(s.server.calls[1].body, { intent: 'switch' }, 'the portal opens on changing the plan');

@@ -28,7 +28,7 @@
 import { realpathSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { STAGING_SUPABASE_PROJECT_URL, SUPABASE_PROJECT_URL, STRIPE_API_VERSION_EXPECTED } from '../src/config.js';
-import { EVENTS, priceFault } from '../src/billing/routes.js';
+import { EVENTS, priceFault, CHECKOUT_PRICE_RULES } from '../src/billing/routes.js';
 import { formEncode } from '../src/billing/stripe.js';
 import { uidOf } from '../src/billing/account.js';
 import { idOf, TERMINAL, PAST_DUE_GRACE_MS } from '../src/billing/store.js';
@@ -41,7 +41,7 @@ export const PRODUCTION_APP = 'https://app.hushmallow.com';
 /** Test keys only: a restricted key (recommended) or the sandbox's secret key. */
 export const E2E_KEY = /^(?:rk|sk)_test_[A-Za-z0-9]{8,}$/;
 export const PHASES = Object.freeze(['P0', 'P1', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8', 'S9']);
-/** The owner's provisional sandbox amounts in cents (decision D2, docs/STAGING.md): Stripe and BILLING_PRICES must both say these. */
+/** The owner's amounts in US cents (decision D2, in US dollars since 2026-10-17, docs/STAGING.md): Stripe and BILLING_PRICES must both say these. */
 /** @type {Readonly<Record<string, number>>} */
 export const SANDBOX_AMOUNTS = Object.freeze({ 'hushmallow.paid.monthly': 999, 'hushmallow.paid.yearly': 9999, 'hushmallow.ultra.monthly': 1999, 'hushmallow.ultra.yearly': 19999 });
 export const PRODUCT_NAMES = Object.freeze({ paid: 'hushmallow Flow', ultra: 'hushmallow Beyond' });
@@ -212,8 +212,8 @@ const subOf = (o) => (o?.object === 'subscription' ? idOf(o.id) : idOf(o?.subscr
 const periodEnd = (s) => Math.max(Number(s?.current_period_end) || 0, ...(Array.isArray(s?.items?.data) ? s.items.data : []).map((/** @type {any} */ i) => Number(i?.current_period_end) || 0));
 /** An ISO date within a day of `sec`. @param {unknown} isoDate @param {number} sec */
 const near = (isoDate, sec) => typeof isoDate === 'string' && Math.abs(Date.parse(isoDate) / 1000 - sec) <= DAY_S;
-/** @param {number} cents */
-const aud = (cents) => `A$${(cents / 100).toFixed(2)}`;
+/** An amount in US dollars as BILLING_PRICES writes it. @param {number} cents */
+const usd = (cents) => `US$${(cents / 100).toFixed(2)}`;
 /** @param {any} s */
 const desc = (s) => (s ? `${s.tier}/${s.status}${s.ends_at ? ` ends ${String(s.ends_at).slice(0, 10)}` : ''}` : 'no answer');
 
@@ -295,22 +295,22 @@ export async function run({ env = process.env, args = [], fetch: f = (input, ini
     check(p.status === 200 && p.json?.entitlement_mode === cfg.production.mode, `P0 production: entitlement_mode ${cfg.production.mode}, as [vars] says`, `${p.status} ${p.json?.entitlement_mode}`);
     if (!cfg.production.liveApproved) check(pb.configured === false && pb.live_approved === false && pb.stripe_mode === null, 'P0 production: billing off (no approval, no key)', JSON.stringify({ configured: pb.configured, stripe_mode: pb.stripe_mode }));
 
-    // the four prices, by lookup key: what the Worker sells (priceFault), at the sandbox amounts, under the products' names
-    const keys = Object.keys(SANDBOX_AMOUNTS);
-    const pr = await stripe.get('/v1/prices', { lookup_keys: keys, expand: ['data.product'], limit: 10 });
-    check(pr.ok, 'P0 prices: listed by lookup key', pr.ok ? '' : `${pr.status} ${pr.code}`);
-    /** @type {any[]} */
-    const list = pr.ok && Array.isArray(pr.data.data) ? pr.data.data : [];
-    for (const k of keys) {
+    // the four prices, by the ids in [env.staging.vars] (a lookup key is optional: the id is then the mapping): what the
+    // Worker sells (priceFault), at the sandbox amounts, under the products' names, so two ids swapped while pasting show
+    // here as the wrong amount or name. An id of the other mode (a live price) is not found with this test key.
+    /** @type {Record<string, any>} */
+    const read = {};
+    for (const k of Object.keys(SANDBOX_AMOUNTS)) {
       const [, plan, period] = /** @type {[string, 'paid' | 'ultra', 'monthly' | 'yearly']} */ (/** @type {unknown} */ (/^hushmallow\.(paid|ultra)\.(monthly|yearly)$/.exec(k)));
-      const x = list.find((y) => y?.lookup_key === k);
-      if (!check(!!x, `P0 price ${k}: exists`)) continue;
-      const fault = priceFault(x, plan, period);
-      check(!fault, `P0 price ${k}: AUD, recurring every 1 ${period === 'monthly' ? 'month' : 'year'}, inclusive, active`, fault ? `breaks: ${fault}` : '');
-      check(x.unit_amount === SANDBOX_AMOUNTS[k], `P0 price ${k}: ${aud(SANDBOX_AMOUNTS[k])}`, typeof x.unit_amount === 'number' ? aud(x.unit_amount) : '');
+      const pr = await stripe.get(`/v1/prices/${encodeURIComponent(cfg.prices[plan][period])}`, { expand: ['product'] });
+      if (!check(pr.ok, `P0 price ${k}: the id in [env.staging.vars] is a price of this sandbox`, pr.ok ? '' : `${pr.status} ${pr.code}`)) continue;
+      const x = read[k] = pr.data;
+      const fault = priceFault(x, plan, period, cfg.automaticTax);
+      check(!fault, `P0 price ${k}: USD, recurring every 1 ${period === 'monthly' ? 'month' : 'year'}, active, lookup key its own or none${cfg.automaticTax ? ', tax behaviour inclusive or exclusive' : ''}`, fault ? `breaks: ${fault}` : '');
+      if (!x.lookup_key) info(`P0 price ${k}: no lookup key, so the configured id decides its plan (a lookup key of ${k} would also catch two ids swapped)`);
+      check(x.unit_amount === SANDBOX_AMOUNTS[k], `P0 price ${k}: ${usd(SANDBOX_AMOUNTS[k])}`, typeof x.unit_amount === 'number' ? usd(x.unit_amount) : '');
       check(x.product?.name === PRODUCT_NAMES[plan], `P0 price ${k}: product "${PRODUCT_NAMES[plan]}"`, x.product?.name ? `"${x.product.name}"` : '');
-      check(x.id === cfg.prices[plan][period], `P0 price ${k}: the id in [env.staging.vars]`);
-      check(cfg.billingPrices[k] === aud(SANDBOX_AMOUNTS[k]), `P0 price ${k}: BILLING_PRICES says ${aud(SANDBOX_AMOUNTS[k])}`, String(cfg.billingPrices[k] || ''));
+      check(cfg.billingPrices[k] === usd(SANDBOX_AMOUNTS[k]), `P0 price ${k}: BILLING_PRICES says ${usd(SANDBOX_AMOUNTS[k])}`, String(cfg.billingPrices[k] || ''));
     }
 
     // the staging webhook endpoint: enabled, on the pinned version, with exactly the events the Worker handles
@@ -341,31 +341,34 @@ export async function run({ env = process.env, args = [], fetch: f = (input, ini
       info(`P0 portal: proration on plan changes: ${ft.subscription_update?.proration_behavior || 'not said'} (D8)`);
     }
 
-    // Stripe Tax: active settings with an inclusive default; automatic_tax only with an active AU registration
+    // Stripe Tax: automatic_tax only with active settings and an active AU registration; while it is off, both are only said
     const ts = await stripe.get('/v1/tax/settings');
     if (check(ts.ok, 'P0 tax: settings read', ts.ok ? '' : `${ts.status} ${ts.code}`)) {
-      check(ts.data.status === 'active', 'P0 tax: settings status active (head office set)', String(ts.data.status));
-      check(ts.data.defaults?.tax_behavior === 'inclusive', 'P0 tax: default tax behaviour inclusive', String(ts.data.defaults?.tax_behavior));
+      if (cfg.automaticTax) check(ts.data.status === 'active', 'P0 tax: settings status active (head office set) while automatic_tax is on', String(ts.data.status));
+      else info(`P0 tax: settings status ${String(ts.data.status)}, default tax behaviour ${String(ts.data.defaults?.tax_behavior)} (automatic_tax is off)`);
     }
     const tr = await stripe.get('/v1/tax/registrations', { status: 'active', limit: 100 });
     const au = tr.ok && Array.isArray(tr.data.data) ? tr.data.data.find((/** @type {any} */ r) => r?.country === 'AU' && r?.status === 'active') : null;
     if (cfg.automaticTax) check(!!au, 'P0 tax: an active (Collecting) AU registration while automatic_tax is on', tr.ok ? '' : `${tr.status} ${tr.code}`);
     else info(au ? 'P0 tax: the AU registration is active; STRIPE_AUTOMATIC_TAX may be turned on once the calculation below passes (D3)' : 'P0 tax: no active AU registration, and automatic_tax is off, as it must be');
     if (au) {
-      const beyond = list.find((y) => y?.lookup_key === 'hushmallow.ultra.monthly');
+      const beyond = read['hushmallow.ultra.monthly'];
       const code = (typeof beyond?.product?.tax_code === 'string' ? beyond.product.tax_code : beyond?.product?.tax_code?.id) || (ts.ok ? ts.data.defaults?.tax_code : null);
       if (cfg.automaticTax) check(!!code, 'P0 tax: a product tax code is set (the owner\'s choice, D4)');
       else info(`P0 tax: a product tax code is ${code ? 'set' : 'not set yet (the owner\'s choice, D4)'}`);
       const amount = SANDBOX_AMOUNTS['hushmallow.ultra.monthly'];
+      // the price's own tax behaviour (with automatic_tax on it must have one), else the settings' default, else exclusive
+      const behaviour = [beyond?.tax_behavior, ts.ok ? ts.data.defaults?.tax_behavior : null].find((x) => CHECKOUT_PRICE_RULES.tax_behavior.includes(x)) || 'exclusive';
       const calc = await stripe.post('/v1/tax/calculations', {
-        currency: 'aud',
-        line_items: [{ amount, reference: `e2e-${runId}`, tax_behavior: 'inclusive', ...(code ? { tax_code: code } : {}) }],
+        currency: CHECKOUT_PRICE_RULES.currency,
+        line_items: [{ amount, reference: `e2e-${runId}`, tax_behavior: behaviour, ...(code ? { tax_code: code } : {}) }],
         customer_details: { address: { line1: '1 Martin Place', city: 'Sydney', state: 'NSW', postal_code: '2000', country: 'AU' }, address_source: 'billing' },
       });
       if (check(calc.ok, 'P0 tax: a test calculation for a Sydney address', calc.ok ? '' : `${calc.status} ${calc.code}`)) {
         const reasons = (Array.isArray(calc.data.tax_breakdown) ? calc.data.tax_breakdown : []).map((/** @type {any} */ x) => String(x?.taxability_reason));
         check(reasons.length > 0 && !reasons.includes('not_collecting'), 'P0 tax: taxability_reason is not not_collecting', reasons.join(',') || 'none');
-        check(calc.data.amount_total === amount, `P0 tax: the total stays ${aud(amount)} (inclusive)`, typeof calc.data.amount_total === 'number' ? aud(calc.data.amount_total) : '');
+        if (behaviour === 'inclusive') check(calc.data.amount_total === amount, `P0 tax: the total stays ${usd(amount)} (inclusive)`, typeof calc.data.amount_total === 'number' ? usd(calc.data.amount_total) : '');
+        else info(`P0 tax: tax behaviour exclusive: the tax is added on top of ${usd(amount)}, a total of ${typeof calc.data.amount_total === 'number' ? usd(calc.data.amount_total) : 'not said'}`);
       }
     }
     check(true, 'P0: every Stripe object read had livemode false');

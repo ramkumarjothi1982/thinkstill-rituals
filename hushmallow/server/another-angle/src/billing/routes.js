@@ -32,7 +32,7 @@ import { json, error, readJson, readText } from '../http.js';
 import { allow, memoryRateLimiter } from '../limits/ratelimit.js';
 import { createStripe, verifyWebhookSignature } from './stripe.js';
 import { createAccountVerifier, uidOf } from './account.js';
-import { billingClient, summarise, effectiveTier, givesAccess, accessUntil, idOf, priceMismatch, bestOf, ACCESS, TERMINAL } from './store.js';
+import { billingClient, summarise, effectiveTier, givesAccess, accessUntil, idOf, priceMismatch, noLookupKey, bestOf, ACCESS, TERMINAL } from './store.js';
 
 export const PATHS = Object.freeze({ checkout: '/v1/billing/checkout', status: '/v1/billing/status', sync: '/v1/billing/sync', portal: '/v1/billing/portal', webhook: '/v1/billing/webhook' });
 /**
@@ -54,12 +54,19 @@ export const WEBHOOK_MAX_BYTES = 262144;
  */
 export const CHECKOUT_WINDOW_MS = 120000;
 /**
- * What a price must be in Stripe before checkout sells it (decisions D2, D3, D11). Its lookup key names the plan and
- * period of the slot it sits in, so two ids swapped while pasting never sell Beyond at Flow's price, or the reverse;
- * Australian dollars only (Adaptive Pricing off: the plans page and the terms say A$); GST-inclusive from day one,
- * whether or not Stripe Tax is on; recurring every one month or one year, as its period; and active.
+ * What a price must be in Stripe before checkout sells it (decisions D2, D3, D11, and the owner's USD decision of
+ * 2026-10-17). US dollars only (Adaptive Pricing off: the plans page and the terms say US$); recurring every one month or
+ * one year, as its period; and active. Its lookup key, if it has one, names the plan and period of the slot it sits in,
+ * so two ids swapped while pasting never sell Beyond at Flow's price, or the reverse; a price with no lookup key is
+ * sold, and its configured id is then what maps it to a plan (store.js planForPrice). Its tax behaviour: any while
+ * Stripe Tax is off; with STRIPE_AUTOMATIC_TAX on, one of tax_behavior (never 'unspecified': Stripe must know whether
+ * the amount includes the tax).
  */
-export const CHECKOUT_PRICE_RULES = Object.freeze({ currency: 'aud', tax_behavior: 'inclusive', interval: Object.freeze({ monthly: 'month', yearly: 'year' }) });
+export const CHECKOUT_PRICE_RULES = Object.freeze({
+  currency: 'usd',
+  tax_behavior: Object.freeze(['inclusive', 'exclusive']),
+  interval: Object.freeze({ monthly: 'month', yearly: 'year' }),
+});
 /** How long a price read for that check is trusted in this isolate: one read per price id in that time, and a price fixed in Stripe sells within it. */
 export const CHECKOUT_PRICE_CACHE_MS = 600000;
 /**
@@ -231,7 +238,7 @@ export function createBilling({ logger, now, fetch: fetchImpl = (input, init) =>
       hit = { at: now(), price: r.data };
       priceCache.set(key, hit);
     }
-    const fault = priceFault(hit.price, plan, period);
+    const fault = priceFault(hit.price, plan, period, cfg.billing.automaticTax);
     return fault ? { ok: false, fault } : { ok: true };
   }
 
@@ -669,15 +676,17 @@ export function createBilling({ logger, now, fetch: fetchImpl = (input, init) =>
 /**
  * Why a Stripe price may not be sold as this plan and period (CHECKOUT_PRICE_RULES): the first rule it breaks, or ''.
  * @param {any} p @param {'paid' | 'ultra'} plan @param {'monthly' | 'yearly'} period
+ * @param {boolean} [automaticTax] STRIPE_AUTOMATIC_TAX (cfg.billing.automaticTax): only then is the tax behaviour checked
  */
-export function priceFault(p, plan, period) {
-  if (p?.lookup_key !== `hushmallow.${plan}.${period}`) return 'lookup_key';
+export function priceFault(p, plan, period, automaticTax = false) {
+  if (!p || typeof p !== 'object') return 'not_a_price';
+  if (!noLookupKey(p.lookup_key) && p.lookup_key !== `hushmallow.${plan}.${period}`) return 'lookup_key';
   if (p.currency !== CHECKOUT_PRICE_RULES.currency) return 'currency';
   if (p.type !== 'recurring') return 'type';
   if (p.recurring?.interval !== CHECKOUT_PRICE_RULES.interval[period]) return 'interval';
   if (p.recurring?.interval_count !== 1) return 'interval_count';
   if (p.active !== true) return 'inactive';
-  if (p.tax_behavior !== CHECKOUT_PRICE_RULES.tax_behavior) return 'tax_behavior';
+  if (automaticTax && !CHECKOUT_PRICE_RULES.tax_behavior.includes(p.tax_behavior)) return 'tax_behavior';
   return '';
 }
 

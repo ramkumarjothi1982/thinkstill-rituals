@@ -35,7 +35,7 @@ const loc = (hostname, { protocol = 'https:', search = '', port = '' } = {}) => 
 /** Hosts that keep production's settings exactly (the customers' hosts, the GitHub Pages copy, this machine). */
 const PRODUCTION_HOSTS = ['app.hushmallow.com', 'hushmallow.pages.dev', 'hushmallow.com', 'www.hushmallow.com', 'ramkumarjothi1982.github.io'];
 const PREVIEWS = [PREVIEW, 'claude-upbeat-pasteur-b0aqg1.hushmallow.pages.dev', '3f9c2a1b.hushmallow.pages.dev', 'main.hushmallow.pages.dev'];
-const PRICES = { 'hushmallow.paid.monthly': 'A$9.99', 'hushmallow.paid.yearly': 'A$99.99', 'hushmallow.ultra.monthly': 'A$19.99', 'hushmallow.ultra.yearly': 'A$199.99' };
+const PRICES = { 'hushmallow.paid.monthly': 'US$9.99', 'hushmallow.paid.yearly': 'US$99.99', 'hushmallow.ultra.monthly': 'US$19.99', 'hushmallow.ultra.yearly': 'US$199.99' };
 
 // ------------------------------------------------------------- the hosts --
 test('isPreviewHost: https, no port, exactly one DNS label in front of ".hushmallow.pages.dev"; nothing else', () => {
@@ -121,13 +121,14 @@ test('billing: on (Stripe, the staging Worker) on a preview only; off on product
 });
 
 // ----------------------------------------------------------------- prices --
-test('prices: ONE config object (BILLING_PRICES) with the owner\'s provisional AUD test values, marked not final; shown only where billing is on', () => {
+test('prices: ONE config object (BILLING_PRICES) with the owner\'s US-dollar prices, marked display only; shown only where billing is on', () => {
   assert.deepEqual({ ...BILLING_PRICES }, PRICES);
   assert.ok(Object.isFrozen(BILLING_PRICES));
   const cfg = read('src/app/config.js');
-  assert.match(cfg, /PROVISIONAL TEST VALUES[\s\S]{0,80}NOT the final commercial prices/);
+  assert.match(cfg, /THE OWNER'S PRICES[\s\S]{0,80}DISPLAY\s+\*?\s*ONLY: Stripe Checkout always charges what Stripe holds/);
+  assert.doesNotMatch(cfg, /'A\$\d/, 'no Australian-dollar price is left');
   // nowhere else: no amount in the code that shows or sells a plan
-  for (const f of ['src/app/scenes/plans.js', 'src/app/billing.js', 'src/app/scenes/settings.js', 'src/app/entitlements.js', 'src/app/main.js']) assert.doesNotMatch(read(f), /A\$\d/, f);
+  for (const f of ['src/app/scenes/plans.js', 'src/app/billing.js', 'src/app/scenes/settings.js', 'src/app/entitlements.js', 'src/app/main.js']) assert.doesNotMatch(read(f), /(?:US|A)\$\d/, f);
   // where billing is on (a preview), the plans page's prices are exactly these; where it is off there are none
   const auth = { enabled: true, status: () => 'guest', load: async () => ({ accessToken: async () => null }) };
   const billing = createBilling({ auth: () => auth, signIn: true, config: resolveBilling({ loc: loc(PREVIEW), session: null }) });
@@ -197,10 +198,10 @@ test('the plans page on a preview shows the provisional prices under each plan, 
   await view.enter().catch(() => {});
   await tick();
   const priceLines = () => all(view.el).filter((n) => n.attrs?.class === 'invite-price').map((n) => [n.textContent, n.hidden]);
-  assert.deepEqual(priceLines(), [['A$9.99 a month', false], ['A$19.99 a month', false]], 'Flow, then Beyond');
+  assert.deepEqual(priceLines(), [['US$9.99 a month', false], ['US$19.99 a month', false]], 'Flow, then Beyond');
   const yearly = all(view.el).find((n) => n.tagName === 'BUTTON' && text(n) === 'Yearly');
   yearly.listeners.click[0]({ currentTarget: yearly });
-  assert.deepEqual(priceLines(), [['A$99.99 a year', false], ['A$199.99 a year', false]]);
+  assert.deepEqual(priceLines(), [['US$99.99 a year', false], ['US$199.99 a year', false]]);
   view.leave();
 });
 

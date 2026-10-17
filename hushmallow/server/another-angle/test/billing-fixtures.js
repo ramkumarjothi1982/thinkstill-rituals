@@ -72,10 +72,13 @@ export const PRICE_SLOTS = Object.freeze({
   [PRICES.paidMonthly]: ['paid', 'monthly'], [PRICES.paidYearly]: ['paid', 'yearly'],
   [PRICES.ultraMonthly]: ['ultra', 'monthly'], [PRICES.ultraYearly]: ['ultra', 'yearly'],
 });
-/** A Stripe price for that plan and period that may be sold (AUD, GST-inclusive, recurring, active, its lookup key), with `over` on top. */
+/**
+ * A Stripe price for that plan and period that may be sold (USD, recurring, active, its lookup key; tax behaviour
+ * inclusive, so it sells with Stripe Tax on or off), with `over` on top.
+ */
 export function price(id, plan, period, over = {}) {
   return {
-    id, object: 'price', active: true, currency: 'aud', type: 'recurring', tax_behavior: 'inclusive', lookup_key: `hushmallow.${plan}.${period}`,
+    id, object: 'price', active: true, currency: 'usd', type: 'recurring', tax_behavior: 'inclusive', lookup_key: `hushmallow.${plan}.${period}`,
     recurring: { interval: period === 'monthly' ? 'month' : 'year', interval_count: 1, usage_type: 'licensed' }, ...over,
   };
 }

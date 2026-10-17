@@ -46,8 +46,9 @@ const BILLING_LIVE_APPROVED = 'approved';
 const STRIPE_API_VERSION_EXPECTED = '2026-08-26.dahlia';
 /**
  * Stripe Tax on Checkout (decision D3; the checkout route reads cfg.billing.automaticTax). Off unless STRIPE_AUTOMATIC_TAX
- * says so: automatic_tax without an active AU GST registration (Collecting) calculates and collects nothing, silently, so
- * it is switched on per environment only once that registration exists. The prices are tax-inclusive either way.
+ * says so: automatic_tax without an active registration (Collecting) calculates and collects nothing, silently, so it is
+ * switched on per environment only once that registration is verified. While it is off a price of any tax behaviour
+ * sells; with it on only an inclusive or exclusive one (src/billing/routes.js CHECKOUT_PRICE_RULES).
  */
 const AUTOMATIC_TAX_DEFAULT = false;
 /** A Stripe secret or restricted key, and its mode (a publishable pk_ key is never one). */

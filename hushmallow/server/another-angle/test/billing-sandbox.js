@@ -178,13 +178,12 @@ export function sandbox({ now, deliver, worker, afterRetries = 'cancel', retries
     const p = u.pathname, q = u.searchParams;
     let m;
     // read by P0
-    if (method === 'GET' && p === '/v1/prices') {
-      const keys = [...q].filter(([k]) => /^lookup_keys\[\d*\]$/.test(k)).map(([, v]) => v);
-      const expand = [...q].some(([k, v]) => /^expand\[\d*\]$/.test(k) && v === 'data.product');
-      const found = [...prices.values()].filter((x) => keys.includes(x.lookup_key)).map((x) => ({ ...x, product: expand ? Object.values(products).find((y) => y.id === x.product) : x.product }));
-      return reply(200, listOf(found));
+    if (method === 'GET' && (m = /^\/v1\/prices\/(price_\w+)$/.exec(p))) {
+      const x = prices.get(m[1]);
+      if (!x) return missing();
+      const expand = [...q].some(([k, v]) => /^expand\[\d*\]$/.test(k) && v === 'product');
+      return reply(200, { ...x, product: expand ? Object.values(products).find((y) => y.id === x.product) : x.product });
     }
-    if (method === 'GET' && (m = /^\/v1\/prices\/(price_\w+)$/.exec(p))) return prices.has(m[1]) ? reply(200, prices.get(m[1])) : missing();
     if (method === 'GET' && p === '/v1/webhook_endpoints') return reply(200, listOf(s.endpoints));
     if (method === 'GET' && p === '/v1/billing_portal/configurations') return reply(200, listOf(s.portal ? [s.portal] : []));
     if (method === 'GET' && p === '/v1/tax/settings') return reply(200, s.taxSettings);
@@ -193,7 +192,13 @@ export function sandbox({ now, deliver, worker, afterRetries = 'cancel', retries
       const amount = Number(form.get('line_items[0][amount]'));
       const au = form.get('customer_details[address][country]') === 'AU' && s.registrations.some((r) => r.country === 'AU' && r.status === 'active');
       const reason = au ? s.taxReason : 'not_collecting';
-      return reply(200, { id: id('taxcalc'), object: 'tax.calculation', currency: 'aud', amount_total: amount, tax_amount_inclusive: reason === 'standard_rated' ? Math.round(amount / 11) : 0, tax_breakdown: [{ amount: 0, inclusive: true, taxability_reason: reason }], livemode: false });
+      // a 10% rate: inside an inclusive amount (1/11 of it), or on top of an exclusive one
+      const inclusive = form.get('line_items[0][tax_behavior]') === 'inclusive';
+      const tax = reason === 'standard_rated' ? Math.round(inclusive ? amount / 11 : amount / 10) : 0;
+      return reply(200, {
+        id: id('taxcalc'), object: 'tax.calculation', currency: form.get('currency'), amount_total: inclusive ? amount : amount + tax,
+        tax_amount_inclusive: inclusive ? tax : 0, tax_amount_exclusive: inclusive ? 0 : tax, tax_breakdown: [{ amount: tax, inclusive, taxability_reason: reason }], livemode: false,
+      });
     }
     // test clocks
     if (method === 'POST' && p === '/v1/test_helpers/test_clocks') {

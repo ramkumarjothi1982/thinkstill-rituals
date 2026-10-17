@@ -120,14 +120,14 @@ test('price check: a price that is not what its slot says is not sold (503 price
   const cases = [
     // Flow's monthly price in Beyond's monthly slot (two ids swapped while pasting)
     ['lookup_key', (p) => ({ ...p, lookup_key: 'hushmallow.paid.monthly' })],
-    ['lookup_key', (p) => ({ ...p, lookup_key: null })],
-    ['currency', (p) => ({ ...p, currency: 'usd' })],
+    ['lookup_key', (p) => ({ ...p, lookup_key: 'another.app.monthly' })],
+    // the currency before the owner's USD decision, and any other
+    ['currency', (p) => ({ ...p, currency: 'aud' })],
+    ['currency', (p) => ({ ...p, currency: 'USD' })],
     ['type', (p) => ({ ...p, type: 'one_time', recurring: null })],
     ['interval', (p) => ({ ...p, recurring: { ...p.recurring, interval: 'week' } })],
     ['interval_count', (p) => ({ ...p, recurring: { ...p.recurring, interval_count: 3 } })],
     ['inactive', (p) => ({ ...p, active: false })],
-    ['tax_behavior', (p) => ({ ...p, tax_behavior: 'exclusive' })],
-    ['tax_behavior', (p) => ({ ...p, tax_behavior: 'unspecified' })],
   ];
   for (const [fault, change] of cases) {
     const s = track(setup());
@@ -163,12 +163,73 @@ test('price check: a price that is not what its slot says is not sold (503 price
   assert.equal((await post(down, ULTRA_M)).status, 200);
   assert.deepEqual(priceReads(down), [PRICES.ultraMonthly, PRICES.ultraMonthly]);
   // the rules, and the check on its own
-  assert.deepEqual(CHECKOUT_PRICE_RULES, { currency: 'aud', tax_behavior: 'inclusive', interval: { monthly: 'month', yearly: 'year' } });
+  assert.deepEqual(CHECKOUT_PRICE_RULES, { currency: 'usd', tax_behavior: ['inclusive', 'exclusive'], interval: { monthly: 'month', yearly: 'year' } });
   for (const [id, plan, period] of [[PRICES.paidMonthly, 'paid', 'monthly'], [PRICES.paidYearly, 'paid', 'yearly'], [PRICES.ultraYearly, 'ultra', 'yearly']]) {
     assert.equal(priceFault(price(id, plan, period), plan, period), '', `${plan} ${period}`);
   }
-  assert.equal(priceFault(null, 'paid', 'monthly'), 'lookup_key');
+  assert.equal(priceFault(null, 'paid', 'monthly'), 'not_a_price');
   assert.equal(priceFault(price(PRICES.paidMonthly, 'paid', 'monthly'), 'paid', 'yearly'), 'lookup_key');
+  assertClean(allLogs.flat());
+});
+
+test('price check: US dollars only; a lookup key is optional (when set, its slot\'s own); any tax behaviour with Stripe Tax off, inclusive or exclusive with it on', async () => {
+  /** checkout of Beyond monthly with its price changed, on this env → [HTTP status, the fault logged or null] */
+  const sell = async (change, over = {}) => {
+    const s = track(setup({ env: billingEnv(over) }));
+    s.up.prices.set(PRICES.ultraMonthly, change(s.up.prices.get(PRICES.ultraMonthly)));
+    const res = await post(s, ULTRA_M);
+    const l = lastLog(s, 'checkout');
+    if (res.status !== 200) assertClean(s.logs, await res.json());
+    return [res.status, l.status === 'price_misconfigured' ? l.err : null, creates(s).length];
+  };
+  const TAX = { STRIPE_AUTOMATIC_TAX: 'true' };
+  // usd sells; the currency the prices had before (aud) does not, whatever else is right
+  assert.equal(CHECKOUT_PRICE_RULES.currency, 'usd');
+  assert.deepEqual(await sell((p) => p), [200, null, 1]);
+  assert.deepEqual(await sell((p) => ({ ...p, currency: 'aud' })), [503, 'currency', 0]);
+  assert.deepEqual(await sell((p) => ({ ...p, currency: 'aud' }), TAX), [503, 'currency', 0]);
+  // no lookup key (Stripe sends null; '' or none at all): sold, with Stripe Tax off and on; the configured id is the mapping
+  for (const change of [(p) => ({ ...p, lookup_key: null }), (p) => ({ ...p, lookup_key: '' }), ({ lookup_key: _k, ...p }) => p]) {
+    assert.deepEqual(await sell(change), [200, null, 1]);
+    assert.deepEqual(await sell(change, TAX), [200, null, 1]);
+    assert.equal(priceFault(change(price(PRICES.paidYearly, 'paid', 'yearly')), 'paid', 'yearly'), '');
+  }
+  // a lookup key set: only its slot's own (another plan's, another period's, or not one of the app's are refused)
+  for (const key of ['hushmallow.paid.monthly', 'hushmallow.ultra.yearly', 'hushmallow.ultra.monthly.old', 'Hushmallow.ultra.monthly']) {
+    assert.deepEqual(await sell((p) => ({ ...p, lookup_key: key })), [503, 'lookup_key', 0], key);
+  }
+  // tax behaviour: Stripe Tax off (the default) sells any; on, only inclusive or exclusive
+  for (const tb of ['inclusive', 'exclusive', 'unspecified', null, undefined]) {
+    assert.deepEqual(await sell((p) => ({ ...p, tax_behavior: tb })), [200, null, 1], `tax off: ${tb}`);
+    assert.deepEqual(await sell((p) => ({ ...p, tax_behavior: tb }), TAX), ['inclusive', 'exclusive'].includes(tb) ? [200, null, 1] : [503, 'tax_behavior', 0], `tax on: ${tb}`);
+  }
+  assert.equal(priceFault(price(PRICES.paidMonthly, 'paid', 'monthly', { tax_behavior: 'unspecified' }), 'paid', 'monthly'), '');
+  assert.equal(priceFault(price(PRICES.paidMonthly, 'paid', 'monthly', { tax_behavior: 'unspecified' }), 'paid', 'monthly', false), '');
+  assert.equal(priceFault(price(PRICES.paidMonthly, 'paid', 'monthly', { tax_behavior: 'unspecified' }), 'paid', 'monthly', true), 'tax_behavior');
+  assert.equal(priceFault(price(PRICES.paidMonthly, 'paid', 'monthly', { tax_behavior: 'exclusive' }), 'paid', 'monthly', true), '');
+  // the earlier rules first: a wrong currency is named before the tax behaviour
+  assert.equal(priceFault(price(PRICES.paidMonthly, 'paid', 'monthly', { currency: 'aud', tax_behavior: 'unspecified' }), 'paid', 'monthly', true), 'currency');
+  // a price that sold with tax off is refused once the switch goes on (the fault is decided per request, not cached)
+  const s = track(setup({ env: billingEnv() }));
+  s.up.prices.set(PRICES.ultraMonthly, { ...s.up.prices.get(PRICES.ultraMonthly), tax_behavior: 'unspecified' });
+  assert.equal((await post(s, ULTRA_M)).status, 200);
+  s.env = { ...s.env, STRIPE_AUTOMATIC_TAX: 'true' };   // the same Worker (its price cache, its records), the switch on
+  assert.deepEqual(await code(await post(s, ULTRA_M)), [503, 'price_misconfigured']);
+  assert.equal(lastLog(s, 'checkout').err, 'tax_behavior');
+  assert.equal(priceReads(s).length, 1, 'the price read once (cached), judged again under the switch');
+  assertClean(allLogs.flat());
+});
+
+test('a price with no lookup key: its subscription maps to the slot of its configured id (store.js planForPrice), so the account gets that plan', async () => {
+  const s = track(setup());
+  for (const id of Object.values(PRICES)) s.up.prices.set(id, { ...s.up.prices.get(id), lookup_key: null });
+  assert.equal((await post(s, { plan: 'paid', period: 'yearly' })).status, 200);
+  await subscribe(s, subscription({ customer: await db(s).customerOf(UID) }, { price: PRICES.paidYearly, lookup: null }));
+  assert.deepEqual([(await status(s)).tier, (await status(s)).status], ['paid', 'active']);
+  // the same price under another plan's lookup key: the key decides (and is never sold in this slot)
+  const k = track(setup());
+  await subscribe(k, subscription({}, { price: PRICES.paidYearly, lookup: 'hushmallow.ultra.yearly' }));
+  assert.equal((await status(k)).tier, 'ultra');
   assertClean(allLogs.flat());
 });
 
@@ -188,7 +249,7 @@ test('price check: one read per price id for CHECKOUT_PRICE_CACHE_MS (ten minute
   assert.deepEqual(priceReads(s), [PRICES.ultraMonthly, PRICES.ultraYearly, PRICES.ultraMonthly]);
   // a price fixed in Stripe sells once its read is that old
   const f = track(setup());
-  f.up.prices.set(PRICES.ultraMonthly, { ...f.up.prices.get(PRICES.ultraMonthly), tax_behavior: 'exclusive' });
+  f.up.prices.set(PRICES.ultraMonthly, { ...f.up.prices.get(PRICES.ultraMonthly), currency: 'aud' });
   assert.equal((await post(f, ULTRA_M)).status, 503);
   f.up.prices.set(PRICES.ultraMonthly, price(PRICES.ultraMonthly, 'ultra', 'monthly'));
   assert.equal((await post(f, ULTRA_M)).status, 503, 'still the read kept');

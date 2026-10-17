@@ -158,7 +158,7 @@ test('the driver refuses while staging still has placeholders (the repository to
   assert.equal(config.automaticTax, false);
   assert.deepEqual(config.billingPrices, BILLING_PRICES);
   assert.deepEqual(config.production, { mode: 'testing', liveApproved: false });
-  assert.deepEqual(Object.keys(D.SANDBOX_AMOUNTS).map((k) => [k, `A$${(D.SANDBOX_AMOUNTS[k] / 100).toFixed(2)}`]), Object.entries(BILLING_PRICES));
+  assert.deepEqual(Object.keys(D.SANDBOX_AMOUNTS).map((k) => [k, `US$${(D.SANDBOX_AMOUNTS[k] / 100).toFixed(2)}`]), Object.entries(BILLING_PRICES));
 });
 
 // -------------------------------------------------------------- a full run --
@@ -172,7 +172,7 @@ test('a full run (P0, P1, S3-S9) against the Worker and a sandbox with test cloc
   const runId = /run (\d{8}[0-9a-f]{8}),/.exec(w.out[0])?.[1];
   assert.ok(runId);
   for (const want of [
-    'P0 staging: entitlement_mode billing+testing', 'P0 production: billing off (no approval, no key)', 'P0 price hushmallow.ultra.yearly: A$199.99',
+    'P0 staging: entitlement_mode billing+testing', 'P0 production: billing off (no approval, no key)', 'P0 price hushmallow.ultra.yearly: US$199.99',
     'P0 price hushmallow.paid.monthly: product "hushmallow Flow"', 'P0 webhook: exactly the 11 events', 'P0 portal: switching plans on, across all four prices',
     'P0 tax: taxability_reason is not not_collecting', 'webhook: a stale signature → 400 bad_signature', 'checkout: Origin app.hushmallow.com → 403',
     'checkout: a token of igbxbfuaoybfzsroxuln → 401', 'S3: Stripe moved the period on by one month', 'S3: still active, and the Worker has the new period end',
@@ -229,9 +229,9 @@ test('a run longer than the account token\'s hour signs in again on the way, and
 // ---------------------------------------------------------------- livemode --
 test('livemode true on any Stripe object stops the run at once (exit 3): nothing more is made, and its own clocks are still deleted', async () => {
   // in P0's first read: nothing at all is made
-  const a = world({ box: { live: (method, path) => path === '/v1/prices' } });
+  const a = world({ box: { live: (method, path) => path.startsWith('/v1/prices/') } });
   assert.equal(await a.drive(), 3);
-  assert.match(a.out.join('\n'), /^ABORT a Stripe object read from GET \/v1\/prices has livemode true: stopped at once$/m);
+  assert.match(a.out.join('\n'), /^ABORT a Stripe object read from GET \/v1\/prices\/… has livemode true: stopped at once$/m);
   assert.deepEqual(a.box.s.calls.filter((c) => c.key === E2E_KEY && c.method !== 'GET'), []);
   assert.equal(a.worker.filter((r) => r.url !== '/v1/health').length, 0, 'no further step (P1 and the scenarios never ran)');
   // in the middle of S3 (the subscription it made reads livemode true): the clock is deleted, and nothing else is made
@@ -315,7 +315,9 @@ test('P0 names what the sandbox was set up wrong: a price, the endpoint\'s event
   const w = world({
     box: {
       edit: (/** @type {any} */ s) => {
-        s.prices.get(F.PRICES.paidYearly).tax_behavior = 'exclusive';
+        s.prices.get(F.PRICES.paidYearly).lookup_key = 'hushmallow.ultra.yearly';
+        s.prices.get(F.PRICES.ultraYearly).currency = 'aud';
+        s.prices.delete(F.PRICES.paidMonthly);
         s.prices.get(F.PRICES.ultraMonthly).unit_amount = 1499;
         s.products.ultra.name = 'Beyond';
         s.endpoints[0].enabled_events = s.endpoints[0].enabled_events.filter((/** @type {string} */ e) => e !== 'invoice.paid');
@@ -330,15 +332,49 @@ test('P0 names what the sandbox was set up wrong: a price, the endpoint\'s event
   assert.equal(await w.drive(['--phases', 'P0']), 1);
   const fails = w.out.filter((l) => l.startsWith('FAIL'));
   for (const want of [
-    /P0 price hushmallow\.paid\.yearly: AUD, recurring every 1 year, inclusive, active {2}breaks: tax_behavior/,
-    /P0 price hushmallow\.ultra\.monthly: A\$19\.99 {2}A\$14\.99/, /P0 price hushmallow\.ultra\.monthly: product "hushmallow Beyond" {2}"Beyond"/,
+    /P0 price hushmallow\.paid\.yearly: USD, recurring every 1 year, active, lookup key its own or none {2}breaks: lookup_key/,
+    /P0 price hushmallow\.ultra\.yearly: USD, recurring every 1 year, active, lookup key its own or none {2}breaks: currency/,
+    /P0 price hushmallow\.paid\.monthly: the id in \[env\.staging\.vars\] is a price of this sandbox {2}404 resource_missing/,
+    /P0 price hushmallow\.ultra\.monthly: US\$19\.99 {2}US\$14\.99/, /P0 price hushmallow\.ultra\.monthly: product "hushmallow Beyond" {2}"Beyond"/,
     /P0 webhook: API version 2026-08-26\.dahlia {2}2025-03-31\.basil/, /P0 webhook: exactly the 11 events {2}missing invoice\.paid/,
     /P0 portal: cancellation on, at the end of the billing period \(D7\) {2}immediately/, /P0 portal: switching plans on/,
-    /P0 tax: default tax behaviour inclusive {2}exclusive/,
   ]) assert.ok(fails.some((l) => want.test(l)), String(want));
+  // automatic_tax off: the settings are only said, whatever their default tax behaviour
+  assert.ok(w.out.some((l) => /^INFO {2}P0 tax: settings status active, default tax behaviour exclusive \(automatic_tax is off\)$/.test(l)));
   // an active AU registration that collects nothing (a registration or tax code gap): said before the switch goes on
   assert.ok(w.out.some((l) => l.startsWith('FAIL') && l.includes('taxability_reason is not not_collecting')));
   assertQuiet(w.out);
+});
+
+test('P0 with the owner\'s kind of prices: no lookup keys and any tax behaviour pass with Stripe Tax off; with it on, a price needs inclusive or exclusive and the settings must be active', async () => {
+  const noKeys = (/** @type {any} */ s) => { for (const x of s.prices.values()) { x.lookup_key = null; x.tax_behavior = 'unspecified'; } };
+  // tax off (as [env.staging.vars] has it): every check passes, and each price without a lookup key is said
+  const off = world({ box: { edit: noKeys } });
+  assert.equal(await off.drive(['--phases', 'P0']), 0, off.out.join('\n'));
+  assert.ok(off.out.some((l) => l === 'PASS  P0 price hushmallow.paid.monthly: USD, recurring every 1 month, active, lookup key its own or none'));
+  assert.equal(off.out.filter((l) => /^INFO {2}P0 price hushmallow\.(?:paid|ultra)\.(?:monthly|yearly): no lookup key, so the configured id decides its plan/.test(l)).length, 4);
+  // the price has no tax behaviour: the test calculation takes the settings' default (inclusive here)
+  assert.ok(off.out.includes('PASS  P0 tax: the total stays US$19.99 (inclusive)  US$19.99'), off.out.join('\n'));
+  // …and a subscription on such a price is the plan of its configured id (S3 renews Beyond monthly)
+  const s3 = world({ box: { edit: noKeys } });
+  assert.equal(await s3.drive(['--phases', 'S3']), 0, s3.out.join('\n'));
+  // tax on (the Worker and the driver both): an unspecified tax behaviour is refused, inclusive and exclusive pass
+  const taxOn = { env: stagingEnv({ STRIPE_AUTOMATIC_TAX: 'true' }) };
+  const on = world({ ...taxOn, box: { edit: noKeys } });
+  assert.equal(await on.drive(['--phases', 'P0'], { config: { ...CONFIG, automaticTax: true } }), 1);
+  for (const k of Object.keys(D.SANDBOX_AMOUNTS)) {
+    const period = k.endsWith('monthly') ? 'month' : 'year';
+    assert.ok(on.out.includes(`FAIL  P0 price ${k}: USD, recurring every 1 ${period}, active, lookup key its own or none, tax behaviour inclusive or exclusive  breaks: tax_behavior`), k);
+  }
+  const ok = world({ ...taxOn, box: { edit: (/** @type {any} */ s) => { noKeys(s); for (const x of s.prices.values()) x.tax_behavior = 'exclusive'; } } });
+  assert.equal(await ok.drive(['--phases', 'P0'], { config: { ...CONFIG, automaticTax: true } }), 0, ok.out.join('\n'));
+  assert.ok(ok.out.includes('PASS  P0 tax: settings status active (head office set) while automatic_tax is on  active'));
+  // an exclusive price: the calculation adds the tax on top (10% in the sandbox), and says the total
+  assert.ok(ok.out.includes('INFO  P0 tax: tax behaviour exclusive: the tax is added on top of US$19.99, a total of US$21.99'), ok.out.join('\n'));
+  const pending = world({ ...taxOn, box: { edit: (/** @type {any} */ s) => { s.taxSettings.status = 'pending'; } } });
+  assert.equal(await pending.drive(['--phases', 'P0'], { config: { ...CONFIG, automaticTax: true } }), 1);
+  assert.ok(pending.out.includes('FAIL  P0 tax: settings status active (head office set) while automatic_tax is on  pending'));
+  assertQuiet([...off.out, ...s3.out, ...on.out, ...ok.out, ...pending.out]);
 });
 
 test('package.json runs the driver as npm run e2e:billing; the driver is never part of npm test or a workflow', async () => {
