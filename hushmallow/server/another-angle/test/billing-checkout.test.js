@@ -1,21 +1,24 @@
 // Checkout, the return sync and the portal's plan change (src/billing/routes.js), against the fake Stripe of
 // test/billing-fixtures.js: the price check before selling, one customer and one subscription per account (checked
 // at Stripe), the previous Checkout Session settled first, the Checkout Studio settings, the Stripe Tax switch and
-// integration_identifier on the session's form, POST /v1/billing/sync after Checkout, and the portal's intent 'switch'.
+// integration_identifier on the session's form (and STRIPE_INTEGRATION_TODO.md saying the same), POST /v1/billing/sync
+// after Checkout, and the portal's intent 'switch'.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { existsSync, readFileSync } from 'node:fs';
 import { req, denyAll, allowAll, clock, ORIGIN, CLOCK_START } from './helpers.js';
 import {
   createBilling, CHECKOUT_PRICE_RULES, CHECKOUT_PRICE_CACHE_MS, CHECKOUT_INTEGRATION_IDENTIFIER, CHECKOUT_INTEGRATION_IDENTIFIER_SINCE,
-  CHECKOUT_STUDIO, CHECKOUT_TAX, checkoutSettings, integrationIdentifierOn, priceFault, PATHS, HELD_STATUSES,
+  CHECKOUT_STUDIO, CHECKOUT_TAX, checkoutSettings, integrationIdentifierOn, priceFault, PATHS, HELD_STATUSES, EVENTS,
 } from '../src/billing/routes.js';
+import { formEncode } from '../src/billing/stripe.js';
 import { billingClient } from '../src/billing/store.js';
 import { createLogger } from '../src/log.js';
 import { STRIPE_API_VERSION_EXPECTED } from '../src/config.js';
 import {
   upstream, billingEnv, subscription, setup, billingReq, subscribe, status, lines, jwt, assertClean, withStagingProject, price, event, deliver,
-  UID, OTHER, TOKEN, PRICES, APP, DAY, SUPABASE, STAGING_SUPABASE,
+  UID, OTHER, TOKEN, PRICES, APP, DAY, SUPABASE, STAGING_SUPABASE, varsTables, WRANGLER,
 } from './billing-fixtures.js';
 
 const ULTRA_M = { plan: 'ultra', period: 'monthly' };
@@ -113,6 +116,49 @@ test('checkout form: the Studio\'s settings on every session and the account lin
   assert.deepEqual(Object.fromEntries(made[0].form), { 'metadata[user_id]': UID });
   assert.equal(made[0].headers['idempotency-key'], `customer:${UID}`);
   assertClean(allLogs.flat());
+});
+
+// ------------------------------------------------- the owner's status file --
+test('STRIPE_INTEGRATION_TODO.md says what the code sends: every Studio value, the account link kept and why, the tax switch\'s overrides, the 11 events, the staging ids; its links resolve; no key, account id or publishable key', () => {
+  const HM = new URL('../../../', import.meta.url);
+  const todo = readFileSync(new URL('STRIPE_INTEGRATION_TODO.md', HM), 'utf8');
+  const heads = todo.split('\n').filter((l) => l.startsWith('## '));
+  assert.deepEqual(heads.slice(0, 2), ['## Values to Replace', '## Configured Parameters']);
+  for (const h of ['## Setup', '## Project structure', '## Flow overview', '## Testing', '## Next steps', '## Live activation', '## Resources']) assert.ok(heads.includes(h), h);
+  const section = (h) => todo.split(`\n${h}\n`)[1].split('\n## ')[0];
+  // Values to Replace: none of mode/success_url/cancel_url is a placeholder; what is still unset is named
+  const values = section('## Values to Replace');
+  for (const k of ['mode', 'success_url', 'cancel_url']) assert.match(values, new RegExp(`^\\| \`${k}\` \\|[^\\n]*\\| Set: [^\\n]*\\| Nothing`, 'm'), k);
+  for (const x of [/live mode's own four prices/, /STAGING_TODO/, /STAGING_PROJECT_REF/, /sandbox or live\?[^\n]*\*\*To be verified\*\*/, /No such price/]) assert.match(values, x);
+  // Configured Parameters: each Studio value exactly as the form sends it (the test above), and the label
+  const configured = section('## Configured Parameters');
+  const row = (k, v) => new RegExp(`^\\| \`${k.replace(/[[\]]/g, '\\$&')}\` \\| \`${v}\` \\|`, 'm');
+  for (const [k, v] of [...new URLSearchParams(formEncode(CHECKOUT_STUDIO)), ['integration_identifier', CHECKOUT_INTEGRATION_IDENTIFIER]]) assert.match(configured, row(k, v), k);
+  assert.match(configured, /`hosted` is the older name/, 'the ui_mode version dependency');
+  // the account link kept, with why, as a recorded deviation; never payment_method_types
+  assert.match(configured, /deviation from "remove any parameters absent from the Field Intents"/);
+  for (const k of ['customer', 'client_reference_id', 'metadata\\[user_id\\]', 'subscription_data\\[metadata\\]\\[user_id\\]']) assert.match(configured, new RegExp(`^\\| \`${k}\`[^\\n]*\\| [^|\\n]{12,} \\|$`, 'm'), k);
+  assert.match(configured, /Never sent: `payment_method_types`/);
+  // the tax switch: off is the Studio's value; on overrides two of them and adds customer_update
+  for (const [k, v] of [...new URLSearchParams(formEncode(CHECKOUT_TAX))]) assert.ok(configured.includes(`\`${k}=${v}\``), `${k}=${v}`);
+  assert.match(configured, /deliberately overrides two Studio\s+values/);
+  // the webhook endpoint: exactly the Worker's events, on the pinned version
+  assert.match(todo, new RegExp(`exactly these ${EVENTS.length} events`));
+  for (const e of EVENTS) assert.ok(todo.includes(`\`${e}\``), e);
+  assert.ok(todo.includes(`\`${STRIPE_API_VERSION_EXPECTED}\``));
+  // the staging ids, as [env.staging.vars] has them; the cards; the resources
+  const staging = varsTables(WRANGLER).staging;
+  for (const k of ['STRIPE_PRICE_PAID_MONTHLY', 'STRIPE_PRICE_PAID_YEARLY', 'STRIPE_PRICE_ULTRA_MONTHLY', 'STRIPE_PRICE_ULTRA_YEARLY']) assert.ok(todo.includes(`\`${staging[k]}\``), k);
+  for (const c of ['4242 4242 4242 4242', '4000 0025 0000 3155', '4000 0000 0000 9995', '4000 0000 0000 0341']) assert.ok(todo.includes(c), c);
+  for (const u of ['https://support.stripe.com', 'https://docs.stripe.com/mcp']) assert.ok(todo.includes(u), u);
+  assert.match(todo, /restricted\*\* key, `rk_test_…`, from the \*\*same sandbox as the four prices\*\*/);
+  assert.match(todo, /\*\*No Stripe publishable key is needed\*\*/);
+  // every relative link resolves (from hushmallow/)
+  const links = [...todo.matchAll(/\]\(([^)]+)\)/g)].map((m) => m[1]).filter((l) => !/^https?:/.test(l));
+  assert.ok(links.length >= 8);
+  for (const l of links) assert.ok(existsSync(new URL(l, HM)), l);
+  // never a key, a signing secret, an account id or a publishable key (the secret scan lets publishable keys pass)
+  for (const x of [/\b(?:sk|rk|pk)_(?:test|live)_[A-Za-z0-9]/, /\bwhsec_[A-Za-z0-9]/, /\bacct_[A-Za-z0-9]/, /\bsb_(?:publishable|secret)_[A-Za-z0-9]/]) assert.doesNotMatch(todo, x);
 });
 
 // ------------------------------------------------------- the price check --
