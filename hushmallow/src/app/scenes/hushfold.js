@@ -66,6 +66,8 @@ export function openingMallow(state, prefs, now = new Date()) {
 export async function touchReady(mt, art, { artMs = 30000, setupMs = 5000 } = {}) {
   let wait = 0;
   const within = (p, ms, why) => Promise.race([p, new Promise((_, no) => { wait = setTimeout(() => no(new Error(why)), ms); })]).finally(() => clearTimeout(wait));
+  // (when the art fails first, mt.loaded is never awaited here: its own rejection is already the caller's reason)
+  mt.loaded?.catch?.(() => {});
   await within(art, artMs, `its art not in after ${artMs / 1000} s`);
   return within(mt.loaded, setupMs, `not ready after ${setupMs / 1000} s`);
 }

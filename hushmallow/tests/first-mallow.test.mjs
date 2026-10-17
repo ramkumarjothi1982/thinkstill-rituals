@@ -237,6 +237,19 @@ test('touchReady: MallowTouch\'s 5 s start once its art is in; the art has its o
     art2.rej(new Error('Could not load assets/mallows/pipzi.webp')); await flush();
     assert.deepEqual(out2.v, ['fallback', 'Could not load assets/mallows/pipzi.webp']);
   }
+  // the art failing first: MallowTouch's own load then rejects too (the same art), and no rejection goes unhandled
+  {
+    const unhandled = [];
+    const seen = (e) => unhandled.push(e);
+    process.on('unhandledRejection', seen);
+    try {
+      const art = later(), setup = later(), out = run(art, setup);
+      art.rej(new Error('Could not load assets/mallows/pipzi.webp')); await flush();
+      setup.rej(new Error('Could not load assets/mallows/pipzi.webp')); await flush(); await flush();
+      assert.deepEqual(out.v, ['fallback', 'Could not load assets/mallows/pipzi.webp']);
+      assert.deepEqual(unhandled, [], 'MallowTouch\'s own rejection is handled');
+    } finally { process.off('unhandledRejection', seen); }
+  }
 });
 
 test('the Hushfold waits with touchReady on the registry\'s art (the download already on its way), never a 5 s race from the start', () => {
