@@ -47,7 +47,8 @@ test('key-free checks: the production Worker as committed (billing off) and the 
   for (const [stage, env, base, origin, foreign] of /** @type {const} */ ([
     ['production', makeEnv({ PROVIDER: 'mock', ALLOWED_ORIGINS: 'https://app.hushmallow.com,https://ramkumarjothi1982.github.io' }), PRODUCTION_WORKER, 'https://ramkumarjothi1982.github.io', ''],
     ['staging', stagingEnv(), STAGING_WORKER, PREVIEW, F.SUPABASE],
-    // staging before the owner's values: off, and the off answers expected
+    // a staging Worker whose sign-in values are placeholders (as [env.staging] was before the owner's project): off,
+    // and the off answers expected
     ['staging', stagingEnv({ SUPABASE_URL: 'https://STAGING_TODO.supabase.co', SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_TODO', STRIPE_SECRET_KEY: undefined, STRIPE_WEBHOOK_SECRET: undefined }), STAGING_WORKER, PREVIEW, F.SUPABASE],
   ])) {
     /** @type {string[]} */

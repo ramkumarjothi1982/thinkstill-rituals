@@ -17,8 +17,8 @@
 // APP_ORIGIN, ENTITLEMENT_MODE=billing, ACCOUNTS_STAGE=staging) --serve also
 // answers /v1/billing/*, keeping the subscriptions in memory until it stops.
 // It bills as the staging Worker does: test keys only, so only on the
-// hushmallow-staging sign-in project (ACCOUNTS_STAGE=staging, once
-// STAGING_SUPABASE_PROJECT_URL is filled in src/config.js), and a rehearsal
+// hushmallow-staging sign-in project (ACCOUNTS_STAGE=staging, with
+// SUPABASE_URL = src/config.js STAGING_SUPABASE_PROJECT_URL), and a rehearsal
 // never lands on a hushmallow1 account. A live key is refused, and
 // BILLING_LIVE is never forwarded. The Stripe API version is pinned as on
 // the Workers unless STRIPE_API_VERSION says otherwise.

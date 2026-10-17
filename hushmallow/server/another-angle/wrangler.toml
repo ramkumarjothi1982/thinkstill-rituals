@@ -251,15 +251,14 @@ APPLE_BUNDLE_ID = ""
 APPLE_PRODUCT_IDS = "hushmallow.ultra.monthly,hushmallow.ultra.yearly"
 APPLE_ENVIRONMENTS = "Sandbox"
 # Web subscriptions, Stripe TEST mode (docs/STAGING.md). None of these is secret.
-# The sign-in project: the staging Worker's OWN, hushmallow-staging (the same public values as the
-# Pages Preview build), never production's hushmallow1 (src/config.js accepts only the project of
-# ACCOUNTS_STAGE). PLACEHOLDERS until the owner creates hushmallow-staging and pastes its Project URL
-# and publishable key: a TODO value counts as unset, the sign-in project is never asked, and every
-# billing route answers 503 accounts_not_configured (/v1/health: "accounts_configured": false).
-# Another Angle still works for testers with an invite code meanwhile.
+# The sign-in project: the staging Worker's OWN, hushmallow-staging (ref oghzabvkrxsejkkjdsuc,
+# Singapore, created by the owner on 2026-10-17; the same public values as the Pages branch-preview
+# build, hushmallow/src/auth/config.js), never production's hushmallow1 (src/config.js accepts only
+# STAGING_SUPABASE_PROJECT_URL for ACCOUNTS_STAGE "staging"). The publishable key is public by design
+# (Row Level Security protects the data); the project's secret key never goes in any file.
 ACCOUNTS_STAGE = "staging"
-SUPABASE_URL = "https://STAGING_TODO.supabase.co"
-SUPABASE_PUBLISHABLE_KEY = "sb_publishable_TODO"
+SUPABASE_URL = "https://oghzabvkrxsejkkjdsuc.supabase.co"
+SUPABASE_PUBLISHABLE_KEY = "sb_publishable_Sn4YKE3TRTzMkWVN9i45_A_MYYxxirc"
 # Where Stripe sends people back: the release branch's preview (one of ALLOWED_ORIGINS).
 APP_ORIGIN = "https://claude-launch-rc.hushmallow.pages.dev"
 # The owner's four SANDBOX prices (2026-10-17, US dollars): hushmallow Flow US$9.99 a month and US$99.99 a year,
