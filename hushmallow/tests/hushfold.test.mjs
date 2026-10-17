@@ -183,13 +183,20 @@ test('safety verification (12 Oct): the lexicon still compiles without lookbehin
     assert.doesNotThrow(() => new RegExp(src, 'i'), src);
     assert.doesNotMatch(src, /\(\?<[=!]/, `no lookbehind: ${src}`);
   }
-  // a long run-on message is still quick (no runaway backtracking): once warm (on its own this test's first call also
-  // compiles the whole lexicon, and read 150-285 ms that way), the CPU time of five runs, per run (tests/helpers/cost.mjs:
-  // another test file's turn on the core never counts), read again at most twice if it misses
-  const long = 'i dont know i just feel like everything is too much and i cant and '.repeat(30);
-  checkText(long);
-  const r = within(150, () => cpuPerCall(() => checkText(long), 5));
-  assert.ok(r.ok, `checkText on 2,000 characters stays fast: ${readings(r.seen)} ms of CPU per run (5 runs a reading)`);
+  // a long run-on message is still quick (no runaway backtracking), timed as a person pays for it: every Tell is words
+  // checkText has not read before, so each timed read is of a text of its own, the same run-on message begun at each of
+  // its 15 words in turn (the same words, length and verdict: a cache of past reads, or a cost paid only on a text's
+  // first read, is timed as a person meets it). The warm-up only compiles the lexicon (on its own this test's first
+  // call reads 140-270 ms doing that), on other words, which no timed text shares. The CPU time of five reads, per read
+  // (tests/helpers/cost.mjs: another test file's turn on the core never counts), read again at most twice if it misses,
+  // with five more texts it has not seen
+  checkText('it was a long day and honestly the train was late and the rain just kept on and '.repeat(25));
+  const words = 'i dont know i just feel like everything is too much and i cant and'.split(' ');
+  const unseen = words.map((_, k) => `${[...words.slice(k), ...words.slice(0, k)].join(' ')} `.repeat(30));
+  assert.equal(new Set(unseen.map((t) => t.slice(0, 2000).toLowerCase())).size, 15, 'fifteen texts, no two alike');
+  let next = 0;
+  const r = within(150, () => cpuPerCall(() => checkText(unseen[next++]), 5));
+  assert.ok(r.ok, `checkText on 2,000 characters stays fast: ${readings(r.seen)} ms of CPU per read (5 unseen texts a reading)`);
 });
 
 test('hushfold safety verification (12 Oct): a crisis or care level seen earlier in the visit holds when other words are sent', () => {
