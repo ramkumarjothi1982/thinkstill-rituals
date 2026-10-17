@@ -8,6 +8,7 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { req, makeEnv, angleReq, CLOCK_START } from './helpers.js';
 import { signToken } from '../src/auth/tokens.js';
+import { inviteTag } from '../src/auth/entitlement.js';
 import { readConfig, BILLING_LIVE_APPROVED, STRIPE_API_VERSION_EXPECTED } from '../src/config.js';
 import {
   billingEnv, billingReq, setup, upstream, subscription, event, deliver, subscribe, status, lines, assertClean, stripeKey, withStagingProject,
@@ -219,19 +220,26 @@ test('/v1/health says the Stripe mode, why a key is refused, the approval, the A
 test('sessions minted before the switch: in "billing" only billing sessions reach the model; in "billing+testing" a testing one only if minted there with a code', async () => {
   const signingKey = makeEnv().TOKEN_SIGNING_KEY;
   const mint = (src, more = {}) => signToken({ sub: `${src === 'billing' ? 'acct' : src === 'storekit' ? 'st' : 'dev'}_${'a'.repeat(32)}`, ent: 'beyond', src, ...more, iat: CLOCK_START, exp: CLOCK_START + 30 * DAY }, signingKey);
-  // testing: from testing mode (with or without a code, it does not say); invited: minted under billing+testing with a code
-  const tokens = { testing: await mint('testing'), invited: await mint('testing', { inv: 1 }), billing: await mint('billing'), storekit: await mint('storekit') };
-  const ok = { testing: 'ok', invited: 'ok', billing: 'ok', storekit: 'ok' };
+  // testing: from testing mode (with or without a code, it does not say); invited: minted under billing+testing with a
+  // code, before sessions carried which (ic); coded: with the tag of MALLOW-ONE; revoked: with the tag of a code since removed
+  const tag = (code) => inviteTag(readConfig(makeEnv()), code);
+  const tokens = {
+    testing: await mint('testing'), invited: await mint('testing', { inv: 1 }), coded: await mint('testing', { inv: 1, ic: await tag('MALLOW-ONE') }),
+    revoked: await mint('testing', { inv: 1, ic: await tag('LEAKED-CODE') }), billing: await mint('billing'), storekit: await mint('storekit'),
+  };
+  const ok = { testing: 'ok', invited: 'ok', coded: 'ok', revoked: 'ok', billing: 'ok', storekit: 'ok' };
   const cases = [
     ['testing', '', ok],
     ['testing', 'MALLOW-ONE', ok],
     ['storekit', '', ok],
     ['both', '', ok],
-    ['billing', 'MALLOW-ONE', { testing: 'superseded', invited: 'superseded', billing: 'ok', storekit: 'superseded' }],
+    ['billing', 'MALLOW-ONE', { testing: 'superseded', invited: 'superseded', coded: 'superseded', revoked: 'superseded', billing: 'ok', storekit: 'superseded' }],
     // a testing session from before the switch may have been open to anyone (testing mode without codes): one new
-    // session, which the app asks for with its saved code
-    ['billing+testing', 'MALLOW-ONE', { testing: 'superseded', invited: 'ok', billing: 'ok', storekit: 'ok' }],
-    ['billing+testing', '', { testing: 'superseded', invited: 'superseded', billing: 'ok', storekit: 'ok' }],
+    // session, which the app asks for with its saved code; so does one minted before sessions said which code (once),
+    // and one whose code is no longer listed (security review, 17 Oct 2026: removing one leaked code ends its sessions)
+    ['billing+testing', 'MALLOW-ONE', { testing: 'superseded', invited: 'superseded', coded: 'ok', revoked: 'superseded', billing: 'ok', storekit: 'ok' }],
+    ['billing+testing', 'LEAKED-CODE,MALLOW-ONE', { testing: 'superseded', invited: 'superseded', coded: 'ok', revoked: 'ok', billing: 'ok', storekit: 'ok' }],
+    ['billing+testing', '', { testing: 'superseded', invited: 'superseded', coded: 'superseded', revoked: 'superseded', billing: 'ok', storekit: 'ok' }],
   ];
   for (const [mode, codes, want] of cases) {
     const s = setup({ env: makeEnv({ PROVIDER: 'mock', ENTITLEMENT_MODE: mode, TESTER_INVITE_CODES: codes }) });
@@ -263,6 +271,7 @@ test('sessions minted before the switch: in "billing" only billing sessions reac
     assert.equal(r.status, 200, mode);
     const { token, source } = await r.json();
     assert.deepEqual([source, claimsOf(token).inv], ['testing', inv], mode);
+    assert.equal(claimsOf(token).ic, inv ? await tag('MALLOW-ONE') : undefined, `${mode}: the code's tag, never the code`);
     assert.equal((await m.app.fetch(angleReq(token, { text: 'My colleague got promoted instead of me.' }), m.env)).status, 200, mode);
   }
   // a crisis still gets support at once, whatever the session (the check before the token is unchanged)

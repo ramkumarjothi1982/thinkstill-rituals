@@ -22,7 +22,7 @@ import { validateAngleRequest, validateSessionRequest, validateFeedbackRequest, 
 import { screenInput, supportPayload } from './safety/index.js';
 import { runAngle, hasWords, PROMPT_VERSION, SCHEMA_VERSION } from './pipeline.js';
 import { signToken, verifyToken, keyedHash } from './auth/tokens.js';
-import { checkEntitlement } from './auth/entitlement.js';
+import { checkEntitlement, inviteTag } from './auth/entitlement.js';
 import { ledgerClient, memoryLedgerNamespace } from './limits/ledger.js';
 import { allow, memoryRateLimiter } from './limits/ratelimit.js';
 import { networkKey } from './limits/netkey.js';
@@ -42,11 +42,17 @@ export const EARLY_CHECK_CHARS = 2000;
  * may have had none: open to anyone), so without this it would keep reaching the model without Beyond for up to 30
  * days after the switch. The client asks for a new session on a 401 (src/beyond/angle-client.js), with its saved code,
  * and that one follows the current rules. Other modes are unchanged.
- * @param {import('./config.js').Config} cfg @param {{ src?: string, inv?: number }} payload
+ * codeTags (billing+testing, the app passes it): the tags of the current TESTER_INVITE_CODES (src/auth/entitlement.js
+ * inviteTag); a testing session must carry one of them (ic), so removing one leaked code ends the sessions it minted
+ * while the other codes keep theirs (a session minted before tags were carried asks for a new one, once).
+ * @param {import('./config.js').Config} cfg @param {{ src?: string, inv?: number, ic?: string }} payload
+ * @param {Set<string> | null} [codeTags]
  */
-export function sessionSuperseded(cfg, payload) {
+export function sessionSuperseded(cfg, payload, codeTags = null) {
   if (cfg.entitlementMode === 'billing') return payload.src !== 'billing';
-  if (cfg.entitlementMode === 'billing+testing') return payload.src === 'testing' && (cfg.inviteCodes.length === 0 || payload.inv !== 1);
+  if (cfg.entitlementMode === 'billing+testing') {
+    return payload.src === 'testing' && (cfg.inviteCodes.length === 0 || payload.inv !== 1 || (!!codeTags && !(typeof payload.ic === 'string' && codeTags.has(payload.ic))));
+  }
   return false;
 }
 
@@ -76,6 +82,15 @@ export function createApp(options) {
   const fallbackSessionLimiter = memoryRateLimiter({ limit: 3, periodMs: 60000, now });
   const fallbackFeedbackLimiter = memoryRateLimiter({ limit: 20, periodMs: 60000, now });
   const billing = createBilling({ logger, now, ...(options.fetch ? { fetch: options.fetch } : {}), ipKey: (request, cfg) => ipKey(request, cfg) });
+  /** @type {WeakMap<object, Promise<Set<string>>>} */
+  const codeTagSets = new WeakMap();
+  /** billing+testing: the tags of the current tester codes (sessionSuperseded); null in other modes. @param {import('./config.js').Config} cfg */
+  const codeTagsFor = (cfg) => {
+    if (cfg.entitlementMode !== 'billing+testing') return Promise.resolve(null);
+    let p = codeTagSets.get(cfg);
+    if (!p) { p = Promise.all(cfg.inviteCodes.map((c) => inviteTag(cfg, c))).then((a) => new Set(a)); codeTagSets.set(cfg, p); }
+    return p;
+  };
 
   /** @param {Record<string, any>} env */
   const configFor = (env) => {
@@ -217,7 +232,7 @@ export function createApp(options) {
       }
     }
     const iat = Math.floor(now() / 1000) * 1000;
-    const token = await signToken({ sub: ent.subject, ent: 'beyond', src: ent.source, ...(ent.invited ? { inv: 1 } : {}), iat, exp: ent.expiresAt }, cfg.signingKeys[0]);
+    const token = await signToken({ sub: ent.subject, ent: 'beyond', src: ent.source, ...(ent.invited ? { inv: 1, ...(ent.inviteTag ? { ic: ent.inviteTag } : {}) } : {}), iat, exp: ent.expiresAt }, cfg.signingKeys[0]);
     const used = await ledger.peek(`dev:${ent.subject}`, 'angles', day);
     logger.event({ evt: 'session', status: 'ok', http: 200, source: ent.source, latency_ms: now() - t0 });
     return json(200, {
@@ -274,7 +289,7 @@ export function createApp(options) {
       return error(401, 'unauthorised', 'A valid session token is required.', { ...cors, 'www-authenticate': 'Bearer realm="another-angle"' });
     }
     const payload = /** @type {any} */ (verified).payload;
-    if (sessionSuperseded(cfg, payload)) {
+    if (sessionSuperseded(cfg, payload, await codeTagsFor(cfg))) {
       logEvt({ status: 'unauthorised', http: 401, err: 'session_superseded' });
       return error(401, 'session_superseded', 'This session is from before the current rules; start a new one.', { ...cors, 'www-authenticate': 'Bearer realm="another-angle"' });
     }
@@ -341,7 +356,10 @@ export function createApp(options) {
     }
 
     const reserve = worstCaseMicros({ model: cfg.model, attempts: 2, promptTokens: cfg.promptTokenEstimate, maxTokens: cfg.maxTokens });
-    const spend = await ledger.take('global', 'spend', day, cfg.dailySpendCapMicros, reserve);
+    // billing+testing: testers' angles stop at their share of the day's cap (the same counter), so a leaked or shared
+    // tester code can never leave subscribers with only the authored angles; subscribers may use all of it
+    const spendLimit = cfg.entitlementMode === 'billing+testing' && payload.src === 'testing' ? Math.floor(cfg.dailySpendCapMicros * cfg.testingSpendShare) : cfg.dailySpendCapMicros;
+    const spend = await ledger.take('global', 'spend', day, spendLimit, reserve);
     if (!spend.ok) {
       await ledger.give(devName, 'angles', day);
       logEvt({ ...common, status: 'fallback', fallback_reason: 'capacity', http: 200 });
@@ -405,7 +423,7 @@ export function createApp(options) {
     const m = /^Bearer ([A-Za-z0-9._-]{10,2048})$/.exec(request.headers.get('authorization') || '');
     const verified = m ? await verifyToken(m[1], cfg.signingKeys, now()) : null;
     if (!verified?.ok) return error(401, 'unauthorised', 'A valid session token is required.', { ...cors, 'www-authenticate': 'Bearer realm="another-angle"' });
-    if (sessionSuperseded(cfg, verified.payload)) return error(401, 'session_superseded', 'This session is from before the current rules; start a new one.', { ...cors, 'www-authenticate': 'Bearer realm="another-angle"' });
+    if (sessionSuperseded(cfg, verified.payload, await codeTagsFor(cfg))) return error(401, 'session_superseded', 'This session is from before the current rules; start a new one.', { ...cors, 'www-authenticate': 'Bearer realm="another-angle"' });
     const body = await readJson(request, 2048);
     if (!body.ok) return error(body.status, body.code, body.message, cors);
     const v = validateFeedbackRequest(body.value);
