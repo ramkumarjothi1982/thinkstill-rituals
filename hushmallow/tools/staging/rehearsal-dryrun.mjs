@@ -4,13 +4,17 @@
 // sign-up) and R6 against it, with --base http://127.0.0.1:PORT --allow-local-for-testing. Stripe and the real model
 // cannot be reached from here and nothing of theirs is faked: R3, R4, R5 and R7 are not run (the driver says SKIP).
 //
-//   timeout 900 node hushmallow/tools/staging/rehearsal-dryrun.mjs [--steps R1,R2,R6] [--keep]
+//   timeout 900 node hushmallow/tools/staging/rehearsal-dryrun.mjs [--steps R1,R2,R6] [--keep] [--no-signals]
 //
 // It makes one confirmed account on the fake (a made-up address and password, passed to the driver in its environment
-// as STAGING_E2E_EMAIL / STAGING_E2E_PASSWORD, with a made-up REHEARSAL_SIGNUP_EMAIL), runs the driver, then checks
-// what only the fake can tell: neither secret appears in anything the driver printed, the sign-up reached the fake's
-// outbox (no email is ever sent), and R6's two switches and its favourite reached the account's rows. Both servers stop
-// and its folder (in the system's temporary directory, never the repository) is deleted, unless --keep.
+// as REHEARSAL_A_EMAIL / REHEARSAL_A_PASSWORD, with a made-up REHEARSAL_SIGNUP_EMAIL, and a made-up STAGING_E2E_EMAIL
+// standing for the sandbox driver's account, which must never be used), runs the driver, then checks what only the
+// fake can tell: no secret appears in anything the driver printed, the sign-up reached the fake's outbox (no email is
+// ever sent), and R6's two switches and its favourite reached the account's rows. Then (unless --no-signals) the
+// driver twice more, stopped in the middle of R1 the way a person or the outer `timeout` stops it: a Ctrl-C to its
+// process group, then a SIGTERM. Each time the step running must stop at once, the rest be skipped, the teardown run,
+// the driver exit 1 on its own within 10 s, and the browser it started be gone. Both servers stop and its folder (in
+// the system's temporary directory, never the repository) is deleted, unless --keep.
 // Exit: the driver's, or 1 when one of these checks fails.
 import { spawn, spawnSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
@@ -28,6 +32,7 @@ const argv = process.argv.slice(2);
 const opt = (k, d) => { const i = argv.indexOf(k); return i >= 0 && argv[i + 1] && !argv[i + 1].startsWith('--') ? argv[i + 1] : d; };
 const STEPS = opt('--steps', 'R1,R2,R6');
 const KEEP = argv.includes('--keep');
+const SIGNALS = !argv.includes('--no-signals');
 
 const results = [];
 const check = (ok, what, extra = '') => { results.push(!!ok); console.log(`${ok ? 'PASS' : 'FAIL'}  dry run: ${what}${extra ? `  (${extra})` : ''}`); return !!ok; };
@@ -64,18 +69,23 @@ try {
 
   // the driver, exactly as it runs online but for the two local flags; its output is read for the secrets
   const out = join(dir, 'shots');
-  const denv = { PATH: process.env.PATH, HOME: process.env.HOME || dir, STAGING_E2E_EMAIL: A.email, STAGING_E2E_PASSWORD: A.password, REHEARSAL_SIGNUP_EMAIL: SIGNUP };
-  const args = [join(here, 'rehearsal.cjs'), '--base', `http://127.0.0.1:${sitePort}`, '--allow-local-for-testing', '--steps', STEPS, '--out', out];
-  let printed = '';
-  const exit = await new Promise((r) => {
-    const c = spawn(process.execPath, args, { env: denv, stdio: ['ignore', 'pipe', 'pipe'] });
-    const tee = (d) => { const s = d.toString(); printed += s; process.stdout.write(s); };
+  const B = { email: `dry-b-${tag}@example.com`, password: `${randomBytes(9).toString('base64url')}-b2` };
+  const denv = { PATH: process.env.PATH, HOME: process.env.HOME || dir, REHEARSAL_A_EMAIL: A.email, REHEARSAL_A_PASSWORD: A.password, REHEARSAL_SIGNUP_EMAIL: SIGNUP, STAGING_E2E_EMAIL: B.email, STAGING_E2E_PASSWORD: B.password };
+  const secrets = [A.email, A.password, SIGNUP, uid, encodeURIComponent(A.email), B.email, B.password];
+  const driver = (steps, onLine = null) => new Promise((r) => {
+    const args = [join(here, 'rehearsal.cjs'), '--base', `http://127.0.0.1:${sitePort}`, '--allow-local-for-testing', '--steps', steps, '--out', out];
+    // its own process group, as a terminal starts it: a Ctrl-C there goes to the whole group (the browser has its own)
+    const c = spawn(process.execPath, args, { env: denv, stdio: ['ignore', 'pipe', 'pipe'], detached: true });
+    let printed = '';
+    const tee = (d) => { const s = d.toString(); printed += s; process.stdout.write(s); onLine?.(c, printed); };
     c.stdout.on('data', tee); c.stderr.on('data', tee);
-    c.on('close', (n) => r(n));
+    c.on('close', (n, sig) => r({ exit: n, sig, printed, at: Date.now() }));
   });
-  check(exit === 0, `the driver's exit code`, String(exit));
-  const leaks = [A.email, A.password, SIGNUP, uid, encodeURIComponent(A.email)].filter((s) => printed.includes(s));
-  check(!leaks.length, 'nothing the driver printed holds the account\'s email, password or id, or the sign-up address', leaks.length ? `${leaks.length} found` : `${printed.split('\n').length} lines read`);
+  const run = await driver(STEPS);
+  const printed = run.printed;
+  check(run.exit === 0, `the driver's exit code`, String(run.exit));
+  const leaks = secrets.filter((s) => printed.includes(s));
+  check(!leaks.length, 'nothing the driver printed holds the account\'s email, password or id, the sign-up address or the sandbox driver\'s account', leaks.length ? `${leaks.length} found` : `${printed.split('\n').length} lines read`);
 
   // what only the fake can tell
   const state = await fetch(`${FAKE}/__fake/state`).then((r) => r.json());
@@ -87,6 +97,31 @@ try {
     const cs = state.rows.sync_consents.find((r) => r.user_id === uid);
     const fav = state.rows.favourite_worlds.filter((r) => r.user_id === uid).map((r) => r.world_id);
     check(cs?.settings_sync === true && cs?.library_sync === true && fav.includes('static-storm'), 'R6\'s switches and favourite reached the account\'s rows on the fake', JSON.stringify({ settings: cs?.settings_sync, library: cs?.library_sync, favourites: fav }));
+  }
+
+  // stopped half way: a Ctrl-C to the driver's process group, then the outer timeout's SIGTERM, in the middle of R1
+  if (SIGNALS) {
+    for (const sig of ['SIGINT', 'SIGTERM']) {
+      let sentAt = 0, browsers = [];
+      const r = await driver('R1,R2', (c, text) => {
+        if (sentAt || !/^PASS  R0 /m.test(text)) return;
+        sentAt = Date.now();
+        // the browser the driver started (its children), to see it gone afterwards
+        const ps = spawnSync('ps', ['-o', 'pid=', '--ppid', String(c.pid)], { encoding: 'utf8' });
+        browsers = ps.stdout.split('\n').map((x) => Number(x.trim())).filter(Boolean);
+        setTimeout(() => { try { process.kill(sig === 'SIGINT' ? -c.pid : c.pid, sig); } catch { /* gone */ } }, 1500);
+      });
+      const t = r.printed, secs = sentAt ? Math.round((r.at - sentAt - 1500) / 100) / 10 : null;
+      const alive = browsers.filter((pid) => { try { process.kill(pid, 0); return true; } catch { return false; } });
+      const want = sig === 'SIGINT' ? 'interrupted (Ctrl-C)' : `terminated (${sig}`;
+      check(sentAt && r.exit === 1 && !r.sig && secs !== null && secs <= 10
+        && /^FAIL  R1  .*not finished/m.test(t) && new RegExp(`^SKIP  R2  not run: ${want.replace(/[()]/g, '\\$&')}`, 'm').test(t)
+        && /^INFO  teardown: local test mode/m.test(t) && /^\d+ passed, \d+ failed, \d+ skipped · /m.test(t) && t.includes(want),
+      `${sig} in the middle of R1: R1 stopped at once, R2 skipped, the teardown ran, the driver exited 1 on its own`, `exit ${r.exit}${r.sig ? ` by ${r.sig}` : ''}, ${secs} s after the signal`);
+      check(browsers.length > 0 && !alive.length, `${sig}: the browser the driver started is gone`, `${browsers.length} child process(es), ${alive.length} left`);
+      for (const pid of alive) { try { process.kill(pid, 'SIGKILL'); } catch { /* gone */ } }
+      check(!secrets.some((s) => t.includes(s)), `${sig}: nothing printed holds a secret`);
+    }
   }
   code = results.every(Boolean) ? 0 : 1;
 } catch (e) {

@@ -15,10 +15,11 @@
 //       and every other host), the production Worker or any other as --worker, a STRIPE_E2E_KEY that is not a test key,
 //       a /v1/health in any Stripe mode but test or with live_approved true, a preview publishing production's sign-in
 //       project (igbxbfuaoybfzsroxuln). Checks: /v1/health (test mode, live_approved false, configured, webhook,
-//       accounts), the preview's published sign-in config is the staging project, Settings' version line says "staging".
+//       accounts; its provider is printed), the preview's published sign-in config is the staging project, Settings'
+//       version line says "staging".
 //   R1  a guest: the home screen asks nothing; Plans show the BILLING_PRICES a month and a year; "Step into hushmallow
 //       Beyond" opens the account screen with "Sign in or create an account first…".
-//   R2  sign in (STAGING_E2E_EMAIL / _PASSWORD) through the account screen, by password; Settings → Privacy shows the
+//   R2  sign in (REHEARSAL_A_EMAIL / _PASSWORD) through the account screen, by password; Settings → Privacy shows the
 //       account row. With REHEARSAL_SIGNUP_EMAIL: a fresh browser signs up (the 18+ tick) and sees "Check your email".
 //   R3  Plans → Monthly → Beyond → Stripe Checkout (checkout.stripe.com or checkout.hushmallow.com and a cs_test_ session,
 //       else FAIL and stop at once): hushmallow Beyond, US$19.99, no phone or promotion code field; 4242…; back on the
@@ -26,36 +27,48 @@
 //       subscription; with STRIPE_E2E_KEY the customer is read (one, with the account's metadata.user_id). Then a second
 //       browser that has not heard of the plan yet (its plan check held back) taps "Step into hushmallow Flow": 409
 //       already_subscribed, and the app opens the portal instead of a second Checkout.
-//   R4  (with STAGING_E2E_C_EMAIL / _PASSWORD only) 4000 0000 0000 9995 declined on Stripe's page, its back link → "No
+//   R4  (with REHEARSAL_C_EMAIL / _PASSWORD only) 4000 0000 0000 9995 declined on Stripe's page, its back link → "No
 //       problem. Nothing was charged.", no plan; 4000 0025 0000 3155: Fail authentication, then Complete authentication.
-//   R5  Another Angle with the real staging model: the consent card, one made-up everyday situation, an angle from the
-//       server (60 s), "Show me another angle" (a second one); then the crisis sentence of tests/safety-qa.probes.mjs gets
-//       the support response and nothing is sent for it.
-//   R6  the account screen's two "Keep with my account" switches on, a favourite world; a new page in the same browser:
-//       still signed in, still Beyond (after R3), the favourite kept, both switches still on.
-//   R7  Settings → Manage subscription → billing.stripe.com (test): switch to hushmallow Flow, back: Flow; cancel at the
-//       period end, back: Settings says "Ends on …".
-//   R8  (S12) the delete screen: its "Not touched" list says to cancel a web subscription first, and "Cancel your
-//       subscription first" shows while the plan renews. Nothing is deleted unless --delete-account is passed.
-//   teardown  with STRIPE_E2E_KEY: every subscription of the test accounts' customers created since the run started and
-//       still running is cancelled at once (only ids are printed); nothing else is touched. Any Stripe object with
-//       livemode true stops everything at once (exit 3).
+//   R5  Another Angle with the real staging model (FAIL when /v1/health says its provider is not the real one): the
+//       consent card, one made-up everyday situation, an angle from the server (60 s), "Show me another angle" (a second
+//       one); then the crisis sentence of tests/safety-qa.probes.mjs gets the support response and nothing is sent for it.
+//   R6  the account screen's two "Keep with my account" switches on, a favourite world, sent by a sync run that began
+//       after it; a new page in the same browser: still signed in, still Beyond (after R3), the favourite kept, both
+//       switches still on.
+//   R7  only on the subscription this run's R3 bought (else SKIP). With R8 in the run, first a look at the delete screen
+//       while that plan still renews (S12's first half, judged in R8). Settings → Manage subscription → billing.stripe.com
+//       (test): switch to hushmallow Flow, back: Flow; cancel at the period end, back: Settings says "Ends on …".
+//   R8  (S12) the delete screen: its "Not touched" list says to cancel a web subscription first; while a plan renews
+//       (now, or in R7's look before its cancel) "Cancel your subscription first" shows and Delete stays off; after the
+//       cancel Delete turns on once the word is typed (the word is then cleared). With no renewing plan in the run S12
+//       cannot be checked: SKIP. Nothing is deleted unless --delete-account is passed.
+//   teardown  with STRIPE_E2E_KEY: the subscription of each Checkout Session this run opened (session.subscription, the
+//       session holding the test account's id, the subscription made since the run started), still running, is
+//       cancelled at once (only ids are printed); nothing else is touched, and no other subscription is ever looked
+//       for. Any Stripe object with livemode true stops everything at once (exit 3). It runs once, also after a Ctrl-C
+//       or the outer `timeout`'s SIGTERM.
 //
 // Secrets and inputs come from the environment only. They are never printed (every line goes through the mask in
 // createLog) and never written to disk (screenshots, of failures only, mask every input, the address on the account
-// screens and any secret's text): STAGING_E2E_EMAIL, STAGING_E2E_PASSWORD (one confirmed hushmallow-staging account,
-// E2E-A), optional STAGING_E2E_C_EMAIL, STAGING_E2E_C_PASSWORD (E2E-C, for the declines), optional STRIPE_E2E_KEY
+// screens and any secret's text): REHEARSAL_A_EMAIL, REHEARSAL_A_PASSWORD (one confirmed hushmallow-staging account,
+// E2E-A), optional REHEARSAL_C_EMAIL, REHEARSAL_C_PASSWORD (E2E-C, for the declines), optional STRIPE_E2E_KEY
 // (rk_test_… or sk_test_…: read-only checks and the teardown), optional REHEARSAL_SIGNUP_EMAIL (+ optional
 // REHEARSAL_SIGNUP_PASSWORD; a real inbox the owner controls: the driver only submits the form, the owner clicks the link).
+// The sandbox driver's STAGING_E2E_EMAIL / _PASSWORD (E2E-B, scripts/billing-e2e.mjs) are never used here (masked if set),
+// and an E2E-A or E2E-C that is that account is refused: the two drivers never share an account or its subscriptions.
 // Each step prints one PASS, FAIL or SKIP line; screenshots of failures go to --out (default a new folder in the system's
-// temporary directory, never inside the repository). Exit: 0 nothing failed; 1 a step failed; 2 refused to start;
-// 3 stopped at once (a Stripe object or page in live mode). Stripe's hosted pages are driven by their visible labels and
-// ids as remembered (they are not this repository's): watch the first run; a changed label fails with a screenshot.
+// temporary directory, never inside the repository). Each Checkout Session is printed (its id) as it opens. Exit: 0
+// nothing failed; 1 a step failed, or the run was interrupted (Ctrl-C, or SIGTERM from the outer `timeout`: the step
+// running stops at once, the rest are skipped, the teardown runs; a second Ctrl-C quits at once and prints what to
+// cancel by hand); 2 refused to start; 3 stopped at once (a Stripe object or page in live mode). Stripe's hosted pages
+// are driven by their visible labels and ids as remembered (they are not this repository's): watch the first run; a
+// changed label fails with a screenshot.
 'use strict';
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const crypto = require('crypto');
+const { AsyncLocalStorage } = require('async_hooks');
 const { createRequire } = require('module');
 const { pathToFileURL } = require('url');
 
@@ -67,8 +80,13 @@ const A_STEPS = Object.freeze(['R2', 'R3', 'R5', 'R6', 'R7', 'R8']);
 /** Steps that need Stripe (and the real Worker): never run in the local test mode. */
 const STRIPE_STEPS = Object.freeze(['R3', 'R4', 'R7']);
 const ONLINE_ONLY = Object.freeze(['R3', 'R4', 'R5', 'R7']);
-/** Every environment value this driver treats as secret: masked wherever it would appear. */
-const SECRET_ENV = Object.freeze(['STAGING_E2E_EMAIL', 'STAGING_E2E_PASSWORD', 'STAGING_E2E_C_EMAIL', 'STAGING_E2E_C_PASSWORD', 'STRIPE_E2E_KEY', 'REHEARSAL_SIGNUP_EMAIL', 'REHEARSAL_SIGNUP_PASSWORD']);
+/**
+ * Every environment value this driver treats as secret: masked wherever it would appear. The accounts are the
+ * rehearsal's own (REHEARSAL_A_…, REHEARSAL_C_…); STAGING_E2E_… is the sandbox driver's E2E-B (scripts/billing-e2e.mjs),
+ * never used here, masked when set.
+ */
+const SECRET_ENV = Object.freeze(['REHEARSAL_A_EMAIL', 'REHEARSAL_A_PASSWORD', 'REHEARSAL_C_EMAIL', 'REHEARSAL_C_PASSWORD', 'STRIPE_E2E_KEY', 'REHEARSAL_SIGNUP_EMAIL', 'REHEARSAL_SIGNUP_PASSWORD',
+  'STAGING_E2E_EMAIL', 'STAGING_E2E_PASSWORD', 'STAGING_E2E_C_EMAIL', 'STAGING_E2E_C_PASSWORD']);
 /** Hosts that are production (or production's copies): named in the refusal. Every other non-preview host is refused too. */
 const PRODUCTION_HOSTS = Object.freeze(['app.hushmallow.com', 'hushmallow.pages.dev', 'hushmallow.com', 'www.hushmallow.com', 'ramkumarjothi1982.github.io']);
 const LOOPBACK = Object.freeze(['127.0.0.1', 'localhost', '[::1]']);
@@ -84,14 +102,27 @@ const WORLD = 'static-storm';
 /** Each step's whole time budget (ms); the outer `timeout 1200` is the run's. */
 const BUDGET = Object.freeze({ R0: 120000, R1: 150000, R2: 200000, R3: 420000, R4: 480000, R5: 420000, R6: 200000, R7: 420000, R8: 150000 });
 const CHROMIUM = '/opt/pw-browsers/chromium';
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+/** After a step was stopped (out of time, Ctrl-C), how long its abandoned work may take to notice (ms). */
+const SETTLE_MS = 15000;
 const norm = (s) => String(s ?? '').replace(/\s+/g, ' ').trim();
 
 /** A check this step cannot pass without. stop: the run stops after it (a Checkout that is not Stripe's test page). */
 class Fail extends Error { constructor(msg, { stop = false } = {}) { super(msg); this.stop = stop; } }
 /** A Stripe object or page in live mode: everything stops at once. */
 class LiveStop extends Error {}
+/** Thrown inside a step that was stopped (out of time, interrupted): its work ends at its next wait. */
+class Cancelled extends Error {}
 const need = (ok, what, o) => { if (!ok) throw new Fail(what, o); };
+
+/**
+ * Each step runs in its own async context (runStep): its token { id, dead, page, pages, contexts, shotTaken }. A step
+ * that was stopped is marked dead, and every wait inside it (sleep, until, a new page or browser, a Stripe call)
+ * throws Cancelled from then on: work a step left behind never acts alongside the next one.
+ */
+const STEP = new AsyncLocalStorage();
+const stepToken = () => STEP.getStore() || null;
+function checkpoint() { const t = stepToken(); if (t && t.dead) throw new Cancelled(`${t.id} was stopped (${t.dead})`); }
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms)).then(checkpoint);
 
 // ------------------------------------------------------------------------------------------------ the pure parts --
 
@@ -199,15 +230,18 @@ function preflight({ opts, env = {}, repo }) {
   const key = String(env.STRIPE_E2E_KEY || '').trim();
   if (key && /^[sr]k_live_/.test(key)) return refuse('STRIPE_E2E_KEY is a live key. This driver runs in Stripe test mode only. Nothing was sent.');
   if (key && !repo.e2eKey.test(key)) return refuse('STRIPE_E2E_KEY is not a Stripe test secret or restricted key (rk_test_… or sk_test_…). Nothing was sent.');
-  const A = { email: String(env.STAGING_E2E_EMAIL || '').trim(), password: String(env.STAGING_E2E_PASSWORD || '') };
-  const C = { email: String(env.STAGING_E2E_C_EMAIL || '').trim(), password: String(env.STAGING_E2E_C_PASSWORD || '') };
+  const A = { email: String(env.REHEARSAL_A_EMAIL || '').trim(), password: String(env.REHEARSAL_A_PASSWORD || '') };
+  const C = { email: String(env.REHEARSAL_C_EMAIL || '').trim(), password: String(env.REHEARSAL_C_PASSWORD || '') };
   const signup = { email: String(env.REHEARSAL_SIGNUP_EMAIL || '').trim(), password: String(env.REHEARSAL_SIGNUP_PASSWORD || '') };
+  // the sandbox driver's account (E2E-B): its customers and test-clock subscriptions are never this driver's
+  const B = String(env.STAGING_E2E_EMAIL || '').trim().toLowerCase();
   const needA = opts.steps.some((s) => A_STEPS.includes(s));
-  if (needA && (!A.email || !A.password)) return refuse(`STAGING_E2E_EMAIL and STAGING_E2E_PASSWORD (one confirmed hushmallow-staging test account) are not set: ${opts.steps.filter((s) => A_STEPS.includes(s)).join(', ')} sign in with it. Nothing was sent.`);
-  if (A.email && !emailShape(A.email)) return refuse('STAGING_E2E_EMAIL is not an email address');
-  if (!!C.email !== !!C.password) return refuse('STAGING_E2E_C_EMAIL and STAGING_E2E_C_PASSWORD go together (the second test account, for the declines)');
-  if (C.email && !emailShape(C.email)) return refuse('STAGING_E2E_C_EMAIL is not an email address');
-  if (C.email && C.email.toLowerCase() === A.email.toLowerCase()) return refuse('STAGING_E2E_C_EMAIL must be a second account, not STAGING_E2E_EMAIL');
+  if (needA && (!A.email || !A.password)) return refuse(`REHEARSAL_A_EMAIL and REHEARSAL_A_PASSWORD (E2E-A, one confirmed hushmallow-staging test account of the rehearsal's own) are not set: ${opts.steps.filter((s) => A_STEPS.includes(s)).join(', ')} sign in with it${B ? ' (STAGING_E2E_EMAIL is the sandbox driver\'s E2E-B and is never used here)' : ''}. Nothing was sent.`);
+  if (A.email && !emailShape(A.email)) return refuse('REHEARSAL_A_EMAIL is not an email address');
+  if (!!C.email !== !!C.password) return refuse('REHEARSAL_C_EMAIL and REHEARSAL_C_PASSWORD go together (the second test account, for the declines)');
+  if (C.email && !emailShape(C.email)) return refuse('REHEARSAL_C_EMAIL is not an email address');
+  if (C.email && C.email.toLowerCase() === A.email.toLowerCase()) return refuse('REHEARSAL_C_EMAIL must be a second account, not REHEARSAL_A_EMAIL');
+  if (B && [A.email, C.email].some((x) => x && x.toLowerCase() === B)) return refuse(`${A.email.toLowerCase() === B ? 'REHEARSAL_A_EMAIL' : 'REHEARSAL_C_EMAIL'} is the sandbox driver's account (STAGING_E2E_EMAIL, E2E-B): the rehearsal uses accounts of its own (E2E-A, E2E-C), so it never pays or cancels on the sandbox driver's customers. Nothing was sent.`);
   if (signup.email && !emailShape(signup.email)) return refuse('REHEARSAL_SIGNUP_EMAIL is not an email address');
   if (signup.email && [A.email, C.email].filter(Boolean).some((x) => x.toLowerCase() === signup.email.toLowerCase())) return refuse('REHEARSAL_SIGNUP_EMAIL must be a new address, not one of the test accounts');
   if (signup.password && signup.password.length < 8) return refuse('REHEARSAL_SIGNUP_PASSWORD must be at least 8 characters');
@@ -258,21 +292,32 @@ function createLog({ env = {}, write = (l) => console.log(l) } = {}) {
   };
 }
 
-/** What /v1/health says: { reachable, refuse, ok, why, fields } (refuse: anything but Stripe test mode, or a live approval). */
+/** The model provider that is the real one (server/another-angle/src/config.js: PROVIDER mock, else anthropic). */
+const REAL_PROVIDER = 'anthropic';
+
+/**
+ * What /v1/health says: { reachable, refuse, ok, why, fields, realModel } (refuse: anything but Stripe test mode, or a
+ * live approval). realModel: the Worker answers angles with the real model (its provider, not mock, and its key set);
+ * R5 needs it, the billing steps do not.
+ */
 function judgeHealth(status, json, expected = null) {
   if (status !== 200 || !json || typeof json !== 'object') {
-    return { reachable: false, refuse: null, ok: false, why: status ? `/v1/health answered ${status}` : 'the staging Worker did not answer /v1/health', fields: null };
+    return { reachable: false, refuse: null, ok: false, why: status ? `/v1/health answered ${status}` : 'the staging Worker did not answer /v1/health', fields: null, realModel: false, modelWhy: 'the staging Worker did not answer /v1/health' };
   }
   const b = json.billing && typeof json.billing === 'object' ? json.billing : {};
+  const provider = typeof json.provider === 'string' ? json.provider.slice(0, 20) : null;
+  const providerKey = json.configured?.provider_key ?? null;
+  const realModel = provider === REAL_PROVIDER && providerKey === true;
+  const modelWhy = realModel ? '' : provider !== REAL_PROVIDER ? `the staging Worker's provider is ${provider ?? 'not said'} (PROVIDER), not the real model` : 'the staging Worker has no model key (configured.provider_key false)';
   const fields = {
     entitlement_mode: json.entitlement_mode ?? null, configured: b.configured ?? null, webhook: b.webhook ?? null, stripe_mode: b.stripe_mode ?? null,
     live_approved: b.live_approved ?? null, accounts_configured: b.accounts_configured !== false, api_version: b.api_version ?? null,
-    automatic_tax: b.automatic_tax ?? null, provider_key: json.configured?.provider_key ?? null,
+    automatic_tax: b.automatic_tax ?? null, provider, provider_key: providerKey,
     ...(b.key_refused ? { key_refused: String(b.key_refused).slice(0, 40) } : {}),
     ...(b.placeholder_prices ? { placeholder_prices: b.placeholder_prices } : {}), ...(b.duplicate_prices ? { duplicate_prices: b.duplicate_prices } : {}),
   };
-  if (b.stripe_mode != null && b.stripe_mode !== 'test') return { reachable: true, refuse: `the staging Worker reports stripe_mode ${String(b.stripe_mode).slice(0, 12)}: this driver runs in Stripe test mode only`, ok: false, why: '', fields };
-  if (b.live_approved === true) return { reachable: true, refuse: 'the staging Worker reports live_approved true: this driver runs in Stripe test mode only', ok: false, why: '', fields };
+  if (b.stripe_mode != null && b.stripe_mode !== 'test') return { reachable: true, refuse: `the staging Worker reports stripe_mode ${String(b.stripe_mode).slice(0, 12)}: this driver runs in Stripe test mode only`, ok: false, why: '', fields, realModel, modelWhy };
+  if (b.live_approved === true) return { reachable: true, refuse: 'the staging Worker reports live_approved true: this driver runs in Stripe test mode only', ok: false, why: '', fields, realModel, modelWhy };
   const problems = [];
   if (json.ok !== true) problems.push('ok is not true');
   if (json.entitlement_mode !== 'billing+testing') problems.push(`entitlement_mode ${json.entitlement_mode}`);
@@ -286,7 +331,7 @@ function judgeHealth(status, json, expected = null) {
   if (b.duplicate_prices) problems.push('duplicate_prices');
   if (expected && b.api_version !== expected.api_version) problems.push(`api_version ${b.api_version} (wrangler.toml: ${expected.api_version})`);
   if (expected && b.automatic_tax !== expected.automatic_tax) problems.push(`automatic_tax ${b.automatic_tax} (wrangler.toml: ${expected.automatic_tax})`);
-  return { reachable: true, refuse: null, ok: !problems.length, why: problems.join(', '), fields };
+  return { reachable: true, refuse: null, ok: !problems.length, why: problems.join(', '), fields, realModel, modelWhy };
 }
 
 /** public-config.js (tools/build-site.sh writes it) → its object, or null. */
@@ -346,14 +391,26 @@ function hasLive(v, depth = 0) {
 }
 
 const TERMINAL = Object.freeze(['canceled', 'incomplete_expired']);
-/** From a Stripe list of subscriptions: the ids this run may cancel (test mode, created since `sinceSec`, still running). */
-function subsToCancel(list, sinceSec) {
-  if (hasLive(list)) throw new LiveStop('a subscription with livemode true was listed');
-  return (Array.isArray(list) ? list : []).filter((s) => s && s.object === 'subscription' && typeof s.id === 'string' && /^sub_[A-Za-z0-9]{4,250}$/.test(s.id)
-    && s.livemode === false && Number(s.created) >= sinceSec && !TERMINAL.includes(s.status)).map((s) => s.id);
-}
 /** A Stripe id from a field that may be expanded. */
 const idOf = (v) => (typeof v === 'string' ? v : v && typeof v.id === 'string' ? v.id : null);
+/**
+ * The teardown's choice for one Checkout Session this run opened (and the subscription it names, once read):
+ * { cancel: 'sub_…' } or { cancel: null, why, done? }. Only that session's own subscription, both in test mode, the
+ * session holding the test account's id (when known), the subscription made since the run started (no margin before
+ * it) and still running. Nothing else is ever looked for. Any livemode true: LiveStop.
+ */
+function teardownPick(session, sub, { uid = null, sinceSec } = {}) {
+  if (hasLive(session) || hasLive(sub)) throw new LiveStop('a Checkout Session or subscription with livemode true was read');
+  if (!session || session.object !== 'checkout.session' || session.livemode !== false) return { cancel: null, why: 'not a test-mode Checkout Session' };
+  if (uid && session.client_reference_id !== uid && session.metadata?.user_id !== uid) return { cancel: null, why: 'the session is not the test account’s' };
+  const subId = idOf(session.subscription);
+  if (!subId) return { cancel: null, why: 'no subscription (not paid)', done: true };
+  if (!sub || sub.object !== 'subscription' || sub.id !== subId || !/^sub_[A-Za-z0-9]{4,250}$/.test(sub.id) || sub.livemode !== false) return { cancel: null, why: 'its subscription could not be read in test mode' };
+  if (idOf(sub.customer) !== idOf(session.customer)) return { cancel: null, why: 'its subscription is another customer’s' };
+  if (!(Number(sub.created) >= sinceSec)) return { cancel: null, why: 'its subscription was made before this run started' };
+  if (TERMINAL.includes(sub.status)) return { cancel: null, why: `already ${sub.status}`, done: true };
+  return { cancel: sub.id };
+}
 /** A path with its object ids taken out, for a message. */
 const bare = (p) => String(p).split('?')[0].replace(/\b[a-z]{2,8}_[A-Za-z0-9_]{6,}/g, '…');
 
@@ -379,8 +436,10 @@ function recorder(host) {
 async function until(fn, timeout, every = 250) {
   const end = Date.now() + timeout;
   for (;;) {
+    checkpoint();
     let v;
     try { v = await fn(); } catch { v = undefined; }
+    checkpoint();
     if (v) return v;
     if (Date.now() >= end) return null;
     await sleep(every);
@@ -510,12 +569,12 @@ async function main(argv = process.argv.slice(2), env = process.env, { write = (
   const baseHost = new URL(pre.base).host, workerHost = new URL(pre.worker).host;
   const X = {
     opts, repo, pre, log, out, baseHost, workerHost, local: pre.local, base: pre.base, worker: pre.worker,
-    startMs: Date.now(), sessions: [], uids: {}, live: false, stopped: null, page: null,
-    workerUp: false, billingReady: false, signInReady: false, beyondA: false, ctxA: null, pageA: null, shots: 0,
+    startMs: Date.now(), sessions: [], uids: {}, live: false, stopped: null, interrupted: null, interruptStep: null,
+    workerUp: false, billingReady: false, signInReady: false, realModel: false, modelWhy: 'R0 did not read /v1/health',
+    beyondA: false, cancelAttempted: false, s12: null, ctxA: null, pageA: null, shots: 0, teardownP: null, teardownDone: false,
   };
+  bindStepState(X);
   const counts = { PASS: 0, FAIL: 0, SKIP: 0 };
-  let interrupted = false;
-  process.once('SIGINT', () => { interrupted = true; log.info('stopping after this step: the teardown still runs'); });
   write(log.clean(`hushmallow staging rehearsal ${runId}: ${pre.local ? 'LOCAL TEST MODE, ' : ''}${pre.base} · Worker ${pre.local ? '(not contacted)' : pre.worker} · steps ${opts.steps.join(',')} · ${opts.viewport.width}x${opts.viewport.height}`));
 
   let pw;
@@ -525,14 +584,29 @@ async function main(argv = process.argv.slice(2), env = process.env, { write = (
   // its sockets: the browser alone then uses /tmp (the screenshots' folder was chosen above)
   if (os.tmpdir().length > 60 && fs.existsSync('/tmp')) process.env.TMPDIR = '/tmp';
   let browser = null, http = null, refused = false;
-  // the outer `timeout` ends the run with SIGTERM: this run's subscriptions are cancelled first
-  process.once('SIGTERM', () => {
-    log.info('terminated: the teardown runs, then the driver exits');
-    const done = () => process.exit(X.live ? 3 : 1);
-    Promise.race([refused || !http ? Promise.resolve() : teardown(X).catch(() => {}), sleep(90000)]).then(done, done);
-  });
+
+  // Ctrl-C and the outer `timeout`'s SIGTERM are this driver's (Playwright's own handlers are off: they would close the
+  // browser and exit before the teardown): the step running stops at once, the rest are skipped, the teardown runs
+  // once, then the driver exits 1 (3 after a live object). A second signal, or the teardown taking over 150 s, quits at
+  // once with the Checkout Sessions to cancel by hand.
+  const quit = (why) => {
+    log.info(`${why}: quitting at once${X.teardownDone ? '' : `; cancel by hand ${handList(X)}`}`);
+    process.exit(X.live ? 3 : 1);
+  };
+  const onSignal = (sig) => {
+    if (X.interrupted) { quit(`${sig} again`); return; }
+    X.interrupted = sig === 'SIGINT' ? 'interrupted (Ctrl-C)' : `terminated (${sig}, the outer timeout)`;
+    log.info(`${X.interrupted}: the step running stops now, the rest are skipped, then the teardown runs${sig === 'SIGINT' ? ' (Ctrl-C again quits at once)' : ''}`);
+    X.interruptStep?.(X.interrupted);
+    setTimeout(() => quit('the teardown did not finish within 150 s of the signal'), 150000).unref();
+  };
+  const handlers = { SIGINT: () => onSignal('SIGINT'), SIGTERM: () => onSignal('SIGTERM'), SIGHUP: () => onSignal('SIGHUP') };
+  for (const [sig, fn] of Object.entries(handlers)) process.on(sig, fn);
   try {
-    browser = await pw.chromium.launch({ ...(fs.existsSync(CHROMIUM) ? { executablePath: CHROMIUM } : {}), args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader'], ...(proxy ? { proxy } : {}) });
+    browser = await pw.chromium.launch({
+      ...(fs.existsSync(CHROMIUM) ? { executablePath: CHROMIUM } : {}), args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader'], ...(proxy ? { proxy } : {}),
+      handleSIGINT: false, handleSIGTERM: false, handleSIGHUP: false,
+    });
     http = await pw.request.newContext({ ...(proxy ? { proxy } : {}), timeout: 30000 });
     X.browser = browser; X.http = http;
     X.newContext = (extra = {}) => newContext(X, extra);
@@ -540,10 +614,11 @@ async function main(argv = process.argv.slice(2), env = process.env, { write = (
     X.shot = (page, name) => shot(X, page, name);
 
     // R0: always first; a refusal here ends the run before anything is signed in or paid
-    const r0 = await runStep(X, 'R0', () => stepR0(X), counts);
+    const r0 = X.interrupted ? null : await runStep(X, 'R0', () => stepR0(X), counts);
     if (r0 === 'refused') { refused = true; return 2; }
+    if (!r0) { log.skip('R0', `not run: ${X.interrupted}`); counts.SKIP++; }
     for (const id of opts.steps.filter((s) => s !== 'R0')) {
-      if (interrupted && !X.stopped) X.stopped = 'interrupted (Ctrl-C)';
+      if (X.interrupted && !X.stopped) X.stopped = X.interrupted;
       if (X.stopped) { log.skip(id, `not run: ${X.stopped}`); counts.SKIP++; continue; }
       const why = gate(X, id);
       if (why) { log.skip(id, why); counts.SKIP++; continue; }
@@ -552,13 +627,38 @@ async function main(argv = process.argv.slice(2), env = process.env, { write = (
   } catch (e) {
     if (e instanceof LiveStop) { X.live = true; log.fail('', `STOPPED: ${e.message}`); } else { log.fail('', `the driver stopped: ${String(e?.message || e).split('\n')[0]}`); counts.FAIL++; }
   } finally {
-    try { if (http && !refused) await teardown(X); } catch (e) { if (e instanceof LiveStop) { X.live = true; log.fail('teardown', `STOPPED: ${e.message}`); } else { log.fail('teardown', String(e?.message || e).split('\n')[0]); counts.FAIL++; } }
+    try { if (http && !refused) counts.FAIL += await teardown(X); } catch (e) { if (e instanceof LiveStop) { X.live = true; log.fail('teardown', `STOPPED: ${e.message}`); } else { log.fail('teardown', String(e?.message || e).split('\n')[0]); counts.FAIL++; } }
+    X.teardownDone = true;
     if (browser) await browser.close().catch(() => {});
     if (http) await http.dispose().catch(() => {});
+    for (const [sig, fn] of Object.entries(handlers)) process.off(sig, fn);
   }
-  write(log.clean(`\n${counts.PASS} passed, ${counts.FAIL} failed, ${counts.SKIP} skipped${X.shots ? ` · ${X.shots} screenshot(s) of failures in ${out}` : ''}`));
+  write(log.clean(`\n${counts.PASS} passed, ${counts.FAIL} failed, ${counts.SKIP} skipped${X.interrupted ? ` · ${X.interrupted}` : ''}${X.shots ? ` · ${X.shots} screenshot(s) of failures in ${out}` : ''}`));
   write('Still by hand (docs/STAGING.md): the email links (confirm, reset), S10 tax, S13 the custom domain, S14 the Worker log search.');
-  return X.live ? 3 : counts.FAIL ? 1 : 0;
+  return X.live ? 3 : counts.FAIL || X.interrupted ? 1 : 0;
+}
+
+/**
+ * X.page, X.stepId and X.shotTaken belong to the step running (its async context, runStep): work a stopped step left
+ * behind cannot set the next step's page; setting one in a stopped step closes it and throws Cancelled.
+ */
+function bindStepState(X) {
+  Object.defineProperties(X, {
+    page: {
+      get: () => stepToken()?.page ?? null,
+      set: (p) => { const t = stepToken(); if (!t) return; if (t.dead) { p?.close?.().catch(() => {}); throw new Cancelled(`${t.id} was stopped (${t.dead})`); } t.page = p; },
+    },
+    stepId: { get: () => stepToken()?.id ?? null },
+    shotTaken: { get: () => !!stepToken()?.shotTaken, set: (v) => { const t = stepToken(); if (t) t.shotTaken = !!v; } },
+  });
+  return X;
+}
+
+/** The Checkout Sessions this run opened, for a person to cancel their subscriptions by hand. */
+function handList(X) {
+  const ids = [...new Set((X.sessions || []).map((s) => s.id))].filter((id) => !X.handled?.has(id));
+  if (ids.length) return `the subscriptions of this run's Checkout Sessions (the sandbox → Payments → Checkout Sessions): ${ids.join(', ')}`;
+  return (X.sessions || []).length ? 'nothing left (the teardown saw to each Checkout Session of this run)' : 'nothing (no Checkout Session was opened)';
 }
 
 /** Why a step cannot run now (a SKIP line), or null. */
@@ -570,37 +670,80 @@ function gate(X, id) {
     if (!X.billingReady) return 'R0: billing on the staging Worker is not ready (or its test mode could not be confirmed)';
     if (!X.pre.returnsHere) return `Stripe sends people back to the staging Worker's APP_ORIGIN (${X.repo.appOrigin}), not to ${X.base}`;
   }
-  if (id === 'R4' && !X.pre.C) return 'STAGING_E2E_C_EMAIL / STAGING_E2E_C_PASSWORD (E2E-C) are not set';
+  if (id === 'R4' && !X.pre.C) return 'REHEARSAL_C_EMAIL / REHEARSAL_C_PASSWORD (E2E-C) are not set';
+  // R7 changes and cancels a subscription: only the one this run's R3 bought, never a plan E2E-A held before
+  if (id === 'R7' && !X.beyondA) return 'E2E-A has no plan this run bought (R3 did not run or did not pass): R7 only ever changes a subscription this run created';
   if (id === 'R4' && !X.signInReady) return 'R0: the preview has no working staging sign-in';
   if (id === 'R5' && !X.workerUp) return 'R0: the staging Worker did not answer';
   return null;
 }
 
-async function runStep(X, id, fn, counts) {
-  X.page = null; X.stepId = id; X.shotTaken = false;
-  let timer;
+/**
+ * One step, in its own async context (STEP), within its time budget. A step out of time or interrupted (Ctrl-C,
+ * SIGTERM) is stopped, not only no longer waited for: it is marked dead (each of its later waits throws Cancelled),
+ * the browsers and pages it opened and the page it was on are closed, and its work is given SETTLE_MS to end before
+ * the next step starts. → 'PASS' | 'FAIL' | 'SKIP' | 'refused'.
+ */
+async function runStep(X, id, fn, counts, budgetMs = BUDGET[id]) {
+  const token = { id, dead: null, page: null, pages: new Set(), contexts: new Set(), shotTaken: false };
+  const t0 = Date.now();
+  let timer, stop;
+  const stopper = new Promise((_, rej) => {
+    stop = (err) => { if (!token.dead) token.dead = err.abandon; rej(err); };
+    timer = setTimeout(() => stop(Object.assign(new Fail(`took longer than ${budgetMs / 1000} s`), { abandon: 'out of time' })), budgetMs);
+  });
+  X.interruptStep = (why) => stop(Object.assign(new Fail(`${why} after ${Math.round((Date.now() - t0) / 1000)} s: not finished`), { abandon: why }));
+  const work = STEP.run(token, fn);
+  // what a stopped step does after it lost: only a live-mode object still counts (then everything stops)
+  work.catch((e) => { if (token.dead && e instanceof LiveStop) { X.live = true; X.stopped = 'a live-mode object was read'; X.log.fail(id, `STOPPED AT ONCE (after it was stopped): ${e.message}`); } });
   try {
-    const r = await Promise.race([fn(), new Promise((_, rej) => { timer = setTimeout(() => rej(Object.assign(new Fail(`took longer than ${BUDGET[id] / 1000} s`), { timeout: true })), BUDGET[id]); })]);
+    const r = await Promise.race([work, stopper]);
     if (r?.refuse) { X.log.refused(`${id}: ${r.refuse}`); return 'refused'; }
     if (r?.status === 'SKIP') { X.log.skip(id, r.reason); counts.SKIP++; return 'SKIP'; }
-    if (r?.status === 'FAIL') { X.log.fail(id, r.reason); counts.FAIL++; if (X.page && !X.shotTaken) await X.shot(X.page, id); return 'FAIL'; }
+    if (r?.status === 'FAIL') { X.log.fail(id, r.reason); counts.FAIL++; if (token.page && !token.shotTaken) await X.shot(token.page, id); return 'FAIL'; }
     X.log.pass(id, r?.reason || ''); counts.PASS++;
     return 'PASS';
   } catch (e) {
     if (e instanceof LiveStop) { X.live = true; X.stopped = 'a live-mode object was read'; X.log.fail(id, `STOPPED AT ONCE: ${e.message}`); counts.FAIL++; return 'FAIL'; }
     const msg = String(e?.message || e).split('\n')[0];
     X.log.fail(id, msg); counts.FAIL++;
-    if (X.page && !X.shotTaken) await X.shot(X.page, id);
-    // a step out of time may still be acting on its page: that page goes, so it can never touch the next step's
-    if (e?.timeout && X.page) { const gone = X.page; if (gone === X.pageA) X.pageA = null; await gone.close().catch(() => {}); }
+    if (token.page && !token.shotTaken) await X.shot(token.page, id);
+    if (e?.abandon) await abandon(X, token, work);
     if (e?.stop) X.stopped = `stopped after ${id}`;
     return 'FAIL';
-  } finally { clearTimeout(timer); }
+  } finally { clearTimeout(timer); X.interruptStep = null; }
+}
+
+/** A stopped step's browsers and pages close (E2E-A's goes too when it was this step's: the next step signs in again). */
+async function abandon(X, token, work) {
+  for (const ctx of token.contexts) { if (ctx === X.ctxA) { X.ctxA = null; X.pageA = null; } await ctx.close().catch(() => {}); }
+  for (const p of new Set([...token.pages, token.page].filter(Boolean))) { if (p === X.pageA) X.pageA = null; await p.close().catch(() => {}); }
+  let t;
+  await Promise.race([work.then(() => {}, () => {}), new Promise((r) => { t = setTimeout(r, SETTLE_MS); })]);
+  clearTimeout(t);   // else it holds the driver open after the run
+}
+
+/** A new page in ctx, as the step's own (closed with it if the step is stopped). */
+async function newPage(ctx) {
+  checkpoint();
+  const p = await ctx.newPage();
+  const t = stepToken();
+  if (t) {
+    t.pages.add(p);
+    if (t.dead) { await p.close().catch(() => {}); checkpoint(); }
+  }
+  return p;
 }
 
 async function newContext(X, extra = {}) {
+  checkpoint();
   const { width, height } = X.opts.viewport;
   const ctx = await X.browser.newContext({ viewport: { width, height }, deviceScaleFactor: 2, hasTouch: true, isMobile: width < 900, ...extra });
+  const t = stepToken();
+  if (t) {
+    t.contexts.add(ctx);
+    if (t.dead) { await ctx.close().catch(() => {}); checkpoint(); }
+  }
   await ctx.addInitScript(recorder, X.baseHost);
   // the Worker's answers this browser received (paths and statuses; the bodies of the few the steps read)
   const net = [], reqs = [];
@@ -623,14 +766,14 @@ async function newContext(X, extra = {}) {
 async function inContext(X, fn) {
   const ctx = await X.newContext();
   try { return await fn(ctx); } catch (e) {
-    if (!(e instanceof LiveStop) && X.page && !X.page.isClosed()) { await X.shot(X.page, X.stepId || 'step'); X.shotTaken = true; }
+    if (!(e instanceof LiveStop) && !(e instanceof Cancelled) && X.page && !X.page.isClosed()) { await X.shot(X.page, X.stepId || 'step'); X.shotTaken = true; }
     throw e;
   } finally { await ctx.close().catch(() => {}); }
 }
 
 async function shot(X, page, name) {
   try {
-    if (!page || page.isClosed()) return;
+    if (!page || page.isClosed() || stepToken()?.dead) return;
     fs.mkdirSync(X.out, { recursive: true });
     const mask = [page.locator('input'), page.locator('textarea'), page.locator('[data-email]'), page.locator('.hm-account-strong'), page.locator('.hm-auth-lede strong'),
       ...X.log.secrets().filter((s) => s.length >= 4 && !/%/.test(s)).map((s) => page.getByText(s, { exact: false }))];
@@ -652,10 +795,12 @@ async function httpGet(X, url, headers = {}) {
 /** Stripe's API with the driver's test key (read-only checks, and cancelling this run's own subscriptions). */
 function stripeApi(http, key, version) {
   async function call(method, p, params) {
+    checkpoint();
     let url = `https://api.stripe.com${p}`;
     if (params) url += `?${new URLSearchParams(params)}`;
     let r;
-    try { r = await http.fetch(url, { method, headers: { authorization: `Bearer ${key}`, 'stripe-version': version }, timeout: 30000, failOnStatusCode: false }); } catch { return { ok: false, status: 0, data: null, code: 'network' }; }
+    try { r = await http.fetch(url, { method, headers: { authorization: `Bearer ${key}`, 'stripe-version': version }, timeout: 30000, failOnStatusCode: false }); } catch { checkpoint(); return { ok: false, status: 0, data: null, code: 'network' }; }
+    checkpoint();
     let data = null;
     try { data = await r.json(); } catch { data = null; }
     if (hasLive(data)) throw new LiveStop(`a Stripe object read from ${method} ${bare(p)} has livemode true`);
@@ -676,6 +821,7 @@ async function stepR0(X) {
     if (j.refuse) return { refuse: j.refuse };
     X.workerUp = j.reachable;
     X.billingReady = j.reachable && j.ok;
+    X.realModel = j.realModel; X.modelWhy = j.modelWhy;   // R5's, not R0's: the billing steps need no model
     if (!j.reachable) problems.push(j.why);
     else if (!j.ok) problems.push(`/v1/health: ${j.why}`);
     if (j.fields) said.push(`/v1/health ${JSON.stringify(j.fields)}`);
@@ -685,7 +831,7 @@ async function stepR0(X) {
   const ver = v.json?.v && /^[0-9a-zA-Z_-]+$/.test(v.json.v) ? v.json.v : null;
   const pub = ver ? parsePublicConfig((await httpGet(X, `${X.base}/v/${ver}/src/auth/public-config.js`)).text) : null;
   const refused = await inContext(X, async (ctx) => {
-    const page = await ctx.newPage();
+    const page = await newPage(ctx);
     X.page = page;
     await page.goto(`${X.base}/`, { timeout: 90000 });
     await waitApp(page);
@@ -713,7 +859,7 @@ async function stepR1(X) {
   const { repo } = X;
   const P = repo.billingPrices;
   return inContext(X, async (ctx) => {
-    const page = await ctx.newPage();
+    const page = await newPage(ctx);
     X.page = page;
     // locally web billing is switched on with the app's own ?billingDev= (a port nothing listens on: a guest sends nothing)
     await page.goto(X.local ? `${X.base}/?billingDev=${X.opts.localBillingPort}` : `${X.base}/`, { timeout: 90000 });
@@ -792,7 +938,7 @@ async function ensureA(X, { announce = true } = {}) {
     if (st === 'signed-in') { X.page = X.pageA; return X.pageA; }
   }
   if (!X.ctxA) X.ctxA = await X.newContext();
-  const page = X.pageA && !X.pageA.isClosed() ? X.pageA : await X.ctxA.newPage();
+  const page = X.pageA && !X.pageA.isClosed() ? X.pageA : await newPage(X.ctxA);
   X.pageA = page; X.page = page;
   await page.goto(`${X.base}/`, { timeout: 90000 });
   await waitApp(page);
@@ -807,7 +953,7 @@ async function ensureA(X, { announce = true } = {}) {
 async function stepR2(X) {
   const said = [];
   if (!X.ctxA) X.ctxA = await X.newContext();
-  const page = await X.ctxA.newPage();
+  const page = await newPage(X.ctxA);
   X.pageA = page; X.page = page;
   await page.goto(`${X.base}/`, { timeout: 90000 });
   await waitApp(page);
@@ -827,7 +973,7 @@ async function stepR2(X) {
   said.push('Settings → Privacy: "Your account · Signed in as …" with Manage');
   if (X.pre.signup) {
     await inContext(X, async (ctx) => {
-      const p = await ctx.newPage();
+      const p = await newPage(ctx);
       X.page = p;
       await p.goto(`${X.base}/`, { timeout: 90000 });
       await waitApp(p);
@@ -946,6 +1092,8 @@ async function toCheckout(X, page, plan = 'ultra', who = 'A') {
   if (v.live) throw new LiveStop(`Checkout opened a live session (${v.why})`);
   if (!v.ok) throw new Fail(`refused at once, nothing was typed: ${v.why}`, { stop: true });
   X.sessions.push({ id: v.id, who, at: Date.now() });
+  // printed as it opens: if the run is killed, these are what to cancel by hand (the teardown cancels their subscriptions)
+  X.log.info(`E2E-${who}: Checkout Session ${v.id} opened`);
   return v;
 }
 
@@ -1019,7 +1167,7 @@ async function confirmCustomer(X, sessionId) {
 async function alreadySubscribed(X) {
   return inContext(X, async (ctx) => {
     await ctx.route((u) => u.host === X.workerHost && u.pathname === '/v1/billing/status', (r) => r.abort('failed'));
-    const p = await ctx.newPage();
+    const p = await newPage(ctx);
     X.page = p;
     await p.goto(`${X.base}/`, { timeout: 90000 });
     await waitApp(p);
@@ -1045,7 +1193,7 @@ async function stepR4(X) {
   const { repo } = X;
   const said = [];
   return inContext(X, async (ctx) => {
-    const page = await ctx.newPage();
+    const page = await newPage(ctx);
     X.page = page;
     await page.goto(`${X.base}/`, { timeout: 90000 });
     await waitApp(page);
@@ -1163,6 +1311,8 @@ async function playThrough(X, page, done, timeout) {
 async function stepR5(X) {
   const { repo } = X;
   const said = [];
+  // the real staging model, or nothing: a Worker on PROVIDER=mock answers too, and its angle would pass for the model's
+  need(X.realModel, `${X.modelWhy}: R5 checks the real staging model only`);
   const page = await ensureA(X);
   const tier = await refreshTier(page);
   if (tier !== 'ultra') return { status: 'SKIP', reason: `E2E-A has no ${repo.plans.ultra} (${tier}): Another Angle needs it (R3 gives it)` };
@@ -1242,23 +1392,39 @@ async function stepR6(X) {
   said.push(`"Keep with my account": ${(await syncSwitches(page)).join(', ')}`);
   const ver = await pageVersion(page);
   need(ver, 'the page’s version folder could not be read');
-  const tFav = await page.evaluate(() => Date.now());
-  const favs = await page.evaluate(async ({ ver, id }) => {
+  // every start and end of the app's opt-in sync from now on (src/auth/autosync.js onChange), with the page's clock
+  const listening = await page.evaluate(() => {
+    const a = window.__hush.auth.autosync;
+    if (!a?.onChange) return false;
+    window.__rhSync = [];
+    a.onChange((st) => window.__rhSync.push({ at: Date.now(), running: !!st.running, last: st.last ?? null, error: st.error ?? null }));
+    return true;
+  });
+  need(listening, 'the app’s opt-in sync is not running on this page (src/auth/autosync.js)');
+  const { tFav, favs } = await page.evaluate(async ({ ver, id }) => {
     const m = await import(`/v/${ver}/src/engine/flow-store.js`);
+    const tFav = Date.now();
     // a favourite from an earlier run is set again, so the opt-in sync has a change to send now
     if (m.isFavouriteWorld(window.__hush.store, id)) m.toggleFavouriteWorld(window.__hush.store, id);
     m.toggleFavouriteWorld(window.__hush.store, id);
-    return m.favouriteWorlds(window.__hush.store);
+    return { tFav, favs: m.favouriteWorlds(window.__hush.store) };
   }, { ver, id: WORLD });
   need(favs.includes(WORLD), `${WORLD} is not a favourite`);
-  // the opt-in sync sends a change a few seconds later (src/auth/autosync.js DEBOUNCE_MS): its own run, waited for
-  const synced = await until(() => page.evaluate((t) => { const s = window.__hush.auth.autosync?.state; return !!s && !s.running && Number(s.last) > t; }, tFav), 30000, 500);
-  need(synced, `the opt-in sync did not send the favourite within 30 s (${await page.evaluate(() => window.__hush.auth.autosync?.state?.error || 'no error said').catch(() => '?')})`);
-  said.push(`favourite world ${WORLD} (through the app's flow-store, as the side panel's Favourite button does), sent by the app's own sync`);
+  // the favourite is sent by a run that BEGAN after it (a run already going when it was set only queues one more, a few
+  // seconds later: DEBOUNCE_MS), and that run ended well; only then does this page close
+  const synced = await until(() => page.evaluate((t) => {
+    const ev = window.__rhSync || [];
+    const i = ev.findIndex((e) => e.running && e.at > t);
+    if (i < 0) return null;
+    const end = ev.slice(i + 1).find((e) => !e.running);
+    return end ? { ok: !end.error && Number(end.last) >= ev[i].at, error: end.error, ms: end.at - t } : null;
+  }, tFav), 30000, 500);
+  need(synced?.ok, `the opt-in sync did not send the favourite within 30 s (${synced ? `its run after the favourite ended with ${synced.error || 'no success'}` : 'no run began after the favourite'})`);
+  said.push(`favourite world ${WORLD} (through the app's flow-store, as the side panel's Favourite button does), sent by a run of the app's own sync that began after it (done ${synced.ms} ms later)`);
   const before = await page.evaluate(() => ({ uid: window.__hush.auth.user()?.id || null, tier: window.__hush.ent.tier() }));
   // come back: a new page in the same browser
   await page.close();
-  page = await X.ctxA.newPage();
+  page = await newPage(X.ctxA);
   X.pageA = page; X.page = page;
   await page.goto(`${X.base}/`, { timeout: 90000 });
   await waitApp(page);
@@ -1329,6 +1495,16 @@ async function stepR7(X) {
   const page = await ensureA(X);
   const tier = await refreshTier(page);
   if (tier === 'none') return { status: 'SKIP', reason: 'E2E-A has no plan to manage (R3 gives it one)' };
+  // S12's first half, while this run's plan still renews (R8 judges it, after this step's cancel)
+  if (X.opts.steps.includes('R8')) {
+    try {
+      X.s12 = { ...(await readDeleteScreen(X, page)), expect: X.beyondA && !X.cancelAttempted };
+      said.push('the delete screen read while the plan renews (R8 judges it)');
+    } catch (e) {
+      if (e instanceof LiveStop || e instanceof Cancelled) throw e;
+      X.s12 = { error: String(e?.message || e).split('\n')[0] };
+    }
+  }
   // switch to hushmallow Flow
   const text = await toPortal(X, page);
   need(text.includes(repo.plans.ultra) || text.includes(repo.plans.paid), 'the portal does not name the plan');
@@ -1359,7 +1535,8 @@ async function stepR7(X) {
   const p1 = await planRow(page);
   need(flow && p1.name === repo.plans.paid, `back from the portal the app shows ${p1.name || 'nothing'}, not ${repo.plans.paid} (if the portal schedules a downgrade at the period end, B6/D8, the switch waits until then)`);
   said.push(`switched to ${repo.plans.paid} there; back: Settings → Plan: ${p1.name}`);
-  // cancel at the period end
+  // cancel at the period end (from here on, whether the plan still renews is the app's to say: R8)
+  X.cancelAttempted = true;
   await toPortal(X, page);
   await clickFirst(page, [/^cancel (plan|subscription)$/i]);
   await sleep(1500);
@@ -1381,87 +1558,141 @@ async function stepR7(X) {
 }
 
 // ----------------------------------------------------------------------------------------------------- R8 --
-async function stepR8(X) {
-  const { repo } = X;
-  const page = await ensureA(X);
+/**
+ * The delete screen as it shows now (S12): { billing, notTouched, cancelFirst, unchecked, submitOff, renewing,
+ * goesAhead }, then left by "Keep my account". tryWord: when no plan renews, the word is typed to see whether Delete
+ * turns on (goesAhead), then cleared; nothing is ever submitted here. stay: the screen is left open with the word
+ * typed (R8 with --delete-account).
+ */
+async function readDeleteScreen(X, page, { tryWord = false, stay = false } = {}) {
   const v = await openAccountScreen(page);
   need(v === 'account', `the account screen shows ${v}`);
   await tapEl(page, '[data-act="delete"]');
   need(await waitView(page, ['delete'], 20000), 'Delete my account did not open the delete screen');
   await sleep(3000);   // its check with the billing server (D9)
   const ver = await pageVersion(page);
-  const st = await page.evaluate(async (ver) => {
+  const st = await page.evaluate(async ({ ver, line }) => {
     const m = await import(`/v/${ver}/src/app/scenes/account.js`);
+    const n = (x) => String(x || '').replace(/\s+/g, ' ').trim();
+    const facts = n([...document.querySelectorAll('[data-auth-view="delete"] .hm-account-facts')].map((e) => e.innerText).join('\n'));
     return {
-      facts: [...document.querySelectorAll('[data-auth-view="delete"] .hm-account-facts')].map((e) => e.innerText).join('\n'),
+      billing: !!window.__hush.billing, notTouched: facts.includes(n(line)),
       cancelFirst: !!document.querySelector('[data-cancel-first]'), unchecked: !!document.querySelector('[data-unchecked]'),
-      submitOff: document.querySelector('[data-act="delete-confirm"]')?.disabled === true,
-      billing: !!window.__hush.billing, renewing: m.renewingWebPlan(window.__hush),
+      submitOff: document.querySelector('[data-act="delete-confirm"]')?.disabled === true, renewing: m.renewingWebPlan(window.__hush),
     };
-  }, ver);
-  const said = [];
-  if (st.billing) {
-    need(norm(st.facts).includes(norm(repo.webPlanNotTouched)), '"Not touched" does not say to cancel a web subscription first');
-    said.push('"Not touched": "…deleting your account doesn’t cancel it, so cancel it first in Settings → Manage subscription"');
+  }, { ver, line: X.repo.webPlanNotTouched });
+  st.goesAhead = null;
+  if (tryWord && !st.renewing && st.submitOff) {
+    const input = page.locator('[data-auth-view="delete"] input[name="confirm"]');
+    await input.fill(X.repo.deleteWord);
+    st.goesAhead = !!(await until(() => page.evaluate(() => document.querySelector('[data-act="delete-confirm"]')?.disabled === false), 8000));
+    if (!stay) await input.fill('');
+  }
+  if (!stay) await tapEl(page, '[data-act="cancel"]');
+  return st;
+}
+
+/**
+ * S12 from the delete screen: `now` (R8's look) and `before` (R7's, while this run's plan still renewed, before its
+ * cancel; { error } when that look failed; null when R7 did not look). expectNow, before.expect: this run's plan is
+ * known to renew then (R3 bought it and nothing has tried to cancel it). With no renewing plan seen at all, S12's
+ * point ("Cancel your subscription first" while a plan renews) is not checked: SKIP, never PASS.
+ * → { status: 'PASS' | 'FAIL' | 'SKIP', reason }.
+ */
+function judgeS12({ now, before = null, expectNow = false, cancelFirstTitle = 'Cancel your subscription first' }) {
+  const bad = [], said = [];
+  if (now.billing) {
+    if (!now.notTouched) bad.push('"Not touched" does not say to cancel a web subscription first');
+    else said.push('"Not touched": "…deleting your account doesn’t cancel it, so cancel it first in Settings → Manage subscription"');
   } else said.push('web billing off here: "Not touched" as before (the App Store line)');
-  if (st.renewing) {
-    need(st.cancelFirst && st.submitOff, `the plan renews, but "${repo.cancelFirstTitle}" is ${st.cancelFirst ? 'there and Delete is on' : 'not there'}`);
-    said.push(`the plan renews: "${repo.cancelFirstTitle}" first, Delete off`);
+  if (!now.submitOff) bad.push('Delete my account is on before the word is typed');
+  let renewSeen = false;
+  const renewingHalf = (st, when) => {
+    renewSeen = true;
+    if (!st.cancelFirst) bad.push(`${when} the plan renewed, but "${cancelFirstTitle}" was not there`);
+    else if (!st.submitOff) bad.push(`${when} the plan renewed and "${cancelFirstTitle}" showed, but Delete was on`);
+    else said.push(`${when} the plan renewed: "${cancelFirstTitle}" first, Delete off`);
+  };
+  if (now.renewing) {
+    renewingHalf(now, 'now');
+    said.push('the half after a cancel is not checked (R7 cancels)');
   } else {
-    need(!st.cancelFirst, `"${repo.cancelFirstTitle}" shows, yet the plan does not renew`);
-    need(!st.unchecked || !st.billing, 'the delete screen could not check for a subscription');
-    said.push(st.billing ? 'no renewing plan: no "Cancel your subscription first" step' : 'no web plan here');
+    if (expectNow) bad.push('this run’s plan renews, yet the delete screen says it does not');
+    if (now.cancelFirst) bad.push(`"${cancelFirstTitle}" shows, yet no plan renews`);
+    if (now.billing && now.unchecked) bad.push('the delete screen could not check for a subscription');
+    if (before?.error) bad.push(`R7's look at the delete screen while the plan renewed failed: ${before.error}`);
+    else if (before?.renewing) renewingHalf(before, 'in R7, before its cancel,');
+    else if (before?.expect) bad.push('in R7, before its cancel, this run’s plan renewed, yet the delete screen said it did not');
+    if (renewSeen) {
+      if (now.goesAhead === true) said.push('after the cancel at the period end: no cancel-first step, and Delete turns on once the word is typed (cleared again)');
+      else if (now.goesAhead === false) bad.push('after the cancel at the period end, Delete stays off with the word typed');
+    }
   }
-  need(st.submitOff, 'Delete my account is on before the word is typed');
-  if (!X.opts.deleteAccount) {
-    await tapEl(page, '[data-act="cancel"]');
-    said.push('nothing deleted (no --delete-account)');
-    return { reason: said.join('; ') };
-  }
-  need(!st.renewing, '--delete-account: the plan still renews, so the app refuses (cancel it first)');
-  await page.locator('[data-auth-view="delete"] input[name="confirm"]').fill(repo.deleteWord);
+  if (bad.length) return { status: 'FAIL', reason: bad.join('; ') };
+  if (!renewSeen) return { status: 'SKIP', reason: `S12 not checked: no plan renewed in this run (R3 buys one, and R8 runs before or R7 looks before cancelling); seen: ${said.join('; ')}` };
+  return { status: 'PASS', reason: said.join('; ') };
+}
+
+async function stepR8(X) {
+  const page = await ensureA(X);
+  const del = X.opts.deleteAccount;
+  const now = await readDeleteScreen(X, page, { tryWord: true, stay: del });
+  const j = judgeS12({ now, before: X.s12, expectNow: X.beyondA && !X.cancelAttempted, cancelFirstTitle: X.repo.cancelFirstTitle });
+  if (!del) return { status: j.status, reason: `${j.reason}; nothing deleted (no --delete-account)` };
+  if (j.status === 'FAIL') { await tapEl(page, '[data-act="cancel"]').catch(() => {}); return j; }
+  need(!now.renewing, '--delete-account: the plan still renews, so the app refuses (cancel it first)');
+  need(now.goesAhead === true, '--delete-account: Delete did not turn on with the word typed');
   const b = await loadStamp(page);
   await tapEl(page, '[data-act="delete-confirm"]');
   need(await until(async () => (await loadStamp(page)) !== b, 60000), 'deleting did not finish');
   await waitApp(page);
   need((await page.evaluate(() => window.__hush.auth.status())) === 'guest', 'after deleting the page is not a guest');
   X.pageA = null;
-  said.push('--delete-account: E2E-A deleted (a guest again)');
-  return { reason: said.join('; ') };
+  return { status: j.status, reason: `${j.reason}; --delete-account: E2E-A deleted (a guest again)` };
 }
 
 // ----------------------------------------------------------------------------------------------------- teardown --
-async function teardown(X) {
+/** The teardown, once however often it is asked for (the run's end, after a signal): → how many things failed. */
+function teardown(X) {
+  if (!X.teardownP) X.teardownP = STEP.exit(() => tearDown(X));
+  return X.teardownP;
+}
+
+/**
+ * Cancels at once the subscription of each Checkout Session this run opened (teardownPick says which): it never
+ * looks for other subscriptions, by customer, account or time, so another driver's (the sandbox driver's E2E-B test
+ * clocks) or a plan the owner bought by hand is never touched. Only ids are printed.
+ */
+async function tearDown(X) {
   const { log } = X;
-  if (X.local) { log.info('teardown: local test mode, nothing at Stripe'); return; }
+  X.handled = X.handled || new Set();
+  if (X.local) { log.info('teardown: local test mode, nothing at Stripe'); return 0; }
   const ids = [...new Set(X.sessions.map((s) => s.id))];
-  if (!X.stripe) {
-    if (ids.length) log.skip('teardown', `no STRIPE_E2E_KEY: cancel this run's test subscriptions by hand (the sandbox → Subscriptions); its Checkout Sessions: ${ids.join(', ')}`);
-    else log.info('teardown: no Checkout Session was opened, nothing to cancel');
-    return;
-  }
-  const since = Math.floor(X.startMs / 1000) - 60;   // the run's start (a minute for the clocks' difference)
-  const customers = new Set();
+  if (!ids.length) { log.info('teardown: no Checkout Session was opened, nothing to cancel'); return 0; }
+  if (!X.stripe) { log.skip('teardown', `no STRIPE_E2E_KEY: cancel by hand ${handList(X)}`); return 0; }
+  const sinceSec = Math.floor(X.startMs / 1000);
+  let cancelled = 0, failed = 0;
   for (const id of ids) {
+    const who = X.sessions.find((x) => x.id === id)?.who;
     const s = await X.stripe.get(`/v1/checkout/sessions/${id}`);
-    const cus = s.ok ? idOf(s.data.customer) : null;
-    if (cus) customers.add(cus);
-  }
-  for (const uid of [X.uids.A, X.uids.C].filter(Boolean)) {
-    const q = await X.stripe.get('/v1/customers/search', { query: `metadata['user_id']:'${uid}'` });
-    if (q.ok) for (const c of q.data.data || []) if (typeof c.id === 'string') customers.add(c.id);
-  }
-  if (!customers.size) { log.info('teardown: no customer of the test accounts was found, nothing to cancel'); return; }
-  let cancelled = 0;
-  for (const cus of customers) {
-    const r = await X.stripe.get('/v1/subscriptions', { customer: cus, status: 'all', 'created[gte]': String(since), limit: '100' });
-    if (!r.ok) { log.fail('teardown', `the subscriptions of ${cus} could not be listed (${r.status} ${r.code}): cancel them by hand`); continue; }
-    for (const id of subsToCancel(r.data.data, since)) {
-      const d = await X.stripe.del(`/v1/subscriptions/${id}`);
-      if (d.ok) { cancelled++; log.info(`teardown: cancelled ${id}`); } else log.fail('teardown', `${id} not cancelled (${d.status} ${d.code}): cancel it by hand`);
+    if (!s.ok) { failed++; log.fail('teardown', `Checkout Session ${id} could not be read (${s.status} ${s.code}): cancel its subscription by hand`); continue; }
+    const subId = idOf(s.data.subscription);
+    let sub = null;
+    if (subId) {
+      const g = await X.stripe.get(`/v1/subscriptions/${subId}`);
+      if (!g.ok) { failed++; log.fail('teardown', `${subId} (of ${id}) could not be read (${g.status} ${g.code}): cancel it by hand`); continue; }
+      sub = g.data;
     }
+    const pick = teardownPick(s.data, sub, { uid: (who && X.uids[who]) || null, sinceSec });
+    if (!pick.cancel) {
+      if (pick.done) { X.handled.add(id); log.info(`teardown: ${subId || id}: ${pick.why}, nothing to cancel`); } else { failed++; log.fail('teardown', `${subId || id} left alone: ${pick.why} (check it by hand)`); }
+      continue;
+    }
+    const d = await X.stripe.del(`/v1/subscriptions/${pick.cancel}`);
+    if (d.ok) { cancelled++; X.handled.add(id); log.info(`teardown: cancelled ${pick.cancel} (of ${id})`); } else { failed++; log.fail('teardown', `${pick.cancel} not cancelled (${d.status} ${d.code}): cancel it by hand`); }
   }
-  log.info(`teardown: ${cancelled} subscription(s) of this run cancelled; nothing else was touched`);
+  log.info(`teardown: ${cancelled} subscription(s) of this run's ${ids.length} Checkout Session(s) cancelled; nothing else was looked for or touched`);
+  return failed;
 }
 
 const STEP_FNS = { R1: stepR1, R2: stepR2, R3: stepR3, R4: stepR4, R5: stepR5, R6: stepR6, R7: stepR7, R8: stepR8 };
@@ -1469,7 +1700,8 @@ const STEP_FNS = { R1: stepR1, R2: stepR2, R3: stepR3, R4: stepR4, R5: stepR5, R
 module.exports = {
   STEPS, A_STEPS, SECRET_ENV, PRODUCTION_HOSTS, CHECKOUT_HOSTS, CARDS, EVERYDAY, WORLD,
   loadRepo, pickCrisisSentence, parseArgs, preflight, proxyFromEnv, createLog, judgeHealth, parsePublicConfig, judgeAuthConfig,
-  checkoutVerdict, portalVerdict, hasLive, subsToCancel, LiveStop, main,
+  checkoutVerdict, portalVerdict, hasLive, teardownPick, judgeS12, gate, runStep, bindStepState, teardown, handList, checkpoint, sleep, until, newPage, newContext,
+  LiveStop, Cancelled, Fail, STEP, BUDGET, main,
 };
 
 if (require.main === module) {

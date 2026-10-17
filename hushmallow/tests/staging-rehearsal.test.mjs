@@ -1,10 +1,13 @@
 // The staging rehearsal driver (tools/staging/rehearsal.cjs, docs/STAGING.md "Automated rehearsal driver"): its pure
 // parts, offline. The arguments; every refusal R0 makes before any request (production's hosts, the production Worker,
 // a key that is not a test key, the local flag with anything but a loopback base); what it makes of /v1/health, the
-// published sign-in config and Stripe's addresses; that its defaults are the staging ones and never production's; the
-// sentences R5 types; the teardown's choice; and that no secret is ever printed (the log helper, and the driver itself
-// refusing with fake secrets in its environment). The browser part is tools/staging/rehearsal-dryrun.mjs (offline, a
-// local build and the fake sign-in server). Every key-shaped fixture is built at run time (tools/secret-scan.mjs).
+// published sign-in config (and whether its model is the real one) and Stripe's addresses; that its defaults are the
+// staging ones and never production's; that its accounts are its own, never the sandbox driver's E2E-B; the sentences
+// R5 types; the teardown (only the subscriptions of this run's own Checkout Sessions, once); S12's verdict; a step out
+// of time or interrupted being stopped, not only no longer waited for; Playwright's signal handlers off; and that no
+// secret is ever printed (the log helper, and the driver itself refusing with fake secrets in its environment). The
+// browser part, and the signals for real, is tools/staging/rehearsal-dryrun.mjs (offline, a local build and the fake
+// sign-in server). Every key-shaped fixture is built at run time (tools/secret-scan.mjs).
 // Run: node --test hushmallow/tests/staging-rehearsal.test.mjs
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -28,7 +31,8 @@ const D = createRequire(import.meta.url)(DRIVER);
 const repo = await D.loadRepo();
 const opts = (...argv) => { const r = D.parseArgs(argv); assert.ok(r.opts, r.error); return r.opts; };
 const key = (prefix) => `${prefix}_${'Ab3'.repeat(9)}`;
-const ACCOUNT = { STAGING_E2E_EMAIL: 'e2e-a@example.com', STAGING_E2E_PASSWORD: 'gentle-moon-42' };
+const ACCOUNT = { REHEARSAL_A_EMAIL: 'e2e-a@example.com', REHEARSAL_A_PASSWORD: 'gentle-moon-42' };
+const C_ACCOUNT = { REHEARSAL_C_EMAIL: 'e2e-c@example.com', REHEARSAL_C_PASSWORD: 'quiet-harbour-77' };
 const pre = (argv, env = ACCOUNT) => D.preflight({ opts: opts(...argv), env, repo });
 
 test('the defaults are the staging preview and the staging Worker, read from the repository, and never production', () => {
@@ -115,17 +119,34 @@ test('STRIPE_E2E_KEY: test keys only (rk_test_ or sk_test_); a live key, a publi
 });
 
 test('the accounts and the other inputs: refused when missing, half there, the same twice, or out of place', () => {
-  assert.match(pre([], {}).refuse || '', /STAGING_E2E_EMAIL and STAGING_E2E_PASSWORD/);
+  assert.match(pre([], {}).refuse || '', /REHEARSAL_A_EMAIL and REHEARSAL_A_PASSWORD/);
   assert.equal(pre(['--steps', 'R1'], {}).refuse, null, 'a guest needs no account');
-  assert.equal(pre(['--steps', 'R4'], { STAGING_E2E_C_EMAIL: 'e2e-c@example.com', STAGING_E2E_C_PASSWORD: 'quiet-harbour-77' }).refuse, null, 'R4 uses E2E-C only');
-  assert.match(pre([], { ...ACCOUNT, STAGING_E2E_C_EMAIL: 'e2e-c@example.com' }).refuse || '', /go together/);
-  assert.match(pre([], { ...ACCOUNT, STAGING_E2E_C_EMAIL: 'E2E-A@example.com', STAGING_E2E_C_PASSWORD: 'x'.repeat(10) }).refuse || '', /second account/);
+  assert.equal(pre(['--steps', 'R4'], C_ACCOUNT).refuse, null, 'R4 uses E2E-C only');
+  assert.match(pre([], { ...ACCOUNT, REHEARSAL_C_EMAIL: 'e2e-c@example.com' }).refuse || '', /go together/);
+  assert.match(pre([], { ...ACCOUNT, REHEARSAL_C_EMAIL: 'E2E-A@example.com', REHEARSAL_C_PASSWORD: 'x'.repeat(10) }).refuse || '', /second account/);
   assert.match(pre([], { ...ACCOUNT, REHEARSAL_SIGNUP_EMAIL: 'e2e-a@example.com' }).refuse || '', /new address/);
   assert.match(pre([], { ...ACCOUNT, REHEARSAL_SIGNUP_EMAIL: 'not-an-address' }).refuse || '', /not an email address/);
-  assert.match(pre([], { ...ACCOUNT, STAGING_E2E_EMAIL: 'nobody' }).refuse || '', /not an email address/);
+  assert.match(pre([], { ...ACCOUNT, REHEARSAL_A_EMAIL: 'nobody' }).refuse || '', /not an email address/);
   assert.match(pre(['--steps', 'R2', '--delete-account'], ACCOUNT).refuse || '', /--delete-account goes with R8 only/);
   assert.match(pre(['--out', join(root, 'shots')], ACCOUNT).refuse || '', /outside the repository/);
   assert.equal(pre(['--out', join(tmpdir(), 'hm-shots')], ACCOUNT).refuse, null);
+});
+
+test('the accounts are the rehearsal\'s own: the sandbox driver\'s STAGING_E2E_… (E2E-B) is never read, and E2E-B as E2E-A or E2E-C is refused', () => {
+  const B = { STAGING_E2E_EMAIL: 'e2e-b@example.com', STAGING_E2E_PASSWORD: 'sandbox-driver-pw' };
+  // only the sandbox driver's variables set (B12's network secrets): refused, naming why, never signing in as E2E-B
+  const onlyB = pre([], B);
+  assert.match(onlyB.refuse || '', /REHEARSAL_A_EMAIL and REHEARSAL_A_PASSWORD/);
+  assert.match(onlyB.refuse, /STAGING_E2E_EMAIL is the sandbox driver's E2E-B and is never used here/);
+  assert.ok(!onlyB.refuse.includes(B.STAGING_E2E_EMAIL), 'the address is never in the message');
+  // both set: the rehearsal's own account is the one used
+  const both = pre([], { ...B, ...ACCOUNT });
+  assert.equal(both.refuse, null);
+  assert.equal(both.A.email, ACCOUNT.REHEARSAL_A_EMAIL);
+  // E2E-B given as E2E-A or E2E-C (any case): refused, so the teardown never meets the sandbox driver's customers
+  assert.match(pre([], { ...B, REHEARSAL_A_EMAIL: 'E2E-B@example.com', REHEARSAL_A_PASSWORD: 'x'.repeat(10) }).refuse || '', /REHEARSAL_A_EMAIL is the sandbox driver's account/);
+  assert.match(pre([], { ...B, ...ACCOUNT, REHEARSAL_C_EMAIL: 'e2e-b@example.com', REHEARSAL_C_PASSWORD: 'x'.repeat(10) }).refuse || '', /REHEARSAL_C_EMAIL is the sandbox driver's account/);
+  for (const k of ['STAGING_E2E_EMAIL', 'STAGING_E2E_PASSWORD', 'REHEARSAL_A_EMAIL', 'REHEARSAL_A_PASSWORD', 'REHEARSAL_C_EMAIL', 'REHEARSAL_C_PASSWORD']) assert.ok(D.SECRET_ENV.includes(k), `${k} is masked`);
 });
 
 test('/v1/health: test mode, live_approved false, configured, webhook and accounts; any live sign is a refusal', () => {
@@ -147,6 +168,22 @@ test('/v1/health: test mode, live_approved false, configured, webhook and accoun
   }
   assert.match(D.judgeHealth(200, { ...good, entitlement_mode: 'testing' }, repo.expectedFlags).why, /entitlement_mode testing/);
   assert.deepEqual([D.judgeHealth(0, null).reachable, D.judgeHealth(403, { error: {} }).reachable], [false, false]);
+});
+
+test('/v1/health\'s provider: R5 needs the real model; a Worker on PROVIDER=mock (whose provider_key reads true) never passes for it', () => {
+  const good = { ok: true, provider: 'anthropic', entitlement_mode: 'billing+testing', configured: { provider_key: true }, billing: { configured: true, webhook: true, stripe_mode: 'test', live_approved: false, api_version: repo.expectedFlags.api_version, automatic_tax: repo.expectedFlags.automatic_tax } };
+  const real = D.judgeHealth(200, good, repo.expectedFlags);
+  assert.deepEqual([real.ok, real.realModel, real.fields.provider, real.modelWhy], [true, true, 'anthropic', '']);
+  const mock = D.judgeHealth(200, { ...good, provider: 'mock' }, repo.expectedFlags);
+  assert.equal(mock.ok, true, 'billing is still checked as before');
+  assert.equal(mock.realModel, false);
+  assert.match(mock.modelWhy, /provider is mock \(PROVIDER\), not the real model/);
+  assert.equal(mock.fields.provider, 'mock', 'printed in R0');
+  assert.equal(D.judgeHealth(200, { ...good, configured: { provider_key: false } }, repo.expectedFlags).realModel, false);
+  assert.match(D.judgeHealth(200, { ...good, provider: undefined }, repo.expectedFlags).modelWhy, /not said/);
+  assert.equal(D.judgeHealth(0, null).realModel, false);
+  // the step says so before it opens anything (the source: R5's first check)
+  assert.match(readFileSync(DRIVER, 'utf8'), /async function stepR5\(X\) \{[\s\S]{0,400}need\(X\.realModel, /);
 });
 
 test('the preview\'s sign-in: the staging project only; production\'s anywhere is a refusal; locally only the fake', () => {
@@ -179,14 +216,203 @@ test('Checkout and the portal: Stripe\'s own hosts and a test session only; a li
   assert.equal(D.portalVerdict('https://billing.stripe.com/p/login/abc').test, null, 'cannot tell: the page must say test mode');
 });
 
-test('the teardown cancels only this run\'s own running test subscriptions, and stops at any live object', () => {
-  const sub = (id, o) => ({ object: 'subscription', id, livemode: false, created: 1000, status: 'active', ...o });
-  const list = [sub('sub_Run1aaaa'), sub('sub_Old1aaaa', { created: 999 }), sub('sub_Gone1aaa', { status: 'canceled' }), sub('sub_Exp1aaaa', { status: 'incomplete_expired' }),
-    sub('sub_End1aaaa', { status: 'active', cancel_at_period_end: true }), sub('sub_Past1aaa', { status: 'past_due' }), { object: 'customer', id: 'cus_x' }, sub('not-an-id')];
-  assert.deepEqual(D.subsToCancel(list, 1000), ['sub_Run1aaaa', 'sub_End1aaaa', 'sub_Past1aaa']);
-  assert.throws(() => D.subsToCancel([sub('sub_Live1aaa', { livemode: true })], 0), D.LiveStop);
+test('the teardown\'s choice: only the subscription of a Checkout Session this run opened, the account\'s, made since the start, still running', () => {
+  const since = 1000;
+  const sess = (o) => ({ object: 'checkout.session', id: 'cs_test_Run1aaaaaaaaaa', livemode: false, customer: 'cus_Aaaa1', client_reference_id: 'uid-a', metadata: { user_id: 'uid-a' }, subscription: 'sub_Run1aaaa', ...o });
+  const sub = (o) => ({ object: 'subscription', id: 'sub_Run1aaaa', livemode: false, customer: 'cus_Aaaa1', created: 1000, status: 'active', ...o });
+  const pick = (s, b, uid = 'uid-a') => D.teardownPick(s, b, { uid, sinceSec: since });
+  assert.deepEqual(pick(sess(), sub()), { cancel: 'sub_Run1aaaa' });
+  assert.deepEqual(pick(sess(), sub({ status: 'past_due', cancel_at_period_end: true })), { cancel: 'sub_Run1aaaa' }, 'cancelled at the period end in R7: still running, cancelled at once');
+  assert.equal(pick(sess(), sub({ created: 999 })).cancel, null, 'made before the run started: no margin');
+  assert.equal(pick(sess({ subscription: null }), null).cancel, null, 'declined or abandoned: nothing to cancel');
+  assert.equal(pick(sess({ subscription: null }), null).done, true);
+  assert.equal(pick(sess(), sub({ status: 'canceled' })).done, true);
+  assert.equal(pick(sess(), sub({ status: 'incomplete_expired' })).cancel, null);
+  assert.equal(pick(sess({ client_reference_id: 'uid-b', metadata: { user_id: 'uid-b' } }), sub()).cancel, null, 'a session of another account');
+  assert.equal(pick(sess(), sub({ customer: 'cus_Bbbb1' })).cancel, null, 'a subscription of another customer');
+  assert.equal(pick(sess(), sub({ id: 'sub_Other111' })).cancel, null, 'not the subscription the session names');
+  assert.equal(pick(sess({ livemode: undefined }), sub()).cancel, null, 'test mode must be said');
+  assert.equal(pick(sess(), sub({ livemode: undefined })).cancel, null);
+  assert.equal(pick(sess(), sub(), null).cancel, 'sub_Run1aaaa', 'the account id unknown: the session alone');
+  assert.throws(() => pick(sess({ livemode: true }), null), D.LiveStop);
+  assert.throws(() => pick(sess(), sub({ items: { data: [{ price: { livemode: true } }] } })), D.LiveStop);
   assert.equal(D.hasLive({ data: [{ items: { data: [{ price: { livemode: true } }] } }] }), true);
   assert.equal(D.hasLive({ data: [{ livemode: false }] }), false);
+});
+
+test('the teardown asks Stripe only about this run\'s Checkout Sessions, never searches by customer, account or time, and runs once', async () => {
+  const startMs = 1_800_000_000_000, t = startMs / 1000;
+  const S = {
+    cs_test_A1aaaaaaaaaa: { object: 'checkout.session', id: 'cs_test_A1aaaaaaaaaa', livemode: false, customer: 'cus_Aaaa1', client_reference_id: 'uid-a', subscription: 'sub_RunA1aaa' },
+    cs_test_C1aaaaaaaaaa: { object: 'checkout.session', id: 'cs_test_C1aaaaaaaaaa', livemode: false, customer: 'cus_Cccc1', client_reference_id: 'uid-c', subscription: null },
+    cs_test_C2aaaaaaaaaa: { object: 'checkout.session', id: 'cs_test_C2aaaaaaaaaa', livemode: false, customer: 'cus_Cccc1', client_reference_id: 'uid-c', subscription: { id: 'sub_RunC1aaa' } },
+    cs_test_A0aaaaaaaaaa: { object: 'checkout.session', id: 'cs_test_A0aaaaaaaaaa', livemode: false, customer: 'cus_Aaaa1', client_reference_id: 'uid-a', subscription: 'sub_OldA1aaa' },
+  };
+  // the same customer also holds a subscription of the sandbox driver's shape, made within the run: never seen
+  const SUB = {
+    sub_RunA1aaa: { object: 'subscription', id: 'sub_RunA1aaa', livemode: false, customer: 'cus_Aaaa1', created: t + 120, status: 'active' },
+    sub_RunC1aaa: { object: 'subscription', id: 'sub_RunC1aaa', livemode: false, customer: 'cus_Cccc1', created: t + 300, status: 'active' },
+    sub_OldA1aaa: { object: 'subscription', id: 'sub_OldA1aaa', livemode: false, customer: 'cus_Aaaa1', created: t - 30, status: 'active' },
+    sub_Sandbox1: { object: 'subscription', id: 'sub_Sandbox1', livemode: false, customer: 'cus_Aaaa1', created: t + 10, status: 'active' },
+  };
+  const calls = [];
+  const stripe = {
+    get: async (p, q) => {
+      calls.push(['GET', p, q || null]);
+      await new Promise((r) => setTimeout(r, 5));
+      const id = p.split('/').pop();
+      const data = p.startsWith('/v1/checkout/sessions/') ? S[id] : p.startsWith('/v1/subscriptions/') ? SUB[id] : null;
+      return data ? { ok: true, status: 200, data, code: '' } : { ok: false, status: 404, data: null, code: 'resource_missing' };
+    },
+    del: async (p) => { calls.push(['DELETE', p]); return { ok: true, status: 200, data: { ...SUB[p.split('/').pop()], status: 'canceled' }, code: '' }; },
+  };
+  const lines = [];
+  const X = {
+    log: D.createLog({ write: (l) => lines.push(l) }), local: false, stripe, startMs, uids: { A: 'uid-a', C: 'uid-c' },
+    sessions: [{ id: 'cs_test_A1aaaaaaaaaa', who: 'A' }, { id: 'cs_test_C1aaaaaaaaaa', who: 'C' }, { id: 'cs_test_C2aaaaaaaaaa', who: 'C' }, { id: 'cs_test_A1aaaaaaaaaa', who: 'A' }, { id: 'cs_test_A0aaaaaaaaaa', who: 'A' }],
+  };
+  // the end of the run and a signal's at the same time: one teardown
+  const [f1, f2] = await Promise.all([D.teardown(X), D.teardown(X)]);
+  assert.equal(f1, 1, 'the subscription made before the run is left alone, and said');
+  assert.equal(f2, 1);
+  assert.deepEqual(calls.filter((c) => c[0] === 'DELETE').map((c) => c[1]), ['/v1/subscriptions/sub_RunA1aaa', '/v1/subscriptions/sub_RunC1aaa']);
+  for (const c of calls) {
+    assert.match(c[1], /^\/v1\/(checkout\/sessions\/cs_test_|subscriptions\/sub_)/, `only this run's sessions and the subscriptions they name: ${c[1]}`);
+    if (c[0] === 'GET') assert.equal(c[2], null, 'no search, list or filter');
+  }
+  assert.ok(!calls.some((c) => c[1].includes('sub_Sandbox1')));
+  assert.equal(calls.filter((c) => c[1] === '/v1/checkout/sessions/cs_test_A1aaaaaaaaaa').length, 1, 'each session once');
+  const all = lines.join('\n');
+  assert.match(all, /cancelled sub_RunA1aaa/);
+  assert.match(all, /^FAIL  teardown  sub_OldA1aaa left alone: its subscription was made before this run started/m);
+  assert.match(all, /2 subscription\(s\) of this run's 4 Checkout Session\(s\) cancelled; nothing else was looked for or touched/);
+  assert.equal(D.handList(X), 'the subscriptions of this run\'s Checkout Sessions (the sandbox → Payments → Checkout Sessions): cs_test_A0aaaaaaaaaa', 'what is left to do by hand');
+  // a live object anywhere: everything stops
+  const L = { ...X, teardownP: null, sessions: [{ id: 'cs_test_A1aaaaaaaaaa', who: 'A' }], stripe: { get: async () => { throw new D.LiveStop('livemode true'); }, del: async () => assert.fail('never') } };
+  await assert.rejects(D.teardown(L), D.LiveStop);
+  // no key: the sessions to see to by hand, nothing sent
+  const lines2 = [];
+  assert.equal(await D.teardown({ log: D.createLog({ write: (l) => lines2.push(l) }), local: false, stripe: null, sessions: X.sessions, uids: {} }), 0);
+  assert.match(lines2.join('\n'), /^SKIP  teardown  no STRIPE_E2E_KEY: cancel by hand .*cs_test_A1aaaaaaaaaa, cs_test_C1aaaaaaaaaa, cs_test_C2aaaaaaaaaa, cs_test_A0aaaaaaaaaa/m);
+  // the source never looks for subscriptions any other way
+  const src = readFileSync(DRIVER, 'utf8');
+  const body = src.slice(src.indexOf('async function tearDown(X)'), src.indexOf('const STEP_FNS'));
+  assert.doesNotMatch(body, /customers\/search|created\[gte\]|'\/v1\/subscriptions'/);
+});
+
+test('S12: "Cancel your subscription first" while a plan renews is checked (now, or in R7 before its cancel); with none renewing it is a SKIP, never a PASS', () => {
+  const T = repo.cancelFirstTitle;
+  const look = (o) => ({ billing: true, notTouched: true, cancelFirst: false, unchecked: false, submitOff: true, renewing: false, goesAhead: null, ...o });
+  const renewing = look({ renewing: true, cancelFirst: true });
+  const j = (o) => D.judgeS12({ cancelFirstTitle: T, ...o });
+  // a full run: R7 looked while Beyond renewed, R8 after the cancel at the period end
+  const full = j({ now: look({ goesAhead: true }), before: { ...renewing, expect: true } });
+  assert.equal(full.status, 'PASS', full.reason);
+  assert.match(full.reason, /in R7, before its cancel, the plan renewed: "Cancel your subscription first" first, Delete off/);
+  assert.match(full.reason, /after the cancel at the period end: no cancel-first step, and Delete turns on once the word is typed/);
+  // R8 alone while the plan renews
+  const now = j({ now: renewing, expectNow: true });
+  assert.equal(now.status, 'PASS', now.reason);
+  assert.match(now.reason, /^.*now the plan renewed: "Cancel your subscription first" first/);
+  // no plan renewed at all in the run: S12's point was not checked
+  const none = j({ now: look({ goesAhead: true }) });
+  assert.equal(none.status, 'SKIP');
+  assert.match(none.reason, /^S12 not checked: no plan renewed in this run/);
+  assert.equal(j({ now: look({ billing: false, notTouched: false }) }).status, 'SKIP', 'web billing off: nothing to check');
+  // what fails
+  for (const [o, why] of [
+    [{ now: look(), expectNow: true }, /this run’s plan renews, yet the delete screen says it does not/],
+    [{ now: look({ renewing: true }) }, /now the plan renewed, but "Cancel your subscription first" was not there/],
+    [{ now: look({ renewing: true, cancelFirst: true, submitOff: false }) }, /Delete my account is on before the word is typed/],
+    [{ now: look({ goesAhead: true }), before: { ...renewing, cancelFirst: false, expect: true } }, /in R7, before its cancel, the plan renewed, but "Cancel your subscription first" was not there/],
+    [{ now: look({ goesAhead: true }), before: { ...look(), expect: true } }, /in R7, before its cancel, this run’s plan renewed, yet the delete screen said it did not/],
+    [{ now: look({ goesAhead: true }), before: { error: 'the delete screen did not open' } }, /R7's look at the delete screen while the plan renewed failed: the delete screen did not open/],
+    [{ now: look({ goesAhead: false }), before: { ...renewing, expect: true } }, /after the cancel at the period end, Delete stays off with the word typed/],
+    [{ now: look({ cancelFirst: true }) }, /shows, yet no plan renews/],
+    [{ now: look({ unchecked: true }) }, /could not check for a subscription/],
+    [{ now: look({ notTouched: false, renewing: true, cancelFirst: true }) }, /"Not touched" does not say to cancel a web subscription first/],
+  ]) {
+    const r = j(o);
+    assert.equal(r.status, 'FAIL', JSON.stringify(o));
+    assert.match(r.reason, why);
+  }
+  // R7 looks at the delete screen before it cancels when R8 is in the run, and only R3's own plan is ever changed
+  const src = readFileSync(DRIVER, 'utf8');
+  const r7 = src.slice(src.indexOf('async function stepR7(X)'), src.indexOf('// cancel at the period end'));
+  assert.match(r7, /X\.opts\.steps\.includes\('R8'\)[\s\S]*readDeleteScreen\(X, page\)[\s\S]*toPortal\(X, page\)/);
+  const gx = (o) => ({ local: false, signInReady: true, billingReady: true, workerUp: true, pre: { returnsHere: true, C: null }, repo, base: repo.appOrigin, beyondA: false, ...o });
+  assert.match(D.gate(gx(), 'R7') || '', /no plan this run bought .*R7 only ever changes a subscription this run created/);
+  assert.equal(D.gate(gx({ beyondA: true }), 'R7'), null);
+});
+
+test('a step out of time is stopped, not only no longer waited for: its later waits throw, its page closes, it cannot set the next step\'s page', async () => {
+  const lines = [];
+  const X = D.bindStepState({ log: D.createLog({ write: (l) => lines.push(l) }), shot: async () => {}, sessions: [], pageA: null, ctxA: null });
+  const counts = { PASS: 0, FAIL: 0, SKIP: 0 };
+  const closed = [];
+  const page = (name) => ({ name, close: async () => { closed.push(name); }, isClosed: () => closed.includes(name) });
+  let ticks = 0, lateError = null;
+  const orphan = page('R3-page');
+  X.pageA = orphan;
+  const r = await D.runStep(X, 'R3', async () => {
+    X.page = orphan;
+    try {
+      for (;;) { await D.sleep(10); ticks++; }
+    } catch (e) {
+      lateError = e;
+      X.sessions.push('never: an orphan cannot go on');
+      throw e;
+    }
+  }, counts, 120);
+  assert.equal(r, 'FAIL');
+  assert.match(lines[0], /^FAIL  R3  took longer than 0\.12 s/);
+  assert.ok(lateError instanceof D.Cancelled, 'its next wait threw Cancelled');
+  const at = ticks;
+  await new Promise((res) => setTimeout(res, 80));
+  assert.equal(ticks, at, 'nothing of it runs any more');
+  assert.deepEqual(closed, ['R3-page'], 'the page it was on closed');
+  assert.equal(X.pageA, null, 'E2E-A\'s page went with it: the next step opens a new one');
+  assert.equal(X.page, null, 'outside a step there is no page');
+
+  // the next step's page is its own, whatever a stopped step left behind tries
+  let stale = null;
+  const r1 = D.runStep(X, 'R4', async () => {
+    X.page = page('R4-page');
+    stale = (async () => { await new Promise((res) => setTimeout(res, 60)); X.page = page('stale'); })().then(() => null, (e) => e);
+    await D.sleep(400);
+    return { reason: `on ${X.page.name}` };
+  }, counts, 30);
+  assert.equal(await r1, 'FAIL');
+  assert.ok((await stale) instanceof D.Cancelled, 'setting a page in a stopped step throws');
+  assert.ok(closed.includes('stale'), 'and closes that page');
+
+  const r2 = await D.runStep(X, 'R5', async () => { X.page = page('R5-page'); await D.sleep(30); return { reason: `on ${X.page.name}` }; }, counts, 5000);
+  assert.equal(r2, 'PASS');
+  assert.match(lines.at(-1), /^PASS  R5  on R5-page$/);
+  assert.equal(D.STEP.getStore(), undefined);
+  D.checkpoint();   // outside any step: never throws
+});
+
+test('a step interrupted (Ctrl-C, SIGTERM) stops at once and fails as not finished; Playwright\'s own signal handlers are off', async () => {
+  const lines = [];
+  const X = D.bindStepState({ log: D.createLog({ write: (l) => lines.push(l) }), shot: async () => {} });
+  const counts = { PASS: 0, FAIL: 0, SKIP: 0 };
+  let stoppedAt = null;
+  const timers = () => process.getActiveResourcesInfo().filter((x) => x === 'Timeout').length;
+  const t0 = Date.now(), before = timers();
+  setTimeout(() => X.interruptStep('interrupted (Ctrl-C)'), 50);
+  const r = await D.runStep(X, 'R5', async () => { try { await D.until(() => false, 60000, 10); } catch (e) { stoppedAt = Date.now(); throw e; } }, counts, 420000);
+  assert.equal(r, 'FAIL');
+  assert.ok(Date.now() - t0 < 2000, 'at once, not after the step\'s budget');
+  assert.ok(stoppedAt, 'its wait ended');
+  assert.match(lines[0], /^FAIL  R5  interrupted \(Ctrl-C\) after 0 s: not finished$/);
+  assert.equal(X.interruptStep, null, 'nothing left to interrupt between steps');
+  assert.ok(timers() <= before, 'no timer of the step (its budget, the wait for its work) holds the driver open after it');
+  const src = readFileSync(DRIVER, 'utf8');
+  // Playwright's handlers would close the browser and exit 130 before the teardown
+  assert.match(src, /chromium\.launch\(\{[\s\S]{0,400}handleSIGINT: false, handleSIGTERM: false, handleSIGHUP: false/);
+  assert.match(src, /process\.on\(sig, fn\)/);
+  assert.doesNotMatch(src, /process\.once\('SIG/);
 });
 
 test('R5\'s sentences: an ordinary made-up situation Zuzu asks about first, and the crisis one taken from the safety fixtures', () => {
@@ -211,9 +437,10 @@ test('the proxy: the environment\'s HTTPS proxy online (with its bypass list), n
 
 test('the log helper never prints a secret: each value of the environment, its encoded form, and anything shaped like one', () => {
   const env = {
-    STAGING_E2E_EMAIL: 'Rehearsal.A+e2e@example.com', STAGING_E2E_PASSWORD: `pw-${'Zq9'.repeat(5)}`,
-    STAGING_E2E_C_EMAIL: 'e2e-c@example.org', STAGING_E2E_C_PASSWORD: `cpw-${'Xy7'.repeat(5)}`,
+    REHEARSAL_A_EMAIL: 'Rehearsal.A+e2e@example.com', REHEARSAL_A_PASSWORD: `pw-${'Zq9'.repeat(5)}`,
+    REHEARSAL_C_EMAIL: 'e2e-c@example.org', REHEARSAL_C_PASSWORD: `cpw-${'Xy7'.repeat(5)}`,
     STRIPE_E2E_KEY: key('rk_test'), REHEARSAL_SIGNUP_EMAIL: 'owner-inbox@example.net', REHEARSAL_SIGNUP_PASSWORD: `spw-${'Wv5'.repeat(5)}`,
+    STAGING_E2E_EMAIL: 'sandbox-b@example.org', STAGING_E2E_PASSWORD: `bpw-${'Tr2'.repeat(5)}`,
   };
   const lines = [];
   const log = D.createLog({ env, write: (l) => lines.push(l) });
@@ -221,13 +448,13 @@ test('the log helper never prints a secret: each value of the environment, its e
   log.secret(uid);
   const jwt = ['eyJhbGciOiJIUzI1NiJ9', 'eyJzdWIiOiJ4In0', 's'.repeat(43)].join('.');
   const other = key('sk_live');
-  log.pass('R2', `signed in as ${env.STAGING_E2E_EMAIL} with ${env.STAGING_E2E_PASSWORD} (${uid})`);
-  log.fail('R3', `checkout for ${encodeURIComponent(env.STAGING_E2E_EMAIL)}: ${env.STRIPE_E2E_KEY} ${other} whsec_${'b'.repeat(24)} bearer ${jwt}`);
-  log.skip('R4', `${env.STAGING_E2E_C_EMAIL.toUpperCase()} / ${env.STAGING_E2E_C_PASSWORD}; support@hushmallow.com`);
-  log.info(`signup ${env.REHEARSAL_SIGNUP_EMAIL} ${env.REHEARSAL_SIGNUP_PASSWORD} ${env.STAGING_E2E_EMAIL.toLowerCase()}`);
-  log.refused(`?email=${env.REHEARSAL_SIGNUP_EMAIL.replace('@', '%40')}`);
+  log.pass('R2', `signed in as ${env.REHEARSAL_A_EMAIL} with ${env.REHEARSAL_A_PASSWORD} (${uid})`);
+  log.fail('R3', `checkout for ${encodeURIComponent(env.REHEARSAL_A_EMAIL)}: ${env.STRIPE_E2E_KEY} ${other} whsec_${'b'.repeat(24)} bearer ${jwt}`);
+  log.skip('R4', `${env.REHEARSAL_C_EMAIL.toUpperCase()} / ${env.REHEARSAL_C_PASSWORD}; support@hushmallow.com`);
+  log.info(`signup ${env.REHEARSAL_SIGNUP_EMAIL} ${env.REHEARSAL_SIGNUP_PASSWORD} ${env.REHEARSAL_A_EMAIL.toLowerCase()}`);
+  log.refused(`?email=${env.REHEARSAL_SIGNUP_EMAIL.replace('@', '%40')} ${env.STAGING_E2E_PASSWORD}`);
   const all = lines.join('\n');
-  for (const v of [...Object.values(env), uid, jwt, other, encodeURIComponent(env.STAGING_E2E_EMAIL), 'whsec_b', 'example.com', 'example.org', 'example.net', 'hushmallow.com']) {
+  for (const v of [...Object.values(env), uid, jwt, other, encodeURIComponent(env.REHEARSAL_A_EMAIL), 'whsec_b', 'example.com', 'example.org', 'example.net', 'hushmallow.com']) {
     assert.ok(!all.includes(v), `"${v.slice(0, 12)}…" was printed`);
   }
   assert.match(lines[0], /^PASS  R2  signed in as \[redacted\] with \[redacted\]/);
@@ -236,18 +463,18 @@ test('the log helper never prints a secret: each value of the environment, its e
   assert.match(all, /\[token\]/);
   assert.equal(lines.length, 5);
   // the screenshots mask each secret's own text too
-  for (const v of [env.STAGING_E2E_EMAIL, env.STAGING_E2E_PASSWORD, uid]) assert.ok(log.secrets().includes(v));
+  for (const v of [env.REHEARSAL_A_EMAIL, env.REHEARSAL_A_PASSWORD, env.STAGING_E2E_PASSWORD, uid]) assert.ok(log.secrets().includes(v));
 });
 
 test('the driver itself, refusing with fake secrets in its environment: exit 2, nothing sent, no secret printed', () => {
-  const env = { PATH: process.env.PATH, HOME: process.env.HOME || tmpdir(), STAGING_E2E_EMAIL: 'refusal-a@example.com', STAGING_E2E_PASSWORD: `pw-${'Kj4'.repeat(5)}`, STRIPE_E2E_KEY: key('rk_live') };
+  const env = { PATH: process.env.PATH, HOME: process.env.HOME || tmpdir(), REHEARSAL_A_EMAIL: 'refusal-a@example.com', REHEARSAL_A_PASSWORD: `pw-${'Kj4'.repeat(5)}`, STRIPE_E2E_KEY: key('rk_live') };
   for (const argv of [[], ['--base', 'https://app.hushmallow.com'], ['--worker', PRODUCTION_WORKER], ['--allow-local-for-testing'], ['--steps', 'R9']]) {
     const e = argv.length ? { ...env, STRIPE_E2E_KEY: key('rk_test') } : env;
     const r = spawnSync(process.execPath, [DRIVER, ...argv], { env: e, encoding: 'utf8', timeout: 60000 });
     const printed = `${r.stdout}${r.stderr}`;
     assert.equal(r.status, 2, `${JSON.stringify(argv)}: ${printed}`);
     assert.match(printed, /^REFUSED /m);
-    for (const v of [e.STAGING_E2E_EMAIL, e.STAGING_E2E_PASSWORD, e.STRIPE_E2E_KEY]) assert.ok(!printed.includes(v), `${JSON.stringify(argv)}: a secret was printed`);
+    for (const v of [e.REHEARSAL_A_EMAIL, e.REHEARSAL_A_PASSWORD, e.STRIPE_E2E_KEY]) assert.ok(!printed.includes(v), `${JSON.stringify(argv)}: a secret was printed`);
     assert.doesNotMatch(printed, /hushmallow staging rehearsal/, 'it never got as far as starting a browser');
   }
 });
