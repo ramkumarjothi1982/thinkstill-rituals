@@ -3,7 +3,7 @@
 //
 //   createStripe({ secretKey, apiVersion?, fetch }) →
 //     createCheckoutSession(params, { idempotencyKey? }), createPortalSession(params), retrieveSubscription(id),
-//     createCustomer(params, { idempotencyKey? }), retrievePrice(id), listSubscriptions(customer),
+//     createCustomer(params, { idempotencyKey? }), retrieveCustomer(id), retrievePrice(id), listSubscriptions(customer),
 //     retrieveCheckoutSession(id), expireCheckoutSession(id)
 //     each → { ok: true, data } | { ok: false, status, code }   (never throws; status 0 = no answer)
 //     (idempotencyKey: Stripe's Idempotency-Key header; the same key gives back the first answer for 24 hours)
@@ -80,6 +80,8 @@ export function createStripe({ secretKey, apiVersion = '', fetch: fetchImpl, tim
     retrieveSubscription: (id) => call('GET', `/v1/subscriptions/${encodeURIComponent(id)}`),
     /** POST /v1/customers @param {Record<string, unknown>} params @param {{ idempotencyKey?: string }} [o] */
     createCustomer: (params, o) => call('POST', '/v1/customers', params, o),
+    /** GET /v1/customers/:id (a deleted one reads back as { id, deleted: true }) @param {string} id */
+    retrieveCustomer: (id) => call('GET', `/v1/customers/${encodeURIComponent(id)}`),
     /** GET /v1/prices/:id @param {string} id */
     retrievePrice: (id) => call('GET', `/v1/prices/${encodeURIComponent(id)}`),
     /** GET /v1/subscriptions?customer=…&status=all (a customer's subscriptions, ended ones included) @param {string} customer */

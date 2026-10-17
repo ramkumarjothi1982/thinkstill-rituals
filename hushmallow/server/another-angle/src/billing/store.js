@@ -4,7 +4,8 @@
 // One instance per name (env.BILLING.idFromName(name)):
 //   "user:<supabase user id>"  sub       the account's subscription record (below)
 //                              evt:<id>  Stripe events already applied (kept 30 days)
-//                              customer  the account's own Stripe customer, set once (checkout creates it)
+//                              customer  the account's own Stripe customer, set once (checkout creates it;
+//                                        replaced only once Stripe has deleted it)
 //                              checkout  the last Checkout Session started: { id, expires_at (ms) }
 //   "customer:<cus_…>"         uid       which account a Stripe customer belongs to
 // A Durable Object handles one request at a time, so each apply (seen? →
@@ -272,6 +273,15 @@ export class Billing {
         if (!cur) await this.storage.put('customer', body.customer);
         return Response.json({ ok: true, customer: cur || body.customer, conflict: !!cur && cur !== body.customer });
       }
+      case 'replace_customer': {
+        // the kept customer Stripe has deleted: swapped only while it is still the one kept, so of two requests
+        // replacing it at once the first swap stands
+        if (typeof body?.from !== 'string' || !CUSTOMER.test(body.from) || typeof body?.to !== 'string' || !CUSTOMER.test(body.to)) return bad();
+        const cur = (await this.storage.get('customer')) || null;
+        const replaced = cur === body.from;
+        if (replaced) await this.storage.put('customer', body.to);
+        return Response.json({ ok: true, customer: replaced ? body.to : cur, replaced });
+      }
       case 'checkout':
         return Response.json({ ok: true, checkout: (await this.storage.get('checkout')) || null });
       case 'set_checkout': {
@@ -342,6 +352,11 @@ export function billingClient(ns) {
     customerOf: async (uid) => (await call(`user:${uid}`, 'customer', {})).customer || null,
     /** Set once: a different customer later is a conflict and changes nothing. @param {string} uid @param {string} customer @returns {Promise<{ ok: boolean, customer: string, conflict: boolean }>} */
     setCustomer: (uid, customer) => call(`user:${uid}`, 'set_customer', { customer }),
+    /**
+     * The kept customer `from` (deleted at Stripe) replaced by `to`, only while `from` is still the one kept.
+     * @param {string} uid @param {string} from @param {string} to @returns {Promise<{ ok: boolean, customer: string | null, replaced: boolean }>}
+     */
+    replaceCustomer: (uid, from, to) => call(`user:${uid}`, 'replace_customer', { from, to }),
     /** The last Checkout Session started for the account, or null. @param {string} uid @returns {Promise<{ id: string, expires_at: number } | null>} */
     lastCheckout: async (uid) => (await call(`user:${uid}`, 'checkout', {})).checkout || null,
     /** @param {string} uid @param {{ id: string, expires_at: number }} checkout expires_at in ms @returns {Promise<{ ok: boolean }>} */

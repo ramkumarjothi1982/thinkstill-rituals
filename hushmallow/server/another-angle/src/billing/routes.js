@@ -211,6 +211,7 @@ export function createBilling({ logger, now, fetch: fetchImpl = (input, init) =>
    * The account's one Stripe customer: the one kept for it, else its subscription's (a record from before customers
    * were made here), else a new one made for it with metadata[user_id] only (no email or name, decision D13: Checkout
    * asks for the email). Linked to the account first, then kept once: a request racing this one is told the same one.
+   * (Replaced only once Stripe has deleted it: replaceCustomer.)
    * @param {string} uid @param {any} rec @param {Config} cfg @param {ReturnType<typeof billingClient>} store
    * @returns {Promise<{ ok: true, customer: string, fresh: boolean } | { ok: false, conflict?: true, err?: string, stripeHttp?: number }>}
    */
@@ -227,6 +228,36 @@ export function createBilling({ logger, now, fetch: fetchImpl = (input, init) =>
     if ((await store.link(customer, uid)).conflict) return { ok: false, conflict: true };
     const kept = await store.setCustomer(uid, customer);
     return { ok: true, customer: kept.customer, fresh: fresh && kept.customer === customer };
+  }
+
+  /**
+   * Stripe no longer has this customer: it reads back deleted (a Dashboard clean-up, an erasure, a sandbox's test
+   * clock deleted with its customers), or this key cannot find it (404). Asked only after a call naming the customer
+   * answered resource_missing, which may also be about something else.
+   * @param {ReturnType<typeof createStripe>} stripe @param {string} customer
+   */
+  async function customerGone(stripe, customer) {
+    const c = await stripe.retrieveCustomer(customer);
+    return c.ok ? c.data?.deleted === true : c.status === 404;
+  }
+
+  /**
+   * The account's kept customer, deleted at Stripe, replaced by a new one (else every checkout of the account fails for
+   * good): made as customerFor makes one, under a key of its own (customer:<account>:<the deleted id>, never Stripe's
+   * first answer again), linked, then swapped in only while the deleted one is still kept (a racing request's swap,
+   * the same customer by that key, stands).
+   * @param {string} uid @param {string} gone @param {Config} cfg @param {ReturnType<typeof billingClient>} store
+   * @returns {Promise<{ ok: true, customer: string, fresh: boolean } | { ok: false, conflict?: true, err?: string, stripeHttp?: number }>}
+   */
+  async function replaceCustomer(uid, gone, cfg, store) {
+    const c = await stripeFor(cfg).createCustomer({ metadata: { user_id: uid } }, { idempotencyKey: `customer:${uid}:${gone.slice(-24)}` });
+    const id = c.ok ? idOf(c.data?.id) : null;
+    if (!id || !id.startsWith('cus_')) return c.ok ? { ok: false, err: 'customer:no_id' } : { ok: false, err: `customer:${c.code}`, stripeHttp: c.status };
+    if ((await store.link(id, uid)).conflict) return { ok: false, conflict: true };
+    const kept = await store.replaceCustomer(uid, gone, id);
+    if (!kept.customer) return { ok: false, err: 'customer:replace' };
+    logger.event({ evt: 'billing', route: 'checkout', status: 'customer_replaced' });
+    return { ok: true, customer: kept.customer, fresh: kept.customer === id };
   }
 
   /**
@@ -306,20 +337,27 @@ export function createBilling({ logger, now, fetch: fetchImpl = (input, init) =>
       return error(503, 'price_misconfigured', 'This plan is not on sale just now.', cors);
     }
     if (!checked.ok) return unavailable(`price:${checked.code}`, checked.status);
-    const cust = await customerFor(who.uid, rec, cfg, store);
-    if (!cust.ok && cust.conflict) {
+    /** @param {{ conflict?: true, err?: string, stripeHttp?: number }} c */
+    const noCustomer = (c) => {
+      if (!c.conflict) return unavailable(c.err || 'customer', c.stripeHttp);
       log('checkout', t0, { status: 'customer_conflict', http: 409, plan, period });
       return error(409, 'customer_conflict', 'This account\'s billing needs a look from support.', cors);
-    }
-    if (!cust.ok) return unavailable(cust.err || 'customer', cust.stripeHttp);
-    const { customer } = cust;
+    };
+    let cust = await customerFor(who.uid, rec, cfg, store);
+    if (!cust.ok) return noCustomer(cust);
     const stripe = stripeFor(cfg);
     // Stripe's own word, ahead of the webhook: a subscription paid (or being paid) whose events are still on their way.
     // A customer made just now has none.
+    let listed = cust.fresh ? null : await stripe.listSubscriptions(cust.customer);
+    if (listed && !listed.ok && listed.code === 'resource_missing' && await customerGone(stripe, cust.customer)) {
+      cust = await replaceCustomer(who.uid, cust.customer, cfg, store);
+      if (!cust.ok) return noCustomer(cust);
+      listed = cust.fresh ? null : await stripe.listSubscriptions(cust.customer);
+    }
+    let { customer } = cust;
     /** @type {any[]} */
     let subs = [];
-    if (!cust.fresh) {
-      const listed = await stripe.listSubscriptions(customer);
+    if (listed) {
       if (!listed.ok) return unavailable(`list:${listed.code}`, listed.status);
       subs = (Array.isArray(listed.data?.data) ? listed.data.data : []).filter((/** @type {any} */ x) => SUB.test(idOf(x?.id) || '') && idOf(x.customer) === customer);
       if (subs.some((x) => HELD_STATUSES.has(x.status))) return taken('already_subscribed', 'listed');
@@ -334,7 +372,8 @@ export function createBilling({ logger, now, fetch: fetchImpl = (input, init) =>
     const idempotencyKey = `checkout:${who.uid}:${plan}:${period}:${Math.floor(now() / CHECKOUT_WINDOW_MS)}:${prev.prev ? prev.prev.slice(-24) : '-'}`;
     // no payment_method_types (Stripe's dynamic payment methods; which ones is a Dashboard setting, D10), no trial and
     // no promotion codes (D14), no email (D13)
-    const r = await stripe.createCheckoutSession({
+    /** @param {string} customer @param {string} key */
+    const create = (customer, key) => stripe.createCheckoutSession({
       mode: 'subscription',
       line_items: [{ price, quantity: 1 }],
       customer,
@@ -348,7 +387,16 @@ export function createBilling({ logger, now, fetch: fetchImpl = (input, init) =>
       // passed, so the address typed at checkout is asked for and saved on it; else Stripe taxes the saved one (none).
       ...(cfg.billing.automaticTax ? { automatic_tax: { enabled: true }, customer_update: { address: 'auto' }, billing_address_collection: 'required' } : {}),
       ...(integrationIdentifierOn(cfg.billing.apiVersion) ? { integration_identifier: CHECKOUT_INTEGRATION_IDENTIFIER } : {}),
-    }, { idempotencyKey });
+    }, { idempotencyKey: key });
+    let r = await create(customer, idempotencyKey);
+    // the customer deleted although Stripe's list did not say so: replaced, and the session made once more for the new
+    // one, under a key naming it (Stripe may keep the refusal as the first key's answer)
+    if (!r.ok && r.code === 'resource_missing' && await customerGone(stripe, customer)) {
+      const next = await replaceCustomer(who.uid, customer, cfg, store);
+      if (!next.ok) return noCustomer(next);
+      customer = next.customer;
+      r = await create(customer, `${idempotencyKey}:${customer.slice(-24)}`);
+    }
     const url = r.ok ? httpsUrl(r.data?.url) : null;
     if (!r.ok || !url) return unavailable(r.ok ? 'no_url' : r.code, r.ok ? undefined : r.status);
     const id = String(r.data?.id || '');

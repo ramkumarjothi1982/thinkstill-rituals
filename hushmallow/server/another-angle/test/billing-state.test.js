@@ -39,11 +39,14 @@ test('Stripe client: customer create, price, subscriptions of a customer, checko
     assert.equal(x.ok && x.data.status, 'expired');
     // a miss is Stripe's code, never its message
     assert.deepEqual(await stripe.retrievePrice('price_Nope1'), { ok: false, status: 404, code: 'resource_missing' });
+    // a customer read back: Stripe's deleted customer once it is gone
+    up.customers.set('cus_Gone1abc', { id: 'cus_Gone1abc', object: 'customer', metadata: {}, deleted: true });
+    assert.deepEqual(await stripe.retrieveCustomer('cus_Gone1abc'), { ok: true, data: { id: 'cus_Gone1abc', object: 'customer', deleted: true } });
 
     const calls = up.stripe();
     assert.deepEqual(calls.map((k) => `${k.method} ${k.path}`), [
       'POST /v1/customers', 'GET /v1/prices/price_BeyondMonthly1', 'GET /v1/subscriptions', 'GET /v1/checkout/sessions/cs_test_open1234567890',
-      'POST /v1/checkout/sessions/cs_test_open1234567890/expire', 'GET /v1/prices/price_Nope1',
+      'POST /v1/checkout/sessions/cs_test_open1234567890/expire', 'GET /v1/prices/price_Nope1', 'GET /v1/customers/cus_Gone1abc',
     ]);
     assert.equal(calls[0].form.get('metadata[user_id]'), UID);
     assert.equal(calls[0].headers['idempotency-key'], `customer:${UID}`);
@@ -70,6 +73,12 @@ test('Billing DO: the customer is set once per account; the last checkout is kep
   assert.deepEqual(await db.setCustomer(UID, 'cus_Second2'), { ok: true, customer: 'cus_First1', conflict: true });
   assert.equal(await db.customerOf(UID), 'cus_First1');
   assert.equal(await db.customerOf(OTHER), null, 'per account');
+  // replaced only while the one named is the one kept (Stripe deleted it): a racing request's swap wins
+  assert.deepEqual(await db.replaceCustomer(UID, 'cus_Second2', 'cus_Third3'), { ok: true, customer: 'cus_First1', replaced: false });
+  assert.deepEqual(await db.replaceCustomer(UID, 'cus_First1', 'cus_Third3'), { ok: true, customer: 'cus_Third3', replaced: true });
+  assert.deepEqual(await db.replaceCustomer(UID, 'cus_First1', 'cus_Fourth4'), { ok: true, customer: 'cus_Third3', replaced: false }, 'once');
+  assert.deepEqual(await db.replaceCustomer(OTHER, 'cus_First1', 'cus_Third3'), { ok: true, customer: null, replaced: false }, 'nothing kept: nothing to replace');
+  assert.equal(await db.customerOf(UID), 'cus_Third3');
   // the last Checkout Session started: its id and when it expires (ms)
   assert.equal(await db.lastCheckout(UID), null);
   const exp = t() + 3600000;
@@ -82,6 +91,7 @@ test('Billing DO: the customer is set once per account; the last checkout is kep
   const raw = (op, body) => ns.get(ns.idFromName(`user:${UID}`)).fetch(`https://billing/${op}`, { method: 'POST', body: JSON.stringify(body) });
   for (const [op, body] of [
     ['set_customer', { customer: 'ana@example.com' }], ['set_customer', {}],
+    ['replace_customer', { from: 'cus_Third3', to: 'ana@example.com' }], ['replace_customer', { to: 'cus_Fifth5' }],
     ['set_checkout', { checkout: { id: 'pi_123456789012', expires_at: exp } }], ['set_checkout', { checkout: { id: 'cs_test_a1b2c3d4e5f6g7', expires_at: Math.floor(exp / 1000) } }],
     ['set_checkout', { checkout: { id: 'cs_test_a1b2c3d4e5f6g7', expires_at: exp, url: 'https://checkout.stripe.com/x' } }],
     ['sync', { record: { tier: 'ultra' } }],

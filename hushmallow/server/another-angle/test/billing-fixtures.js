@@ -86,7 +86,9 @@ export function price(id, plan, period, over = {}) {
  * by customer). A POST with an Idempotency-Key it has seen gets the first answer again, as Stripe does. Sessions are of
  * the key's mode (cs_live_… on a live key) and keep what checkout sent. `fail` makes every call whose path matches
  * answer with that status and error (a restricted key without a permission, Stripe down); `portalFlows: false`
- * refuses a portal session with flow_data (the portal does not let customers switch plans).
+ * refuses a portal session with flow_data (the portal does not let customers switch plans). A customer marked
+ * `deleted: true` (in `customers`) is read back as Stripe's deleted customer, and listing its subscriptions
+ * (unless `deletedListing` is 'empty') or making a session for it answers 400 resource_missing.
  */
 export function upstream({ users = { [TOKEN]: { id: UID, email: 'ana@example.com' } } } = {}) {
   /** @type {{ url: string, path: string, method: string, headers: Record<string, string>, form: URLSearchParams | null, query: URLSearchParams }[]} */
@@ -107,6 +109,8 @@ export function upstream({ users = { [TOKEN]: { id: UID, email: 'ana@example.com
     /** @type {{ path: RegExp, status: number, error: Record<string, string> } | null} */
     fail: null,
     portalFlows: true,
+    /** @type {'missing' | 'empty'} what listing a deleted customer's subscriptions answers */
+    deletedListing: 'missing',
     /** the clock sessions expire on (setup() gives it the app's) */
     clock: () => CLOCK_START,
     /** @type {(url: string | URL | Request, init?: RequestInit) => Promise<Response>} */
@@ -117,6 +121,9 @@ export function upstream({ users = { [TOKEN]: { id: UID, email: 'ana@example.com
   /** @param {number} status @param {unknown} body */
   const reply = (status, body) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
   const missing = () => reply(404, { error: { code: 'resource_missing', type: 'invalid_request_error', message: 'No such object' } });
+  const noCustomer = () => reply(400, { error: { code: 'resource_missing', param: 'customer', type: 'invalid_request_error', message: 'No such customer' } });
+  /** @param {string | null} id */
+  const deleted = (id) => !!id && customers.get(id)?.deleted === true;
   o.fetch = async (url, init = {}) => {
     const u = new URL(String(url));
     const headers = Object.fromEntries(new Headers(init.headers).entries());
@@ -138,6 +145,7 @@ export function upstream({ users = { [TOKEN]: { id: UID, email: 'ana@example.com
     const form = call.form || new URLSearchParams();
     const metadata = Object.fromEntries([...form].filter(([k]) => /^metadata\[[a-z_]+\]$/.test(k)).map(([k, v]) => [k.slice(9, -1), v]));
     if (method === 'POST' && p === '/v1/checkout/sessions') {
+      if (deleted(form.get('customer'))) return noCustomer();
       const live = /^Bearer [sr]k_live_/.test(headers.authorization || '');
       const s = {
         id: `cs_${live ? 'live' : 'test'}_A${sessions.size + 1}${'x'.repeat(12)}`, object: 'checkout.session', url: o.checkoutUrl, status: 'open',
@@ -166,8 +174,13 @@ export function upstream({ users = { [TOKEN]: { id: UID, email: 'ana@example.com
       return reply(200, s);
     }
     if (method === 'GET' && (m = /^\/v1\/subscriptions\/(sub_[A-Za-z0-9]+)$/.exec(p))) return subs.has(m[1]) ? reply(200, subs.get(m[1])) : missing();
+    if (method === 'GET' && (m = /^\/v1\/customers\/(cus_[A-Za-z0-9]+)$/.exec(p))) {
+      const c = customers.get(m[1]);
+      return !c ? missing() : reply(200, c.deleted ? { id: c.id, object: 'customer', deleted: true } : c);
+    }
     if (method === 'GET' && p === '/v1/subscriptions') {
       const customer = u.searchParams.get('customer');
+      if (deleted(customer) && o.deletedListing !== 'empty') return noCustomer();
       const data = [...subs.values()].filter((s) => s.customer === customer).slice(0, Number(u.searchParams.get('limit') || 10));
       return reply(200, { object: 'list', data, has_more: false, url: '/v1/subscriptions' });
     }

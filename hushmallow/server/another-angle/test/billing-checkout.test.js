@@ -337,6 +337,66 @@ test('one Stripe customer per account: made once (customer:<account>), linked an
   assertClean(allLogs.flat());
 });
 
+test('the account\'s customer deleted at Stripe (a Dashboard clean-up, an erasure, a test clock deleted): replaced once by a new one, and checkout goes on', async () => {
+  const made = (s) => s.up.stripe().filter((c) => c.path === '/v1/customers');
+  // Stripe's list refuses the deleted customer
+  const s = track(setup());
+  assert.equal((await post(s, ULTRA_M)).status, 200);
+  s.up.customers.get('cus_New1abc').deleted = true;
+  s.now.advance(DAY);
+  let n = calls(s).length;
+  const res = await post(s, ULTRA_M);
+  assert.equal(res.status, 200, await res.clone().text());
+  assert.deepEqual(calls(s).slice(n), [
+    `GET /v1/prices/${PRICES.ultraMonthly}`, 'GET /v1/subscriptions', 'GET /v1/customers/cus_New1abc', 'POST /v1/customers', 'POST /v1/checkout/sessions',
+  ], 'a customer made just now has nothing to list');
+  assert.equal(await db(s).customerOf(UID), 'cus_New2abc');
+  assert.equal(await db(s).owner('cus_New2abc'), UID);
+  assert.equal(creates(s).at(-1).form.get('customer'), 'cus_New2abc');
+  // made as the first was (the account id only), under a key of its own: Stripe never hands back the deleted one
+  assert.deepEqual(Object.fromEntries(made(s).at(-1).form), { 'metadata[user_id]': UID });
+  assert.equal(made(s).at(-1).headers['idempotency-key'], `customer:${UID}:cus_New1abc`);
+  assert.ok(lines(s.logs).some((l) => l.route === 'checkout' && l.status === 'customer_replaced'));
+  // from then on it is the account's: nothing more made
+  s.now.advance(DAY);
+  assert.equal((await post(s, { plan: 'paid', period: 'yearly' })).status, 200);
+  assert.equal(made(s).length, 2);
+  assertClean(s.logs);
+  // Stripe lists nothing for it but refuses the session: replaced there, and the session made for the new one
+  const e = track(setup());
+  e.up.deletedListing = 'empty';
+  assert.equal((await post(e, ULTRA_M)).status, 200);
+  e.up.customers.get('cus_New1abc').deleted = true;
+  e.now.advance(DAY);
+  n = calls(e).length;
+  assert.equal((await post(e, ULTRA_M)).status, 200);
+  assert.deepEqual(calls(e).slice(n).slice(-4), ['POST /v1/checkout/sessions', 'GET /v1/customers/cus_New1abc', 'POST /v1/customers', 'POST /v1/checkout/sessions']);
+  assert.deepEqual(creates(e).slice(-2).map((c) => c.form.get('customer')), ['cus_New1abc', 'cus_New2abc']);
+  const [k1, k2] = creates(e).slice(-2).map((c) => c.headers['idempotency-key']);
+  assert.notEqual(k1, k2, 'the retry never gets Stripe\'s first answer back');
+  assert.equal(await db(e).customerOf(UID), 'cus_New2abc');
+  // a record's customer from before customers were kept here, deleted since: the same
+  const r = track(setup());
+  await subscribe(r, subscription({ status: 'canceled' }));
+  r.up.customers.set('cus_Test123', { id: 'cus_Test123', object: 'customer', metadata: {}, deleted: true });
+  assert.equal((await post(r, ULTRA_M)).status, 200);
+  assert.equal(await db(r).customerOf(UID), 'cus_New2abc');
+  // resource_missing about the customer while Stripe still has it (or cannot say): 502, nothing replaced
+  const k = track(setup());
+  assert.equal((await post(k, ULTRA_M)).status, 200);
+  k.now.advance(DAY);
+  k.up.fail = { path: /^\/v1\/subscriptions$/, status: 400, error: { code: 'resource_missing', type: 'invalid_request_error' } };
+  assert.deepEqual(await code(await post(k, ULTRA_M)), [502, 'billing_unavailable']);
+  assert.equal(lastLog(k, 'checkout').err, 'list:resource_missing');
+  // the customer's read refused too (not a 404, not a deleted customer): it is not known to be gone
+  k.up.fail = { path: /^\/v1\/(subscriptions|customers\/.*)$/, status: 400, error: { code: 'resource_missing', type: 'invalid_request_error' } };
+  assert.deepEqual(await code(await post(k, ULTRA_M)), [502, 'billing_unavailable']);
+  assert.ok(calls(k).includes('GET /v1/customers/cus_New1abc'));
+  assert.equal(made(k).length, 1);
+  assert.equal(await db(k).customerOf(UID), 'cus_New1abc');
+  assertClean(allLogs.flat());
+});
+
 // ------------------------------------------------- the previous session --
 test('the previous Checkout Session: the same again is handed back; another plan expires it first; a paid one is payment_pending until its subscription ends', async () => {
   const s = track(setup());
