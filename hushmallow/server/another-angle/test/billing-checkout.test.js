@@ -436,6 +436,16 @@ test('the account\'s customer deleted at Stripe (a Dashboard clean-up, an erasur
   r.up.customers.set('cus_Test123', { id: 'cus_Test123', object: 'customer', metadata: {}, deleted: true });
   assert.equal((await post(r, ULTRA_M)).status, 200);
   assert.equal(await db(r).customerOf(UID), 'cus_New2abc');
+  // a customer this key cannot find at all (GET /v1/customers/:id 404, not a deleted one): gone too, and replaced
+  const g = track(setup());
+  await subscribe(g, subscription({ status: 'canceled' }));
+  assert.equal(g.up.customers.has('cus_Test123'), false);
+  g.up.fail = { path: /^\/v1\/subscriptions$/, status: 400, error: { code: 'resource_missing', param: 'customer', type: 'invalid_request_error' } };
+  n = calls(g).length;
+  assert.equal((await post(g, ULTRA_M)).status, 200);
+  assert.deepEqual(calls(g).slice(n), [`GET /v1/prices/${PRICES.ultraMonthly}`, 'GET /v1/subscriptions', 'GET /v1/customers/cus_Test123', 'POST /v1/customers', 'POST /v1/checkout/sessions']);
+  assert.equal(await db(g).customerOf(UID), 'cus_New1abc');
+  assert.equal(creates(g).at(-1).form.get('customer'), 'cus_New1abc');
   // resource_missing about the customer while Stripe still has it (or cannot say): 502, nothing replaced
   const k = track(setup());
   assert.equal((await post(k, ULTRA_M)).status, 200);
