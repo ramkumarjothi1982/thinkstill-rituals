@@ -14,8 +14,9 @@
 //
 // The record: { v, subscription, customer, status, tier, period,
 // current_period_end (ms), cancel_at_period_end, cancel_at (ms or null),
-// as_of (ms), past_due_since (ms, only while past_due) }. Stripe ids, Stripe's status and the plan only:
-// never words, feelings, card details, names or emails.
+// as_of (ms), past_due_since (ms, only while past_due) }. Stripe ids,
+// Stripe's status and the plan only: never words, feelings, card details,
+// names or emails.
 //
 // The state machine (supersedes): for the same subscription, a newer answer
 // (as_of: when the server asked Stripe for it) replaces an older one and an
@@ -209,10 +210,14 @@ function isCheckout(c) {
     && typeof c.id === 'string' && CHECKOUT_SESSION.test(c.id) && Number.isFinite(c.expires_at) && c.expires_at > MS_TIME_MIN;
 }
 
+/** An optional time in ms. @param {unknown} v */
+const optionalMs = (v) => v == null || Number.isFinite(v);
+
 /** @param {any} r @returns {r is SubRecord} */
 function isRecord(r) {
   return !!r && typeof r === 'object' && typeof r.subscription === 'string' && /^sub_/.test(r.subscription)
-    && typeof r.status === 'string' && ['none', 'paid', 'ultra'].includes(r.tier) && typeof r.as_of === 'number';
+    && typeof r.status === 'string' && ['none', 'paid', 'ultra'].includes(r.tier) && typeof r.as_of === 'number'
+    && optionalMs(r.cancel_at) && optionalMs(r.past_due_since);
 }
 
 export class Billing {

@@ -85,6 +85,8 @@ test('Billing DO: the customer is set once per account; the last checkout is kep
     ['set_checkout', { checkout: { id: 'pi_123456789012', expires_at: exp } }], ['set_checkout', { checkout: { id: 'cs_test_a1b2c3d4e5f6g7', expires_at: Math.floor(exp / 1000) } }],
     ['set_checkout', { checkout: { id: 'cs_test_a1b2c3d4e5f6g7', expires_at: exp, url: 'https://checkout.stripe.com/x' } }],
     ['sync', { record: { tier: 'ultra' } }],
+    ['sync', { record: { ...summarise(subscription(), prices, t()), cancel_at: 'soon' } }],
+    ['sync', { record: { ...summarise(subscription(), prices, t()), past_due_since: 'today' } }],
   ]) assert.equal((await raw(op, body)).status, 400, `${op} ${JSON.stringify(body)}`);
   // sync: the same state machine as apply, without an event id (nothing is marked seen)
   const rec = (over = {}, asOf = t()) => ({ ...summarise(subscription(), prices, asOf), ...over });
