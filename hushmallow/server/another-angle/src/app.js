@@ -146,8 +146,9 @@ export function createApp(options) {
     if (route === 'POST /v1/feedback') return feedback(request, env, cfg, cors);
     if (route === `POST ${BILLING.checkout}`) return billing.checkout(request, env, cfg, cors);
     if (route === `GET ${BILLING.status}`) return billing.status(request, env, cfg, cors);
+    if (route === `POST ${BILLING.sync}`) return billing.sync(request, env, cfg, cors);
     if (route === `POST ${BILLING.portal}`) return billing.portal(request, env, cfg, cors);
-    if (['/v1/health', '/v1/session', '/v1/angle', '/v1/feedback', BILLING.checkout, BILLING.status, BILLING.portal].includes(url.pathname)) return error(405, 'method_not_allowed', 'Method not allowed.', { ...cors, allow: ['/v1/health', BILLING.status].includes(url.pathname) ? 'GET, OPTIONS' : 'POST, OPTIONS' });
+    if (['/v1/health', '/v1/session', '/v1/angle', '/v1/feedback', BILLING.checkout, BILLING.status, BILLING.sync, BILLING.portal].includes(url.pathname)) return error(405, 'method_not_allowed', 'Method not allowed.', { ...cors, allow: ['/v1/health', BILLING.status].includes(url.pathname) ? 'GET, OPTIONS' : 'POST, OPTIONS' });
     return error(404, 'not_found', 'Not found.', cors);
   }
 

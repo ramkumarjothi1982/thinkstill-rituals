@@ -1,12 +1,14 @@
-// Checkout (src/billing/routes.js), against the fake Stripe of test/billing-fixtures.js: the price check before
-// selling, one customer and one subscription per account (checked at Stripe), the previous Checkout Session settled
-// first, and the Stripe Tax switch and integration_identifier on the session's form.
+// Checkout and the return sync (src/billing/routes.js), against the fake Stripe of test/billing-fixtures.js: the
+// price check before selling, one customer and one subscription per account (checked at Stripe), the previous
+// Checkout Session settled first, the Stripe Tax switch and integration_identifier on the session's form, and
+// POST /v1/billing/sync after Checkout.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { req, denyAll, allowAll, clock, ORIGIN, CLOCK_START } from './helpers.js';
 import {
-  CHECKOUT_PRICE_RULES, CHECKOUT_PRICE_CACHE_MS, CHECKOUT_INTEGRATION_IDENTIFIER, CHECKOUT_INTEGRATION_IDENTIFIER_SINCE, integrationIdentifierOn, priceFault,
+  createBilling, CHECKOUT_PRICE_RULES, CHECKOUT_PRICE_CACHE_MS, CHECKOUT_INTEGRATION_IDENTIFIER, CHECKOUT_INTEGRATION_IDENTIFIER_SINCE,
+  integrationIdentifierOn, priceFault, PATHS,
 } from '../src/billing/routes.js';
 import { billingClient } from '../src/billing/store.js';
 import { createLogger } from '../src/log.js';
@@ -39,7 +41,8 @@ test('checkout form: the customer always; tax on adds automatic_tax, customer_up
   };
   const base = {
     mode: 'subscription', 'line_items[0][price]': PRICES.ultraMonthly, 'line_items[0][quantity]': '1', customer: 'cus_New1abc', client_reference_id: UID,
-    success_url: `${APP}/?billing=success`, cancel_url: `${APP}/?billing=cancel`,
+    // the literal placeholder: Stripe puts the session's id there
+    success_url: `${APP}/?billing=success&session_id={CHECKOUT_SESSION_ID}`, cancel_url: `${APP}/?billing=cancel`,
     'metadata[user_id]': UID, 'metadata[plan]': 'ultra', 'metadata[period]': 'monthly', 'metadata[price]': PRICES.ultraMonthly,
     'subscription_data[metadata][user_id]': UID,
   };
@@ -356,5 +359,145 @@ test('the previous session: past its time, of the other mode, gone or expired is
   q.up.fail = { path: /^\/v1\/checkout\/sessions\/cs_/, status: 503, error: { type: 'api_error' } };
   assert.deepEqual(await code(await post(q, { plan: 'paid', period: 'monthly' })), [502, 'billing_unavailable']);
   assert.equal(lastLog(q, 'checkout').err, 'session:api_error');
+  assertClean(allLogs.flat());
+});
+
+// ------------------------------------------------------------- the sync --
+const sync = (s, body, token) => s.app.fetch(billingReq('/v1/billing/sync', { body, token }), s.env);
+/** A checkout that was paid: its session complete, its subscription at Stripe on the account's customer. */
+async function paid(s, { sub = {}, session = {} } = {}) {
+  assert.equal((await post(s, ULTRA_M)).status, 200);
+  const id = sessionIds(s).at(-1);
+  const customer = await db(s).customerOf(UID);
+  s.up.subs.set('sub_Paid1', subscription({ id: 'sub_Paid1', customer, ...sub }));
+  Object.assign(s.up.sessions.get(id), { status: 'complete', payment_status: 'paid', subscription: 'sub_Paid1', ...session });
+  return id;
+}
+const ACTIVE = { tier: 'ultra', status: 'active', current_period_end: new Date(CLOCK_START + 30 * DAY).toISOString(), cancel_at_period_end: false, ends_at: null, manageable: true };
+const NONE = { tier: 'none', status: 'none', current_period_end: null, cancel_at_period_end: false, ends_at: null, manageable: false };
+
+test('POST /v1/billing/sync: back from Checkout, the session\'s subscription is read and recorded at once; the answer is the status', async () => {
+  const s = track(setup());
+  const id = await paid(s);
+  assert.deepEqual(await status(s), NONE, 'no webhook yet');
+  const n = calls(s).length;
+  const res = await sync(s, { session_id: id });
+  assert.equal(res.status, 200);
+  assert.equal(res.headers.get('access-control-allow-origin'), ORIGIN);
+  const body = await res.json();
+  assert.deepEqual(body, ACTIVE);
+  assert.deepEqual(await status(s), ACTIVE);
+  assert.deepEqual(calls(s).slice(n), [`GET /v1/checkout/sessions/${id}`, 'GET /v1/subscriptions/sub_Paid1'], 'the session, then its subscription');
+  assert.deepEqual([...s.env.BILLING.instances.get(`user:${UID}`).map.keys()].filter((k) => k.startsWith('evt:')), [], 'no event id kept');
+  const l = lastLog(s, 'sync');
+  assert.deepEqual([l.status, l.http, l.tier, l.sub_status], ['applied', 200, 'ultra', 'active']);
+  // the webhook landing afterwards changes nothing; a second sync says the same
+  await deliver(s.app, s.env, event('checkout.session.completed', { ...s.up.sessions.get(id) }, s.now), { at: s.now() });
+  assert.deepEqual(await (await sync(s, { session_id: id })).json(), ACTIVE);
+  // a complete checkout whose subscription is not paid yet (3-D Secure left half way): recorded as it is, no plan
+  const h = track(setup());
+  const hid = await paid(h, { sub: { status: 'incomplete' }, session: { payment_status: 'unpaid' } });
+  const half = await (await sync(h, { session_id: hid })).json();
+  assert.deepEqual([half.tier, half.status], ['none', 'incomplete']);
+  assertClean(allLogs.flat(), body, half);
+});
+
+test('sync refusals: another account\'s session (403), not complete (409), a bad id or the other mode (400), unknown (404), Stripe down (502), a customer of another account (409)', async () => {
+  const s = track(setup());
+  const id = await paid(s);
+  // another account with UID's session id: told nothing about it, nothing read beyond the session
+  s.up.users[jwt(OTHER)] = { id: OTHER };
+  let n = calls(s).length;
+  const theirs = await sync(s, { session_id: id }, jwt(OTHER));
+  assert.deepEqual(await code(theirs), [403, 'not_yours']);
+  assert.deepEqual(calls(s).slice(n), [`GET /v1/checkout/sessions/${id}`]);
+  assert.equal((await status(s, jwt(OTHER))).tier, 'none');
+  assert.equal((await status(s)).tier, 'none', 'nor for the owner');
+  // still open, expired, or not a subscription: nothing recorded, the subscription never read
+  for (const change of [{ status: 'open' }, { status: 'expired' }, { mode: 'payment' }]) {
+    const o = track(setup());
+    const oid = await paid(o, { session: change });
+    n = calls(o).length;
+    const r = await sync(o, { session_id: oid });
+    assert.deepEqual(await code(r), [409, 'checkout_not_complete'], JSON.stringify(change));
+    assert.deepEqual(calls(o).slice(n), [`GET /v1/checkout/sessions/${oid}`]);
+    assert.deepEqual(await status(o), NONE);
+    assertClean(o.logs, await r.json());
+  }
+  // a cs_test_ session on this live key, or not a session id at all: 400 before Stripe is asked
+  n = calls(s).length;
+  for (const v of [`cs_test_A1${'x'.repeat(12)}`, 'cs_live_short', `pi_${'x'.repeat(20)}`, `cs_live_${'x'.repeat(12)}/../x`, 42, '', null]) {
+    assert.deepEqual(await code(await sync(s, { session_id: v })), [400, 'invalid_session'], String(v));
+  }
+  assert.deepEqual(lines(s.logs).filter((l) => l.route === 'sync' && l.status === 'invalid').map((l) => l.err), ['mode_mismatch', ...Array(6).fill('session_id')]);
+  assert.deepEqual(await code(await sync(s, {})), [400, 'invalid_session'], 'no session_id');
+  for (const b of [{ session_id: id, plan: 'ultra' }, [id], id]) assert.deepEqual(await code(await sync(s, b)), [400, 'invalid_body'], JSON.stringify(b));
+  assert.equal(calls(s).length, n);
+  // unknown to Stripe: 404
+  assert.deepEqual(await code(await sync(s, { session_id: `cs_live_Z${'x'.repeat(16)}` })), [404, 'session_not_found']);
+  // Stripe not answering: 502
+  s.up.fail = { path: /^\/v1\/checkout\/sessions\//, status: 500, error: { type: 'api_error' } };
+  assert.deepEqual(await code(await sync(s, { session_id: id })), [502, 'billing_unavailable']);
+  s.up.fail = { path: /^\/v1\/subscriptions\//, status: 500, error: { type: 'api_error' } };
+  assert.deepEqual(await code(await sync(s, { session_id: id })), [502, 'billing_unavailable']);
+  assert.deepEqual([lastLog(s, 'sync').status, lastLog(s, 'sync').err, lastLog(s, 'sync').stripe_http], ['stripe_error', 'api_error', 500]);
+  s.up.fail = null;
+  // its subscription's customer linked to another account: nothing recorded
+  const c = track(setup());
+  const cid = await paid(c);
+  await db(c).link('cus_Elsewhere1', OTHER);
+  c.up.subs.get('sub_Paid1').customer = 'cus_Elsewhere1';
+  assert.deepEqual(await code(await sync(c, { session_id: cid })), [409, 'customer_conflict']);
+  assert.deepEqual(await status(c), NONE);
+  // no token, GET, billing off
+  assert.deepEqual(await code(await sync(s, { session_id: id }, null)), [401, 'account_required']);
+  assert.deepEqual(await code(await s.app.fetch(billingReq('/v1/billing/sync'), s.env)), [405, 'method_not_allowed']);
+  assert.equal((await s.app.fetch(billingReq('/v1/billing/sync'), s.env)).headers.get('allow'), 'POST, OPTIONS');
+  const off = track(setup({ env: billingEnv({ STRIPE_SECRET_KEY: '' }) }));
+  assert.deepEqual(await code(await sync(off, { session_id: id })), [503, 'billing_not_configured']);
+  assert.equal(off.up.calls.length, 0);
+  assert.equal(PATHS.sync, '/v1/billing/sync');
+  assertClean(allLogs.flat(), await theirs.json());
+});
+
+test('sync on the staging Worker (a test key): a cs_live_ id is refused (400); its own cs_test_ session is recorded', async () => {
+  const { readConfig: readWithStaging } = await withStagingProject(STAGING_SUPABASE);
+  const env = billingEnv({ ACCOUNTS_STAGE: 'staging', SUPABASE_URL: STAGING_SUPABASE });
+  const cfg = readWithStaging(env);
+  assert.equal(cfg.billing.keyMode, 'test');
+  const token = jwt(UID, { iss: `${STAGING_SUPABASE}/auth/v1` });
+  const up = upstream({ users: { [token]: { id: UID } } });
+  // the staging project, answered by the fake one
+  const fetch = (u, i) => up.fetch(String(u).replace(STAGING_SUPABASE, SUPABASE), i);
+  const logs = [];
+  const billing = createBilling({ logger: createLogger((l) => logs.push(l)), now: clock(), fetch, ipKey: async () => 'ip' });
+  const ask = (session_id) => billing.sync(billingReq('/v1/billing/sync', { body: { session_id }, token }), env, cfg, {});
+  const live = await ask(`cs_live_A1${'x'.repeat(12)}`);
+  assert.deepEqual(await code(live), [400, 'invalid_session']);
+  assert.equal(up.stripe().length, 0);
+  const id = `cs_test_A1${'x'.repeat(12)}`;
+  up.subs.set('sub_Paid1', subscription({ id: 'sub_Paid1', customer: 'cus_Stage1', livemode: false }));
+  up.sessions.set(id, { id, object: 'checkout.session', mode: 'subscription', status: 'complete', client_reference_id: UID, customer: 'cus_Stage1', subscription: 'sub_Paid1', livemode: false });
+  const ok = await ask(id);
+  assert.equal(ok.status, 200);
+  assert.equal((await ok.json()).tier, 'ultra');
+  assertClean(logs);
+});
+
+test('sync shares the billing rate limit (BILLING_IP_LIMITER, else the isolate\'s 20 a minute)', async () => {
+  const counted = allowAll();
+  const s = track(setup({ env: billingEnv({ BILLING_IP_LIMITER: counted }) }));
+  await status(s);
+  await sync(s, { session_id: `cs_live_A1${'x'.repeat(12)}` });
+  assert.equal(counted.calls, 2, 'the same binding as status');
+  const d = track(setup({ env: billingEnv({ BILLING_IP_LIMITER: denyAll() }) }));
+  const r = await sync(d, { session_id: `cs_live_A1${'x'.repeat(12)}` });
+  assert.deepEqual(await code(r), [429, 'rate_limited']);
+  assert.equal(r.headers.get('retry-after'), '60');
+  assert.equal(d.up.calls.length, 0);
+  // no binding: the in-memory window is the routes' together
+  const m = track(setup({ env: billingEnv({ BILLING_IP_LIMITER: undefined }) }));
+  for (let i = 0; i < 20; i++) assert.equal((await m.app.fetch(billingReq('/v1/billing/status'), m.env)).status, 200);
+  assert.deepEqual(await code(await sync(m, { session_id: `cs_live_A1${'x'.repeat(12)}` })), [429, 'rate_limited']);
   assertClean(allLogs.flat());
 });

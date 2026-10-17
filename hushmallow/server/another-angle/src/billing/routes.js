@@ -8,10 +8,12 @@
 //   POST /v1/billing/checkout  { plan: 'paid'|'ultra', period: 'monthly'|'yearly' } with the account's
 //                              Supabase access token (Authorization: Bearer) → { url } (Stripe Checkout,
 //                              subscription mode, the account's one Stripe customer, client_reference_id = the
-//                              account id; back to APP_ORIGIN). Only a price that is what its slot says
-//                              (CHECKOUT_PRICE_RULES) is sold, and only to an account with no subscription at Stripe
-//                              (409 already_subscribed | payment_pending)
+//                              account id; back to APP_ORIGIN, ?billing=success&session_id=cs_…). Only a price that
+//                              is what its slot says (CHECKOUT_PRICE_RULES) is sold, and only to an account with no
+//                              subscription at Stripe (409 already_subscribed | payment_pending)
 //   GET  /v1/billing/status    the account's token → { tier, status, current_period_end, cancel_at_period_end, ends_at, manageable }
+//   POST /v1/billing/sync      { session_id: 'cs_…' } (back from Checkout) → the status body, once that session's
+//                              subscription is read from Stripe and recorded (the webhook may still be on its way)
 //   POST /v1/billing/portal    the account's token → { url } (Stripe's customer portal: cancel, change plan, card, receipts)
 //   POST /v1/billing/webhook   Stripe's events, signed (Stripe-Signature); no Origin, the signature is the check
 //                              (EVENTS: checkout.session.*, customer.subscription.*, invoice.*; each re-reads its subscription)
@@ -30,7 +32,7 @@ import { createStripe, verifyWebhookSignature } from './stripe.js';
 import { createAccountVerifier, uidOf } from './account.js';
 import { billingClient, summarise, effectiveTier, accessUntil, idOf, priceMismatch, bestOf, ACCESS, TERMINAL } from './store.js';
 
-export const PATHS = Object.freeze({ checkout: '/v1/billing/checkout', status: '/v1/billing/status', portal: '/v1/billing/portal', webhook: '/v1/billing/webhook' });
+export const PATHS = Object.freeze({ checkout: '/v1/billing/checkout', status: '/v1/billing/status', sync: '/v1/billing/sync', portal: '/v1/billing/portal', webhook: '/v1/billing/webhook' });
 /**
  * The events the webhook endpoint should send (docs/PAYMENTS.md); any other is acknowledged and ignored. Each one
  * re-reads its subscription, so Stripe's status decides access: a delayed payment's checkout (async_payment_*), a
@@ -328,7 +330,8 @@ export function createBilling({ logger, now, fetch: fetchImpl = (input, init) =>
       line_items: [{ price, quantity: 1 }],
       customer,
       client_reference_id: who.uid,
-      success_url: `${back}/?billing=success`,
+      // Stripe puts the session's id in place of {CHECKOUT_SESSION_ID}: the app asks POST /v1/billing/sync with it
+      success_url: `${back}/?billing=success&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${back}/?billing=cancel`,
       metadata: { user_id: who.uid, plan, period, price },
       subscription_data: { metadata: { user_id: who.uid } },
@@ -356,6 +359,52 @@ export function createBilling({ logger, now, fetch: fetchImpl = (input, init) =>
     const out = statusBody(await storeFor(env).get(who.uid));
     log('status', t0, { status: 'ok', http: 200, tier: out.tier, sub_status: out.status });
     return json(200, out, cors);
+  }
+
+  /**
+   * Back from Checkout (success_url's session_id): that session's subscription read from Stripe and recorded now, through
+   * the webhook's own path (recordSubscription, no event id), so the plan shows without waiting for the webhook. Only
+   * the account that started the session, and only once it is complete; the answer is the status body.
+   * @param {Request} request @param {Record<string, any>} env @param {Config} cfg @param {Record<string, string>} cors
+   */
+  async function sync(request, env, cfg, cors) {
+    const t0 = now();
+    const who = await signedIn('sync', request, env, cfg, cors, t0);
+    if (who instanceof Response) return who;
+    const body = await readJson(request, 512);
+    if (!body.ok) return error(body.status, body.code, body.message, cors);
+    const b = /** @type {any} */ (body.value);
+    if (!b || typeof b !== 'object' || Array.isArray(b) || Object.keys(b).some((k) => k !== 'session_id')) return error(400, 'invalid_body', 'Send { session_id } only.', cors);
+    const m = typeof b.session_id === 'string' ? SESSION_ID.exec(b.session_id) : null;
+    // a session of the other Stripe mode was never made with this server's key
+    if (!m || m[1] !== cfg.billing.keyMode) {
+      log('sync', t0, { status: 'invalid', http: 400, err: m ? 'mode_mismatch' : 'session_id' });
+      return error(400, 'invalid_session', 'session_id is not a Checkout Session of this server.', cors, { field: 'session_id' });
+    }
+    const got = await stripeFor(cfg).retrieveCheckoutSession(b.session_id);
+    if (!got.ok && got.status === 404) { log('sync', t0, { status: 'not_found', http: 404, err: got.code }); return error(404, 'session_not_found', 'There is no such checkout.', cors); }
+    /** @param {string} err @param {number} [stripeHttp] */
+    const unavailable = (err, stripeHttp) => {
+      log('sync', t0, { status: 'stripe_error', http: 502, err: err.slice(0, 48), stripe_http: stripeHttp });
+      return error(502, 'billing_unavailable', 'The plan could not be checked just now.', cors);
+    };
+    if (!got.ok) return unavailable(got.code, got.status);
+    const s = got.data;
+    // another account's session id says nothing about it, whatever its state
+    if (uidOf(s?.client_reference_id) !== who.uid) { log('sync', t0, { status: 'not_yours', http: 403 }); return error(403, 'not_yours', 'This checkout belongs to another account.', cors); }
+    if (s.mode !== 'subscription' || s.status !== 'complete') {
+      log('sync', t0, { status: 'not_complete', http: 409, err: s.mode !== 'subscription' ? 'not_subscription' : String(s.status).slice(0, 24) });
+      return error(409, 'checkout_not_complete', 'This checkout has not been completed.', cors);
+    }
+    const subId = idOf(s.subscription);
+    if (!subId || !SUB.test(subId)) return unavailable('no_subscription');
+    const r = await recordSubscription({ subId, uidHint: who.uid, obj: s, eventType: 'checkout.session.completed', created: Math.floor(now() / 1000), eventId: null }, env, cfg);
+    const ok = r.outcome === 'applied' || r.outcome === 'stale';
+    const http = ok ? 200 : r.outcome === 'customer_conflict' ? 409 : 502;
+    log('sync', t0, { status: r.outcome, http, tier: r.tier, sub_status: r.subStatus, err: r.err, stripe_http: r.stripeHttp });
+    if (r.outcome === 'customer_conflict') return error(409, 'customer_conflict', 'This account\'s billing needs a look from support.', cors);
+    if (!ok) return error(502, 'billing_unavailable', 'The plan could not be checked just now.', cors);
+    return json(200, statusBody(await storeFor(env).get(who.uid)), cors);
   }
 
   /** @param {Request} request @param {Record<string, any>} env @param {Config} cfg @param {Record<string, string>} cors */
@@ -505,7 +554,7 @@ export function createBilling({ logger, now, fetch: fetchImpl = (input, init) =>
     return { ok: true, uid: a.uid, until: accessUntil(rec, now(), cfg.billing.tokenTtlMs) };
   }
 
-  return { ready, checkout, status, portal, webhook, beyondAccess, recordSubscription };
+  return { ready, checkout, status, sync, portal, webhook, beyondAccess, recordSubscription };
 }
 
 /**

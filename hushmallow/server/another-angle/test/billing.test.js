@@ -367,7 +367,7 @@ test('checkout: the account is checked with the sign-in project, then a subscrip
   const f = Object.fromEntries(st.form);
   assert.deepEqual(f, {
     mode: 'subscription', 'line_items[0][price]': PRICES.ultraYearly, 'line_items[0][quantity]': '1', customer: 'cus_New1abc', client_reference_id: UID,
-    success_url: `${APP}/?billing=success`, cancel_url: `${APP}/?billing=cancel`,
+    success_url: `${APP}/?billing=success&session_id={CHECKOUT_SESSION_ID}`, cancel_url: `${APP}/?billing=cancel`,
     'metadata[user_id]': UID, 'metadata[plan]': 'ultra', 'metadata[period]': 'yearly', 'metadata[price]': PRICES.ultraYearly, 'subscription_data[metadata][user_id]': UID,
   });
   // Flow monthly maps to its own price
