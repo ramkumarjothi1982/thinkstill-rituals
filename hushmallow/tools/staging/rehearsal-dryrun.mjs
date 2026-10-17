@@ -75,10 +75,10 @@ try {
   const driver = (steps, onLine = null, { underTimeout = false } = {}) => new Promise((r) => {
     const args = [join(here, 'rehearsal.cjs'), '--base', `http://127.0.0.1:${sitePort}`, '--allow-local-for-testing', '--steps', steps, '--out', out];
     // its own process group, as a terminal starts it: a Ctrl-C there goes to the whole group (the browser has its own).
-    // underTimeout: as the docs run it, `timeout 1200 node …`, where one Ctrl-C reaches node twice (the group's, and
+    // underTimeout: as the docs run it, `timeout 1800 node …`, where one Ctrl-C reaches node twice (the group's, and
     // timeout passing its own on)
     const c = underTimeout
-      ? spawn('timeout', ['1200', process.execPath, ...args], { env: denv, stdio: ['ignore', 'pipe', 'pipe'], detached: true })
+      ? spawn('timeout', ['1800', process.execPath, ...args], { env: denv, stdio: ['ignore', 'pipe', 'pipe'], detached: true })
       : spawn(process.execPath, args, { env: denv, stdio: ['ignore', 'pipe', 'pipe'], detached: true });
     let printed = '';
     const tee = (d) => { const s = d.toString(); printed += s; process.stdout.write(s); onLine?.(c, printed); };
@@ -105,7 +105,7 @@ try {
 
   // stopped half way: a Ctrl-C to the driver's process group, then the outer timeout's SIGTERM, in the middle of R1
   if (SIGNALS) {
-    // one Ctrl-C under `timeout 1200 node …` (the documented command): counted once, so the teardown runs
+    // one Ctrl-C under `timeout 1800 node …` (the documented command): counted once, so the teardown runs
     for (let i = 0; i < 3; i++) {
       let sentAt = 0;
       const r = await driver('R1,R2', (c, text) => {
