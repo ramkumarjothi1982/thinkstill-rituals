@@ -11,7 +11,9 @@
 # (tools/secret-scan.mjs), published or not; in an export with no .git, every
 # file under the repository root. The finished site is then checked
 # (tools/site/check.mjs): every file the page, its modules, its styles and its
-# art tables name must be in it, and no file may hold a secret key.
+# art tables name must be in it, and no file may hold a secret key. Before that,
+# index.html gets a modulepreload for every module its first screen statically
+# needs (tools/site/boot-preload.mjs), so a phone asks for them all at once.
 #
 # Sign-in (optional): the build variables SUPABASE_URL and
 # SUPABASE_PUBLISHABLE_KEY (Cloudflare Pages, Production and Preview) are the
@@ -84,5 +86,7 @@ for f in "$here"/legal/*.html; do
 done
 grep -q "v/$ver/src/app/main.js" "$out/index.html" || { echo "index.html was not rewritten" >&2; exit 1; }
 if grep -nE '(href|src)="(src|assets)/' "$out/index.html"; then echo "unversioned path left in index.html" >&2; exit 1; fi
+# every module the first screen statically needs, preloaded from index.html: fetched at once, not one import level at a time
+node "$here/tools/site/boot-preload.mjs" "$out" "$ver"
 node "$here/tools/site/check.mjs" "$out" "$ver"
 echo "site: $out (version $ver)"

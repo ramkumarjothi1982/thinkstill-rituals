@@ -28,6 +28,13 @@
 //    account agrees to (LEGAL_VERSIONS, <meta name="legal-version">).
 // 7. No secret in any published file, art and config included (the patterns of
 //    tools/secret-scan.mjs, with no allow-list: no fake belongs on the site).
+// 8. index.html preloads exactly the first screen's static module graph
+//    (tools/site/boot-preload.mjs bootModules, from the published files): none
+//    missing (it would load one import level at a time again), nothing else
+//    (a preload of a module the first screen does not need costs a phone its
+//    bandwidth), each once; and the Hushfold's logo as its <img> asks for it
+//    (logoPreload: the same srcset and sizes, no href), every candidate a
+//    shipped file.
 // Prints a short summary; exits 1 with the list of problems.
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, readdirSync, realpathSync, statSync } from 'node:fs';
@@ -35,6 +42,7 @@ import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { buildStage } from './auth-config.mjs';
 import { describe, scanFiles } from '../secret-scan.mjs';
+import { bootModules, logoPreload, preloadsIn } from './boot-preload.mjs';
 
 // Referenced only by localhost labs (main.js v3Lab) and removed from the
 // published copy on purpose: listed, never a failure.
@@ -253,10 +261,22 @@ export async function checkSite(outArg, ver, { env = process.env } = {}) {
 
   const auth = await checkAuth(out, app, problems, buildStage(env));
 
+  // -------------------------------------------- 8. the first screen's modules are preloaded --
+  const preloads = preloadsIn(readFileSync(indexPath, 'utf8'));
+  let boot = [];
+  try { boot = bootModules(app).map((m) => `v/${ver}/${m}`); } catch (e) { problems.push(`the first screen's module graph: ${e.message}`); }
+  for (const m of boot) if (!preloads.includes(m)) problems.push(`index.html does not modulepreload ${m} (the first screen needs it: tools/site/boot-preload.mjs)`);
+  for (const m of new Set(preloads)) if (!boot.includes(m)) problems.push(`index.html preloads ${m}, which the first screen does not import statically (tools/site/boot-preload.mjs)`);
+  for (const m of new Set(preloads.filter((x, i) => preloads.indexOf(x) !== i))) problems.push(`index.html preloads ${m} twice`);
+  if (!html.includes(logoPreload(`v/${ver}`))) problems.push('index.html does not preload the Hushfold logo as its <img> asks for it (tools/site/boot-preload.mjs logoPreload)');
+  for (const m of html.matchAll(/\simagesrcset="([^"]+)"/g)) {
+    for (const c of m[1].split(',').map((x) => x.trim().split(/\s+/)[0]).filter(Boolean)) if (!external(c) && !isFile(resolve(out, bare(c)))) problems.push(`index.html preloads ${c}, which is not in the site`);
+  }
+
   // ------------------------------------------------------- 7. secrets --
   const published = listAll(out);
   for (const f of scanFiles(out, published, { allow: false })) problems.push(`${describe(f)} is in the site: take it out of the repository and roll it`);
-  return { problems, notes, allowed, templates, reached: seen.size, assets: { checked: urls.size, missing }, auth, legal, scanned: published.length };
+  return { problems, notes, allowed, templates, reached: seen.size, assets: { checked: urls.size, missing }, auth, legal, scanned: published.length, preloaded: preloads.length };
 }
 
 /** Section 6: the legal pages. enqueue(file, from) adds a file they load to the module and stylesheet graph. Returns their paths. */
@@ -388,7 +408,7 @@ if (main) {
   const [outArg, ver] = process.argv.slice(2);
   if (!outArg || !ver) { console.error('usage: node tools/site/check.mjs <out-dir> <version>'); process.exit(2); }
   const r = await checkSite(outArg, ver);
-  console.log(`check: ${r.reached} files reached from index.html, auth/callback/ and legal/; ${r.templates.length} template imports matched; asset urls ${r.assets.checked}, missing ${r.assets.missing}; ${r.auth}; legal pages ${(r.legal || []).length}; ${r.scanned ?? 0} files scanned for secrets`);
+  console.log(`check: ${r.reached} files reached from index.html, auth/callback/ and legal/; ${r.templates.length} template imports matched; asset urls ${r.assets.checked}, missing ${r.assets.missing}; ${r.auth}; legal pages ${(r.legal || []).length}; ${r.preloaded ?? 0} boot modules preloaded; ${r.scanned ?? 0} files scanned for secrets`);
   if (r.allowed.length) console.log(`check: local-only, not published (allowed): ${r.allowed.join(', ')}`);
   for (const n of r.notes) console.log(`check: note: ${n}`);
   if (process.env.CHECK_VERBOSE) for (const t of r.templates) console.log(`check: template ${t}`);

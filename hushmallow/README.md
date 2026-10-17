@@ -127,8 +127,8 @@ check that every library file is listed and every module exists.
 
 | Folder | Contents |
 |---|---|
-| `assets/mallows/` | The seven approved transparent Mallows (source of truth) |
-| `assets/rig/` | Face-cleaned bodies and iris/spiral sprites derived from the approved art |
+| `assets/mallows/` | The seven approved transparent Mallows (the PNGs are the source of truth; the app loads their lossless `.webp` twins, written by `tools/art-webp.py`) |
+| `assets/rig/` | Face-cleaned bodies and iris/spiral sprites derived from the approved art (PNG, with lossless `.webp` twins the same way) |
 | `assets/source/` | Your original approved artwork and the Human Emotion Atlas |
 | `tools/` | Python scripts that cut the Mallows and derive the rig layers (`extract.py`, `detect.py`, `derive.py`) |
 | `src/mallows/` | Living Mallow engine: registry, expressions, rig renderer, reactions, particles, voices |
