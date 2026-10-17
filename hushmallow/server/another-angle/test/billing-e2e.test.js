@@ -213,6 +213,10 @@ test('a full run (P0, P1, S3-S9) against the Worker and a sandbox with test cloc
     'S6: → Flow yearly: tier paid, a period of a year', 'S7: cancel_at: ends_at is that date, tier unchanged', 'S7: past cancel_at: no plan',
     'S7: cancelled at once: no plan at the next check', 'S8: the resent event changes nothing (tier paid)', 'S8: the remaining Flow subscription is recorded (tier paid)',
     'S9: invoice.payment_action_required delivered (200)', 'S9: past_due while the payment waits for the customer',
+    'S6: upgrade to Beyond monthly: the Worker opens Stripe\'s confirmation page (subscription_update_confirm)', 'S6: choose a plan: the portal\'s plan choice',
+    'S6: an upgrade to the plan it has: 409 already_on_plan', 'S6: left unconfirmed, refresh says Flow monthly still', 'S6: refresh (sync { refresh: true }): Beyond monthly, active',
+    'S6: monthly → yearly: the confirmation page for Beyond yearly', 'S6: Beyond monthly → Flow yearly: 409 not_an_upgrade', 'S6: refresh: Flow yearly',
+    'S6: Flow yearly → Beyond monthly (one up, one down): 409 not_an_upgrade', 'S6: Manage subscription: the portal\'s home',
   ]) assert.ok(w.out.some((l) => l.startsWith('PASS') && l.includes(want)), want);
   assert.match(text, /^INFO {2}S5: the 14-day past_due cap runs on the Worker's own clock/m);
 
@@ -241,6 +245,14 @@ test('a full run (P0, P1, S3-S9) against the Worker and a sandbox with test cloc
   for (let i = 1; i < polls.length; i++) assert.ok(polls[i] - polls[i - 1] >= D.STATUS_POLL_MS, `status ${i}`);
   const sessions = w.worker.filter((r) => r.url === '/v1/session').map((r) => r.at);
   for (let i = 1; i < sessions.length; i++) assert.ok(sessions[i] - sessions[i - 1] >= D.SESSION_GAP_MS, `session ${i}`);
+  // S6's portal sessions, as the Worker asked the sandbox for them: the two confirmations (Beyond monthly, then yearly),
+  // the plan choice and the home; every address the preview's; a plan change never back to the home's ?billing=portal
+  const ps = s.portalSessions;
+  assert.deepEqual(ps.map((x) => x.flow), ['subscription_update_confirm', 'subscription_update', 'subscription_update_confirm', null]);
+  assert.deepEqual(ps.map((x) => x.form.get('flow_data[subscription_update_confirm][items][0][price]')), [F.PRICES.ultraMonthly, null, F.PRICES.ultraYearly, null]);
+  assert.deepEqual(ps.map((x) => x.return_url), [`${PREVIEW}/?billing=unchanged`, `${PREVIEW}/?billing=unchanged`, `${PREVIEW}/?billing=unchanged`, `${PREVIEW}/?billing=portal`]);
+  assert.deepEqual(ps.map((x) => x.form.get('flow_data[after_completion][redirect][return_url]')), [`${PREVIEW}/?billing=changed&to=ultra.monthly`, `${PREVIEW}/?billing=changed`, `${PREVIEW}/?billing=changed&to=ultra.yearly`, null]);
+  assert.deepEqual(ps.map((x) => x.form.get('flow_data[after_completion][type]')), ['redirect', 'redirect', 'redirect', null]);
   // S8's resent event reached the Worker as the same event id: applied once, logged as a duplicate
   assert.ok(F.lines(w.logs).some((l) => l.route === 'webhook' && l.duplicate === true && l.stripe_event === 'customer.subscription.created'));
   assertQuiet(w.out);
@@ -341,6 +353,22 @@ test('a Worker that never gets the events, or Stripe left to keep a failed renew
   assert.match(d.out.join('\n'), /^SKIP {2}S3-S9: not run$/m);
   assert.deepEqual(d.box.s.calls.filter((x) => x.key === E2E_KEY), []);
   assertQuiet([...a.out, ...b.out, ...c.out, ...k.out, ...d.out]);
+});
+
+test('S6 against a portal without Beyond\'s prices: the upgrade\'s confirmation page is refused (503 plan_change_unavailable), said, and never the home in its place', async () => {
+  const w = world({
+    box: { edit: (/** @type {any} */ s) => { s.portal.features.subscription_update.products = [{ product: s.products.paid.id, prices: [F.PRICES.paidMonthly, F.PRICES.paidYearly] }]; } },
+  });
+  const code = await w.drive(['--phases', 'S6']);
+  assert.equal(code, 1, w.out.join('\n'));
+  const text = w.out.join('\n');
+  assert.match(text, /^FAIL {2}S6: upgrade to Beyond monthly: the Worker opens Stripe's confirmation page \(subscription_update_confirm\) {2}503 plan_change_unavailable$/m);
+  assert.match(text, /^FAIL {2}S6: monthly → yearly: the confirmation page for Beyond yearly {2}503 plan_change_unavailable$/m);
+  // the plan choice and the home still open; the plan changes themselves, by the API, are recorded as before
+  for (const ok of ['S6: choose a plan: the portal\'s plan choice', 'S6: refresh (sync { refresh: true }): Beyond monthly, active', 'S6: Manage subscription: the portal\'s home']) assert.match(text, new RegExp(`^PASS {2}${ok.replace(/[()?{}.]/g, '\\$&')}`, 'm'), ok);
+  assert.deepEqual(w.box.s.portalSessions.map((x) => x.flow), ['subscription_update', null], 'only the sessions Stripe made: no home after a refusal');
+  assertQuiet(w.out);
+  F.assertClean(w.logs);
 });
 
 test('P0 names what the sandbox was set up wrong: a price, the endpoint\'s events and version, the portal, Stripe Tax', async () => {
