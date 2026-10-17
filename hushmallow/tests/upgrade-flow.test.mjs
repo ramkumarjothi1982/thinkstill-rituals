@@ -22,13 +22,14 @@ import { fileURLToPath } from 'node:url';
 import { createBilling, takeReturn, welcomeBack, planNow, PATHS, PLAN_TO, CHANGE_CODES, RETURN_KINDS, RETURN_LINES } from '../src/app/billing.js';
 import { createEntitlements, PLANS, LIVE_FEATURES } from '../src/app/entitlements.js';
 import {
-  confirmChange, resumeChange, verdict, rememberChange, pendingChange, resetPlanChange,
-  CHANGE_KEY, CHANGE_MS, CONFIRM_WAITS, CHANGE_LINES, QUIET_RECHECK_MS, PAYMENT_STATUSES,
+  confirmChange, resumeChange, verdict, rememberChange, pendingChange, resetPlanChange, departChange, takeTrip,
+  CHANGE_KEY, CHANGE_MS, CONFIRM_WAITS, CHANGE_LINES, QUIET_RECHECK_MS, PAYMENT_STATUSES, TRIP_KEY, TRIP_MS,
 } from '../src/app/plan-change.js';
 import { createStore } from '../src/engine/storage.js';
+import { ACCOUNT_TAB_KEYS, removeAccountTabKeys } from '../src/auth/namespace.js';
 import { MALLOWS, MALLOW_IDS } from '../src/mallows/registry.js';
 import {
-  CONFIG, plan, account, authHandle, memSession, fakeUi, installDom, FakeEl, text, all, click, sleepFor, welcomeApp, keepGlobals,
+  CONFIG, plan, account, authHandle, memSession, fakeUi, installDom, FakeEl, text, all, click, sleepFor, welcomeApp, keepGlobals, UID_A, UID_B,
 } from './helpers/upgrade-fakes.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
@@ -89,7 +90,7 @@ test('upgrade: { intent: "upgrade", plan, period } with the token, and only Stri
     server.portal = { http: code === 'plan_change_unavailable' ? 503 : 409, body: { status: 'error', error: { code, message: 'x' } } };
     assert.deepEqual(await billing.upgrade('ultra', 'yearly'), { failed: true, reason: code }, code);
   }
-  assert.deepEqual([...CHANGE_CODES], ['already_on_plan', 'payment_issue', 'not_an_upgrade', 'plan_change_unavailable', 'change_pending', 'not_updatable']);
+  assert.deepEqual([...CHANGE_CODES], ['already_on_plan', 'payment_issue', 'not_an_upgrade', 'plan_change_unavailable', 'change_pending', 'not_updatable', 'plan_ending']);
   server.portal = { http: 409, body: { error: { code: 'something_else' } } };
   assert.deepEqual(await billing.upgrade('ultra', 'yearly'), { failed: true, reason: 'http_409' });
   server.portal = { http: 503, body: { error: { code: 'billing_not_configured' } } };
@@ -135,7 +136,7 @@ test('switch: Stripe\'s plan chooser only; refused, never the portal\'s front pa
 test('refresh: POST /v1/billing/sync {} re-reads the subscription from Stripe; the answer, with its period, is the plan kept', async () => {
   const { server, billing, ent } = await account();
   server.answers = [plan('ultra', 'yearly', 'trialing')];
-  assert.deepEqual(await billing.refresh(), { ok: true, tier: 'ultra', period: 'yearly', status: 'trialing', periodEnd: Date.parse('2026-11-17T09:00:00Z'), endsAt: null, cancelAtPeriodEnd: false, manageable: true });
+  assert.deepEqual(await billing.refresh(), { ok: true, tier: 'ultra', period: 'yearly', status: 'trialing', periodEnd: Date.parse('2026-11-17T09:00:00Z'), endsAt: null, cancelAtPeriodEnd: false, manageable: true, scheduled: null });
   assert.deepEqual(server.calls.map((c) => [c.path, c.method, c.body]), [['/v1/billing/sync', 'POST', {}]], 'nothing but {}');
   await ent.refreshFromStripe();
   assert.equal(ent.tier(), 'ultra');
@@ -231,7 +232,9 @@ test('not confirmed in time: a calm line, the change kept for a quiet check late
   const out = await confirmChange({ ent }, { kind: 'changed', to: 'ultra.monthly' }, { before: planNow(ent), session, ui, sleep: async (ms) => { waits.push(ms); } });
   assert.equal(out, 'timeout');
   assert.deepEqual(waits, CONFIRM_WAITS.slice(1));
-  assert.deepEqual(ui.events, [['confirming'], ['say', 'Stripe is still confirming your change. Your plan will update here as soon as it’s confirmed.', 'timeout']]);
+  // a neutral line: what the app shows, never a claim that Stripe is still confirming (the change may be set for later)
+  assert.deepEqual(ui.events, [['confirming'], ['say', 'Your plan here still shows hushmallow Flow (monthly). If Stripe confirms a change, it will update here.', 'timeout']]);
+  assert.doesNotMatch(CHANGE_LINES.timeout('hushmallow Flow') + CHANGE_LINES.timeout(null), /still confirming|as soon as|is confirming/);
   assert.equal(server.calls.length, CONFIRM_WAITS.length);
   assert.equal(pendingChange({ session }).state, 'quiet');
   // back on screen: one quiet ask (no "Confirming…"), at most every QUIET_RECHECK_MS; confirmed, the welcome
@@ -248,6 +251,56 @@ test('not confirmed in time: a calm line, the change kept for a quiet check late
   assert.deepEqual(kinds(ui2), ['welcome']);
   assert.equal(pendingChange({ session, now: t }).state, 'done');
   assert.equal(await resumeChange({ ent }, { quiet: true, session, ui: ui2, now: () => t + QUIET_RECHECK_MS, sleep: async () => {} }), null, 'done: never again');
+});
+
+test('a change Stripe set for later (the chooser\'s downgrade or a shorter period, D8): said as it is at the first answer, never 85 s of "Confirming…" and a "still confirming"', async () => {
+  const at = '2026-11-17T09:00:00.000Z';
+  const later = (tier, period) => ({ scheduled_change: { at, tier, period } });
+  const run = async (held, answer, to = null) => {
+    resetPlanChange();
+    const { server, ent } = await account({ held });
+    server.answers = [answer];
+    const session = memSession(), ui = fakeUi(), waits = [];
+    const out = await confirmChange({ ent }, { kind: 'changed', to }, { before: planNow(ent), session, ui, sleep: async (ms) => { waits.push(ms); } });
+    return { out, ui, server, session, waits, ent };
+  };
+  // Beyond monthly → Flow on Stripe's chooser: Beyond stays until the period end
+  const r = await run(plan('ultra', 'monthly'), plan('ultra', 'monthly', 'active', later('paid', 'monthly')));
+  assert.equal(r.out, 'scheduled');
+  assert.deepEqual(r.ui.events, [['confirming'], ['say', 'Your plan changes to hushmallow Flow (monthly) on 17 November 2026. Until then, you’re on hushmallow Beyond (monthly).', 'scheduled']]);
+  assert.deepEqual(r.waits, [], 'one ask');
+  assert.equal(r.server.calls.length, 1);
+  assert.equal(pendingChange({ session: r.session }), null, 'nothing kept to ask again');
+  assert.equal(await resumeChange({ ent: r.ent }, { quiet: true, session: r.session, ui: fakeUi() }), null);
+  assert.deepEqual(r.ent.webPlan().scheduled, { at: Date.parse(at), tier: 'paid', period: 'monthly' }, 'kept with the plan');
+  // Beyond yearly → monthly: the same plan, the period named
+  const y = await run(plan('ultra', 'yearly'), plan('ultra', 'yearly', 'active', later('ultra', 'monthly')));
+  assert.equal(y.ui.events.at(-1)[1], 'Your plan changes to hushmallow Beyond (monthly) on 17 November 2026. Until then, you’re on hushmallow Beyond (yearly).');
+  // the schedule does not say the plan: the date only
+  const u = await run(plan('ultra', 'monthly'), plan('ultra', 'monthly', 'active', later(null, null)));
+  assert.equal(u.ui.events.at(-1)[1], 'Your plan change is set for 17 November 2026. Until then, you’re on hushmallow Beyond (monthly).');
+  // a change that landed at once is still the welcome, whatever is set for later
+  const now = await run(plan('ultra', 'monthly'), plan('paid', 'yearly', 'active', later('paid', 'monthly')));
+  assert.equal(now.out, 'confirmed');
+  // a payment to sort out is never "set for later"
+  const owed = await run(plan('ultra', 'monthly'), plan('ultra', 'monthly', 'past_due', later('paid', 'monthly')));
+  assert.equal(owed.out, 'payment_issue');
+  // found by the quiet check later (the first answers were behind): said then, once
+  resetPlanChange();
+  const q = await account({ held: plan('ultra', 'monthly') });
+  q.server.answers = [plan('ultra', 'monthly')];
+  const session = memSession();
+  assert.equal(await confirmChange({ ent: q.ent }, { kind: 'changed', to: null }, { before: planNow(q.ent), session, ui: fakeUi(), sleep: async () => {} }), 'timeout');
+  q.server.answers = [plan('ultra', 'monthly', 'active', later('paid', 'monthly'))];
+  const quiet = fakeUi();
+  assert.equal(await resumeChange({ ent: q.ent }, { quiet: true, session, ui: quiet, sleep: async () => {} }), 'scheduled');
+  assert.deepEqual(kinds(quiet), ['say']);
+  assert.match(quiet.events[0][1], /^Your plan changes to hushmallow Flow \(monthly\) on 17 November 2026\./);
+  assert.equal(pendingChange({ session }), null);
+  // the verdict itself
+  const chooser = { to: null, from: { tier: 'ultra', period: 'monthly' } };
+  assert.equal(verdict({ tier: 'ultra', period: 'monthly', status: 'active', scheduled: { at: Date.parse(at), tier: 'paid', period: 'monthly' } }, chooser), 'scheduled');
+  assert.equal(verdict({ tier: 'ultra', period: 'monthly', status: 'active', scheduled: null }, chooser), 'waiting');
 });
 
 test('a reload mid-confirmation resumes it (for 15 minutes from the way back), then it is forgotten', async () => {
@@ -386,6 +439,176 @@ test('back from a change, not signed in on this page: the sign-in screen, the ch
   assert.equal(away.server.calls.length, 0);
 });
 
+// ------------------------------------------- whose change it is (a shared browser) --
+test('a change kept in this tab is the account\'s: another account signed in on the tab never hears of it, and a sign-out takes it', async () => {
+  const session = memSession();
+  const at = Date.parse('2026-10-17T20:00:00Z');
+  let t = at;
+  const now = () => t;
+  // A (Flow monthly) upgrades to Beyond monthly; Stripe's answer is late, so the change is kept for a quiet check
+  const a = await account({ held: plan('paid', 'monthly'), uid: UID_A });
+  a.server.answers = [plan('paid', 'monthly')];
+  assert.equal(await confirmChange({ ent: a.ent }, { kind: 'changed', to: 'ultra.monthly' }, { before: planNow(a.ent), session, ui: fakeUi(), now, sleep: async () => {} }), 'timeout');
+  assert.deepEqual([pendingChange({ session, now: t }).state, pendingChange({ session, now: t }).uid], ['quiet', UID_A], 'kept with the account');
+  // A signs out (elsewhere: this tab's copy stays) and B, who already holds Beyond monthly, signs in on this tab
+  for (const [held, quiet] of [[plan('ultra', 'monthly'), true], [plan('paid', 'yearly'), null]]) {
+    const copy = JSON.stringify({ ...JSON.parse(session.getItem(CHANGE_KEY)), state: 'quiet' });
+    session.setItem(CHANGE_KEY, copy);
+    resetPlanChange();
+    const b = await account({ held, uid: UID_B });
+    b.server.answers = [held];
+    const ui = fakeUi();
+    t += QUIET_RECHECK_MS;
+    assert.equal(await resumeChange({ ent: b.ent }, { quiet, before: planNow(b.ent), session, ui, now, sleep: async () => {} }), null, `${held.tier}.${held.period}`);
+    assert.deepEqual(ui.events, [], 'no welcome, no "Confirming…", no "still confirming"');
+    assert.equal(b.server.calls.length, 0, 'nothing asked for A\'s change');
+    assert.equal(session.getItem(CHANGE_KEY), null, 'dropped');
+    session.setItem(CHANGE_KEY, copy);
+  }
+  // A, back on the same tab later, still has it
+  resetPlanChange();
+  a.server.answers = [plan('ultra', 'monthly')];
+  const ui = fakeUi();
+  t += QUIET_RECHECK_MS;
+  assert.equal(await resumeChange({ ent: a.ent }, { quiet: true, session, ui, now, sleep: async () => {} }), 'confirmed');
+  assert.deepEqual(kinds(ui), ['welcome']);
+  // any sign-out, a deletion and "Remove this device's data" take this tab's copy (src/auth/client.js)
+  assert.deepEqual(ACCOUNT_TAB_KEYS.map((k) => `hm2:${k}`), [CHANGE_KEY, TRIP_KEY]);
+  departChange({ uid: UID_A, from: plan('paid', 'monthly'), to: 'ultra.yearly' }, { session, now: t });
+  rememberChange({ to: 'ultra.yearly', at: t, from: { tier: 'paid', period: 'monthly' }, state: 'quiet', uid: UID_A }, { session });
+  session.setItem('hm2:planIntent', '{"plan":"paid","period":"yearly","at":1}');
+  assert.equal(removeAccountTabKeys(session), 2);
+  assert.deepEqual([session.getItem(CHANGE_KEY), session.getItem(TRIP_KEY)], [null, null]);
+  assert.notEqual(session.getItem('hm2:planIntent'), null, 'a guest\'s chosen plan is not the account\'s');
+  const client = read('src/auth/client.js');
+  assert.equal((client.match(/removeAccountTabKeys\(ss\);/g) || []).length, 3, 'sign-out, deletion, this device\'s data');
+});
+
+test('the way back lands on a tab signed in as another account since the trip left: not theirs, nothing said, nothing asked', async () => {
+  const session = memSession();
+  globalThis.sessionStorage = session;   // billing.js keeps the trip in this tab (its default session)
+  try {
+    const a = await account({ held: plan('paid', 'monthly'), uid: UID_A });
+    a.server.portal = { http: 200, body: { url: 'https://billing.stripe.com/p/flow/up', flow: 'subscription_update_confirm', to: 'ultra.monthly' } };
+    assert.deepEqual(await a.ent.manage({ intent: 'upgrade', plan: 'ultra', period: 'monthly' }), { redirecting: true, to: 'ultra.monthly' });
+    const trip = JSON.parse(session.getItem(TRIP_KEY));
+    assert.deepEqual([trip.uid, trip.from, trip.to], [UID_A, { tier: 'paid', period: 'monthly', status: 'active' }, 'ultra.monthly'], 'whose trip, and from what');
+    // meanwhile A signed out and B (already on Beyond monthly) signed in: the tab reloads into B's namespace
+    const b = await account({ held: plan('ultra', 'monthly'), uid: UID_B });
+    b.server.answers = [plan('ultra', 'monthly')];
+    const ui = fakeUi();
+    assert.equal(await confirmChange({ ent: b.ent }, { kind: 'changed', to: 'ultra.monthly' }, { before: planNow(b.ent), session, ui, sleep: async () => {} }), 'other-account');
+    assert.deepEqual(ui.events, []);
+    assert.equal(b.server.calls.length, 0);
+    assert.deepEqual([session.getItem(CHANGE_KEY), session.getItem(TRIP_KEY)], [null, null]);
+    // the back link the same
+    departChange({ uid: UID_A, from: plan('paid', 'monthly'), to: null }, { session });
+    assert.equal(await confirmChange({ ent: b.ent }, { kind: 'unchanged' }, { before: planNow(b.ent), session, ui, sleep: async () => {} }), 'other-account');
+    assert.deepEqual(ui.events, []);
+    // A's own way back: the trip's plan is the plan before
+    departChange({ uid: UID_A, from: plan('paid', 'monthly'), to: 'ultra.monthly' }, { session });
+    a.server.answers = [plan('ultra', 'monthly')];
+    const mine = fakeUi();
+    assert.equal(await confirmChange({ ent: a.ent }, { kind: 'changed', to: 'ultra.monthly' }, { before: planNow(a.ent), session, ui: mine, sleep: async () => {} }), 'confirmed');
+    assert.deepEqual(mine.events.at(-1), ['welcome', { tier: 'ultra', period: 'monthly', from: { tier: 'paid', period: 'monthly', status: 'active' }, to: 'ultra.monthly' }]);
+    assert.equal(session.getItem(TRIP_KEY), null, 'taken');
+    // a trip is kept for TRIP_MS, then forgotten
+    departChange({ uid: UID_A, from: null, to: null }, { session, now: 1e12 });
+    assert.equal(takeTrip({ session, now: 1e12 + TRIP_MS }), null);
+    assert.equal(TRIP_MS, 2 * 3600000);
+  } finally { delete globalThis.sessionStorage; }
+});
+
+test('back from a change on a page not signed in: the plan before is the trip\'s own (never the guest\'s "none"), so a change Stripe did not make is never welcomed', async () => {
+  const { welcomeKind } = await import('../src/app/scenes/beyond-welcome.js');
+  const session = memSession();
+  globalThis.sessionStorage = session;
+  try {
+    // A on Beyond monthly picks Flow on Stripe's chooser; Stripe schedules it for the period end, so Beyond stays
+    const a = await account({ held: plan('ultra', 'monthly'), uid: UID_A });
+    a.server.portal = { http: 200, body: { url: 'https://billing.stripe.com/p/flow/choose', flow: 'subscription_update' } };
+    assert.deepEqual(await a.ent.manage({ intent: 'switch' }), { redirecting: true });
+    // the session lapsed on this tab: the way back lands on a guest's page
+    const away = await account({ signedIn: false, held: null, uid: null });
+    assert.equal(planNow(away.ent).tier, 'none', 'the web plan counts for nobody here');
+    const went = [];
+    assert.equal(await confirmChange({ ent: away.ent, go: (...x) => went.push(x) }, { kind: 'changed', to: null }, { before: planNow(away.ent), session, ui: fakeUi() }), 'signed-out');
+    assert.deepEqual(pendingChange({ session }).from, { tier: 'ultra', period: 'monthly', status: 'active' }, 'the trip\'s plan, never none');
+    assert.equal(pendingChange({ session }).uid, UID_A);
+    // signed in again: Stripe still says Beyond monthly (the move to Flow waits for the period end)
+    a.server.answers = [plan('ultra', 'monthly')];
+    const ui = fakeUi();
+    const out = await resumeChange({ ent: a.ent }, { before: planNow(a.ent), session, ui, sleep: async () => {} });
+    assert.notEqual(out, 'confirmed');
+    assert.ok(!kinds(ui).includes('welcome'), 'no "Welcome to hushmallow Beyond" for the plan being left');
+    // Beyond monthly → yearly on the same path: the smaller welcome, as from the page itself
+    resetPlanChange();
+    departChange({ uid: UID_A, from: plan('ultra', 'monthly'), to: 'ultra.yearly' }, { session });
+    assert.equal(await confirmChange({ ent: away.ent, go() {} }, { kind: 'changed', to: 'ultra.yearly' }, { before: planNow(away.ent), session, ui: fakeUi() }), 'signed-out');
+    a.server.answers = [plan('ultra', 'yearly')];
+    const y = fakeUi();
+    assert.equal(await resumeChange({ ent: a.ent }, { before: planNow(a.ent), session, ui: y, sleep: async () => {} }), 'confirmed');
+    assert.equal(welcomeKind(y.events.at(-1)[1]), 'plan', 'You\'re on hushmallow Beyond, yearly');
+  } finally { delete globalThis.sessionStorage; }
+  // no trip kept here (an old address, another tab): the plan before is not known on a page not signed in; after the
+  // sign-in it is the account's own plan kept on this phone, when it holds one
+  const t2 = memSession();
+  const guest = await account({ signedIn: false, held: null, uid: null });
+  for (const to of [null, 'ultra.yearly']) {
+    resetPlanChange();
+    assert.equal(await confirmChange({ ent: guest.ent, go() {} }, { kind: 'changed', to }, { before: planNow(guest.ent), session: t2, ui: fakeUi() }), 'signed-out');
+    assert.equal(pendingChange({ session: t2 }).from, null, 'not known');
+    // a fresh device for this account (nothing kept): a chooser change is never confirmed against nothing; an upgrade
+    // with its target is, by that target, with the smaller welcome (what came before is not known)
+    const fresh = await account({ held: plan('paid', 'monthly'), uid: UID_A, store: createStore({ backend: 'memory' }) });
+    fresh.server.answers = [plan('ultra', 'yearly')];
+    const ui = fakeUi();
+    const out = await resumeChange({ ent: fresh.ent }, { before: { tier: 'none', period: null, status: null }, session: t2, ui, sleep: async () => {} });
+    if (!to) { assert.notEqual(out, 'confirmed'); assert.ok(!kinds(ui).includes('welcome')); }
+    else {
+      assert.equal(out, 'confirmed');
+      assert.deepEqual(ui.events.at(-1)[1], { tier: 'ultra', period: 'yearly', from: null, fromUnknown: true, to: 'ultra.yearly' });
+      assert.equal(welcomeKind(ui.events.at(-1)[1]), 'plan');
+    }
+    forgetChangeIn(t2);
+  }
+  // the account's own plan kept here: the plan before, and Flow → Beyond gets Beyond's welcome
+  resetPlanChange();
+  assert.equal(await confirmChange({ ent: guest.ent, go() {} }, { kind: 'changed', to: 'ultra.yearly' }, { before: planNow(guest.ent), session: t2, ui: fakeUi() }), 'signed-out');
+  const kept = await account({ held: plan('paid', 'monthly'), uid: UID_A });
+  kept.server.answers = [plan('ultra', 'yearly')];
+  const ui = fakeUi();
+  assert.equal(await resumeChange({ ent: kept.ent }, { before: planNow(kept.ent), session: t2, ui, sleep: async () => {} }), 'confirmed');
+  assert.deepEqual(ui.events.at(-1)[1].from, { tier: 'paid', period: 'monthly', status: 'active' });
+  assert.equal(welcomeKind(ui.events.at(-1)[1]), 'beyond');
+  // the chooser's verdict against a plan not known, or none: never a change
+  for (const from of [null, { tier: 'none', period: null }]) assert.equal(verdict({ tier: 'paid', period: 'monthly', status: 'active' }, { to: null, from }), 'waiting', JSON.stringify(from));
+});
+const forgetChangeIn = (session) => session.removeItem(CHANGE_KEY);
+
+test('the back link (?billing=unchanged) with a plan kept here that counts for nobody (no owner, from before this release): "No change made", never a welcome', async () => {
+  const store = createStore({ backend: 'memory' });
+  store.set('entitlement', { tier: 'paid', source: 'billing', since: Date.now() - 86400000, checkedAt: Date.now() - 3600000, period: 'monthly', status: 'active' });
+  const a = await account({ held: null, uid: UID_A, store });
+  assert.equal(planNow(a.ent).tier, 'none', 'kept without an owner: it counts for nobody until the server answers');
+  const before = planNow(a.ent);
+  a.server.answers = [plan('paid', 'monthly')];
+  const ui = fakeUi();
+  assert.equal(await confirmChange({ ent: a.ent }, { kind: 'unchanged' }, { before, session: memSession(), ui }), 'unchanged');
+  assert.deepEqual(ui.events, [['say', 'No change made. You’re still on hushmallow Flow.', 'unchanged']]);
+  // older than the grace, or another account's: the same
+  for (const kept of [{ checkedAt: Date.now() - 4 * 86400000, owner: UID_A }, { checkedAt: Date.now() - 3600000, owner: UID_B }]) {
+    const st = createStore({ backend: 'memory' });
+    st.set('entitlement', { tier: 'ultra', source: 'billing', since: 1, period: 'yearly', status: 'active', ...kept });
+    const x = await account({ held: null, uid: UID_A, store: st });
+    const b4 = planNow(x.ent);
+    x.server.answers = [plan('ultra', 'yearly')];
+    const u = fakeUi();
+    assert.equal(await confirmChange({ ent: x.ent }, { kind: 'unchanged' }, { before: b4, session: memSession(), ui: u }), 'unchanged', JSON.stringify(kept));
+    assert.deepEqual(u.events, [['say', 'No change made. You’re still on hushmallow Beyond.', 'unchanged']]);
+  }
+});
+
 test('welcomeBack: a change\'s way back goes to the confirmation; a Beyond Checkout opens Beyond\'s welcome instead of the plain line', async () => {
   const { server, ent } = await account();
   server.answers = [plan('ultra', 'monthly')];
@@ -413,10 +636,14 @@ test('welcomeBack: a change\'s way back goes to the confirmation; a Beyond Check
 
 test('main.js: the way back first, else a change kept in this tab carries on; a quiet check when the app is back on screen', () => {
   const main = read('src/app/main.js');
-  assert.match(main, /if \(billingBack\) welcomeBack\(app, billingBack, \{ before: planBefore \}\)\.catch\(\(\) => \{\}\);\n {2}\/\/[^\n]*\n {2}else if \(billing\) resumeChange\(app\)\.catch\(\(\) => \{\}\);/);
+  assert.match(main, /if \(billingBack\) welcomeBack\(app, billingBack, \{ before: planBefore \}\)\.catch\(\(\) => \{\}\);\n {2}\/\/[^\n]*\n {2}else if \(billing\) resumeChange\(app, \{ before: planBefore \}\)\.catch\(\(\) => \{\}\);/);
+  // the plan kept before any check, whether or not this start is a way back (a change kept from a page not signed in
+  // is judged against the account's own plan)
+  assert.match(main, /const planBefore = billing \? planNow\(ent\) : null;/);
+  assert.ok(main.indexOf('const planBefore = billing') < main.indexOf('ent.refresh().catch'), 'taken before the first check');
   assert.match(main, /if \(billing\) document\.addEventListener\('visibilitychange', \(\) => \{ if \(document\.visibilityState === 'visible'\) resumeChange\(app, \{ quiet: true \}\)\.catch\(\(\) => \{\}\); \}\);/);
   assert.match(main, /app\.welcomePlan = async \(result\) => \{/);
-  assert.match(main, /\(await import\('\.\/scenes\/beyond-welcome\.js'\)\)\.openPlanWelcome\(app, result\)/);
+  assert.match(main, /\(await import\('\.\/scenes\/beyond-welcome\.js'\)\)\.openPlanWelcome\(app, result, /);
   // (never over a ritual or a conversation: a line there instead)
   assert.match(main, /const WELCOME_SCENES = \['home', 'plans', 'settings', 'account'/);
   assert.doesNotMatch(main.match(/const WELCOME_SCENES = \[[^\]]*\]/)[0], /ritual|angle|encounter|express/);
@@ -484,6 +711,33 @@ test('the Beyond welcome: the seven Mallows, a labelled modal dialog, focus in a
   await sleepFor(500);
 });
 
+test('the welcome over Plans or Settings: once it closes, that scene is drawn again under it, so it shows the plan Stripe has just confirmed', async () => {
+  const { doc } = installDom();
+  const { openPlanWelcome } = await import('../src/app/scenes/beyond-welcome.js');
+  const { app, log } = welcomeApp();
+  // every way it closes says so, once: Continue, Escape, and Try Another Angle (before it moves on to Another Angle)
+  for (const how of ['continue', 'escape', 'try-angle']) {
+    const order = [];
+    app.go = (n) => order.push(`go:${n}`);
+    const s = await openPlanWelcome(app, { tier: 'ultra', period: 'monthly', from: { tier: 'paid', period: 'monthly' } }, { onClose: () => order.push('closed') });
+    if (how === 'escape') doc.key('Escape'); else await click(all(s.el).find((n) => n.attrs?.['data-act'] === how));
+    assert.equal(s.open, false, how);
+    assert.deepEqual(order, how === 'try-angle' ? ['closed', 'go:angle'] : ['closed'], how);
+    await sleepFor(480);
+  }
+  // the smaller one too; and an onClose that throws never keeps it open
+  const small = await openPlanWelcome(app, { tier: 'paid', period: 'yearly', from: { tier: 'paid', period: 'monthly' } }, { onClose: () => { throw new Error('x'); } });
+  await click(all(small.el).find((n) => n.attrs?.['data-act'] === 'continue'));
+  assert.equal(small.open, false);
+  void log;
+  // main.js: Plans and Settings (the scenes that show the plan) are drawn again in place, only while still under it
+  const main = read('src/app/main.js');
+  assert.match(main, /const PLAN_SCENES = \['plans', 'settings'\];/);
+  assert.match(main, /const redraw = PLAN_SCENES\.includes\(top\.name\) \? \(\) => \{ if \(stack\[stack\.length - 1\] === top\) app\.go\(top\.name, top\.params, \{ replace: true \}\)\.catch\(\(\) => \{\}\); \} : null;/);
+  assert.match(main, /openPlanWelcome\(app, result, \{ onClose: redraw \}\)/);
+  await sleepFor(480);
+});
+
 test('the welcome is still with reduced motion or low stimulation; a yearly move or a move to Flow gets the smaller one', async () => {
   installDom();
   const { openPlanWelcome, welcomeKind, planLine } = await import('../src/app/scenes/beyond-welcome.js');
@@ -515,6 +769,46 @@ test('the welcome is still with reduced motion or low stimulation; a yearly move
   assert.deepEqual(all(small.el).filter((n) => n.tagName === 'BUTTON').map(text), ['Continue']);
   assert.ok(text(small.el).includes('Billed once a year. You can change your plan or cancel any time in Settings → Manage subscription.'));
   small.close();
+  await sleepFor(500);
+});
+
+test('the smaller welcome centres the Mallow on screen (app.world.mallowId: the Hushfold\'s mallowForNow() until one is picked), never always Noomi', async () => {
+  installDom();
+  const { openPlanWelcome, smallTrio } = await import('../src/app/scenes/beyond-welcome.js');
+  const trio = (world, mallow = null) => { const { app } = welcomeApp({ mallow }); app.world = { ...app.world, ...world }; return smallTrio(app); };
+  const i = MALLOW_IDS.indexOf('pipzi'), n = MALLOW_IDS.length;
+  assert.deepEqual(trio({ mallowId: 'pipzi' }), [MALLOW_IDS[(i + n - 1) % n], 'pipzi', MALLOW_IDS[(i + 1) % n]], 'no pick: the one on screen, its neighbours beside it');
+  assert.equal(trio({ mallowId: 'boppo' }, 'blubi')[1], 'boppo', 'the one on screen, over an older pick');
+  assert.equal(trio({ mallowId: 'nobody' }, 'blubi')[1], 'blubi', 'not a Mallow: the pick');
+  assert.equal(trio({})[1], 'noomi', 'nothing known: Noomi, as before');
+  const { app } = welcomeApp();
+  app.world = { ...app.world, mallowId: 'pipzi' };
+  const small = await openPlanWelcome(app, { tier: 'paid', period: 'yearly', from: { tier: 'paid', period: 'monthly' } });
+  assert.equal(all(small.el).filter((n) => n.tagName === 'IMG').map((i) => i.parentNode.attrs['data-mallow'])[1], 'pipzi');
+  small.close();
+  await sleepFor(500);
+});
+
+test('the gathering: all seven faces in sight (the back row raised over the front), and it gives way on a short screen or a large text size', async () => {
+  installDom();
+  const { openPlanWelcome } = await import('../src/app/scenes/beyond-welcome.js');
+  const { app } = welcomeApp();
+  const s = await openPlanWelcome(app, { tier: 'ultra', period: 'monthly', from: { tier: 'paid', period: 'monthly' } });
+  const spot = Object.fromEntries(all(s.el).filter((n) => n.attrs?.['data-mallow']).map((n) => [n.attrs['data-mallow'], { x: parseFloat(n.style.left), y: parseFloat(n.style.bottom), w: parseFloat(n.style.width), z: Number(n.style.zIndex) }]));
+  // Pipzi and Boppo stand behind Zuzu, Blubi and Loomi: raised so their faces (the upper half of each picture) clear them
+  const H = 56;   // the gathering's height, in % of its width (aspect-ratio 100 / 56)
+  const top = (id) => spot[id].y + (spot[id].w * 100) / H;   // the picture's top, in % of the gathering's height
+  for (const back of ['pipzi', 'boppo']) {
+    assert.ok(spot[back].z < spot.zuzu.z && spot[back].y >= 34, `${back}: raised (${spot[back].y}%)`);
+    // (a face sits in the upper part of its picture: its eyes about 14 points below the picture's top)
+    for (const front of ['zuzu', 'blubi', 'loomi']) assert.ok(top(back) - top(front) >= 14 || Math.abs(spot[back].x - spot[front].x) > (spot[back].w + spot[front].w) / 2, `${back}'s face clears ${front}`);
+  }
+  s.close();
+  const css = read('src/ui/plan-welcome.css');
+  assert.match(css, /@media \(max-height: 700px\) \{ \.is-beyond \.pw-gather \{ width: min\(100%, 400px, 34dvh\); \} \}/, 'a short screen: capped by height');
+  assert.match(css, /:root\[data-text-scale="large"\] \.is-beyond \.pw-gather \{ width: min\(100%, 400px, 40dvh\); \}/, 'a large text size (type.js setTextScale)');
+  assert.match(css, /@media \(max-height: 700px\) \{ :root\[data-text-scale="large"\] \.is-beyond \.pw-gather \{ width: min\(100%, 400px, 30dvh\); \} \}/);
+  assert.match(read('src/ui/type.js'), /if \(v > 1\.12\) root\.dataset\.textScale = 'large'/, 'the attribute the CSS reads');
   await sleepFor(500);
 });
 
@@ -576,8 +870,8 @@ test('the confirmation\'s own UI: a calm status line (role=status), then what ca
   await sleepFor(5);
   assert.equal(text(note.el), 'Confirming your new plan with Stripe…');
   assert.ok(!/welcome|confirmed|upgraded/i.test(text(note.el)), 'never a success');
-  note.say(CHANGE_LINES.timeout, 0, 'timeout');
-  assert.equal(text(note.el), CHANGE_LINES.timeout);
+  note.say(CHANGE_LINES.timeout('hushmallow Flow'), 0, 'timeout');
+  assert.equal(text(note.el), CHANGE_LINES.timeout('hushmallow Flow'));
   assert.equal(note.el.attrs['data-plan-confirm'], 'timeout');
   note.close();
   assert.equal(note.el.parentNode, null);

@@ -848,8 +848,8 @@ async function paid(s, { sub = {}, session = {} } = {}) {
   Object.assign(s.up.sessions.get(id), { status: 'complete', payment_status: 'paid', subscription: 'sub_Paid1', ...session });
   return id;
 }
-const ACTIVE = { tier: 'ultra', status: 'active', period: 'monthly', current_period_end: new Date(CLOCK_START + 30 * DAY).toISOString(), cancel_at_period_end: false, ends_at: null, manageable: true };
-const NONE = { tier: 'none', status: 'none', period: null, current_period_end: null, cancel_at_period_end: false, ends_at: null, manageable: false };
+const ACTIVE = { tier: 'ultra', status: 'active', period: 'monthly', current_period_end: new Date(CLOCK_START + 30 * DAY).toISOString(), cancel_at_period_end: false, ends_at: null, manageable: true, scheduled_change: null };
+const NONE = { tier: 'none', status: 'none', period: null, current_period_end: null, cancel_at_period_end: false, ends_at: null, manageable: false, scheduled_change: null };
 
 test('POST /v1/billing/sync: back from Checkout, the session\'s subscription is read and recorded at once; the answer is the status', async () => {
   const s = track(setup());

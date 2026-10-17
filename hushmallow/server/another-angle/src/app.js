@@ -265,8 +265,15 @@ export function createApp(options) {
     // token.
     const body = await readJson(request, ANGLE_BODY_MAX_BYTES);
     const raw = body.ok && body.value && typeof body.value === 'object' ? /** @type {Record<string, unknown>} */ (body.value).text : null;
+    // One reading per text for the whole request: the same words read the same way (screenInput is pure), so the check
+    // here, the one on the validated text and earlier angles' lines below, and the pipeline's own steps 1b and 1c
+    // (runAngle deps.screen) each screen a given text once, never twice (README: CPU time).
+    /** @type {Map<string, ReturnType<typeof screenInput>>} */
+    const screens = new Map();
+    /** @param {string} t */
+    const screen = (t) => { let r = screens.get(t); if (!r) { r = screenInput(t); screens.set(t, r); } return r; };
     if (typeof raw === 'string') {
-      const early = screenInput(cleanText(raw.slice(0, EARLY_CHECK_CHARS)));
+      const early = screen(cleanText(raw.slice(0, EARLY_CHECK_CHARS)));
       if (early.level === 'crisis' || early.level === 'care') {
         const source = early.source || 'lexicon';
         logEvt({ status: early.level, http: 200, safety_level: early.level, safety_source: source, text_len_bucket: lengthBucket(raw.length) });
@@ -308,12 +315,12 @@ export function createApp(options) {
     // cap (checked again on the validated text, which is what the model would
     // see, and on the earlier angles' lines the device sent back: the
     // pipeline's steps 1, 1b and 1c, before the quota is taken).
-    const safety = screenInput(input.text);
+    const safety = screen(input.text);
     let support = safety.level === 'crisis' || safety.level === 'care' ? safety : null;
     for (const p of input.previous) {
       if (support) break;
       for (const line of [p.subtitle_line_1, p.subtitle_line_2]) {
-        const r = screenInput(line);
+        const r = screen(line);
         if (r.level === 'crisis' || r.level === 'care') { support = r; break; }
       }
     }
@@ -374,7 +381,7 @@ export function createApp(options) {
     try {
       result = await runAngle(input, {
         provider, systemPrompt: options.systemPrompt, maxTokens: cfg.maxTokens, attemptTimeoutMs: cfg.attemptTimeoutMs,
-        deadlineMs: cfg.deadlineMs, userTag: await userTag(cfg, subject, day), now, usage,
+        deadlineMs: cfg.deadlineMs, userTag: await userTag(cfg, subject, day), now, usage, screen,
       });
     } catch (e) {
       await defer(ctx, ledger.settle('global', 'spend', day, reserve, costMicros(usage)));

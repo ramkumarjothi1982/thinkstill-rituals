@@ -133,6 +133,11 @@ test('plans page: each refusal said calmly, with Manage subscription (the full p
   await click(manageButton());
   assert.deepEqual(server.calls.map((c) => c.body), [{}]);
   assert.equal(navs.at(-1), 'https://billing.stripe.com/p/session/test_home');
+  // a plan set to end (cancelled in Manage subscription): the real reason, and Manage subscription, where it is renewed
+  await tryWith({ http: 409, body: { status: 'error', error: { code: 'plan_ending' } } });
+  assert.equal(p.said(), `${CHANGE_ERRORS.plan_ending}Manage subscription`);
+  assert.equal(text(manageButton()), 'Manage subscription');
+  assert.match(CHANGE_ERRORS.plan_ending, /set to end, so it can’t be changed here\. You can renew it in Manage subscription\./);
   for (const code of ['not_an_upgrade', 'plan_change_unavailable', 'change_pending', 'not_updatable']) {
     await tryWith({ http: code === 'plan_change_unavailable' ? 503 : 409, body: { status: 'error', error: { code } } });
     assert.equal(p.said(), `${CHANGE_ERRORS[code]}${MANAGE_TO_CHANGE}`, code);
@@ -223,6 +228,38 @@ test('Settings: Manage subscription (Stripe\'s portal, cancelling included) stay
   const src = read('src/app/scenes/settings.js');
   assert.match(src, /'data-act': 'manage-subscription'[^\n]*\}, 'Manage subscription'\) : null,/);
   assert.match(src, /try \{ r = await ent\.manage\(\); \}/, 'the front page, never a flow');
+});
+
+test('Settings, framed (the owner\'s Framer site): the way to Manage subscription stays under the button, a real link with where to go once there, never a toast that is gone in 9 s', async () => {
+  installDom('app.hushmallow.com');
+  globalThis.location.host = 'app.hushmallow.com';
+  globalThis.location.pathname = '/';
+  const { createBilling, FRAMED_LINE, FRAMED_MANAGE } = await import('../src/app/billing.js');
+  const { default: settings } = await import('../src/app/scenes/settings.js');
+  const { server } = await account({ held: plan('ultra', 'monthly') });
+  const navs = [];
+  const billing = createBilling({ auth: () => ({ enabled: true, status: () => 'signed-in', load: async () => ({ accessToken: async () => 'eyJhbGciOi.account-token.sig' }) }), signIn: true, config: { provider: 'stripe', endpoint: 'https://hushmallow-another-angle.vibyfy-chat.workers.dev' }, fetchImpl: server.fetch, nav: (u) => navs.push(u), framed: true });
+  const ent = createEntitlements({ store: createStore({ backend: 'memory' }), billing });
+  await ent.refresh({ force: true });
+  server.calls.length = 0;
+  const prefs = { get: (k) => ({ textScale: 1, subtitleSpeed: 1, motion: 'system', volume: 0.6 })[k] ?? false, set() {} };
+  const view = settings({ prefs, ent, world: {}, rec: {}, store: createStore({ backend: 'memory' }), auth: null, haptic() {}, go() {}, back() {} });
+  const nodes = all(view.el);
+  const manage = nodes.find((n) => n.attrs?.['data-act'] === 'manage-subscription');
+  const said = nodes.find((n) => n.attrs && 'data-manage-said' in n.attrs);
+  assert.equal(said.attrs.role, 'status');
+  assert.equal(text(said), '', 'nothing said before a tap');
+  const hint = nodes.find((n) => n.attrs && 'data-manage-hint' in n.attrs);
+  assert.equal(said.parentNode.children.indexOf(said), said.parentNode.children.indexOf(hint) + 1, 'right under the button and its line');
+  await click(manage);
+  assert.deepEqual([navs, server.calls.length], [[], 0], 'nothing asked of Stripe in a frame');
+  const a = all(said).find((n) => n.tagName === 'A');
+  assert.deepEqual([a.attrs.href, a.attrs.target, a.attrs.rel, text(a)], ['https://app.hushmallow.com/#account', '_top', 'noopener', 'Continue on app.hushmallow.com']);
+  assert.equal(text(said), `${FRAMED_LINE} Continue on app.hushmallow.com ${FRAMED_MANAGE}`);
+  assert.equal(text(said), 'Plans and your subscription open in a full window, not inside this page. Continue on app.hushmallow.com and open Settings → Manage subscription there.');
+  assert.ok(view.el.contains(said), 'a line in Settings itself, not a toast: it stays until the page changes');
+  assert.equal(manage.disabled, false);
+  assert.doesNotMatch(read('src/app/scenes/settings.js'), /toast\(outsideNote/);
 });
 
 test('Settings: the line under Manage subscription is calm and names cancelling plainly', async () => {

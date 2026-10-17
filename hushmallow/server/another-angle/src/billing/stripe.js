@@ -76,8 +76,18 @@ export function createStripe({ secretKey, apiVersion = '', fetch: fetchImpl, tim
     createCheckoutSession: (params, o) => call('POST', '/v1/checkout/sessions', params, o),
     /** POST /v1/billing_portal/sessions (flow_data: straight to one task, such as a plan change) @param {{ customer: string, return_url: string, flow_data?: Record<string, unknown> }} params */
     createPortalSession: (params) => call('POST', '/v1/billing_portal/sessions', params),
-    /** GET /v1/subscriptions/:id (the current truth, whatever order the events came in) @param {string} id */
+    /**
+     * GET /v1/subscriptions/:id (the current truth, whatever order the events came in). Never expanded: a restricted
+     * key without "Subscription schedules" may not read an expanded schedule, and every plan the server records comes
+     * through this read. @param {string} id
+     */
     retrieveSubscription: (id) => call('GET', `/v1/subscriptions/${encodeURIComponent(id)}`),
+    /**
+     * GET /v1/subscription_schedules/:id (a change the portal set for the period end: when, and to which price;
+     * store.js summarise). Read only when a subscription names one, and optional: refused, the record keeps when, not
+     * which plan. @param {string} id
+     */
+    retrieveSubscriptionSchedule: (id) => call('GET', `/v1/subscription_schedules/${encodeURIComponent(id)}`),
     /** POST /v1/customers @param {Record<string, unknown>} params @param {{ idempotencyKey?: string }} [o] */
     createCustomer: (params, o) => call('POST', '/v1/customers', params, o),
     /** GET /v1/customers/:id (a deleted one reads back as { id, deleted: true }) @param {string} id */

@@ -19,7 +19,8 @@
 //   createBilling({ auth, signIn, config?, shell?, prices?, fetchImpl?, nav?, timeoutMs? }) → billing | null (off)
 //     signedIn()             the account is signed in on this device
 //     accountToken()         → its current access token, or null (Another Angle's session sends it too, src/beyond/angle-client.js)
-//     status()               → { ok: true, tier, period, status, periodEnd, endsAt, cancelAtPeriodEnd, manageable } | { ok: false, reason, off? }
+//     status()               → { ok: true, tier, period, status, periodEnd, endsAt, cancelAtPeriodEnd, manageable, scheduled } | { ok: false, reason, off? }
+//                              (scheduled: { at, tier, period } of a change Stripe has set for later, or null: scheduledOf)
 //                              (period: 'monthly' | 'yearly' from the plan's recorded price, null from a server without it;
 //                              periodEnd, endsAt: ms or null; the server sends ISO or ms, both are read; off: the
 //                              server's 503 saying it has no web billing at all, one of BILLING_OFF_CODES)
@@ -27,11 +28,13 @@
 //                              offers the whole window) | { needsAccount } | { manage } (has a plan)
 //                              | { pending } (a payment still going through) | { failed, reason, support? }
 //                              (support: the account's billing needs a person, 409 customer_conflict: BILLING_SUPPORT)
-//     portal(intent?)        → { redirecting } (Stripe's customer portal) | { framed } | { needsAccount } | { none } | { failed, reason };
+//     portal(intent?, trip?) → { redirecting } (Stripe's customer portal) | { framed } | { needsAccount } | { none } | { failed, reason };
 //                              intent 'switch' (the plans page, for a plan already held) opens Stripe's own plan chooser,
 //                              which comes back with ?billing=changed (or ?billing=unchanged by its back link), never the
 //                              portal's front page; Settings' Manage subscription (no intent) is the front page
-//     upgrade(plan, period)  → { redirecting, to } (Stripe's page confirming exactly that change, back with
+//                              trip: { uid, from } of the account changing its plan (ent.manage), kept for the way back
+//                              (plan-change.js departChange)
+//     upgrade(plan, period, trip?) → { redirecting, to } (Stripe's page confirming exactly that change, back with
 //                              ?billing=changed&to=<plan>.<period>) | { framed } | { needsAccount } | { none } | { failed, reason }
 //                              (reason: one of CHANGE_CODES as the server says it, or invalid, network, http_…, not_stripe)
 //     sync(sessionId)        → as status(): back from Checkout, the server reads that session from Stripe and records the
@@ -59,7 +62,7 @@
 
 import { BILLING_PRICES, deploySettings } from './config.js';
 import { PLANS } from './entitlements.js';
-import { confirmChange, forgetChange, PLAN_TO } from './plan-change.js';
+import { confirmChange, departChange, PLAN_TO } from './plan-change.js';
 
 export { PLAN_TO };
 
@@ -69,10 +72,11 @@ export const SESSION_ID = /^cs_(test|live)_[A-Za-z0-9]{10,250}$/;
 /**
  * Why the server would not open a change of plan (POST /v1/billing/portal, intent 'upgrade' or 'switch': 409, or 503
  * plan_change_unavailable): already that plan; a payment to sort out first (past due, unpaid, incomplete); not an
- * upgrade by its rule; a change already waiting on the subscription; a subscription it cannot change here; or Stripe
- * refusing the flow (never the portal's front page instead). Only these, as { error: { code } }: anything else is a failure.
+ * upgrade by its rule; a change already waiting on the subscription; a subscription it cannot change here; a plan set
+ * to end (cancelled in Manage subscription: renewed there first, plan_ending); or Stripe refusing the flow (never the
+ * portal's front page instead). Only these, as { error: { code } }: anything else is a failure.
  */
-export const CHANGE_CODES = Object.freeze(['already_on_plan', 'payment_issue', 'not_an_upgrade', 'plan_change_unavailable', 'change_pending', 'not_updatable']);
+export const CHANGE_CODES = Object.freeze(['already_on_plan', 'payment_issue', 'not_an_upgrade', 'plan_change_unavailable', 'change_pending', 'not_updatable', 'plan_ending']);
 /**
  * Our custom domain for Checkout and the customer portal (decision D12). Stripe moves both pages there the moment the
  * owner activates it, so this list must be live in production and staging before that, or every checkout and
@@ -146,6 +150,14 @@ function dateMs(v) {
   return Number.isFinite(t) && t >= EARLIEST ? t : null;
 }
 
+/** A change of plan set for later, as the server says it (status scheduled_change): { at (ms), tier, period } | null. */
+export function scheduledOf(v) {
+  if (!v || typeof v !== 'object') return null;
+  const at = dateMs(v.at);
+  if (at == null) return null;
+  return { at, tier: v.tier === 'paid' || v.tier === 'ultra' ? v.tier : null, period: periodOf(v.period) };
+}
+
 /**
  * Where billing goes, or null (off). Production: BILLING_PROVIDER 'stripe' and BILLING_ENDPOINT,
  * https, on a host listed in ANGLE_ALLOWED_HOSTS, an origin and a path only. A branch preview of the
@@ -215,12 +227,16 @@ export function outsideHref(loc = globalThis.location) {
 /**
  * Framed: FRAMED_LINE and a real link out (target _top: the person's own tap takes the whole window there, which a
  * frame may do; opening it from code after an answer arrives is refused by some browsers). h: src/app/ui.js's.
+ * after: words after the link, saying where to go once there (Settings: "and open Settings → Manage subscription there").
  */
-export function outsideNote(h, { loc = globalThis.location } = {}) {
+export function outsideNote(h, { loc = globalThis.location, after = null } = {}) {
   const href = outsideHref(loc);
   return h('span', { 'data-framed': '' }, FRAMED_LINE, href ? ' ' : null,
-    href ? h('a', { href, target: '_top', rel: 'noopener' }, `Continue on ${loc.host}`) : null);
+    href ? h('a', { href, target: '_top', rel: 'noopener' }, `Continue on ${loc.host}`) : null,
+    href && after ? ` ${after}` : null);
 }
+/** Settings' Manage subscription, framed: where the portal is once the app is in the whole window. */
+export const FRAMED_MANAGE = 'and open Settings → Manage subscription there.';
 
 export function createBilling({
   auth, signIn = false, config = resolveBilling(), shell = inNativeShell(), prices = BILLING_PRICES, fetchImpl = netFetch,
@@ -274,6 +290,8 @@ export function createBilling({
       // endsAt: the day the subscription ends (cancelled at the period end, or a date set for it); null while it renews
       periodEnd: dateMs(d.current_period_end), endsAt: dateMs(d.ends_at),
       cancelAtPeriodEnd: d.cancel_at_period_end === true, manageable: d.manageable === true,
+      // a change of plan Stripe has set for later (the portal's downgrade or shorter period at the period end), or null
+      scheduled: scheduledOf(d.scheduled_change),
     };
   }
   /** Onwards to a Stripe page (the page leaves). false when the answer is not one. */
@@ -324,7 +342,7 @@ export function createBilling({
       if (r.http === 200 && open(r.data?.url)) return { redirecting: true };
       return { failed: true, reason: r.http === 200 ? 'not_stripe' : reasonOf(r) };
     },
-    async portal(intent) {
+    async portal(intent, trip = null) {
       if (framed) return { framed: true };
       if (!signedIn()) return { needsAccount: true };
       // { intent: 'switch' }: the server opens Stripe's change-plan page, never its front page (where that flow is off
@@ -336,8 +354,9 @@ export function createBilling({
       if (switching && changeCode(r)) return { failed: true, reason: changeCode(r) };
       // (an older server put the front page in its place and said so: not opened for a change of plan)
       if (switching && r.http === 200 && r.data?.flow === 'portal') return { failed: true, reason: 'plan_change_unavailable' };
-      // a new trip to change the plan: a change kept from before (said, or still on its way) is its way back no longer
-      if (switching && r.http === 200 && stripePage(r.data?.url)) forgetChange();
+      // a new trip to change the plan: a change kept from before (said, or still on its way) is its way back no longer,
+      // and the trip is kept with the account making it and its plan now (trip: from ent.manage)
+      if (switching && r.http === 200 && stripePage(r.data?.url)) departChange({ ...trip, to: null });
       if (r.http === 200 && open(r.data?.url)) return { redirecting: true };
       return { failed: true, reason: r.http === 200 ? 'not_stripe' : reasonOf(r) };
     },
@@ -346,7 +365,7 @@ export function createBilling({
      * with Stripe and opens Stripe's page confirming exactly that change (subscription_update_confirm), which comes back
      * with ?billing=changed&to=<plan>.<period> once Stripe has made it (and ?billing=unchanged by its back link).
      */
-    async upgrade(plan, period) {
+    async upgrade(plan, period, trip = null) {
       if (!isPlan(plan, period)) return { failed: true, reason: 'invalid' };
       // in a frame Stripe's confirmation page would never load, as with checkout and the portal: nothing is asked for
       if (framed) return { framed: true };
@@ -358,7 +377,7 @@ export function createBilling({
       const to = `${plan}.${period}`;
       // only Stripe's confirmation of exactly this change is opened: never another flow or another plan in its place
       if (r.http === 200 && (r.data?.flow !== 'subscription_update_confirm' || (r.data?.to != null && r.data.to !== to))) return { failed: true, reason: 'plan_change_unavailable' };
-      if (r.http === 200 && stripePage(r.data?.url)) forgetChange();
+      if (r.http === 200 && stripePage(r.data?.url)) departChange({ ...trip, to });
       if (r.http === 200 && open(r.data?.url)) return { redirecting: true, to };
       return { failed: true, reason: r.http === 200 ? 'not_stripe' : reasonOf(r) };
     },

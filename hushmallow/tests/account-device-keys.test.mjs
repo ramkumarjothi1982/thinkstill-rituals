@@ -212,7 +212,8 @@ async function signedInWithPlan(email) {
   assert.equal((await g.signUp({ email, password: 'gentle-moon-42', agreed: true })).signedIn, true);
   g.chooseGuestData('fresh');
   const ns = bootNamespace({ config, ls });
-  const auth = createAuth({ config, ns, ls, ss: memoryStorage(), loader: async () => supabaseLib(), storage: ls, ...fakeDom(), loc, onReload: () => {} });
+  const ss = memoryStorage();
+  const auth = createAuth({ config, ns, ls, ss, loader: async () => supabaseLib(), storage: ls, ...fakeDom(), loc, onReload: () => {} });
   live.push(auth);
   await auth.init();
   const store = createNamespacedStore({ ns, backend: ls });
@@ -222,30 +223,36 @@ async function signedInWithPlan(email) {
   await createAngleClient({ store, endpoint: EP, fetchImpl: srv.fetchImpl, accountToken: async () => 'tokA' }).angle({ text: 'My colleague got promoted instead of me.' });
   assert.equal(raw(ls, 'hm2:entitlement').owner, ns.uid);
   assert.equal(raw(ls, 'hm2:beyond.session').owner, ns.uid);
-  return { ls, ns, auth };
+  // a change of plan this tab is confirming for the account, and the trip to Stripe that started it (src/app/plan-change.js)
+  ss.setItem('hm2:planChange', JSON.stringify({ to: 'ultra.yearly', at: NOW, from: { tier: 'ultra', period: 'monthly', status: 'active' }, state: 'quiet', uid: ns.uid }));
+  ss.setItem('hm2:planTrip', JSON.stringify({ uid: ns.uid, from: null, to: 'ultra.yearly', at: NOW }));
+  return { ls, ss, ns, auth };
 }
-const gone = (ls) => assert.deepEqual([ls.getItem('hm2:entitlement'), ls.getItem('hm2:beyond.session')], [null, null], 'the account’s web plan and Another Angle session left with it');
+const gone = (ls, ss) => {
+  assert.deepEqual([ls.getItem('hm2:entitlement'), ls.getItem('hm2:beyond.session')], [null, null], 'the account’s web plan and Another Angle session left with it');
+  assert.deepEqual([ss.getItem('hm2:planChange'), ss.getItem('hm2:planTrip')], [null, null], 'and the change of plan this tab was confirming for it');
+};
 
 test('a plain sign-out takes the account’s web plan and Another Angle session off the device-level keys', async () => {
-  const { ls, auth } = await signedInWithPlan('dee@example.com');
+  const { ls, ss, auth } = await signedInWithPlan('dee@example.com');
   await auth.signOut();
-  gone(ls);
+  gone(ls, ss);
 });
 
 test('"Sign out and remove my things from this phone" takes them too', async () => {
-  const { ls, auth } = await signedInWithPlan('eli@example.com');
+  const { ls, ss, auth } = await signedInWithPlan('eli@example.com');
   await auth.signOut({ removeLocal: true });
-  gone(ls);
+  gone(ls, ss);
 });
 
 test('deleting the account takes them too', async () => {
-  const { ls, auth } = await signedInWithPlan('fay@example.com');
+  const { ls, ss, auth } = await signedInWithPlan('fay@example.com');
   assert.equal((await auth.deleteAccount()).ok, true);
-  gone(ls);
+  gone(ls, ss);
 });
 
 test('"Remove this device’s data" takes them too (the next check brings the plan back)', async () => {
-  const { ls, auth } = await signedInWithPlan('gus@example.com');
+  const { ls, ss, auth } = await signedInWithPlan('gus@example.com');
   assert.equal((await auth.removeDeviceData()).ok, true);
-  gone(ls);
+  gone(ls, ss);
 });

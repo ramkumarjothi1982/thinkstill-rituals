@@ -93,10 +93,10 @@ test('the shipped config: off (then nothing is switched on), or switched on with
   assert.match(main, /const billing = createBilling\(\{ auth: \(\) => app\.auth, signIn: !!AUTH\.config\.enabled && !AUTH\.forwarding \}\);\nconst ent = createEntitlements\(\{ store, billing \}\);/);
   assert.match(main, /const billingBack = billing \? takeReturn\(\) : null;/);
   assert.match(main, /if \(billing\) document\.addEventListener\('visibilitychange'/);
-  assert.match(main, /const planBefore = billingBack \? planNow\(ent\) : null;/);
+  assert.match(main, /const planBefore = billing \? planNow\(ent\) : null;/);
   assert.match(main, /if \(billingBack\) welcomeBack\(app, billingBack, \{ before: planBefore \}\)\.catch\(\(\) => \{\}\);/);
   // the plan before the trip is taken before the first check at start
-  assert.ok(main.indexOf('const planBefore = billingBack ? planNow(ent) : null;') < main.indexOf('  ent.refresh().catch(() => {});'), 'before the first check');
+  assert.ok(main.indexOf('const planBefore = billing ? planNow(ent) : null;') < main.indexOf('  ent.refresh().catch(() => {});'), 'before the first check');
 });
 
 test('off: the entitlements, Another Angle and the plans copy are exactly as before', async () => {
@@ -232,7 +232,7 @@ test('our custom domain (D12): checkout and the portal open on checkout.hushmall
 test('status and portal: the server\'s answer, read strictly; the portal opens only Stripe\'s page', async () => {
   const s = setup();
   s.server.status = { tier: 'ultra', status: 'active', current_period_end: '2026-11-16T09:00:00.000Z', cancel_at_period_end: true, manageable: true };
-  assert.deepEqual(await s.billing.status(), { ok: true, tier: 'ultra', period: null, status: 'active', periodEnd: Date.parse('2026-11-16T09:00:00Z'), endsAt: null, cancelAtPeriodEnd: true, manageable: true }, 'a server from before ends_at (and period)');
+  assert.deepEqual(await s.billing.status(), { ok: true, tier: 'ultra', period: null, status: 'active', periodEnd: Date.parse('2026-11-16T09:00:00Z'), endsAt: null, cancelAtPeriodEnd: true, manageable: true, scheduled: null }, 'a server from before ends_at (and period)');
   const [c] = s.server.calls;
   assert.equal(c.url, `${EP}/v1/billing/status`);
   assert.equal(c.init.method, 'GET');
@@ -255,7 +255,7 @@ test('status and portal: the server\'s answer, read strictly; the portal opens o
     assert.equal((await s.billing.status()).period, want, String(v));
   }
   s.server.status = { tier: 'gold', status: '<b>', current_period_end: 'soon' };
-  assert.deepEqual(await s.billing.status(), { ok: true, tier: 'none', period: null, status: 'none', periodEnd: null, endsAt: null, cancelAtPeriodEnd: false, manageable: false });
+  assert.deepEqual(await s.billing.status(), { ok: true, tier: 'none', period: null, status: 'none', periodEnd: null, endsAt: null, cancelAtPeriodEnd: false, manageable: false, scheduled: null });
   s.server.down = true;
   assert.deepEqual(await s.billing.status(), { ok: false, reason: 'network' });
   s.server.down = false;
@@ -316,8 +316,8 @@ test('entitlement source "billing": the server\'s answer, kept with when it was 
   assert.equal(ent.source(), 'billing');
   assert.equal(ent.has('ultra'), true);
   const kept = store.get('entitlement');
-  assert.deepEqual(kept, { tier: 'ultra', source: 'billing', since: NOW, checkedAt: NOW, period: null, status: 'active', periodEnd: Date.parse('2026-11-16T09:00:00Z'), endsAt: null, cancelAtPeriodEnd: false, manageable: true });
-  assert.deepEqual(ent.webPlan(), { period: null, status: 'active', periodEnd: Date.parse('2026-11-16T09:00:00Z'), endsAt: null, cancelAtPeriodEnd: false, manageable: true });
+  assert.deepEqual(kept, { tier: 'ultra', source: 'billing', since: NOW, checkedAt: NOW, period: null, status: 'active', periodEnd: Date.parse('2026-11-16T09:00:00Z'), endsAt: null, cancelAtPeriodEnd: false, manageable: true, scheduled: null });
+  assert.deepEqual(ent.webPlan(), { period: null, status: 'active', periodEnd: Date.parse('2026-11-16T09:00:00Z'), endsAt: null, cancelAtPeriodEnd: false, manageable: true, scheduled: null });
   // the period the server says (the plans page reads it to offer an upgrade): kept with the plan
   s.server.status = { ...s.server.status, period: 'yearly' };
   await ent.refresh({ force: true });
@@ -486,7 +486,7 @@ test('sync: the session id goes to /v1/billing/sync with the token (only a well-
   const id = `cs_test_${'a1B2'.repeat(15)}`;
   const s = setup();
   s.server.sync = { http: 200, body: { tier: 'ultra', status: 'active', current_period_end: '2026-11-16T09:00:00.000Z', ends_at: null, cancel_at_period_end: false, manageable: true } };
-  assert.deepEqual(await s.billing.sync(id), { ok: true, tier: 'ultra', period: null, status: 'active', periodEnd: Date.parse('2026-11-16T09:00:00Z'), endsAt: null, cancelAtPeriodEnd: false, manageable: true });
+  assert.deepEqual(await s.billing.sync(id), { ok: true, tier: 'ultra', period: null, status: 'active', periodEnd: Date.parse('2026-11-16T09:00:00Z'), endsAt: null, cancelAtPeriodEnd: false, manageable: true, scheduled: null });
   const [c] = s.server.calls;
   assert.equal(c.url, `${EP}/v1/billing/sync`);
   assert.equal(c.init.method, 'POST');
@@ -1697,8 +1697,8 @@ test('framed: no checkout or portal starts in a frame; the plan is still shown, 
     assert.equal(manage.disabled, false);
     guard.stop?.();
   } finally { if (prevLoc === undefined) delete globalThis.location; else globalThis.location = prevLoc; }
-  // Settings' Manage subscription says it too (a toast with the same link)
-  assert.match(read('src/app/scenes/settings.js'), /if \(r\?\.framed\) \{ toast\(outsideNote\(h\), 9000\); return; \}/);
+  // Settings' Manage subscription says it too, in a line that stays under the button (tests/upgrade-plans.test.mjs)
+  assert.match(read('src/app/scenes/settings.js'), /if \(r\?\.framed\) \{ manageSaid\.replaceChildren\(outsideNote\(h, \{ after: FRAMED_MANAGE \}\)\); return; \}/);
   const fake = (tag, attrs, ...kids) => ({ tag, attrs, kids: kids.filter((k) => k != null) });
   assert.deepEqual(outsideNote(fake, { loc }).kids.at(-1), { tag: 'a', attrs: { href: 'https://app.hushmallow.com/#account', target: '_top', rel: 'noopener' }, kids: ['Continue on app.hushmallow.com'] });
 });

@@ -53,7 +53,7 @@
 // are never used.
 
 import { friendlyError, errorCode, checkEmail, checkPassword } from './errors.js';
-import { isUid, readPersistedSession, removeAccountData, removeAccountDeviceKeys, removeSupabaseKeys, settleNamespace, applyGuestChoice, needsGuestChoice, readMarker, guestHasData, sealAccount, unsealAccount, isSealed, MARKER_KEY, writeWipe, wipedSince, honourWipe, settleWipe, wipeKey, WIPE_RELOAD } from './namespace.js';
+import { isUid, readPersistedSession, removeAccountData, removeAccountDeviceKeys, removeAccountTabKeys, removeSupabaseKeys, settleNamespace, applyGuestChoice, needsGuestChoice, readMarker, guestHasData, sealAccount, unsealAccount, isSealed, MARKER_KEY, writeWipe, wipedSince, honourWipe, settleWipe, wipeKey, WIPE_RELOAD } from './namespace.js';
 import * as S from './sync.js';
 import { consentRecord } from '../app/legal.js';
 import { FLOW_KEYS } from '../engine/flow-store.js';
@@ -626,6 +626,8 @@ export function createAuth({
       // a plain sign-out keeps the account's copy for its next sign-in, but never its web plan or its Another Angle
       // session under the device-level keys: the next person here starts as a guest (the next check brings them back)
       else if (uid) removeAccountDeviceKeys(ls, uid);
+      // and a change of plan this tab was confirming for it (src/app/plan-change.js): never the next person's to hear
+      removeAccountTabKeys(ss);
       consents = null; user = null; status = 'guest'; verified = null;
       notice('signed-out');
       emit('signed-out');
@@ -769,6 +771,7 @@ export function createAuth({
         // (never another account's that another tab put here meanwhile)
         if (ownSession(uid)) { try { await c.auth.signOut({ scope: 'local' }); } catch { /* the user no longer exists */ } }
         clearOwnKeys(uid);
+        removeAccountTabKeys(ss);
         consents = null; user = null; status = 'guest'; verified = null;
         notice('deleted');
         emit('deleted');
@@ -787,6 +790,7 @@ export function createAuth({
       writeWipe(ls, bootUid, 'device-data', now());   // first: every other page of this account on this device stops writing too
       await quiesce(bootUid);
       const n = removeAccountData(ls, bootUid);
+      removeAccountTabKeys(ss);
       safe(() => ls.setItem(`hm2:u:${bootUid}:${MARKER_KEY}`, JSON.stringify({ v: 1, createdAt: now(), guestChoice: 'cleared', choiceAt: now() })));
       notice('device-cleared');
       onReload({ reason: 'device-cleared', urgent: true, hash: '#account' });

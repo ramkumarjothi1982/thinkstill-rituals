@@ -42,12 +42,20 @@ export function authHandle({ signedIn = true } = {}) {
   h.load = async () => ({ accessToken: async () => 'eyJhbGciOi.account-token.sig' });
   return h;
 }
-/** A signed-in account holding `held` (the plan as kept before the trip), its billing and entitlements. */
-export async function account({ held = plan('paid', 'monthly'), signedIn = true } = {}) {
+/** Two accounts' ids, as the namespace keeps them (src/auth/namespace.js). */
+export const UID_A = '11111111-2222-4333-8444-555555555555';
+export const UID_B = '66666666-7777-4888-9999-aaaaaaaaaaaa';
+/**
+ * A signed-in account holding `held` (the plan as kept before the trip), its billing and entitlements. uid: the page runs
+ * in that account's namespace (a guest's when not signed in), as main.js's store does; store: a store to start from.
+ */
+export async function account({ held = plan('paid', 'monthly'), signedIn = true, uid = undefined, store = null } = {}) {
   const server = stripeServer({ status: held });
   const navs = [];
   const billing = createBilling({ auth: () => authHandle({ signedIn }), signIn: true, config: CONFIG, fetchImpl: server.fetch, nav: (u) => navs.push(u) });
-  const ent = createEntitlements({ store: createStore({ backend: 'memory' }), billing });
+  const st = store || createStore({ backend: 'memory' });
+  if (uid !== undefined) st.namespace = uid ? Object.freeze({ mode: 'account', uid }) : Object.freeze({ mode: 'guest', uid: null });
+  const ent = createEntitlements({ store: st, billing });
   if (signedIn && held) await ent.refresh({ force: true });
   server.calls.length = 0;
   return { server, billing, ent, navs };

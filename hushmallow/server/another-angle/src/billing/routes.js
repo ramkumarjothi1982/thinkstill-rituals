@@ -12,7 +12,7 @@
 //                              account id; back to APP_ORIGIN, ?billing=success&session_id=cs_…). Only a price that
 //                              is what its slot says (CHECKOUT_PRICE_RULES) is sold, and only to an account with no
 //                              subscription at Stripe, unpaid ones included (409 already_subscribed | payment_pending)
-//   GET  /v1/billing/status    the account's token → { tier, status, period, current_period_end, cancel_at_period_end, ends_at, manageable }
+//   GET  /v1/billing/status    the account's token → { tier, status, period, current_period_end, cancel_at_period_end, ends_at, manageable, scheduled_change }
 //   POST /v1/billing/sync      { session_id: 'cs_…' } (back from Checkout) → the status body, once that session's
 //                              subscription is read from Stripe and recorded (the webhook may still be on its way);
 //                              {} | { refresh: true } (back from a plan change) → the status body, once the account's
@@ -132,7 +132,8 @@ export const PORTAL_RETURN = Object.freeze({ home: '/?billing=portal', changed: 
 /**
  * Stripe statuses in which the app may open a plan change (switch or upgrade): paid up. Ended ones (ENDED) have no
  * plan to change (a new one is a checkout: 404 no_subscription); any other (past_due, unpaid, incomplete, paused) owes
- * a payment, fixed in Manage subscription first (409 payment_issue), so a change never lands on a failing card.
+ * a payment, fixed in Manage subscription first (409 payment_issue), so a change never lands on a failing card. Checked
+ * on the record, then on Stripe's own copy for both intents (liveSubscription), since the record can be behind Stripe.
  */
 export const CHANGEABLE = new Set(['active', 'trialing']);
 const ENDED = new Set(['canceled', 'incomplete_expired']);
@@ -165,6 +166,18 @@ function statusRefusal(status, where) {
     ? { http: 404, code: 'no_subscription', err: `${where}:ended` }
     : { http: 409, code: 'payment_issue', err: `${where}:${String(status).replace(/[^a-z_]/g, '').slice(0, 20)}` };
 }
+/**
+ * Why a subscription Stripe has set to end gets no plan change, or null: cancelled in Manage subscription (at the period
+ * end, D7: cancel_at_period_end, or a cancel_at on the period end as the pinned version sets it) or a cancel_at of its
+ * own. A change would be paid for and still end on the old date, so it is 409 plan_ending: the plan is renewed in Manage
+ * subscription first. Judged on Stripe's own copy only (a renewal the webhook has not recorded yet never blocks a change).
+ * @param {any} sub @returns {Refusal | null}
+ */
+function endingRefusal(sub) {
+  if (sub?.cancel_at_period_end === true) return { http: 409, code: 'plan_ending', err: 'stripe:cancel_at_period_end' };
+  if (typeof sub?.cancel_at === 'number' && sub.cancel_at > 0) return { http: 409, code: 'plan_ending', err: 'stripe:cancel_at' };
+  return null;
+}
 /** What each refusal of POST /v1/billing/portal says (the app words its own; the code is what it reads). @type {Readonly<Record<string, string>>} */
 const PORTAL_MESSAGES = Object.freeze({
   no_subscription: 'This account has no web subscription to change.',
@@ -172,6 +185,7 @@ const PORTAL_MESSAGES = Object.freeze({
   not_yours: 'This subscription belongs to another account.',
   not_updatable: 'This subscription cannot be changed here: use Manage subscription.',
   change_pending: 'A change to this subscription is already waiting: see Manage subscription.',
+  plan_ending: 'This subscription is set to end: renew it in Manage subscription first.',
   already_on_plan: 'This account is already on that plan.',
   not_an_upgrade: 'That change is not an upgrade: use Manage subscription.',
   plan_change_unavailable: 'Changing plans is not available just now.',
@@ -280,6 +294,7 @@ export function createBilling({ logger, now, fetch: fetchImpl = (input, init) =>
    * The status body. status: Stripe's own; period: the recorded price's ('monthly' | 'yearly', null when it is none of
    * the plans), so a monthly → yearly change shows. ends_at: when the plan ends, if it is set to (the cancel_at date,
    * else the period end when it cancels at period end), so Settings can say "Ends on …"; null while it renews.
+   * scheduled_change: a change of plan set for later (scheduledBody), or null.
    * @param {any} rec @returns {Record<string, unknown>}
    */
   const statusBody = (rec) => (rec ? {
@@ -288,7 +303,20 @@ export function createBilling({ logger, now, fetch: fetchImpl = (input, init) =>
     cancel_at_period_end: !!rec.cancel_at_period_end,
     ends_at: rec.cancel_at != null ? iso(rec.cancel_at) : rec.cancel_at_period_end ? iso(rec.current_period_end) : null,
     manageable: !!rec.customer,
-  } : { tier: 'none', status: 'none', period: null, current_period_end: null, cancel_at_period_end: false, ends_at: null, manageable: false });
+    scheduled_change: scheduledBody(rec),
+  } : { tier: 'none', status: 'none', period: null, current_period_end: null, cancel_at_period_end: false, ends_at: null, manageable: false, scheduled_change: null });
+  /**
+   * A change of plan the subscription has waiting for later (store.js summarise: the portal schedules a downgrade or a
+   * shorter period for the period end, D8): { at, tier, period } (tier and period null when the schedule does not say),
+   * or null, so the app can say "Your plan changes to … on …" rather than wait for a change that is not due yet. Only
+   * while the plan gives access, and never for one set to end.
+   * @param {any} rec
+   */
+  const scheduledBody = (rec) => {
+    const c = rec.scheduled;
+    if (!c || typeof c !== 'object' || effectiveTier(rec, now()) === 'none' || rec.cancel_at != null || rec.cancel_at_period_end) return null;
+    return { at: iso(c.at), tier: c.tier === 'paid' || c.tier === 'ultra' ? c.tier : null, period: c.period === 'monthly' || c.period === 'yearly' ? c.period : null };
+  };
 
   /** @type {Map<string, { at: number, price: any }>} */
   const priceCache = new Map();
@@ -620,7 +648,8 @@ export function createBilling({ logger, now, fetch: fetchImpl = (input, init) =>
   /**
    * The customer portal (PATHS.portal). {} (or no body): its home, Settings → Manage subscription, where the customer
    * cancels (at the period end, D7), changes plan, updates the card and reads receipts, back to PORTAL_RETURN.home.
-   * { intent: 'switch' }: straight to choosing a plan for the account's subscription (flow_data subscription_update).
+   * { intent: 'switch' }: straight to choosing a plan for the account's subscription (flow_data subscription_update),
+   * once Stripe's own copy of the subscription allows a change (liveSubscription: the account's, paid up, not set to end).
    * { intent: 'upgrade', plan, period }: straight to confirming that one upgrade (subscription_update_confirm), once
    * Stripe's own copy of the subscription allows it (upgradeFlow). A plan change comes back to PORTAL_RETURN.changed
    * once done (after_completion redirect) and to PORTAL_RETURN.unchanged by the portal's link back; it never opens
@@ -672,6 +701,11 @@ export function createBilling({ logger, now, fetch: fetchImpl = (input, init) =>
       if (!u.ok) return refuse(u);
       flowData = u.flowData;
       done += `&to=${target.plan}.${target.period}`;
+    } else {
+      // the plan chooser too opens only on what Stripe has now: the record can be behind it (a payment_failed delivery
+      // Stripe is still retrying), and a change must never land on a failing card or a plan set to end
+      const live = await liveSubscription(who.uid, rec, stripe);
+      if (!live.ok) return refuse(live);
     }
     const r = await stripe.createPortalSession({
       customer: rec.customer,
@@ -690,10 +724,28 @@ export function createBilling({ logger, now, fetch: fetchImpl = (input, init) =>
   }
 
   /**
+   * Every plan change's checks (switch and upgrade) on Stripe's own copy of the account's subscription
+   * (retrieveSubscription, the pinned version): the record's subscription (its id), the account's (its customer the
+   * record's, its metadata.user_id, if any, the account), paid up (CHANGEABLE: 409 payment_issue, ended 404
+   * no_subscription) and not set to end (endingRefusal: 409 plan_ending).
+   * @param {string} uid @param {any} rec @param {ReturnType<typeof createStripe>} stripe
+   * @returns {Promise<{ ok: true, sub: any } | ({ ok: false } & Refusal)>}
+   */
+  async function liveSubscription(uid, rec, stripe) {
+    const got = await stripe.retrieveSubscription(rec.subscription);
+    if (!got.ok) return got.status === 404 ? { ok: false, http: 404, code: 'no_subscription', err: 'stripe_not_found' } : { ok: false, http: 502, code: 'billing_unavailable', err: `subscription:${got.code}`, stripeHttp: got.status };
+    const sub = got.data;
+    if (idOf(sub?.id) !== rec.subscription) return { ok: false, http: 502, code: 'billing_unavailable', err: 'id_mismatch' };
+    if (idOf(sub.customer) !== rec.customer || !ownedBy(sub, uid)) return { ok: false, http: 403, code: 'not_yours', err: 'subscription' };
+    const refused = statusRefusal(sub.status, 'stripe') || endingRefusal(sub);
+    if (refused) return { ok: false, ...refused };
+    return { ok: true, sub };
+  }
+
+  /**
    * { intent: 'upgrade', plan, period }'s checks, on Stripe's own copy of the account's subscription (retrieveSubscription,
-   * the pinned version), then the flow_data that confirms that one change. The subscription must be the account's (its
-   * id the record's, its customer the record's, its metadata.user_id, if any, the account), paid up (CHANGEABLE), with
-   * exactly one item and no change already waiting (pending_update, a schedule); its item's price one of the four
+   * the pinned version), then the flow_data that confirms that one change. The subscription must pass liveSubscription
+   * (the account's, paid up, not set to end), with exactly one item and no change already waiting (pending_update, a schedule); its item's price one of the four
    * configured ones, which says the plan and period it is on; the target an upgrade of that (planChange); and the
    * target's price what its slot says, checked as checkout checks it (checkPrice): nothing is offered that checkout
    * would not sell.
@@ -704,13 +756,9 @@ export function createBilling({ logger, now, fetch: fetchImpl = (input, init) =>
   async function upgradeFlow(uid, rec, target, cfg, stripe) {
     const price = cfg.billing.prices[target.plan][target.period];
     if (!price) return { ok: false, http: 503, code: 'plan_change_unavailable', err: cfg.billing.duplicateSlots.includes(`${target.plan}.${target.period}`) ? 'duplicate_price' : 'no_price' };
-    const got = await stripe.retrieveSubscription(rec.subscription);
-    if (!got.ok) return got.status === 404 ? { ok: false, http: 404, code: 'no_subscription', err: 'stripe_not_found' } : { ok: false, http: 502, code: 'billing_unavailable', err: `subscription:${got.code}`, stripeHttp: got.status };
-    const sub = got.data;
-    if (idOf(sub?.id) !== rec.subscription) return { ok: false, http: 502, code: 'billing_unavailable', err: 'id_mismatch' };
-    if (idOf(sub.customer) !== rec.customer || !ownedBy(sub, uid)) return { ok: false, http: 403, code: 'not_yours', err: 'subscription' };
-    const live = statusRefusal(sub.status, 'stripe');
-    if (live) return { ok: false, ...live };
+    const live = await liveSubscription(uid, rec, stripe);
+    if (!live.ok) return live;
+    const sub = live.sub;
     const items = Array.isArray(sub.items?.data) ? sub.items.data : [];
     // Stripe's confirm flow takes one item; a subscription with several cannot be updated through it
     if (items.length !== 1 || sub.items?.has_more === true) return { ok: false, http: 409, code: 'not_updatable', err: 'items' };
@@ -820,6 +868,12 @@ export function createBilling({ logger, now, fetch: fetchImpl = (input, init) =>
     } else return { http: 502, outcome: 'stripe_error', err: got.code, stripeHttp: got.status };
     if (idOf(sub?.id) !== subId) return { http: 502, outcome: 'stripe_error', err: 'id_mismatch' };
     if (strict && !ownedBy(sub, uidHint)) return { http: 403, outcome: 'not_yours' };
+    // a change the portal set for the period end: its schedule read on its own, so a key that may not read schedules
+    // (or a schedule Stripe cannot give just now) costs only which plan it moves to, never the record itself
+    if (got.ok && typeof sub.schedule === 'string' && /^sub_sched_[A-Za-z0-9]{4,250}$/.test(sub.schedule)) {
+      const sched = await stripe.retrieveSubscriptionSchedule(sub.schedule);
+      if (sched.ok && sched.data?.id === sub.schedule) sub = { ...sub, schedule: sched.data };
+    }
     const store = storeFor(env);
     const customer = idOf(sub.customer) || idOf(obj?.customer);
     const uid = uidOf(uidHint) || uidOf(sub.metadata?.user_id) || (customer ? uidOf(await store.owner(customer)) : null);

@@ -19,7 +19,8 @@
 //                    subject is the account; src/beyond/angle-client.js), and a
 //                    tester invite code (beyond.invite)
 // An account's web plan and its sessions go with it (removeAccountDeviceKeys):
-// on any sign-out, a deletion and "Remove this device's data".
+// on any sign-out, a deletion and "Remove this device's data"; so does a change
+// of plan this tab is confirming for it (sessionStorage: removeAccountTabKeys).
 //   sound, haptics   the two raw switches the audio / haptics engines keep
 // Everything else is account-level: prefs, favourites, Hushflow progress,
 // rotation bags, the Memory Garden, journey and played history, Another
@@ -411,6 +412,23 @@ export function removeAccountDeviceKeys(ls, uid) {
   const drop = (key, test) => { const v = readJson(ls, PREFIX + key); if (v && test(v)) { try { ls.removeItem(PREFIX + key); n++; } catch { /* ignore */ } } };
   drop('entitlement', (v) => v.source === 'billing' && (v.owner == null || v.owner === u));
   drop('beyond.session', (v) => v.owner === u);
+  return n;
+}
+
+/**
+ * What an account keeps in one tab only (sessionStorage, without the namespace's prefix): a change of plan on its way
+ * back from Stripe and the trip to Stripe that started it (src/app/plan-change.js CHANGE_KEY, TRIP_KEY). They go with
+ * the account, as its device-level keys do (removeAccountDeviceKeys): on any sign-out, a deletion and "Remove this
+ * device's data" (src/auth/client.js). plan-change.js also keeps the account's id with them and drops them for any
+ * other account signed in on the tab.
+ */
+export const ACCOUNT_TAB_KEYS = Object.freeze(['planChange', 'planTrip']);
+/** Removes ACCOUNT_TAB_KEYS from this tab's sessionStorage. Returns the number removed. */
+export function removeAccountTabKeys(ss) {
+  let n = 0;
+  for (const k of ACCOUNT_TAB_KEYS) {
+    try { if (ss?.getItem(PREFIX + k) != null) { ss.removeItem(PREFIX + k); n++; } } catch { /* it lapses by its time */ }
+  }
   return n;
 }
 

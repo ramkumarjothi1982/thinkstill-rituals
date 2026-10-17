@@ -139,7 +139,7 @@ Cloudflare dashboard → the Worker → Settings → Variables and Secrets → t
 
 * `STRIPE_SECRET_KEY`: a **restricted** key, `rk_test_…`, from the **same sandbox as the four prices**, with
   exactly Checkout Sessions Write, Customer portal Write, Subscriptions Read, Customers Write, Prices Read
-  (STAGING.md B8). The staging Worker refuses a live key; production takes a live key only, and only after
+  (STAGING.md B8), and optionally Subscription schedules Read (the plan a scheduled downgrade moves to). The staging Worker refuses a live key; production takes a live key only, and only after
   the approval commit.
 * `STRIPE_WEBHOOK_SECRET`: the signing secret of that Worker's own webhook endpoint (below).
 

@@ -134,7 +134,7 @@ export function createEntitlements({ store, billing = null, now = () => Date.now
   /** The billing server's answer, kept with when it was checked. */
   const setWeb = (r) => {
     const since = state.source === 'billing' && state.tier === r.tier && state.since ? state.since : now();
-    state = { tier: r.tier, source: 'billing', since, checkedAt: now(), period: r.period ?? null, status: r.status, periodEnd: r.periodEnd, endsAt: r.endsAt ?? null, cancelAtPeriodEnd: r.cancelAtPeriodEnd, manageable: r.manageable, ...(ns ? { owner } : {}) };
+    state = { tier: r.tier, source: 'billing', since, checkedAt: now(), period: r.period ?? null, status: r.status, periodEnd: r.periodEnd, endsAt: r.endsAt ?? null, cancelAtPeriodEnd: r.cancelAtPeriodEnd, manageable: r.manageable, scheduled: r.scheduled ?? null, ...(ns ? { owner } : {}) };
     store.set('entitlement', state);
     listeners.forEach((fn) => fn(state));
   };
@@ -187,15 +187,21 @@ export function createEntitlements({ store, billing = null, now = () => Date.now
     onChange(fn) { listeners.add(fn); return () => listeners.delete(fn); },
     /** Web subscriptions: the account is signed in here (a web plan needs one). */
     webSignedIn: () => !!web && web.signedIn(),
+    /** The account this page runs as (its namespace's uid: a web plan and a change of plan are kept with it), or null
+     *  (a guest, or a store without a namespace). */
+    account: () => (typeof owner === 'string' ? owner : null),
     /** Web subscriptions: the last check had the billing server's answer (false offline, signed out, a 5xx or 429). */
     webAnswered: () => !!web && webAnswered,
     /** Web subscriptions: the last check's answer was that the billing server has no web billing at all (a 503
      *  billing_not_configured or accounts_not_configured): no plan can be bought or managed there. */
     webOff: () => !!web && webOff,
-    /** A web plan's details for Settings and the plans page: { period, status, periodEnd, endsAt, cancelAtPeriodEnd, manageable } | null. */
+    /** A web plan's details for Settings and the plans page: { period, status, periodEnd, endsAt, cancelAtPeriodEnd, manageable, scheduled } | null
+     *  (scheduled: { at, tier, period } of a change Stripe has set for later, or null). */
     webPlan() {
       const s = cur();
-      return s.source === 'billing' ? { period: s.period === 'monthly' || s.period === 'yearly' ? s.period : null, status: s.status || null, periodEnd: s.periodEnd ?? null, endsAt: s.endsAt ?? null, cancelAtPeriodEnd: !!s.cancelAtPeriodEnd, manageable: !!s.manageable } : null;
+      const c = s.scheduled;
+      const scheduled = c && typeof c === 'object' && Number.isFinite(c.at) ? { at: c.at, tier: c.tier === 'paid' || c.tier === 'ultra' ? c.tier : null, period: c.period === 'monthly' || c.period === 'yearly' ? c.period : null } : null;
+      return s.source === 'billing' ? { period: s.period === 'monthly' || s.period === 'yearly' ? s.period : null, status: s.status || null, periodEnd: s.periodEnd ?? null, endsAt: s.endsAt ?? null, cancelAtPeriodEnd: !!s.cancelAtPeriodEnd, manageable: !!s.manageable, scheduled } : null;
     },
     /** Web subscriptions, back from Checkout: the plan from that session (src/app/billing.js sync), at once. */
     async sync(sessionId) { return web ? syncWeb(sessionId) : cur(); },
@@ -245,8 +251,12 @@ export function createEntitlements({ store, billing = null, now = () => Date.now
      */
     async manage({ intent, plan, period } = {}) {
       if (!web) return { failed: true, reason: 'off' };
-      if (intent === 'upgrade') return web.upgrade(plan, period);
-      return web.portal(intent === 'switch' ? 'switch' : undefined);
+      // a change of plan: whose it is and the plan it starts from go with the trip (src/app/plan-change.js departChange),
+      // so the way back judges it for that account only, against that plan
+      const s = cur();
+      const trip = { uid: api.account(), from: { tier: s.tier, period: s.source === 'billing' ? s.period ?? null : null, status: s.source === 'billing' ? s.status ?? null : null } };
+      if (intent === 'upgrade') return web.upgrade(plan, period, trip);
+      return web.portal(intent === 'switch' ? 'switch' : undefined, trip);
     },
   };
   // the plans page shows these under each button (src/app/scenes/plans.js); only with web subscriptions on

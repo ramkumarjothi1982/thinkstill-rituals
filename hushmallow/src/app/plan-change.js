@@ -3,23 +3,39 @@
 // confirmed it: the server reads the subscription from Stripe (billing.js refresh, POST sync {}; GET status while
 // that is not answered) and only a plan of the target tier AND period, active or trialing, is a confirmed change.
 //
-//   ?billing=changed&to=<plan>.<period>  Stripe made the change (its after_completion redirect). { to, at, from } is
+//   Leaving for Stripe's page (billing.js upgrade() / portal('switch'): departChange): the account making the change and
+//                     its plan then are kept in this tab (TRIP_KEY, TRIP_MS), so the way back is judged for that account
+//                     only, against that plan, even when it lands on a page that is not signed in (or signed in as
+//                     someone else: then it is not theirs, and nothing is said).
+//   ?billing=changed&to=<plan>.<period>  Stripe made the change (its after_completion redirect). { to, at, from, uid } is
 //                     kept in this tab (CHANGE_KEY, sessionStorage, CHANGE_MS), so a reload mid-confirmation resumes;
 //                     a calm "Confirming your new plan with Stripe…" shows (never a success) while the server is asked
 //                     at CONFIRM_WAITS. Confirmed: the key says so (state 'done', so Back onto the same way back never
 //                     says it twice) and the welcome opens (app.welcomePlan: hushmallow Beyond's with the Mallows, or a
 //                     smaller one). A payment to sort out (past_due, unpaid, incomplete): no success, the card line and
-//                     Manage subscription. Not in time: "Stripe is still confirming…", the key kept (state 'quiet') and
-//                     asked again quietly at the next start or when the app is back on screen (resumeChange).
-//   ?billing=changed  (no to: Stripe's plan chooser) the same, against the plan kept before the trip (`from`).
+//                     Manage subscription. Set by Stripe for later (the portal schedules a downgrade or a shorter
+//                     period for the period end, D8: the status's scheduled_change): "Your plan changes to … on …",
+//                     and nothing more is asked. Not in time: a neutral line ("Your plan here still shows …"), never a
+//                     claim that Stripe is still confirming, the key kept (state 'quiet') and asked again quietly at
+//                     the next start or when the app is back on screen (resumeChange).
+//   ?billing=changed  (no to: Stripe's plan chooser) the same, against the plan kept before the trip (`from`); with
+//                     no plan known from before (from null, or none), it is never said to have changed.
 //   ?billing=unchanged  Stripe's back link (a change let go, or one that did not go through): asked once, quietly;
 //                     nothing changed → "No change made. You're still on <plan>."
+//   The change kept is the account's (uid): resumed only in that account's namespace, dropped in any other, and gone
+//   with the account on a sign-out, a deletion or "Remove this device's data" (src/auth/namespace.js
+//   removeAccountTabKeys). from: null when not known (back on a page not signed in, with no trip kept here): taken
+//   after sign-in from the account's own plan kept on this phone (resumeChange's before), when it has one.
 //
 //   confirmChange(app, { kind, to }, { before, waits?, sleep?, session?, now?, ui? }) → 'confirmed' | 'payment_issue'
-//     | 'timeout' | 'unchanged' | 'repeat' | 'signed-out' | 'stopped' | null (another kind)
-//   resumeChange(app, { quiet? }) → as above, or null (nothing kept here, it ran out, or it is done)
-//   verdict(plan, rec) → 'confirmed' | 'payment_issue' | 'waiting'   (plan: { tier, period, status } as the server said)
-//   rememberChange(rec) / pendingChange() / forgetChange(): the kept change, { to, at, from, state, result? }
+//     | 'scheduled' | 'timeout' | 'unchanged' | 'repeat' | 'signed-out' | 'stopped' | null (another kind)
+//     | 'other-account' (the trip was another account's)
+//   resumeChange(app, { quiet?, before? }) → as above, or null (nothing kept here, it ran out, it is done, or another
+//     account's)
+//   verdict(plan, rec) → 'confirmed' | 'payment_issue' | 'scheduled' | 'waiting'   (plan: { tier, period, status,
+//     scheduled } as the server said)
+//   rememberChange(rec) / pendingChange() / forgetChange(): the kept change, { to, at, from, state, uid?, result? }
+//   departChange({ uid, from, to }) / takeTrip(): the trip to Stripe's page, { uid, from, to, at }
 //   ensurePlanCss() → resolves once src/ui/plan-welcome.css is in (the note, the payment sheet and the welcome)
 import { h, openSheet } from './ui.js';
 import { PLANS } from './entitlements.js';
@@ -29,6 +45,12 @@ export const PLAN_TO = /^(paid|ultra)\.(monthly|yearly)$/;
 export const CHANGE_KEY = 'hm2:planChange';
 /** How long a change on its way is kept in this tab (a reload mid-confirmation, a check when the app is back): 15 minutes. */
 export const CHANGE_MS = 15 * 60000;
+/** The trip to Stripe's page for a change: who is making it, and from what plan (this tab only, for TRIP_MS). */
+export const TRIP_KEY = 'hm2:planTrip';
+/** How long a trip to Stripe's page is remembered (the person can take a while there): 2 hours. */
+export const TRIP_MS = 2 * 3600000;
+/** An account id as the namespace keeps it (src/auth/namespace.js: Supabase's uuid, lower case). */
+const UID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 /** The waits (ms) between asks after Stripe's way back: about 85 s in all. */
 export const CONFIRM_WAITS = Object.freeze([0, 1500, 3000, 5000, 8000, 13000, 21000, 34000]);
 /** The least time between two quiet checks when the app comes back on screen. */
@@ -40,10 +62,27 @@ const STATES = ['confirming', 'quiet', 'done'];
 const TIERS = ['none', 'paid', 'ultra'];
 const PERIODS = ['monthly', 'yearly'];
 
+/** "hushmallow Flow (monthly)": a plan's whole name, its period when known. */
+export function planLabel(tier, period = null) {
+  const name = PLANS[tier]?.name;
+  if (!name) return null;
+  return period === 'monthly' || period === 'yearly' ? `${name} (${period})` : name;
+}
+const dayOf = (t) => new Date(t).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+
 /** What the way back says. Calm, never a success before Stripe's word; the plan names in full. */
 export const CHANGE_LINES = Object.freeze({
   confirming: 'Confirming your new plan with Stripe…',
-  timeout: 'Stripe is still confirming your change. Your plan will update here as soon as it’s confirmed.',
+  /** not confirmed in time: what the app shows, never a claim about what Stripe is doing (the change may be set for later) */
+  timeout: (plan) => (plan ? `Your plan here still shows ${plan}. If Stripe confirms a change, it will update here.` : 'No change shows here yet. If Stripe confirms one, it will update here.'),
+  /** Stripe has the change set for later (plan: { tier, period, scheduled: { at, tier, period } } as the server said) */
+  scheduled: (plan) => {
+    const c = plan?.scheduled;
+    const now = planLabel(plan?.tier, plan?.period) || 'your plan';
+    const to = c?.tier ? planLabel(c.tier, c.period) : null;
+    const when = Number.isFinite(c?.at) ? ` on ${dayOf(c.at)}` : ' for the end of this billing period';
+    return to ? `Your plan changes to ${to}${when}. Until then, you’re on ${now}.` : `Your plan change is set${when.replace(' on ', ' for ')}. Until then, you’re on ${now}.`;
+  },
   paymentTitle: 'Your payment needs a look',
   /** the plan as it still is (the change waits on the payment) */
   paymentIssue: (plan) => `Your payment didn’t go through, so you’re still on ${plan}. Update your card in Settings → Manage subscription.`,
@@ -53,7 +92,7 @@ export const CHANGE_LINES = Object.freeze({
   signIn: 'Sign in to see your plan.',
   manageFailed: 'That didn’t open just now. Try again in a moment.',
 });
-const NOTE_MS = { timeout: 8000, unchanged: 4200 };
+const NOTE_MS = { timeout: 8000, unchanged: 4200, scheduled: 9000 };
 
 function safeSession() { try { return globalThis.sessionStorage || null; } catch { return null; } }
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -63,16 +102,26 @@ export function planOf(ent) {
   const p = ent?.webPlan?.() || null;
   return { tier: ent?.tier?.() ?? 'none', period: p?.period ?? null, status: p?.status ?? null };
 }
+/** planOf, and the change Stripe has set for later ({ at, tier, period } | null), for the verdict. */
+const answerOf = (ent) => ({ ...planOf(ent), scheduled: ent?.webPlan?.()?.scheduled ?? null });
 const cleanFrom = (f) => ({
   tier: TIERS.includes(f?.tier) ? f.tier : 'none',
   period: PERIODS.includes(f?.period) ? f.period : null,
   status: typeof f?.status === 'string' && /^[a-z_]{1,24}$/.test(f.status) ? f.status : null,
 });
+/** The plan before the trip, or null when it is not known (never read as "none"). */
+const fromOrNull = (f) => (f && typeof f === 'object' ? cleanFrom(f) : null);
+/** A plan known from before that a change can be judged against: one actually held (the chooser is offered only then). */
+const heldFrom = (f) => (f && TIERS.includes(f.tier) && f.tier !== 'none' ? cleanFrom(f) : null);
+const uidOr = (u) => (typeof u === 'string' && UID.test(u) ? u : null);
+/** The account this page runs as (entitlements.js account()), or null. */
+const accountOf = (ent) => { try { return uidOr(ent?.account?.()); } catch { return null; } };
 
-/** Keep a change on its way (this tab only): { to, at, from: { tier, period, status }, state, result? }. */
+/** Keep a change on its way (this tab only): { to, at, from: { tier, period, status } | null, state, uid?, result? }. */
 export function rememberChange(rec, { session = safeSession() } = {}) {
   if (!rec || !(rec.to === null || PLAN_TO.test(rec.to)) || !Number.isFinite(rec.at) || !STATES.includes(rec.state)) return;
-  const v = { to: rec.to, at: rec.at, from: cleanFrom(rec.from), state: rec.state, ...(rec.result ? { result: { tier: rec.result.tier, period: rec.result.period ?? null } } : {}) };
+  const uid = uidOr(rec.uid);
+  const v = { to: rec.to, at: rec.at, from: fromOrNull(rec.from), state: rec.state, ...(uid ? { uid } : {}), ...(rec.result ? { result: { tier: rec.result.tier, period: rec.result.period ?? null } } : {}) };
   try { session?.setItem(CHANGE_KEY, JSON.stringify(v)); } catch { /* not kept: a reload asks nothing more */ }
 }
 /** The change kept here in the last CHANGE_MS, or null (an old or odd one is forgotten). */
@@ -80,12 +129,32 @@ export function pendingChange({ session = safeSession(), now = Date.now() } = {}
   let raw = null, v = null;
   try { raw = session?.getItem(CHANGE_KEY) ?? null; v = JSON.parse(raw || 'null'); } catch { v = null; }
   const ok = !!v && typeof v === 'object' && (v.to === null || (typeof v.to === 'string' && PLAN_TO.test(v.to)))
-    && Number.isFinite(v.at) && now >= v.at && now - v.at < CHANGE_MS && STATES.includes(v.state) && !!v.from && typeof v.from === 'object';
+    && Number.isFinite(v.at) && now >= v.at && now - v.at < CHANGE_MS && STATES.includes(v.state)
+    && (v.from === null || (!!v.from && typeof v.from === 'object')) && (v.uid === undefined || !!uidOr(v.uid));
   if (raw != null && !ok) forgetChange({ session });
-  return ok ? { to: v.to, at: v.at, from: cleanFrom(v.from), state: v.state, ...(v.result ? { result: { tier: v.result.tier, period: v.result.period ?? null } } : {}) } : null;
+  return ok ? { to: v.to, at: v.at, from: fromOrNull(v.from), state: v.state, ...(v.uid ? { uid: v.uid } : {}), ...(v.result ? { result: { tier: v.result.tier, period: v.result.period ?? null } } : {}) } : null;
 }
 export function forgetChange({ session = safeSession() } = {}) {
   try { session?.removeItem(CHANGE_KEY); } catch { /* it lapses by its time */ }
+}
+
+/**
+ * Leaving for Stripe's page to change the plan (billing.js, just before the page leaves): a change kept from before is
+ * its way back no longer, and this trip is kept with the account making it (uid, entitlements.js account()) and its
+ * plan now (from), for the way back.
+ */
+export function departChange({ uid = null, from = null, to = null } = {}, { session = safeSession(), now = Date.now() } = {}) {
+  forgetChange({ session });
+  const v = { uid: uidOr(uid), from: fromOrNull(from), to: typeof to === 'string' && PLAN_TO.test(to) ? to : null, at: now };
+  try { session?.setItem(TRIP_KEY, JSON.stringify(v)); } catch { /* not kept: the way back judges by the plan kept here */ }
+}
+/** The trip kept here in the last TRIP_MS ({ uid, from, to, at }), taken (it is forgotten now), or null. */
+export function takeTrip({ session = safeSession(), now = Date.now() } = {}) {
+  let v = null;
+  try { v = JSON.parse(session?.getItem(TRIP_KEY) || 'null'); session?.removeItem(TRIP_KEY); } catch { v = null; }
+  const ok = !!v && typeof v === 'object' && Number.isFinite(v.at) && now >= v.at && now - v.at < TRIP_MS
+    && (v.uid === null || !!uidOr(v.uid)) && (v.from === null || typeof v.from === 'object');
+  return ok ? { uid: v.uid, from: fromOrNull(v.from), to: typeof v.to === 'string' && PLAN_TO.test(v.to) ? v.to : null, at: v.at } : null;
 }
 
 /**
@@ -100,11 +169,16 @@ export function verdict(plan, rec) {
     const [t, p] = rec.to.split('.');
     landed = tier === t && period === p;
   } else {
-    const f = cleanFrom(rec?.from);
-    landed = tier !== 'none' && (tier !== f.tier || (!!f.period && !!period && period !== f.period));
+    // against no plan known from before (not known on this page, or none: the plan kept here counted for nobody), any
+    // plan would read as a change: nothing can be told, so it is never confirmed
+    const f = heldFrom(rec?.from);
+    landed = !!f && tier !== 'none' && (tier !== f.tier || (!!f.period && !!period && period !== f.period));
   }
   if (landed && OK_STATUSES.includes(status)) return 'confirmed';
   if (PAYMENT_STATUSES.includes(status)) return 'payment_issue';
+  // not on the plan yet because Stripe has the change set for later (the portal's downgrade or shorter period at the
+  // period end, D8): nothing to wait for now
+  if (!landed && OK_STATUSES.includes(status) && Number.isFinite(plan?.scheduled?.at)) return 'scheduled';
   return 'waiting';
 }
 
@@ -120,10 +194,13 @@ const nameOf = (tier) => PLANS[tier]?.name || null;
 /** The payment line: still on the plan before (the change waits on the payment), or the new plan not confirmed yet. */
 function paymentLine(plan, rec) {
   const target = rec.to ? rec.to.split('.')[0] : null;
-  const moved = target ? plan.tier === target && plan.tier !== rec.from.tier : plan.tier !== rec.from.tier;
+  const f = heldFrom(rec.from);
+  const moved = target ? plan.tier === target && plan.tier !== f?.tier : !!f && plan.tier !== f.tier;
   if (moved && plan.tier !== 'none') return CHANGE_LINES.paymentIssueNew;
-  return CHANGE_LINES.paymentIssue(nameOf(rec.from.tier !== 'none' ? rec.from.tier : plan.tier) || 'your plan');
+  return CHANGE_LINES.paymentIssue(nameOf(f ? f.tier : plan.tier) || 'your plan');
 }
+/** What the welcome is told of the plan before: the plan, or (not known) that it is not known, so it never says more. */
+const welcomeFrom = (rec) => (heldFrom(rec.from) ? { from: rec.from } : { from: null, fromUnknown: true });
 
 let running = null;
 let lastQuiet = -Infinity;
@@ -141,12 +218,12 @@ function run(app, rec, { waits, sleep, session, now, view, quiet }) {
       const still = pendingChange({ session, now: now() });
       if (!still || still.at !== rec.at || still.state === 'done') { note?.close(); return 'stopped'; }
       if (!(await ask(ent))) continue;
-      const plan = planOf(ent);
+      const plan = answerOf(ent);
       const v = verdict(plan, rec);
       if (v === 'confirmed') {
         rememberChange({ ...rec, state: 'done', result: { tier: plan.tier, period: plan.period } }, { session });
         note?.close();
-        try { await view.welcome({ tier: plan.tier, period: plan.period, from: rec.from, to: rec.to }); } catch { /* the plan is here all the same */ }
+        try { await view.welcome({ tier: plan.tier, period: plan.period, ...welcomeFrom(rec), to: rec.to }); } catch { /* the plan is here all the same */ }
         return 'confirmed';
       }
       if (v === 'payment_issue') {
@@ -155,10 +232,17 @@ function run(app, rec, { waits, sleep, session, now, view, quiet }) {
         view.paymentIssue(paymentLine(plan, rec));
         return 'payment_issue';
       }
+      // Stripe accepted it for later: said as it is, once (asked no more; the plan updates here on the day, as any)
+      if (v === 'scheduled') {
+        forgetChange({ session });
+        const line = CHANGE_LINES.scheduled(plan);
+        if (note) note.say(line, NOTE_MS.scheduled, 'scheduled'); else view.say(line, NOTE_MS.scheduled, 'scheduled');
+        return 'scheduled';
+      }
     }
-    // not confirmed in time: said once; asked again quietly at the next start or when the app is back on screen
+    // not confirmed in time: said once, neutrally; asked again quietly at the next start or when the app is back on screen
     rememberChange({ ...rec, state: 'quiet' }, { session });
-    if (note) note.say(CHANGE_LINES.timeout, NOTE_MS.timeout, 'timeout');
+    if (note) { const p = planOf(ent); note.say(CHANGE_LINES.timeout(p.tier !== 'none' ? planLabel(p.tier, p.period) : null), NOTE_MS.timeout, 'timeout'); }
     return 'timeout';
   })().finally(() => { running = null; });
   return running;
@@ -174,41 +258,50 @@ export async function confirmChange(app, back, {
   const { ent } = app;
   const view = ui || planChangeUi(app);
   const kind = back?.kind;
-  const from = cleanFrom(before || planOf(ent));
+  if (kind !== 'changed' && kind !== 'unchanged') return null;
+  const signedIn = !!ent.webSignedIn?.();
+  const acct = accountOf(ent);
+  // the trip that led here (departChange): another account's (this tab signed in as someone else since it left) is not
+  // this one's to confirm or welcome, and nothing is said
+  const trip = takeTrip({ session, now: now() });
+  if (trip?.uid && acct && trip.uid !== acct) { forgetChange({ session }); return 'other-account'; }
+  const uid = trip?.uid || acct || null;
+  // the plan before: the trip's (the account's own, as it left), else the plan kept here (signed in: this account's);
+  // on a page not signed in, not known (null), never the guest's "none"
+  const from = trip?.from || (signedIn ? cleanFrom(before || planOf(ent)) : null);
   if (kind === 'changed') {
     const to = typeof back.to === 'string' && PLAN_TO.test(back.to) ? back.to : null;
     // Back (or a reload) onto Stripe's way back again after this change was confirmed and said: not said twice
     const prev = pendingChange({ session, now: now() });
-    if (prev?.state === 'done' && prev.result && prev.result.tier === from.tier && (prev.result.period ?? null) === from.period
-      && (!to || to === `${prev.result.tier}.${prev.result.period}`)) return 'repeat';
-    const rec = { to, at: now(), from, state: 'confirming' };
+    if (prev?.state === 'done' && prev.result && from && prev.result.tier === from.tier && (prev.result.period ?? null) === from.period
+      && (!prev.uid || prev.uid === uid) && (!to || to === `${prev.result.tier}.${prev.result.period}`)) return 'repeat';
+    const rec = { to, at: now(), from, state: 'confirming', uid };
     rememberChange(rec, { session });
     // not signed in on this page: nothing can be asked; the key waits for the sign-in (the page reloads into the account)
-    if (!ent.webSignedIn?.()) {
+    if (!signedIn) {
       if (typeof app.go === 'function') app.go('account', { view: 'signin', notice: CHANGE_LINES.signIn });
       else app.toast?.(CHANGE_LINES.signIn, 3600);
       return 'signed-out';
     }
     return run(app, rec, { waits, sleep, session, now, view, quiet: false });
   }
-  if (kind === 'unchanged') {
-    if (!ent.webSignedIn?.()) return 'signed-out';
-    const answered = await ask(ent);
-    const plan = planOf(ent);
-    if (answered) {
-      const v = verdict(plan, { to: null, from });
-      // (it did change after all, confirmed by Stripe: another tab, or a change completed before the back link)
-      if (v === 'confirmed') {
-        rememberChange({ to: null, at: now(), from, state: 'done', result: { tier: plan.tier, period: plan.period } }, { session });
-        try { await view.welcome({ tier: plan.tier, period: plan.period, from, to: null }); } catch { /* here all the same */ }
-        return 'confirmed';
-      }
-      if (v === 'payment_issue' && !PAYMENT_STATUSES.includes(from.status)) { view.paymentIssue(paymentLine(plan, { to: null, from })); return 'payment_issue'; }
+  // 'unchanged'
+  if (!signedIn) return 'signed-out';
+  const answered = await ask(ent);
+  const plan = planOf(ent);
+  if (answered) {
+    // (it did change after all, confirmed by Stripe: another tab, or a change completed before the back link; only
+    // against a plan known from before, never against one kept here that counts for nobody)
+    const v = verdict(plan, { to: null, from });
+    if (v === 'confirmed') {
+      rememberChange({ to: null, at: now(), from, state: 'done', uid, result: { tier: plan.tier, period: plan.period } }, { session });
+      try { await view.welcome({ tier: plan.tier, period: plan.period, from, to: null }); } catch { /* here all the same */ }
+      return 'confirmed';
     }
-    view.say(CHANGE_LINES.unchanged(nameOf(answered ? plan.tier : from.tier) || nameOf(from.tier)), NOTE_MS.unchanged, 'unchanged');
-    return 'unchanged';
+    if (v === 'payment_issue' && !PAYMENT_STATUSES.includes(from?.status)) { view.paymentIssue(paymentLine(plan, { to: null, from })); return 'payment_issue'; }
   }
-  return null;
+  view.say(CHANGE_LINES.unchanged(nameOf(answered ? plan.tier : from?.tier) || nameOf(from?.tier)), NOTE_MS.unchanged, 'unchanged');
+  return 'unchanged';
 }
 
 /**
@@ -216,9 +309,18 @@ export async function confirmChange(app, back, {
  * unless it had already run out of time) or quietly when the app comes back on screen (one ask, at most every
  * QUIET_RECHECK_MS). Confirmed: its welcome, as on the way back.
  */
-export async function resumeChange(app, { quiet = null, waits = CONFIRM_WAITS, sleep = wait, session = safeSession(), now = () => Date.now(), ui = null } = {}) {
-  const rec = pendingChange({ session, now: now() });
+export async function resumeChange(app, { quiet = null, before = null, waits = CONFIRM_WAITS, sleep = wait, session = safeSession(), now = () => Date.now(), ui = null } = {}) {
+  let rec = pendingChange({ session, now: now() });
   if (!rec || rec.state === 'done' || !app?.ent?.webSignedIn?.()) return null;
+  const acct = accountOf(app.ent);
+  // another account's change (it signed out, and someone else is signed in on this tab now): never theirs to hear
+  if (rec.uid && acct && rec.uid !== acct) { forgetChange({ session }); return null; }
+  // kept on a page not signed in: it is this account's now, and the plan before, if it was not known, is the plan this
+  // account kept on this phone (main.js takes it at start, before the first check), when it holds one
+  if ((!rec.uid && acct) || !rec.from) {
+    rec = { ...rec, uid: rec.uid || acct, from: rec.from || heldFrom(before) };
+    rememberChange(rec, { session });
+  }
   const q = quiet ?? rec.state === 'quiet';
   if (q) {
     if (running) return running;
