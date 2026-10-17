@@ -41,9 +41,14 @@ export const PRODUCTION_APP = 'https://app.hushmallow.com';
 /** Test keys only: a restricted key (recommended) or the sandbox's secret key. */
 export const E2E_KEY = /^(?:rk|sk)_test_[A-Za-z0-9]{8,}$/;
 export const PHASES = Object.freeze(['P0', 'P1', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8', 'S9']);
-/** The owner's amounts in US cents (decision D2, in US dollars since 2026-10-17, docs/STAGING.md): Stripe and BILLING_PRICES must both say these. */
-/** @type {Readonly<Record<string, number>>} */
-export const SANDBOX_AMOUNTS = Object.freeze({ 'hushmallow.paid.monthly': 999, 'hushmallow.paid.yearly': 9999, 'hushmallow.ultra.monthly': 1999, 'hushmallow.ultra.yearly': 19999 });
+/**
+ * The owner's amounts in US cents (decision D2, in US dollars since 2026-10-17, docs/STAGING.md), by product id: the
+ * Worker's own (CHECKOUT_PRICE_RULES.unit_amount, which checkout sells only), and Stripe and BILLING_PRICES must both say these.
+ * @type {Readonly<Record<string, number>>}
+ */
+export const SANDBOX_AMOUNTS = Object.freeze(Object.fromEntries((/** @type {const} */ (['paid', 'ultra'])).flatMap((plan) => (
+  (/** @type {const} */ (['monthly', 'yearly'])).map((period) => [`hushmallow.${plan}.${period}`, CHECKOUT_PRICE_RULES.unit_amount[plan][period]])
+))));
 export const PRODUCT_NAMES = Object.freeze({ paid: 'hushmallow Flow', ultra: 'hushmallow Beyond' });
 /** One status read per 5 s at most: the billing routes allow 20 a minute per network (BILLING_IP_LIMITER). */
 export const STATUS_POLL_MS = 5000;
@@ -300,8 +305,8 @@ export async function run({ env = process.env, args = [], fetch: f = (input, ini
     if (!cfg.production.liveApproved) check(pb.configured === false && pb.live_approved === false && pb.stripe_mode === null, 'P0 production: billing off (no approval, no key)', JSON.stringify({ configured: pb.configured, stripe_mode: pb.stripe_mode }));
 
     // the four prices, by the ids in [env.staging.vars] (a lookup key is optional: the id is then the mapping): what the
-    // Worker sells (priceFault), at the sandbox amounts, under the products' names, so two ids swapped while pasting show
-    // here as the wrong amount or name. An id of the other mode (a live price) is not found with this test key.
+    // Worker sells (priceFault, its slot's amount included), under the products' names, so two ids swapped while pasting
+    // show here as the wrong amount or name. An id of the other mode (a live price) is not found with this test key.
     /** @type {Record<string, any>} */
     const read = {};
     for (const k of Object.keys(SANDBOX_AMOUNTS)) {
@@ -310,8 +315,8 @@ export async function run({ env = process.env, args = [], fetch: f = (input, ini
       if (!check(pr.ok, `P0 price ${k}: the id in [env.staging.vars] is a price of this sandbox`, pr.ok ? '' : `${pr.status} ${pr.code}`)) continue;
       const x = read[k] = pr.data;
       const fault = priceFault(x, plan, period, cfg.automaticTax);
-      check(!fault, `P0 price ${k}: USD, recurring every 1 ${period === 'monthly' ? 'month' : 'year'}, active, lookup key its own or none${cfg.automaticTax ? ', tax behaviour inclusive or exclusive' : ''}`, fault ? `breaks: ${fault}` : '');
-      if (!x.lookup_key) info(`P0 price ${k}: no lookup key, so the configured id decides its plan (a lookup key of ${k} would also catch two ids swapped)`);
+      check(!fault, `P0 price ${k}: USD, recurring every 1 ${period === 'monthly' ? 'month' : 'year'}, its slot's amount, active, lookup key its own or none${cfg.automaticTax ? ', tax behaviour inclusive or exclusive' : ''}`, fault ? `breaks: ${fault}` : '');
+      if (!x.lookup_key) info(`P0 price ${k}: no lookup key, so the configured id decides its plan (the Worker checks its amount; a lookup key of ${k} would also tie it to its slot)`);
       check(x.unit_amount === SANDBOX_AMOUNTS[k], `P0 price ${k}: ${usd(SANDBOX_AMOUNTS[k])}`, typeof x.unit_amount === 'number' ? usd(x.unit_amount) : '');
       check(x.product?.name === PRODUCT_NAMES[plan], `P0 price ${k}: product "${PRODUCT_NAMES[plan]}"`, x.product?.name ? `"${x.product.name}"` : '');
       check(cfg.billingPrices[k] === usd(SANDBOX_AMOUNTS[k]), `P0 price ${k}: BILLING_PRICES says ${usd(SANDBOX_AMOUNTS[k])}`, String(cfg.billingPrices[k] || ''));

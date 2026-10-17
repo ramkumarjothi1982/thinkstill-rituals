@@ -55,8 +55,10 @@ export const BILLING_ENDPOINT = '';
  *
  * THE OWNER'S PRICES, as the four Stripe prices of 2026-10-17 hold them. DISPLAY
  * ONLY: Stripe Checkout always charges what Stripe holds, whatever this says.
- * Production's own live prices must hold the same amounts before launch, or
- * both change together (D2); the sandbox driver compares them (P0).
+ * The Worker sells a price only at these amounts (server CHECKOUT_PRICE_RULES
+ * unit_amount; its tests keep the two the same). Production's own live prices
+ * must hold the same amounts before launch, or all of them change together
+ * (D2); the sandbox driver compares them (P0).
  */
 export const BILLING_PRICES = Object.freeze({
   'hushmallow.paid.monthly': 'US$9.99', 'hushmallow.paid.yearly': 'US$99.99',

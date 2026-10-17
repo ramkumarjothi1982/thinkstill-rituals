@@ -350,8 +350,10 @@ test('P0 names what the sandbox was set up wrong: a price, the endpoint\'s event
   assert.equal(await w.drive(['--phases', 'P0']), 1);
   const fails = w.out.filter((l) => l.startsWith('FAIL'));
   for (const want of [
-    /P0 price hushmallow\.paid\.yearly: USD, recurring every 1 year, active, lookup key its own or none {2}breaks: lookup_key/,
-    /P0 price hushmallow\.ultra\.yearly: USD, recurring every 1 year, active, lookup key its own or none {2}breaks: currency/,
+    /P0 price hushmallow\.paid\.yearly: USD, recurring every 1 year, its slot's amount, active, lookup key its own or none {2}breaks: lookup_key/,
+    /P0 price hushmallow\.ultra\.yearly: USD, recurring every 1 year, its slot's amount, active, lookup key its own or none {2}breaks: currency/,
+    // the amount: the Worker's own rule (CHECKOUT_PRICE_RULES.unit_amount) and the driver's US$ check both say it
+    /P0 price hushmallow\.ultra\.monthly: USD, recurring every 1 month, its slot's amount, active, lookup key its own or none {2}breaks: unit_amount/,
     /P0 price hushmallow\.paid\.monthly: the id in \[env\.staging\.vars\] is a price of this sandbox {2}404 resource_missing/,
     /P0 price hushmallow\.ultra\.monthly: US\$19\.99 {2}US\$14\.99/, /P0 price hushmallow\.ultra\.monthly: product "hushmallow Beyond" {2}"Beyond"/,
     /P0 webhook: API version 2026-08-26\.dahlia {2}2025-03-31\.basil/, /P0 webhook: exactly the 11 events {2}missing invoice\.paid/,
@@ -369,7 +371,7 @@ test('P0 with the owner\'s kind of prices: no lookup keys and any tax behaviour 
   // tax off (as [env.staging.vars] has it): every check passes, and each price without a lookup key is said
   const off = world({ box: { edit: noKeys } });
   assert.equal(await off.drive(['--phases', 'P0']), 0, off.out.join('\n'));
-  assert.ok(off.out.some((l) => l === 'PASS  P0 price hushmallow.paid.monthly: USD, recurring every 1 month, active, lookup key its own or none'));
+  assert.ok(off.out.some((l) => l === 'PASS  P0 price hushmallow.paid.monthly: USD, recurring every 1 month, its slot\'s amount, active, lookup key its own or none'));
   assert.equal(off.out.filter((l) => /^INFO {2}P0 price hushmallow\.(?:paid|ultra)\.(?:monthly|yearly): no lookup key, so the configured id decides its plan/.test(l)).length, 4);
   // the price has no tax behaviour: the test calculation takes the settings' default (inclusive here)
   assert.ok(off.out.includes('PASS  P0 tax: the total stays US$19.99 (inclusive)  US$19.99'), off.out.join('\n'));
@@ -382,7 +384,7 @@ test('P0 with the owner\'s kind of prices: no lookup keys and any tax behaviour 
   assert.equal(await on.drive(['--phases', 'P0'], { config: { ...CONFIG, automaticTax: true } }), 1);
   for (const k of Object.keys(D.SANDBOX_AMOUNTS)) {
     const period = k.endsWith('monthly') ? 'month' : 'year';
-    assert.ok(on.out.includes(`FAIL  P0 price ${k}: USD, recurring every 1 ${period}, active, lookup key its own or none, tax behaviour inclusive or exclusive  breaks: tax_behavior`), k);
+    assert.ok(on.out.includes(`FAIL  P0 price ${k}: USD, recurring every 1 ${period}, its slot's amount, active, lookup key its own or none, tax behaviour inclusive or exclusive  breaks: tax_behavior`), k);
   }
   const ok = world({ ...taxOn, box: { edit: (/** @type {any} */ s) => { noKeys(s); for (const x of s.prices.values()) x.tax_behavior = 'exclusive'; } } });
   assert.equal(await ok.drive(['--phases', 'P0'], { config: { ...CONFIG, automaticTax: true } }), 0, ok.out.join('\n'));

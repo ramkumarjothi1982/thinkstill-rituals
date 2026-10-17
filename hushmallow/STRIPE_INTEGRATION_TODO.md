@@ -40,13 +40,16 @@ The owner's prices (2026-10-17):
 | hushmallow Beyond (`prod_VSGH3KuGjUAdQr`) | `ultra` | US$19.99, `price_1URLlFL2iXNcXbZPGjBOF6zy` | US$199.99, `price_1URLv2L2iXNcXbZP6vLFoAtV` |
 
 What checkout requires of a price (`CHECKOUT_PRICE_RULES`): `usd`, recurring every 1 month or 1 year as its
-slot, active. A lookup key is optional: if the price has one it must be `hushmallow.<plan>.<period>` (for
-example `hushmallow.ultra.monthly`); with none, the configured id decides the plan. Setting the four lookup
-keys is still recommended: they also catch two ids pasted into each other's slots (without them, only the
-driver's amount and product-name checks do). Tax behaviour: any while Stripe Tax is off; `inclusive` or
-`exclusive` (never unspecified) before `STRIPE_AUTOMATIC_TAX` goes on. The app's `BILLING_PRICES`
-([src/app/config.js](src/app/config.js)) shows US$9.99, US$99.99, US$19.99 and US$199.99: display only,
-Checkout charges what Stripe holds.
+slot, the owner's amount for its slot (`unit_amount` 999, 9999, 1999 or 19999 US cents), active. A lookup key
+is optional: if the price has one it must be `hushmallow.<plan>.<period>` (for example
+`hushmallow.ultra.monthly`); with none, the configured id decides the plan. Since the four amounts differ, two
+ids pasted into each other's slots are refused with lookup keys or without, in test and live mode alike, and
+one id in two slots is never sold (`/v1/health` says `"duplicate_prices"`; the tests refuse it in
+`wrangler.toml`). Setting the four lookup keys is still recommended: they tie each price to its slot in
+Stripe itself. Tax behaviour: any while Stripe Tax is off; `inclusive` or `exclusive` (never unspecified)
+before `STRIPE_AUTOMATIC_TAX` goes on. The app's `BILLING_PRICES` ([src/app/config.js](src/app/config.js))
+shows US$9.99, US$99.99, US$19.99 and US$199.99: display only, Checkout charges what Stripe holds, and a test
+keeps them the same as the Worker's amounts.
 
 ## Configured Parameters
 
@@ -185,8 +188,8 @@ Test cards (any future expiry date, any CVC, any postcode):
 Renewals, failed renewals, recovery, retries running out, plan changes, cancellations and resent events run
 on **test clocks** with the sandbox driver, `scripts/billing-e2e.mjs`
 (`cd server/another-angle && npm run e2e:billing`, test keys only; STAGING.md "The sandbox driver"). Its
-preflight (P0) reads the four configured prices by id and checks USD, the interval, the amounts in US$, the
-product names and `BILLING_PRICES`.
+preflight (P0) reads the four configured prices by id and checks what the Worker sells (USD, the interval,
+each slot's amount), the product names and `BILLING_PRICES`.
 
 ## Next steps
 
@@ -201,14 +204,19 @@ product names and `BILLING_PRICES`.
 6. With your adviser: tax registrations, whether prices include tax, and the terms' `[Owner: …]` wording.
 7. Live mode: its own four prices at the same US$ amounts, its own restricted `rk_live_…` key and webhook
    endpoint, the portal and recovery settings again (PAYMENTS.md sections 1 and 2).
+8. Before the activation commit, check the four live prices by hand (PAYMENTS.md section 4, step 2): the
+   sandbox driver takes test keys only and cannot read them. For each slot: the product (Flow for `PAID`,
+   Beyond for `ULTRA`), the amount, the interval, USD, active. The Worker refuses a wrong amount, currency or
+   interval and an id in two slots by itself; the product name is yours to check.
 
 ## Live activation
 
 The owner approved production charging **only after the full test-mode flow passes**. Until then production's
 `[vars]` keep no billing var and `ENTITLEMENT_MODE = "testing"`, and the production Worker refuses a live
 key. Activation is its own reviewed commit, merged by the owner: `BILLING_LIVE = "approved"` with the live
-vars (live price ids, `STRIPE_API_VERSION`, the sign-in project, `APP_ORIGIN`) and the app's switch in the
-same release (PAYMENTS.md section 4). That merge is the approval; nothing else is.
+vars (live price ids, each checked by hand first, step 8 above; `STRIPE_API_VERSION`, the sign-in project,
+`APP_ORIGIN`) and the app's switch in the same release (PAYMENTS.md section 4). That merge is the approval;
+nothing else is.
 
 ## Resources
 

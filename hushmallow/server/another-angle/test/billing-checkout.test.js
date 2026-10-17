@@ -173,6 +173,10 @@ test('price check: a price that is not what its slot says is not sold (503 price
     ['type', (p) => ({ ...p, type: 'one_time', recurring: null })],
     ['interval', (p) => ({ ...p, recurring: { ...p.recurring, interval: 'week' } })],
     ['interval_count', (p) => ({ ...p, recurring: { ...p.recurring, interval_count: 3 } })],
+    // not the owner's amount for the slot (D2): Flow monthly's US$9.99, a changed price, none (tiered)
+    ['unit_amount', (p) => ({ ...p, unit_amount: 999 })],
+    ['unit_amount', (p) => ({ ...p, unit_amount: 2499 })],
+    ['unit_amount', (p) => ({ ...p, unit_amount: null, billing_scheme: 'tiered' })],
     ['inactive', (p) => ({ ...p, active: false })],
   ];
   for (const [fault, change] of cases) {
@@ -209,7 +213,10 @@ test('price check: a price that is not what its slot says is not sold (503 price
   assert.equal((await post(down, ULTRA_M)).status, 200);
   assert.deepEqual(priceReads(down), [PRICES.ultraMonthly, PRICES.ultraMonthly]);
   // the rules, and the check on its own
-  assert.deepEqual(CHECKOUT_PRICE_RULES, { currency: 'usd', tax_behavior: ['inclusive', 'exclusive'], interval: { monthly: 'month', yearly: 'year' } });
+  assert.deepEqual(CHECKOUT_PRICE_RULES, {
+    currency: 'usd', tax_behavior: ['inclusive', 'exclusive'], interval: { monthly: 'month', yearly: 'year' },
+    unit_amount: { paid: { monthly: 999, yearly: 9999 }, ultra: { monthly: 1999, yearly: 19999 } },
+  });
   for (const [id, plan, period] of [[PRICES.paidMonthly, 'paid', 'monthly'], [PRICES.paidYearly, 'paid', 'yearly'], [PRICES.ultraYearly, 'ultra', 'yearly']]) {
     assert.equal(priceFault(price(id, plan, period), plan, period), '', `${plan} ${period}`);
   }
@@ -323,6 +330,51 @@ test('one price id in two slots (pasted twice): neither slot sells or maps, /v1/
   assert.deepEqual(readConfig(billingEnv()).billing.duplicateSlots, []);
   assert.deepEqual(readConfig(billingEnv({ STRIPE_PRICE_PAID_MONTHLY: 'price_TODO_owner', STRIPE_PRICE_ULTRA_MONTHLY: 'price_TODO_owner' })).billing.duplicateSlots, []);
   assert.equal((await (await setup().app.fetch(req('/v1/health'), billingEnv())).json()).billing.duplicate_prices, undefined);
+  assertClean(allLogs.flat());
+});
+
+test('two ids swapped between plans, with no lookup keys (the owner\'s kind of prices): neither sells, by its amount (CHECKOUT_PRICE_RULES.unit_amount), in either Stripe mode', async () => {
+  const noKeys = (s) => { for (const id of Object.values(PRICES)) s.up.prices.set(id, { ...s.up.prices.get(id), lookup_key: null }); return s; };
+  // Flow monthly's id and Beyond monthly's swapped in the vars, on the production Worker (a live key)
+  const swapped = { STRIPE_PRICE_PAID_MONTHLY: PRICES.ultraMonthly, STRIPE_PRICE_ULTRA_MONTHLY: PRICES.paidMonthly };
+  const s = track(noKeys(setup({ env: billingEnv(swapped) })));
+  for (const body of [ULTRA_M, { plan: 'paid', period: 'monthly' }]) {
+    const res = await post(s, body);
+    assert.deepEqual(await code(res), [503, 'price_misconfigured'], body.plan);
+    assert.equal(lastLog(s, 'checkout').err, 'unit_amount');
+    assertClean(s.logs, await res.json());
+  }
+  assert.equal(creates(s).length, 0, 'Beyond is never sold at Flow\'s price, nor Flow at Beyond\'s');
+  // …and on the staging Worker (a test key): the rule is the same in both modes
+  const { readConfig: readWithStaging } = await withStagingProject(STAGING_SUPABASE);
+  const env = billingEnv({ ...swapped, ACCOUNTS_STAGE: 'staging', SUPABASE_URL: STAGING_SUPABASE });
+  const cfg = readWithStaging(env);
+  assert.equal(cfg.billing.keyMode, 'test');
+  const token = jwt(UID, { iss: `${STAGING_SUPABASE}/auth/v1` });
+  const up = upstream({ users: { [token]: { id: UID } } });
+  for (const id of Object.values(PRICES)) up.prices.set(id, { ...up.prices.get(id), lookup_key: null });
+  const logs = [];
+  const billing = createBilling({ logger: createLogger((l) => logs.push(l)), now: clock(), fetch: (u, i) => up.fetch(String(u).replace(STAGING_SUPABASE, SUPABASE), i), ipKey: async () => 'ip' });
+  for (const body of [ULTRA_M, { plan: 'paid', period: 'monthly' }]) {
+    assert.deepEqual(await code(await billing.checkout(billingReq('/v1/billing/checkout', { body, token }), env, cfg, {})), [503, 'price_misconfigured'], `staging ${body.plan}`);
+    assert.equal(lines(logs).at(-1).err, 'unit_amount');
+  }
+  assert.equal(up.stripe().filter((c) => c.method === 'POST').length, 0);
+  assertClean(logs);
+  // a whole plan swapped (both periods): the same
+  const both = track(noKeys(setup({ env: billingEnv({ STRIPE_PRICE_PAID_MONTHLY: PRICES.ultraMonthly, STRIPE_PRICE_PAID_YEARLY: PRICES.ultraYearly, STRIPE_PRICE_ULTRA_MONTHLY: PRICES.paidMonthly, STRIPE_PRICE_ULTRA_YEARLY: PRICES.paidYearly }) })));
+  for (const plan of ['paid', 'ultra']) for (const period of ['monthly', 'yearly']) {
+    assert.deepEqual(await code(await post(both, { plan, period })), [503, 'price_misconfigured'], `${plan} ${period}`);
+    assert.equal(lastLog(both, 'checkout').err, 'unit_amount');
+  }
+  // as configured, the same prices sell
+  const ok = track(noKeys(setup()));
+  assert.equal((await post(ok, ULTRA_M)).status, 200);
+  // the amounts are the ones the app shows (BILLING_PRICES, display only): one source per side, kept the same (D2)
+  const { BILLING_PRICES } = await import(new URL('../../../src/app/config.js', import.meta.url).href);
+  for (const plan of ['paid', 'ultra']) for (const period of ['monthly', 'yearly']) {
+    assert.equal(BILLING_PRICES[`hushmallow.${plan}.${period}`], `US$${(CHECKOUT_PRICE_RULES.unit_amount[plan][period] / 100).toFixed(2)}`, `${plan} ${period}`);
+  }
   assertClean(allLogs.flat());
 });
 

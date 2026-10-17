@@ -14,6 +14,7 @@ import { createApp } from '../src/app.js';
 import { createMockProvider } from '../src/providers/mock.js';
 import { signWebhookPayload } from '../src/billing/stripe.js';
 import { memoryBillingNamespace } from '../src/billing/store.js';
+import { CHECKOUT_PRICE_RULES } from '../src/billing/routes.js';
 import { STRIPE_API_VERSION_EXPECTED } from '../src/config.js';
 
 export const SUPABASE = 'https://igbxbfuaoybfzsroxuln.supabase.co';
@@ -73,12 +74,13 @@ export const PRICE_SLOTS = Object.freeze({
   [PRICES.ultraMonthly]: ['ultra', 'monthly'], [PRICES.ultraYearly]: ['ultra', 'yearly'],
 });
 /**
- * A Stripe price for that plan and period that may be sold (USD, recurring, active, its lookup key; tax behaviour
- * inclusive, so it sells with Stripe Tax on or off), with `over` on top.
+ * A Stripe price for that plan and period that may be sold (USD, recurring, the owner's amount for the slot, active,
+ * its lookup key; tax behaviour inclusive, so it sells with Stripe Tax on or off), with `over` on top.
  */
 export function price(id, plan, period, over = {}) {
   return {
     id, object: 'price', active: true, currency: 'usd', type: 'recurring', tax_behavior: 'inclusive', lookup_key: `hushmallow.${plan}.${period}`,
+    unit_amount: CHECKOUT_PRICE_RULES.unit_amount[plan][period],
     recurring: { interval: period === 'monthly' ? 'month' : 'year', interval_count: 1, usage_type: 'licensed' }, ...over,
   };
 }

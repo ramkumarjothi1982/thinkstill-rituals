@@ -56,16 +56,19 @@ export const CHECKOUT_WINDOW_MS = 120000;
 /**
  * What a price must be in Stripe before checkout sells it (decisions D2, D3, D11, and the owner's USD decision of
  * 2026-10-17). US dollars only (Adaptive Pricing off: the plans page and the terms say US$); recurring every one month or
- * one year, as its period; and active. Its lookup key, if it has one, names the plan and period of the slot it sits in,
- * so two ids swapped while pasting never sell Beyond at Flow's price, or the reverse; a price with no lookup key is
- * sold, and its configured id is then what maps it to a plan (store.js planForPrice). Its tax behaviour: any while
+ * one year, as its period; the owner's amount for its slot (unit_amount, in US cents: D2, the amounts the app's
+ * BILLING_PRICES shows); and active. Its lookup key, if it has one, names the plan and period of the slot it sits in; a
+ * price with no lookup key is sold, and its configured id is then what maps it to a plan (store.js planForPrice). The
+ * four amounts differ, so two ids swapped while pasting never sell Beyond at Flow's price, or the reverse, with lookup
+ * keys or without, in either Stripe mode (the sandbox driver cannot read live prices). Its tax behaviour: any while
  * Stripe Tax is off; with STRIPE_AUTOMATIC_TAX on, one of tax_behavior (never 'unspecified': Stripe must know whether
- * the amount includes the tax).
+ * the amount includes the tax). A price the owner changes changes here, in BILLING_PRICES and in Stripe together (D2).
  */
 export const CHECKOUT_PRICE_RULES = Object.freeze({
   currency: 'usd',
   tax_behavior: Object.freeze(['inclusive', 'exclusive']),
   interval: Object.freeze({ monthly: 'month', yearly: 'year' }),
+  unit_amount: Object.freeze({ paid: Object.freeze({ monthly: 999, yearly: 9999 }), ultra: Object.freeze({ monthly: 1999, yearly: 19999 }) }),
 });
 /** How long a price read for that check is trusted in this isolate: one read per price id in that time, and a price fixed in Stripe sells within it. */
 export const CHECKOUT_PRICE_CACHE_MS = 600000;
@@ -692,6 +695,7 @@ export function priceFault(p, plan, period, automaticTax = false) {
   if (p.type !== 'recurring') return 'type';
   if (p.recurring?.interval !== CHECKOUT_PRICE_RULES.interval[period]) return 'interval';
   if (p.recurring?.interval_count !== 1) return 'interval_count';
+  if (p.unit_amount !== CHECKOUT_PRICE_RULES.unit_amount[plan][period]) return 'unit_amount';
   if (p.active !== true) return 'inactive';
   if (automaticTax && !CHECKOUT_PRICE_RULES.tax_behavior.includes(p.tax_behavior)) return 'tax_behavior';
   return '';

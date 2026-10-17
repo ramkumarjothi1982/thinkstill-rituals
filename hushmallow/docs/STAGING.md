@@ -80,8 +80,8 @@ production's accounts.
   | hushmallow Beyond | US$19.99 | US$199.99 |
 
   The plans page shows "US$9.99 a month" and so on under each button (display only). The amount Stripe
-  charges is always the one set in Stripe, so the prices there hold the same amounts (B4). The sandbox driver
-  compares the two (P0).
+  charges is always the one set in Stripe, so the prices there hold the same amounts (B4): the Worker sells a
+  price only at its slot's amount, and the sandbox driver compares the two (P0).
 
 ## The staging Worker (`[env.staging]` in `server/another-angle/wrangler.toml`)
 
@@ -364,8 +364,9 @@ there; if they are only in live mode, make them here and send the new ids (B10).
   "Paid", "Ultra" or "Premium"); their tax code is the preset (B3) or the one you chose.
 * **A lookup key is recommended, not required.** When a price has one, it must be its slot's (checkout
   refuses any other: `503 price_misconfigured`) and it decides the plan. A price with none is sold, and its
-  configured id decides the plan; the driver's preflight (each slot's amount and product name) is then what
-  catches two ids swapped.
+  configured id decides the plan. Either way checkout sells a price only at its slot's amount (the table
+  above; `CHECKOUT_PRICE_RULES.unit_amount`), so two ids swapped between slots are refused, and an id in two
+  slots is never sold. The driver's preflight also checks each product's name.
 * Tax behaviour: any is sold while `STRIPE_AUTOMATIC_TAX` is off. Before it goes on, each price needs
   **inclusive** or **exclusive** (never unspecified). A used price's tax behaviour may not be changeable later
   (from memory), so settle it with your accountant before launch.
@@ -561,7 +562,7 @@ while any of it is still a placeholder.
 
 | Phase | What it does |
 |---|---|
-| P0 | Reads only. Staging `/v1/health`: `billing+testing`, configured, webhook, `stripe_mode` test, `api_version` 2026-08-26.dahlia, `live_approved` false, `automatic_tax` as `[env.staging.vars]` says, no placeholders. Production's: billing off, `testing`. The four prices by the ids in `[env.staging.vars]` (a live-mode id fails here: not found with the test key): USD, every 1 month or year, active, a lookup key of their own or none (none is said), a tax behaviour of inclusive or exclusive only if `automatic_tax` is on, US$9.99/99.99/19.99/199.99, the products' names, the same amounts in `BILLING_PRICES`. The webhook endpoint: enabled, 2026-08-26.dahlia, exactly the 11 events. The default portal configuration (B6). Tax: with `automatic_tax` on, settings Active and an active AU registration (off, both are only said); with one, a test calculation in USD for a Sydney address (`taxability_reason` not `not_collecting`; for an inclusive price, the total unchanged). |
+| P0 | Reads only. Staging `/v1/health`: `billing+testing`, configured, webhook, `stripe_mode` test, `api_version` 2026-08-26.dahlia, `live_approved` false, `automatic_tax` as `[env.staging.vars]` says, no placeholders. Production's: billing off, `testing`. The four prices by the ids in `[env.staging.vars]` (a live-mode id fails here: not found with the test key): what the Worker sells (USD, every 1 month or year, its slot's amount, active, a lookup key of their own or none: none is said), a tax behaviour of inclusive or exclusive only if `automatic_tax` is on, US$9.99/99.99/19.99/199.99, the products' names, the same amounts in `BILLING_PRICES`. The webhook endpoint: enabled, 2026-08-26.dahlia, exactly the 11 events. The default portal configuration (B6). Tax: with `automatic_tax` on, settings Active and an active AU registration (off, both are only said); with one, a test calculation in USD for a Sydney address (`taxability_reason` not `not_collecting`; for an inclusive price, the total unchanged). |
 | P1 | The key-free checks (below), plus: `Origin: https://app.hushmallow.com` refused on staging (403), and a hushmallow1 token refused (401). |
 | S3 | Renewal: a test clock, a customer on it with `metadata.user_id`, a card, Flow monthly (tier `paid`); the clock past the period end; `invoice.paid` delivered (200); the period a month on, at the Worker too. |
 | S4 | A failed renewal, then recovery: Beyond monthly, the `…0341` card (`pm_card_chargeCustomerFail`); `invoice.payment_failed`, `past_due` with Beyond still open (`/v1/session` 200); a good card, the open invoice paid; `active` again. |
