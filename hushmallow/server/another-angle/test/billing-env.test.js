@@ -5,6 +5,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import { req, makeEnv, angleReq, CLOCK_START } from './helpers.js';
 import { signToken } from '../src/auth/tokens.js';
 import { readConfig, BILLING_LIVE_APPROVED, STRIPE_API_VERSION_EXPECTED } from '../src/config.js';
@@ -249,4 +250,45 @@ test('sessions minted before the switch: in "billing" only billing sessions reac
   const crisis = await s.app.fetch(angleReq(tokens.testing, { text: 'I want to kill myself' }), s.env);
   assert.equal(crisis.status, 200);
   assert.equal((await crisis.json()).status, 'crisis');
+});
+
+// ----------------------------------------------------------- local harness --
+test('local harness: forwards the stage, the pin and the tax switch, never BILLING_LIVE; refuses a live key; bills only on the staging project', async () => {
+  const { harnessEnv } = await import('../tools/local-harness.mjs');
+  for (const k of [LIVE_KEY, stripeKey('sk_live')]) assert.match(harnessEnv({ STRIPE_SECRET_KEY: k }).error, /only takes Stripe test keys/);
+  const values = {
+    STRIPE_SECRET_KEY: TEST_KEY, STRIPE_WEBHOOK_SECRET: WHSEC, STRIPE_PRICE_PAID_MONTHLY: 'price_FlowMonthly1', STRIPE_PRICE_ULTRA_MONTHLY: 'price_BeyondMonthly1',
+    SUPABASE_URL: 'https://igbxbfuaoybfzsroxuln.supabase.co', SUPABASE_PUBLISHABLE_KEY: PK, APP_ORIGIN: 'http://localhost:8000', ENTITLEMENT_MODE: 'billing',
+  };
+  const { env } = harnessEnv({ ...values, ACCOUNTS_STAGE: 'staging', SUPABASE_URL: STAGING_SUPABASE, STRIPE_AUTOMATIC_TAX: 'true', BILLING_LIVE: 'approved' });
+  assert.equal(env.ACCOUNTS_STAGE, 'staging');
+  assert.equal(env.STRIPE_AUTOMATIC_TAX, 'true');
+  assert.equal(env.STRIPE_API_VERSION, STRIPE_API_VERSION_EXPECTED, 'pinned as the Workers are, unless told otherwise');
+  assert.equal(harnessEnv({ ...values, STRIPE_API_VERSION: '2026-09-30.dahlia' }).env.STRIPE_API_VERSION, '2026-09-30.dahlia');
+  assert.equal('BILLING_LIVE' in env, false, 'the approval is never forwarded');
+  assert.equal(typeof env.BILLING?.get, 'function', 'subscriptions kept in memory');
+  // with the staging project (once STAGING_SUPABASE_PROJECT_URL is filled), a test key bills, in test mode
+  const { readConfig: readWithStaging } = await withStagingProject(STAGING_SUPABASE);
+  const staging = readWithStaging(env).billing;
+  assert.deepEqual([staging.configured, staging.keyMode, staging.automaticTax], [true, 'test', true]);
+  // without ACCOUNTS_STAGE=staging it is the production stage, which takes no test key: a rehearsal never lands on a hushmallow1 account
+  const prod = readConfig(harnessEnv(values).env).billing;
+  assert.deepEqual([prod.configured, prod.keyRefused], [false, 'test_key_on_production']);
+  // nothing given: no billing, as before
+  const plain = harnessEnv({}).env;
+  assert.deepEqual([plain.STRIPE_SECRET_KEY, plain.BILLING, plain.ACCOUNTS_STAGE], [undefined, undefined, undefined]);
+  assert.equal(plain.PROVIDER, 'mock');
+});
+
+test('local harness as a command: a live key exits before anything runs; the one-shot answer still works', () => {
+  const run = (extra) => spawnSync(process.execPath, ['--import', './test/register.mjs', 'tools/local-harness.mjs', 'My colleague got promoted instead of me.'], {
+    cwd: new URL('..', import.meta.url), encoding: 'utf8', timeout: 60000, env: { PATH: process.env.PATH, ...extra },
+  });
+  const live = run({ STRIPE_SECRET_KEY: LIVE_KEY });
+  assert.equal(live.status, 1);
+  assert.match(live.stderr, /only takes Stripe test keys/);
+  assert.ok(!live.stdout.includes('"status"'), 'no request was made');
+  const once = run({});
+  assert.equal(once.status, 0, once.stderr);
+  assert.equal(JSON.parse(once.stdout).status, 'ok');
 });
