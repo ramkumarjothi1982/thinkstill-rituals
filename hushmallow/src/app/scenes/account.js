@@ -205,9 +205,12 @@ export function deleteGuard(app, { submit = null, confirmed = () => false } = {}
     h('div', { class: 'hm-auth-actions' }, manage), status);
   const el = h('div', { style: { display: 'contents' } });
   const blocked = () => renewingWebPlan(app);
+  let shown = null;
   const update = () => {
-    el.replaceChildren(...(blocked() ? [box] : []));
-    if (submit && !submit.form?.dataset?.busy) submit.disabled = blocked() || !confirmed();
+    const now = blocked();
+    // redrawn only when it changes: a check with the same answer never takes focus off Manage subscription
+    if (now !== shown) { shown = now; el.replaceChildren(...(now ? [box] : [])); }
+    if (submit && !submit.form?.dataset?.busy) submit.disabled = now || !confirmed();
   };
   update();
   const off = ent.onChange?.(update);

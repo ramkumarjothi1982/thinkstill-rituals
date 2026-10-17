@@ -881,6 +881,14 @@ test('delete account (D9): a web plan that still renews shows "Cancel your subsc
   assert.equal(elsewhere.guard.blocked(), true);
   assert.equal(elsewhere.submit.disabled, true);
   assert.ok(shown(elsewhere.guard).includes('Cancel your subscription first'));
+  // a check with the same answer (coming back to the app) leaves the step as it is: focus stays on Manage subscription
+  let redraws = 0;
+  const put = live.guard.el.replaceChildren.bind(live.guard.el);
+  live.guard.el.replaceChildren = (...k) => { redraws++; return put(...k); };
+  await live.ent.refresh({ force: true });
+  live.guard.update();
+  assert.equal(redraws, 0, 'not redrawn');
+  assert.ok(shown(live.guard).includes('Cancel your subscription first'));
   // a change while the screen is open (a check from coming back to the app) is followed; stop() lets go
   const follow = await open({ word: 'delete' });
   await follow.guard.checked;
