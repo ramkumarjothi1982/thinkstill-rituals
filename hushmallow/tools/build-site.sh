@@ -8,7 +8,8 @@
 # old root src/app/main.js becomes a tiny forwarder for pages cached before
 # this layout existed. Only the app ships: no dev tools, workbook or Python.
 # The finished site is then checked (tools/site/check.mjs): every file the
-# page, its modules, its styles and its art tables name must be in it.
+# page, its modules, its styles and its art tables name must be in it, and no
+# file may hold a secret key (tools/secret-scan.mjs).
 #
 # Sign-in (optional): the build variables SUPABASE_URL and
 # SUPABASE_PUBLISHABLE_KEY (Cloudflare Pages, Production and Preview) are the

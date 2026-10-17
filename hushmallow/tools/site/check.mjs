@@ -25,12 +25,15 @@
 //    style or handler and a strict Content-Security-Policy meta tag, and links
 //    only to shipped pages, ids that exist, https:, mailto: or tel:; _headers
 //    gives /legal/* its strict policy too.
+// 7. No secret in any published file, art and config included (the patterns of
+//    tools/secret-scan.mjs, with no allow-list: no fake belongs on the site).
 // Prints a short summary; exits 1 with the list of problems.
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { buildStage } from './auth-config.mjs';
+import { describe, scanFiles } from '../secret-scan.mjs';
 
 // Referenced only by localhost labs (main.js v3Lab) and removed from the
 // published copy on purpose: listed, never a failure.
@@ -248,7 +251,11 @@ export async function checkSite(outArg, ver, { env = process.env } = {}) {
   }
 
   const auth = await checkAuth(out, app, problems, buildStage(env));
-  return { problems, notes, allowed, templates, reached: seen.size, assets: { checked: urls.size, missing }, auth, legal };
+
+  // ------------------------------------------------------- 7. secrets --
+  const published = listAll(out);
+  for (const f of scanFiles(out, published, { allow: false })) problems.push(`${describe(f)} is in the site: take it out of the repository and roll it`);
+  return { problems, notes, allowed, templates, reached: seen.size, assets: { checked: urls.size, missing }, auth, legal, scanned: published.length };
 }
 
 /** Section 6: the legal pages. enqueue(file, from) adds a file they load to the module and stylesheet graph. Returns their paths. */
@@ -371,7 +378,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   const [outArg, ver] = process.argv.slice(2);
   if (!outArg || !ver) { console.error('usage: node tools/site/check.mjs <out-dir> <version>'); process.exit(2); }
   const r = await checkSite(outArg, ver);
-  console.log(`check: ${r.reached} files reached from index.html, auth/callback/ and legal/; ${r.templates.length} template imports matched; asset urls ${r.assets.checked}, missing ${r.assets.missing}; ${r.auth}; legal pages ${(r.legal || []).length}`);
+  console.log(`check: ${r.reached} files reached from index.html, auth/callback/ and legal/; ${r.templates.length} template imports matched; asset urls ${r.assets.checked}, missing ${r.assets.missing}; ${r.auth}; legal pages ${(r.legal || []).length}; ${r.scanned ?? 0} files scanned for secrets`);
   if (r.allowed.length) console.log(`check: local-only, not published (allowed): ${r.allowed.join(', ')}`);
   for (const n of r.notes) console.log(`check: note: ${n}`);
   if (process.env.CHECK_VERBOSE) for (const t of r.templates) console.log(`check: template ${t}`);

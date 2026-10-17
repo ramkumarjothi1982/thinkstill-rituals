@@ -3,12 +3,13 @@
 // webhook signing secrets, Supabase secret keys, service_role JWTs and access
 // tokens, Anthropic keys and private keys (tools/secret-scan.mjs). Publishable
 // keys are public and pass. ALLOW holds only the two deliberate fakes, each by
-// its exact line.
+// its exact line. The site tools/build-site.sh assembles is scanned too, with
+// no allow-list (tools/site/check.mjs, section 7).
 // Every fixture is built at run time, so this file holds no secret-shaped string.
 // Run: node --test hushmallow/tests/
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { appendFileSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -102,4 +103,37 @@ test('ALLOW: exactly the two deliberate fakes, each by its exact line', () => {
     assert.equal(findSecrets(line, 'hushmallow/src/app/config.js').length, 1, 'in another file');
     assert.equal(findSecrets(line).length, 1, 'with no file (the site scan)');
   }
+});
+
+test('the built site is scanned too, with no allow-list: a key in any published file fails the build, never printed', async () => {
+  const out = mkdtempSync(join(tmpdir(), 'hm-secrets-site-'));
+  try {
+    const env = { ...gitEnv };
+    for (const k of ['SUPABASE_URL', 'SUPABASE_PUBLISHABLE_KEY', 'HM_AUTH_MODE', 'CF_PAGES_BRANCH']) delete env[k];
+    const log = execFileSync('bash', [join(root, 'tools/build-site.sh'), out, 'sec1'], { env, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+    assert.match(log, /\d{3,} files scanned for secrets/);
+    assert.match(log, /check: ok/);
+    const { checkSite } = await import('../tools/site/check.mjs');
+    assert.deepEqual((await checkSite(out, 'sec1', { env })).problems, []);
+    // a key pasted into src/ (served by Pages), a new file anywhere, and an allowed repository line: each one fails
+    const rk = `rk_live_${'Q'.repeat(24)}`, wh = `whsec_${'w'.repeat(32)}`;
+    const cfg = join(out, 'v/sec1/src/app/config.js');
+    const at = readFileSync(cfg, 'utf8').split('\n').length;
+    appendFileSync(cfg, `export const STRIPE = '${rk}';\n`);
+    writeFileSync(join(out, 'v/sec1/assets/brand/notes.txt'), `webhook\n${wh}\n`);
+    const [a] = ALLOW.filter((x) => x.file.startsWith('hushmallow/'));
+    const allowedLine = readFileSync(join(repo, a.file), 'utf8').split('\n').find((l) => lineHash(l) === a.sha256);
+    mkdirSync(join(out, 'hushmallow/tests'), { recursive: true });
+    writeFileSync(join(out, a.file), `${allowedLine}\n`);
+    const r = await checkSite(out, 'sec1', { env });
+    assert.deepEqual([...r.problems].sort(), [
+      `${a.file}:1: a Supabase secret key (sb_secret_…) is in the site: take it out of the repository and roll it`,
+      'v/sec1/assets/brand/notes.txt:2: a Stripe webhook signing secret (whsec_…) is in the site: take it out of the repository and roll it',
+      `v/sec1/src/app/config.js:${at}: a Stripe secret or restricted key (rk_live_…) is in the site: take it out of the repository and roll it`,
+    ]);
+    const cli = spawnSync(process.execPath, [join(root, 'tools/site/check.mjs'), out, 'sec1'], { env, encoding: 'utf8' });
+    assert.equal(cli.status, 1);
+    assert.match(cli.stderr, /check: 3 problems/);
+    for (const v of [rk, wh, allowedLine.match(/sb_secret_\w+/)[0]]) assert.ok(!cli.stderr.includes(v) && !cli.stdout.includes(v), 'a secret is never printed');
+  } finally { rmSync(out, { recursive: true, force: true }); }
 });
