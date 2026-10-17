@@ -9,8 +9,9 @@
 // PROVIDER=anthropic with ANTHROPIC_API_KEY set uses the real model instead
 // (costs money; see README). Nothing here is deployed.
 //
-// Web subscriptions rehearsal (docs/PAYMENTS.md "Test-mode rehearsal"): with
-// a Stripe TEST key and the other billing values in the environment
+// Web subscriptions rehearsal (docs/PAYMENTS.md section 5, "the local
+// harness"; the values from a gitignored file, `node --env-file=.dev.vars.harness`):
+// with a Stripe TEST key and the other billing values in the environment
 // (STRIPE_SECRET_KEY=rk_test_… or sk_test_…, STRIPE_WEBHOOK_SECRET from
 // `stripe listen`, STRIPE_PRICE_*, SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY,
 // APP_ORIGIN, ENTITLEMENT_MODE=billing, ACCOUNTS_STAGE=staging) --serve also
