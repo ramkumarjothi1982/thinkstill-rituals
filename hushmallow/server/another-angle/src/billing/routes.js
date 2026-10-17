@@ -10,7 +10,7 @@
 //                              subscription mode, the account's one Stripe customer, client_reference_id = the
 //                              account id; back to APP_ORIGIN, ?billing=success&session_id=cs_…). Only a price that
 //                              is what its slot says (CHECKOUT_PRICE_RULES) is sold, and only to an account with no
-//                              subscription at Stripe (409 already_subscribed | payment_pending)
+//                              subscription at Stripe, unpaid ones included (409 already_subscribed | payment_pending)
 //   GET  /v1/billing/status    the account's token → { tier, status, current_period_end, cancel_at_period_end, ends_at, manageable }
 //   POST /v1/billing/sync      { session_id: 'cs_…' } (back from Checkout) → the status body, once that session's
 //                              subscription is read from Stripe and recorded (the webhook may still be on its way)
@@ -68,6 +68,13 @@ export const CHECKOUT_PRICE_CACHE_MS = 600000;
  */
 export const CHECKOUT_INTEGRATION_IDENTIFIER = 'hushmallow_web_plans_xzwztwqy';
 export const CHECKOUT_INTEGRATION_IDENTIFIER_SINCE = '2026-03-25';
+/**
+ * Statuses in which the account still has a subscription at Stripe, so checkout sells it no second one (409
+ * already_subscribed: the portal pays or cancels it). Those giving access, and unpaid and paused: they give none but
+ * stay in place, and paying an unpaid one's open invoice (or resuming a paused one) makes it active again, next to
+ * the second one, both billing.
+ */
+export const HELD_STATUSES = new Set([...ACCESS, 'unpaid', 'paused']);
 /** Stripe's default lifetime of a Checkout Session: for an answer without expires_at. */
 const CHECKOUT_SESSION_TTL_MS = 86400000;
 const PLANS = ['paid', 'ultra'];
@@ -288,9 +295,9 @@ export function createBilling({ logger, now, fetch: fetchImpl = (input, init) =>
     };
     const store = storeFor(env);
     const rec = await store.get(who.uid);
-    // one subscription per account, whatever plan it maps to (an unmapped price included): a change of plan (Flow →
-    // Beyond) or period happens in the portal
-    if (rec && ACCESS.has(rec.status)) return taken('already_subscribed', 'record');
+    // one subscription per account, whatever plan it maps to (an unmapped price included), unpaid or not (HELD_STATUSES):
+    // a change of plan (Flow → Beyond) or period, or paying what is owed, happens in the portal
+    if (rec && HELD_STATUSES.has(rec.status)) return taken('already_subscribed', 'record');
     // the price is what its slot says, or nothing is sold (and no customer made)
     const checked = await checkPrice(cfg, plan, period, price);
     if (!checked.ok && checked.fault) {
@@ -314,7 +321,7 @@ export function createBilling({ logger, now, fetch: fetchImpl = (input, init) =>
       const listed = await stripe.listSubscriptions(customer);
       if (!listed.ok) return unavailable(`list:${listed.code}`, listed.status);
       subs = (Array.isArray(listed.data?.data) ? listed.data.data : []).filter((/** @type {any} */ x) => SUB.test(idOf(x?.id) || '') && idOf(x.customer) === customer);
-      if (subs.some((x) => ACCESS.has(x.status))) return taken('already_subscribed', 'listed');
+      if (subs.some((x) => HELD_STATUSES.has(x.status))) return taken('already_subscribed', 'listed');
       if (subs.some((x) => x.status === 'incomplete')) return taken('payment_pending', 'incomplete');
     }
     const prev = await settlePrevious(who.uid, store, stripe, cfg, { plan, period, price, customer }, subs);

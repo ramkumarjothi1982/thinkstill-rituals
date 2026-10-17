@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import { req, denyAll, allowAll, clock, ORIGIN, CLOCK_START } from './helpers.js';
 import {
   createBilling, CHECKOUT_PRICE_RULES, CHECKOUT_PRICE_CACHE_MS, CHECKOUT_INTEGRATION_IDENTIFIER, CHECKOUT_INTEGRATION_IDENTIFIER_SINCE,
-  integrationIdentifierOn, priceFault, PATHS,
+  integrationIdentifierOn, priceFault, PATHS, HELD_STATUSES,
 } from '../src/billing/routes.js';
 import { billingClient } from '../src/billing/store.js';
 import { createLogger } from '../src/log.js';
@@ -213,6 +213,37 @@ test('one subscription per account: the record whatever its plan, then Stripe\'s
   assert.deepEqual(await code(await post(e, { plan: 'paid', period: 'yearly' })), [502, 'billing_unavailable']);
   assert.deepEqual([lastLog(e, 'checkout').err, lastLog(e, 'checkout').stripe_http], ['list:api_error', 500]);
   assert.equal(creates(e).length, 2);
+  assertClean(allLogs.flat());
+});
+
+test('a subscription Stripe keeps unpaid or paused is still the account\'s: 409 already_subscribed, from the record and from Stripe\'s list, so paying its open invoice later never makes two', async () => {
+  for (const st of ['unpaid', 'paused']) {
+    // the record says so (retries ran out and Stripe marked it unpaid): no plan, and no second subscription
+    const r = track(setup());
+    assert.equal((await post(r, ULTRA_M)).status, 200);
+    const customer = await db(r).customerOf(UID);
+    const sub = subscription({ id: 'sub_Held1', customer, status: st });
+    r.up.subs.set(sub.id, sub);
+    await deliver(r.app, r.env, event('customer.subscription.updated', sub, r.now), { at: r.now() });
+    assert.deepEqual([(await status(r)).tier, (await status(r)).status], ['none', st]);
+    r.now.advance(DAY + 3600000);   // the first session has expired
+    const res = await post(r, ULTRA_M);
+    assert.deepEqual(await code(res), [409, 'already_subscribed'], `${st}: record`);
+    assert.deepEqual([lastLog(r, 'checkout').status, lastLog(r, 'checkout').err], ['already_subscribed', 'record']);
+    assert.equal(creates(r).length, 1, `${st}: no second session`);
+    // the portal is where it is paid or cancelled
+    assert.equal((await r.app.fetch(billingReq('/v1/billing/portal', { body: {} }), r.env)).status, 200);
+    assertClean(r.logs, await res.json());
+    // the record knows nothing of it yet: Stripe's list does
+    const l = track(setup());
+    assert.equal((await post(l, ULTRA_M)).status, 200);
+    l.up.subs.set('sub_Held2', subscription({ id: 'sub_Held2', customer: await db(l).customerOf(UID), status: st }));
+    l.now.advance(DAY + 3600000);
+    assert.deepEqual(await code(await post(l, { plan: 'paid', period: 'monthly' })), [409, 'already_subscribed'], `${st}: listed`);
+    assert.deepEqual([lastLog(l, 'checkout').status, lastLog(l, 'checkout').err], ['already_subscribed', 'listed']);
+    assert.equal(creates(l).length, 1);
+  }
+  assert.deepEqual([...HELD_STATUSES].sort(), ['active', 'past_due', 'paused', 'trialing', 'unpaid']);
   assertClean(allLogs.flat());
 });
 

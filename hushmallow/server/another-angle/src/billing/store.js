@@ -59,7 +59,11 @@ const RANK = { none: 0, paid: 1, ultra: 2 };
 const PRODUCT = /^hushmallow\.(paid|ultra)\.(monthly|yearly)$/;
 const CUSTOMER = /^cus_[A-Za-z0-9]{4,250}$/;
 const SUBSCRIPTION = /^sub_[A-Za-z0-9]{4,250}$/;
-/** Statuses after which a subscription never gives access again: the account may still have another one. */
+/**
+ * Statuses in which a subscription gives no access and is not billing: when one is read, the customer's list decides
+ * what the account has (it may have another one). An unpaid one can still come back if its open invoice is paid, so
+ * checkout counts it as a subscription held (routes.js HELD_STATUSES).
+ */
 export const TERMINAL = new Set(['canceled', 'incomplete_expired', 'unpaid']);
 /** The most subscription ids a listing may name (stripe.js lists 20). */
 const COVERS_MAX = 32;
