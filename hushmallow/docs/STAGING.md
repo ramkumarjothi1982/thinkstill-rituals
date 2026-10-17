@@ -395,17 +395,26 @@ there; if they are only in live mode, make them here and send the new ids (B10).
 
 * **Payment methods**: allow updates. **Invoice history**: on. **Customer information**: allow email and
   billing-address edits (Stripe Tax needs the address once it is on).
-* **Cancellations**: on, **At the end of the billing period**, no proration or refund on cancel (D7).
-* **Subscriptions** → **Customers can switch plans**: on, with hushmallow Flow (both prices) and hushmallow
-  Beyond (both prices); quantity changes off. Proration (D8): prorate and invoice upgrades immediately;
-  schedule downgrades (Beyond → Flow, yearly → monthly) at the end of the period if that option shows.
+* **Cancellations**: on, **At the end of the billing period**, no proration or refund on cancel (D7). This is
+  what Settings → Manage subscription opens (the portal's home, `?billing=portal`), unchanged: cancelling stays
+  there, one tap from Settings.
+* **Subscriptions** → **Customers can switch plans**: on, and under **products** both products with **all four
+  prices**: hushmallow Flow (monthly and yearly) and hushmallow Beyond (monthly and yearly); quantity changes
+  off. The plans page's upgrade opens Stripe's confirmation page for that one change
+  (`subscription_update_confirm`), and "choose a plan" the portal's plan choice (`subscription_update`); Stripe
+  refuses both for a price not listed here, and the app then says the change is not available (`503
+  plan_change_unavailable`). Neither ever shows the portal's home or its Cancel button. Proration (D8): prorate
+  and invoice upgrades immediately; schedule downgrades (Beyond → Flow, yearly → monthly) at the end of the
+  period if that option shows.
 * **Pause**: off.
 * **Business information**: the privacy policy and terms links. For the sandbox, the preview's drafts:
   `https://claude-launch-rc.hushmallow.pages.dev/legal/privacy.html` and
   `https://claude-launch-rc.hushmallow.pages.dev/legal/terms.html` (app.hushmallow.com's, in live mode, once
   they are approved).
 * **Default redirect link**: `https://claude-launch-rc.hushmallow.pages.dev/`. The server also sends its own
-  return address, `…/?billing=portal`.
+  return addresses, on the staging Worker's `APP_ORIGIN`: `…/?billing=portal` from Manage subscription, and from
+  a plan change `https://claude-launch-rc.hushmallow.pages.dev/?billing=changed` once done (`&to=ultra.yearly`
+  and so on for an upgrade) and `…/?billing=unchanged` by the portal's back link. Nothing to set for these.
 * **Customer portal link** (email login): **Activate**, and put the link on the support page.
 
 ### B7. Revenue recovery and emails (5 min)
@@ -589,7 +598,7 @@ while any of it is still a placeholder.
 | S3 | Renewal: a test clock, a customer on it with `metadata.user_id`, a card, Flow monthly (tier `paid`); the clock past the period end; `invoice.paid` delivered (200); the period a month on, at the Worker too. |
 | S4 | A failed renewal, then recovery: Beyond monthly, the `…0341` card (`pm_card_chargeCustomerFail`); `invoice.payment_failed`, `past_due` with Beyond still open (`/v1/session` 200); a good card, the open invoice paid; `active` again. |
 | S5 | Retries running out: fails again, then the clock follows each retry until Stripe cancels the subscription (`canceled`; never `unpaid` or left `past_due`: B7); tier `none`, `/v1/session` 403 `subscription_required`. The 14-day `past_due` cap runs on the Worker's own clock, which a test clock does not move: the server's tests cover it. |
-| S6 | Plan changes through the API: Flow (403 for Another Angle) → Beyond monthly (tier `ultra`, 200) → Flow yearly (tier `paid`, a year-long period, 403). |
+| S6 | Plan changes through the API: Flow (403 for Another Angle) → Beyond monthly (tier `ultra`, 200) → Flow yearly (tier `paid`, a year-long period, 403). On the way, the staging Worker is asked as the plans page asks it: an upgrade's confirmation page (`POST /v1/billing/portal` `{ intent: 'upgrade' }`: Flow → Beyond monthly, then Beyond monthly → yearly, each `subscription_update_confirm` and accepted by the sandbox's portal, B6), the plan choice (`subscription_update`), `409 already_on_plan` and `409 not_an_upgrade` (Beyond monthly → Flow yearly, Flow yearly → Beyond monthly), Manage subscription's home; and `POST /v1/billing/sync` `{ refresh: true }` says Flow while nothing is confirmed, then Beyond monthly and Flow yearly (`period`) from Stripe at once. Pressing confirm on Stripe's page needs a browser: the API makes that change. |
 | S7 | Cancellations: at the period end (`ends_at` the period end, tier unchanged), `cancel_at` 90 days on (`ends_at` that date), past it (tier `none`); a cancel at once (`none` at the next check). |
 | S8 | A resend of an applied event (status unchanged; the Worker's log says `"duplicate":true`); a second, higher subscription for the same customer, then cancelled (the remaining Flow one is recorded). |
 | S9 | A renewal that needs authentication (`pm_card_authenticationRequired`): `invoice.payment_action_required` delivered, `past_due`. |

@@ -118,6 +118,18 @@ then `integration_identifier`. Should Stripe refuse any value on the pinned vers
 `502 billing_unavailable` and the Worker's log line carries Stripe's error code (`err`) and HTTP status
 (`stripe_http`): fix that value in `CHECKOUT_STUDIO` and its test.
 
+**The customer portal's sessions** (`POST /v1/billing_portal/sessions`, from `POST /v1/billing/portal`; every
+return address on `APP_ORIGIN`, never the request's), pinned by `test/billing-upgrade.test.js`:
+
+| Asked for | Parameters sent |
+|---|---|
+| Settings → Manage subscription, `{}` | `customer`, `return_url=<APP_ORIGIN>/?billing=portal` (the home: cancel, change plan, card, receipts; unchanged) |
+| Choose a plan, `{ intent: 'switch' }` | `customer`, `return_url=<APP_ORIGIN>/?billing=unchanged`, `flow_data[type]=subscription_update`, `flow_data[subscription_update][subscription]`, `flow_data[after_completion][type]=redirect`, `flow_data[after_completion][redirect][return_url]=<APP_ORIGIN>/?billing=changed` |
+| One upgrade, `{ intent: 'upgrade', plan, period }` | `customer`, `return_url=<APP_ORIGIN>/?billing=unchanged`, `flow_data[type]=subscription_update_confirm`, `flow_data[subscription_update_confirm][subscription]`, `[items][0][id]` (its one item, `si_…`), `[items][0][price]` (the target's configured price), `[items][0][quantity]=1`, `flow_data[after_completion][type]=redirect`, `flow_data[after_completion][redirect][return_url]=<APP_ORIGIN>/?billing=changed&to=<plan>.<period>` |
+
+Stripe refusing a plan-change flow (`400`: plan switching off, or the price not under the portal's products)
+answers `503 plan_change_unavailable`, with Stripe's code in the log; the home is never opened in its place.
+
 ## Setup
 
 ### Worker secrets
@@ -152,10 +164,13 @@ payments and cancellations reach the Worker only through it.
 
 ### Customer portal
 
-Settings → Billing → Customer portal (PAYMENTS.md section 1, step 7): customers can **switch plans** between
-the four prices (Flow monthly and yearly, Beyond monthly and yearly; quantity off; upgrades prorated at once,
-downgrades at the period end, D8); **cancel at the end of the billing period** (D7); **update payment
-methods**; invoice history on; pause off; the login link on, for someone who deleted their account.
+Settings → Billing → Customer portal (PAYMENTS.md section 1, step 7): customers can **switch plans**, with
+both products and **all four prices** under Subscriptions → products (Flow monthly and yearly, Beyond monthly
+and yearly; quantity off; upgrades prorated at once, downgrades at the period end, D8); **cancel at the end of
+the billing period** (D7); **update payment methods**; invoice history on; pause off; the login link on, for
+someone who deleted their account. The upgrade's confirmation page (`subscription_update_confirm`) and the
+plan choice (`subscription_update`) need those four prices there: Stripe refuses either for a price not
+listed, and the Worker then answers `503 plan_change_unavailable` (never the portal's home instead).
 
 ### Revenue recovery
 
@@ -173,7 +188,10 @@ rules: USD only, each slot's amount), `server/another-angle/src/billing/stripe.j
 `server/another-angle/scripts/billing-e2e.mjs` (prices read by id, in US$; tax checks for any jurisdiction)
 and `scripts/billing-checks.mjs`, `src/app/config.js` and `src/app/billing.js` (US$ display prices), their
 tests, `docs/PAYMENTS.md`, `docs/STAGING.md`, `docs/integration/DECISIONS.md`, `server/another-angle/README.md`,
-`legal/terms.html`, and this file. **No new route**: the five `/v1/billing/*` routes are as before.
+`legal/terms.html`, and this file. **No new route**: the five `/v1/billing/*` routes are as before. The
+upgrade (17 Oct 2026) added bodies to two of them, in `server/another-angle/src/billing/routes.js`: the
+portal's `{ intent: 'upgrade', plan, period }` and sync's `{ refresh: true }`, with `period` in the status
+body (`server/another-angle/test/billing-upgrade.test.js`).
 
 ## Flow overview
 
@@ -187,7 +205,17 @@ tests, `docs/PAYMENTS.md`, `docs/STAGING.md`, `docs/integration/DECISIONS.md`, `
 5. The entitlement: the `Billing` Durable Object's record for the account decides the tier (Flow `paid`,
    Beyond `ultra`); the app asks `GET /v1/billing/status`.
 6. The Another Angle gate: in the billing modes `POST /v1/session` needs an active Beyond subscription.
-7. Changes and cancellation: `POST /v1/billing/portal` opens Stripe's customer portal.
+7. Cancellation and everything else: Settings → Manage subscription, `POST /v1/billing/portal` `{}`, the
+   portal's home (back to `?billing=portal`), unchanged.
+8. Upgrades, without the portal's home (the owner's request, 17 Oct 2026): `POST /v1/billing/portal`
+   `{ intent: 'upgrade', plan, period }` opens Stripe's confirmation of that one change
+   (`flow_data[type]=subscription_update_confirm`, after Stripe's copy of the subscription is checked: the
+   account's, `active` or `trialing`, one item, no change waiting, the target an upgrade and a price checkout
+   would sell), `{ intent: 'switch' }` the plan choice (`subscription_update`). Both come back by
+   `flow_data[after_completion][type]=redirect` to `<APP_ORIGIN>/?billing=changed` (`&to=<plan>.<period>`),
+   or to `<APP_ORIGIN>/?billing=unchanged` by the portal's back link. The app then asks
+   `POST /v1/billing/sync` `{ refresh: true }`: the subscription read from Stripe and recorded, and only that
+   answer (the status body, with `period`) says the change happened.
 
 ## Testing
 

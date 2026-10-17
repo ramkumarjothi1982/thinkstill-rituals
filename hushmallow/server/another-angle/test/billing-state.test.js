@@ -152,7 +152,7 @@ test('recordSubscription (the webhook\'s apply, and the return sync with no even
   const b = billingOf();
   b.up.subs.set('sub_Test123', subscription());
   const args = { subId: 'sub_Test123', uidHint: UID, obj: {}, eventType: 'checkout.session.completed', created: Math.floor(b.now() / 1000), eventId: null };
-  assert.deepEqual(await b.billing.recordSubscription(args, b.env, b.cfg), { http: 200, outcome: 'applied', tier: 'ultra', subStatus: 'active', duplicate: false });
+  assert.deepEqual(await b.billing.recordSubscription(args, b.env, b.cfg), { http: 200, outcome: 'applied', tier: 'ultra', subStatus: 'active', period: 'monthly', duplicate: false });
   assert.equal((await b.db.get(UID)).tier, 'ultra');
   assert.equal(await b.db.owner('cus_Test123'), UID, 'the customer is linked to the account');
   assert.deepEqual([...b.env.BILLING.instances.get(`user:${UID}`).map.keys()].filter((k) => k.startsWith('evt:')), [], 'no event id kept');
@@ -562,7 +562,7 @@ test('a subscription whose customer Stripe deleted: its end is recorded (the lis
   b.now.advance(60000);
   b.up.subs.set('sub_Test123', subscription({ status: 'canceled' }));
   b.up.customers.set('cus_Test123', { id: 'cus_Test123', object: 'customer', deleted: true });
-  assert.deepEqual(await b.billing.recordSubscription(args, b.env, b.cfg), { http: 200, outcome: 'applied', tier: 'none', subStatus: 'canceled', duplicate: false });
+  assert.deepEqual(await b.billing.recordSubscription(args, b.env, b.cfg), { http: 200, outcome: 'applied', tier: 'none', subStatus: 'canceled', period: 'monthly', duplicate: false });
   assert.equal((await b.db.get(UID)).status, 'canceled');
   // a deleted customer's old subscription never takes access away from the account's next one (a new customer's)
   const r = setup();
