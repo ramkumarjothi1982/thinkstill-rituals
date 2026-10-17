@@ -8,6 +8,9 @@
 //   assets/rig/zuzu-spiral-*.png Zuzu's spiral eyes cut from the artwork
 //   assets/rig/iris-navy|amber   Boppo's iris recoloured for Mallows whose
 //                                approved face has closed eyes, and Glitzi
+// The app loads each one's lossless WebP twin (<name>.webp beside it, written
+// by tools/art-webp.py): the same pixels in about a quarter fewer bytes for a
+// phone to download (tests/art-webp.test.mjs keeps the pairs in step).
 //
 // All rig coordinates are in the approved PNG's own pixel space, measured by
 // tools/detect.py (see tools/features.json).
@@ -46,7 +49,7 @@ export const MALLOWS = {
     realm: 'static-storm',
     signature: 'glitch',
     energy: 0.85,
-    file: A('mallows/glitzi.png'), body: A('rig/glitzi-body.png'),
+    file: A('mallows/glitzi.webp'), body: A('rig/glitzi-body.webp'),
     size: [383, 387], bodyBox: [6, 7, 375, 379],
     face: {
       eyeStyle: 'glitzi',
@@ -79,7 +82,7 @@ export const MALLOWS = {
     realm: 'raindrop-lagoon',
     signature: 'droplet',
     energy: 0.55,
-    file: A('mallows/blubi.png'), body: A('rig/blubi-body.png'),
+    file: A('mallows/blubi.webp'), body: A('rig/blubi-body.webp'),
     size: [414, 417], bodyBox: [6, 7, 406, 409],
     face: {
       eyeStyle: 'closed',
@@ -113,7 +116,7 @@ export const MALLOWS = {
     realm: 'spiral-observatory',
     signature: 'spiral',
     energy: 0.75,
-    file: A('mallows/zuzu.png'), body: A('rig/zuzu-body.png'),
+    file: A('mallows/zuzu.webp'), body: A('rig/zuzu-body.webp'),
     size: [377, 386], bodyBox: [7, 6, 370, 377],
     face: {
       eyeStyle: 'spiral',
@@ -146,7 +149,7 @@ export const MALLOWS = {
     realm: 'sunpop-orchard',
     signature: 'bounce',
     energy: 1,
-    file: A('mallows/boppo.png'), body: A('rig/boppo-body.png'),
+    file: A('mallows/boppo.webp'), body: A('rig/boppo-body.webp'),
     size: [379, 384], bodyBox: [5, 6, 372, 376],
     face: {
       eyeStyle: 'open',
@@ -179,7 +182,7 @@ export const MALLOWS = {
     realm: 'spark-festival',
     signature: 'spark',
     energy: 1,
-    file: A('mallows/pipzi.png'), body: A('rig/pipzi-body.png'),
+    file: A('mallows/pipzi.webp'), body: A('rig/pipzi-body.webp'),
     size: [434, 423], bodyBox: [6, 7, 425, 415],
     face: {
       eyeStyle: 'open',
@@ -212,7 +215,7 @@ export const MALLOWS = {
     realm: 'blue-drift',
     signature: 'drift',
     energy: 0.4,
-    file: A('mallows/loomi.png'), body: A('rig/loomi-body.png'),
+    file: A('mallows/loomi.webp'), body: A('rig/loomi-body.webp'),
     size: [363, 388], bodyBox: [9, 7, 352, 380],
     face: {
       eyeStyle: 'closed',
@@ -245,7 +248,7 @@ export const MALLOWS = {
     realm: 'moonmilk-cove',
     signature: 'dream',
     energy: 0.35,
-    file: A('mallows/noomi.png'), body: A('rig/noomi-body.png'),
+    file: A('mallows/noomi.webp'), body: A('rig/noomi-body.webp'),
     size: [439, 420], bodyBox: [7, 8, 429, 412],
     face: {
       eyeStyle: 'closed',
@@ -267,10 +270,10 @@ export const MALLOWS = {
 };
 
 export const SPRITES = {
-  'pipzi-iris-L': A('rig/pipzi-iris-L.png'), 'pipzi-iris-R': A('rig/pipzi-iris-R.png'),
-  'boppo-iris-L': A('rig/boppo-iris-L.png'), 'boppo-iris-R': A('rig/boppo-iris-R.png'),
-  'iris-navy': A('rig/iris-navy.png'), 'iris-amber': A('rig/iris-amber.png'),
-  'zuzu-spiral-L': A('rig/zuzu-spiral-L.png'), 'zuzu-spiral-R': A('rig/zuzu-spiral-R.png'),
+  'pipzi-iris-L': A('rig/pipzi-iris-L.webp'), 'pipzi-iris-R': A('rig/pipzi-iris-R.webp'),
+  'boppo-iris-L': A('rig/boppo-iris-L.webp'), 'boppo-iris-R': A('rig/boppo-iris-R.webp'),
+  'iris-navy': A('rig/iris-navy.webp'), 'iris-amber': A('rig/iris-amber.webp'),
+  'zuzu-spiral-L': A('rig/zuzu-spiral-L.webp'), 'zuzu-spiral-R': A('rig/zuzu-spiral-R.webp'),
 };
 
 /** The Mallows switched to their high-res rigs (hires.js HIRES_VERIFIED), in
