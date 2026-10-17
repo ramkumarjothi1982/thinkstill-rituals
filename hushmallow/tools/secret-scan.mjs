@@ -119,8 +119,11 @@ export function addedLines(diff) {
 /** [{ file, line, kind, head }] among the lines a diff adds, ALLOW applied. */
 export const scanDiff = (diff) => addedLines(diff).flatMap((a) => (a.file && !isAllowed(a.file, a.text) ? secretsInLine(a.text).map((s) => ({ file: a.file, line: a.line, ...s })) : []));
 
-/** The staged changes of the repository at cwd, with fixed prefixes and no user diff settings, so the parse never depends on config. */
-export const stagedDiff = (cwd = process.cwd()) => execFileSync('git', ['-c', 'core.quotePath=false', 'diff', '--cached', '--no-color', '--no-ext-diff', '--no-textconv', '--src-prefix=a/', '--dst-prefix=b/', '-U0', '--diff-filter=ACMRT'], { cwd, encoding: 'utf8', maxBuffer: 256 << 20 });
+/**
+ * The staged changes of the repository at cwd, with fixed prefixes and no user diff settings, so the parse never depends on config.
+ * --text: a path .gitattributes (or a diff driver) calls binary or -diff still shows its lines, not "Binary files differ".
+ */
+export const stagedDiff = (cwd = process.cwd()) => execFileSync('git', ['-c', 'core.quotePath=false', 'diff', '--cached', '--text', '--no-color', '--no-ext-diff', '--no-textconv', '--src-prefix=a/', '--dst-prefix=b/', '-U0', '--diff-filter=ACMRT'], { cwd, encoding: 'utf8', maxBuffer: 256 << 20 });
 
 /** One report line: where, and what kind (the prefix only, never the value). */
 export const describe = (f) => `${f.file}:${f.line}: ${f.kind} (${f.head.startsWith('-----') ? f.head : `${f.head}…`})`;

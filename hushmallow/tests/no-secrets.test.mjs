@@ -248,6 +248,31 @@ test('reached through a symlink (a linked checkout, macOS /tmp), the hook and th
   } finally { rmSync(d, { recursive: true, force: true }); rmSync(links, { recursive: true, force: true }); }
 });
 
+test('the hook scans a path .gitattributes marks binary or -diff (git would print no lines for it)', () => {
+  const d = tempRepo();
+  try {
+    git(d, 'config', 'core.hooksPath', join(repo, 'tools/hooks'));
+    const commit = () => spawnSync('git', ['-c', 'user.name=test', '-c', 'user.email=test@example.invalid', '-c', 'commit.gpgsign=false', 'commit', '-q', '-m', 'x'], { cwd: d, env: gitEnv, encoding: 'utf8' });
+    writeFileSync(join(d, '.gitattributes'), '*.cfg binary\n*.lock -diff\n*.json diff=json\n');
+    git(d, 'config', 'diff.json.binary', 'true');   // a diff driver that calls its files binary
+    git(d, 'add', '.gitattributes');
+    assert.equal(commit().status, 0);
+    const sk = `sk_live_${'B'.repeat(24)}`, wh = `whsec_${'d'.repeat(32)}`, rk = `rk_test_${'J'.repeat(24)}`;
+    writeFileSync(join(d, 'app.cfg'), `name=x\nkey=${sk}\n`);
+    writeFileSync(join(d, 'deps.lock'), `${wh}\n`);
+    writeFileSync(join(d, 'data.json'), `{"k":"${rk}"}\n`);
+    git(d, 'add', '-A');
+    const r = commit();
+    assert.notEqual(r.status, 0, 'refused');
+    assert.deepEqual(r.stderr.split('\n').filter((l) => l.startsWith('  ')).map((l) => l.trim()), [
+      'app.cfg:2: a Stripe secret or restricted key (sk_live_…)',
+      'data.json:1: a Stripe secret or restricted key (rk_test_…)',
+      'deps.lock:1: a Stripe webhook signing secret (whsec_…)',
+    ]);
+    assert.equal(git(d, 'rev-list', '--count', 'HEAD').trim(), '1', 'nothing was committed');
+  } finally { rmSync(d, { recursive: true, force: true }); }
+});
+
 test('addedLines: only added lines, numbered from each hunk, whatever they start with', () => {
   const diff = [
     'diff --git a/x.js b/x.js', 'index 1..2 100644', '--- a/x.js', '+++ b/x.js',
