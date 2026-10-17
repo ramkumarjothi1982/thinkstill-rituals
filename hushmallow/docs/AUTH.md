@@ -482,10 +482,15 @@ end to end there.
 
 **SMTP (Authentication → Emails → SMTP Settings): required before real people sign up.**
 Supabase's built-in email service only delivers to members of the project's
-team and is heavily rate limited; real users need a custom SMTP provider
-(Resend, Postmark, Amazon SES, …) with a sender such as
-`hello@hushmallow.com`, SPF / DKIM / DMARC on the domain, then raise
+team and is heavily rate limited; real users need a custom SMTP provider. The
+owner's is **Brevo** (17 Oct 2026): host `smtp-relay.brevo.com`, port `587`,
+the Brevo SMTP login as the username and a Brevo SMTP key as the password
+(pasted only into Supabase, never into this repository), sender
+`no-reply@hushmallow.com`, sender name `hushmallow`; the domain authenticated in
+Brevo (Senders, Domains & Dedicated IPs → Domains), its SPF / DKIM / DMARC
+records at GoDaddy, where hushmallow.com's DNS is managed. Then raise
 Authentication → Rate Limits → emails per hour to fit (e.g. 30).
+`supabase/production/RUNBOOK.md` step 7 has every click.
 
 **Database**: run the SQL in `supabase/README.md` order, then
 `supabase/tests/rls_check.sql` (must end `ALL 35 CHECKS PASSED`).

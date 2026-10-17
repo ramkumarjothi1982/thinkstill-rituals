@@ -50,8 +50,23 @@ test('RUNBOOK.md: the dashboard settings the code relies on, exactly', () => {
   // the Data API: public only, never hm_private
   assert.match(rb, /\*\*Exposed schemas\*\*: `public` only/);
   assert.match(rb, /\*\*Never\*\* `hm_private`/);
-  // custom SMTP with SPF / DKIM / DMARC, and the email rate limit
-  for (const s of ['Resend', 'Postmark', 'DKIM', 'SPF', 'DMARC', '`_dmarc`', 'Rate limit for sending emails', 'Sender name | `hushmallow`']) assert.ok(rb.includes(s), s);
+  // custom SMTP through Brevo (owner, 17 Oct 2026) with SPF / DKIM / DMARC, and the email rate limit
+  for (const s of ['DKIM', 'SPF', 'DMARC', '`_dmarc`', 'Rate limit for sending emails', 'Sender name | `hushmallow`']) assert.ok(rb.includes(s), s);
+  const smtp = rb.slice(rb.indexOf('## 7. '), rb.indexOf('## 8. '));
+  for (const row of ['| Sender email | `no-reply@hushmallow.com` |', '| Sender name | `hushmallow` |', '| Host | `smtp-relay.brevo.com` |', '| Port | `587` |',
+    '| Username | your Brevo SMTP **Login** (Brevo → SMTP & API → SMTP, 7b) |', '| Password | the Brevo **SMTP key** from 7b, pasted only here |',
+    '| Minimum interval between emails | `60` seconds (the app waits 60 s before "Send it again") |']) assert.ok(smtp.includes(row), row);
+  // the domain: confirm Authenticated in Brevo; any record goes in at GoDaddy (not Cloudflare), nothing existing is touched
+  assert.match(smtp, /Brevo → \*\*Senders, Domains & Dedicated IPs\*\* → \*\*Domains\*\*: `hushmallow\.com`\s+reads \*\*Authenticated\*\*/);
+  assert.match(smtp, /\*\*godaddy\.com\*\* → sign in → \*\*My Products\*\* → next to \*\*hushmallow\.com\*\*,\s+\*\*DNS\*\*/);
+  assert.match(smtp, /\*\*Add New Record\*\* → \*\*Type\*\*[\s\S]*\*\*Name\*\*[\s\S]*\*\*Value\*\*[\s\S]*\*\*TTL\*\*: leave the default/);
+  assert.match(smtp, /\*\*Never change or delete the records already there\*\*: the website's, the\s+email's[^.]*Stripe checkout's and\s+ThinkStill's\. \*\*Never change the nameservers\.\*\*/);
+  assert.doesNotMatch(rb, /Resend|Postmark|hello@hushmallow\.com|DNS only|grey cloud/, 'no other provider, sender or Cloudflare DNS step');
+  // the Brevo login and key go only into Supabase: neither is ever written here
+  assert.doesNotMatch(rb, /xsmtpsib-|xkeysib-|@smtp-brevo\.com/, 'no Brevo key or SMTP login in the runbook');
+  assert.match(rb, /The one\s+secret in this runbook is the Brevo SMTP key, and it goes \*\*only\*\* into\s+Supabase's SMTP settings \(step 7\)/);
+  // the five branded templates: Authentication → Emails → Templates
+  assert.match(rb.slice(rb.indexOf('## 8. '), rb.indexOf('## 9. ')), /Authentication → Emails → \*\*Templates\*\*: the five branded templates in this\s+repository's `supabase\/templates\/`/);
   // Cloudflare Pages: the two public values on Production only
   assert.ok(rb.includes(`\`SUPABASE_URL\` = \`${PROJECT_URL}\``));
   assert.ok(rb.includes(`\`SUPABASE_PUBLISHABLE_KEY\` = \`${PROD_KEY}\``));

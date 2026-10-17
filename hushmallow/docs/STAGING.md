@@ -206,7 +206,8 @@ Still in **hushmallow-staging**:
 5. Email delivery: without custom SMTP, Supabase sends only to members of the organization's team, and
    only a few emails an hour. For the rehearsal, either sign up with team members' addresses (Organization
    → **Team** → **Invite**), or set up custom SMTP for this project too (Authentication → Emails →
-   **SMTP Settings**, as `RUNBOOK.md` step 7, with a separate API key from the email provider).
+   **SMTP Settings**, as `RUNBOOK.md` step 7: Brevo, with a separate Brevo SMTP key for this project, pasted only
+   there).
 
 ### A4. Send Claude the staging project's two public values
 
@@ -521,8 +522,19 @@ open, here and in production. The order is: that client release, then DNS, then 
 
 1. Stripe → **Settings** → **Custom domains** (from memory, under Business) → **Add** →
    `checkout.hushmallow.com`.
-2. Stripe shows a CNAME and a TXT record. In **Cloudflare** → **hushmallow.com** → **DNS** → **Records**, add
-   each exactly as Stripe shows it, with **Proxy status: DNS only** (the grey cloud).
+2. Stripe shows two records, a **CNAME** and a **TXT**. Add them at **GoDaddy**: hushmallow.com's DNS is managed
+   there, not in Cloudflare.
+   1. **godaddy.com** → sign in → **My Products** → next to **hushmallow.com**, **DNS** (it may read **Manage DNS**).
+   2. Look through the list first. If a `checkout` CNAME and Stripe's TXT are already there with exactly the values
+      Stripe shows, leave them as they are and go on to step 3.
+   3. **Add New Record** → **Type** `CNAME` · **Name** (GoDaddy may call it Host) `checkout` · **Value** (it may read
+      Points to) exactly the target Stripe shows · **TTL** the default → **Save**.
+   4. **Add New Record** → **Type** `TXT` · **Name** exactly as Stripe shows it, without the `.hushmallow.com`
+      ending (GoDaddy adds the domain itself) · **Value** exactly as Stripe shows it, copied, not typed · **TTL**
+      the default → **Save**.
+   5. **Never change or delete the records already there**: the website's, the email's (MX, SPF, DKIM, DMARC and
+      Brevo's), Stripe checkout's and ThinkStill's. **Never change the nameservers.** GoDaddy has no proxy switch
+      (nothing like Cloudflare's grey cloud) to set.
 3. Back in Stripe, **Verify**, and wait for **Active**. Stripe bills custom domains as an add-on (from memory).
 4. Tell Claude, who checks the host of the next session URL (S13).
 

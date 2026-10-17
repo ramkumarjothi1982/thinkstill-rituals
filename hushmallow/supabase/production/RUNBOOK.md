@@ -3,7 +3,7 @@
 What this does: switches on optional sign-up, sign-in and the opt-in sync on
 `https://app.hushmallow.com`, against the Supabase project **hushmallow1**
 (ref `igbxbfuaoybfzsroxuln`, Sydney). About 30 minutes of clicks, plus
-however long your DNS takes to verify the email domain. Distilled from
+however long DNS takes if Brevo still needs a record (step 7). Distilled from
 `docs/AUTH.md` (the full reference) and `supabase/README.md`.
 
 Do the steps **in order**. Cloudflare Pages comes last on purpose: the app
@@ -12,15 +12,17 @@ shows sign-in to everyone as soon as the live build has the two public values
 Until then guests see exactly today's app.
 
 You need: the Supabase dashboard (owner of hushmallow1), the Cloudflare
-dashboard (Pages project `hushmallow`), the DNS for `hushmallow.com`, an
-account with an email provider (step 7), Node 22 and a checkout of this
+dashboard (Pages project `hushmallow`), your Brevo account (step 7), GoDaddy,
+where the DNS for `hushmallow.com` is managed (only if Brevo still needs a
+record, step 7), Node 22 and a checkout of this
 repository (for the SQL files and the checker), your own email address, a
 second address, and a second device (a phone).
 
 Never needed, never paste anywhere: a Supabase secret key (`sb_secret_…`),
 the service_role key, an access token or the database password. The one
-secret in this runbook is the SMTP password, and it goes **only** into
-Supabase's SMTP settings (step 7).
+secret in this runbook is the Brevo SMTP key, and it goes **only** into
+Supabase's SMTP settings (step 7); the Brevo SMTP login goes there too, and
+neither ever goes into this repository.
 
 Dashboard labels move now and then; if one is not where this says, search
 the dashboard for the setting's name.
@@ -121,55 +123,72 @@ Project Settings → JWT Keys).
       with this on it would end the person's real session).
 - [ ] Time-box user sessions: **off** · Inactivity timeout: **off** (or 30 days).
 
-## 7. Email: custom SMTP, DNS and the rate limit (10 min + DNS)
+## 7. Email: custom SMTP with Brevo, its DNS and the rate limit (10 min)
 
 **Required before real people sign up.** Supabase's built-in mailer only
 sends to members of the project's team: anyone else's sign-up is refused and
 the app reads "That email doesn't look quite right." It is also limited to a
 few emails an hour.
 
-Pick a transactional provider. Either works; take the first unless you have a reason:
-* **Resend**: quickest to set up, a free tier that covers a launch.
-* **Postmark**: transactional only, very good deliverability; a new account
-  sends only to your own domain until Postmark approves it (allow a day).
+Account emails go through **Brevo** (owner, 17 Oct 2026): sent from
+**`no-reply@hushmallow.com`** with the sender name **`hushmallow`**, through
+`smtp-relay.brevo.com` on port `587`. The domain's DNS is managed at
+**GoDaddy** (not Cloudflare), and the owner reports Brevo's records are
+already there, so 7a is a check.
 
-7a. At the provider:
-- [ ] Add the domain **`hushmallow.com`** and choose the sender
-      **`hello@hushmallow.com`** (a real inbox you read: people reply to these
-      emails). Resend: pick the region nearest Sydney it offers.
-- [ ] Add the DNS records it shows to `hushmallow.com` (template below).
-      Copy names and values **from the provider's page**, never from here.
-      Wait until the provider says **Verified**.
-- [ ] Create the SMTP credential: Resend → an API key with sending access
-      for hushmallow.com only; Postmark → the server's API token.
+7a. The domain, in Brevo:
+- [ ] Brevo → **Senders, Domains & Dedicated IPs** → **Domains**: `hushmallow.com`
+      reads **Authenticated**. Then nothing at GoDaddy needs to change: go to 7b.
+- [ ] Not Authenticated? Open `hushmallow.com` there: Brevo lists each record it
+      still needs (from memory: its DKIM record or records, a `brevo-code` TXT,
+      and DMARC if it asks), with the exact name and value of each. Add only those at
+      GoDaddy (below), copying names and values **from Brevo's page**, never
+      from here; then, back in Brevo, **Authenticate** (or Verify) and wait for
+      **Authenticated** (DNS can take from minutes to a few hours).
+- [ ] Brevo → Senders, Domains & Dedicated IPs → **Senders**: `no-reply@hushmallow.com`
+      is listed, with the name `hushmallow` (otherwise **Add a sender** with
+      exactly those).
 
-DNS template for `hushmallow.com` (names are relative to the domain; if the
-DNS is on Cloudflare, every record is **DNS only**, grey cloud):
+Adding a record at **GoDaddy**, click by click:
+1. **godaddy.com** → sign in → **My Products** → next to **hushmallow.com**,
+   **DNS** (it may read **Manage DNS**).
+2. **Add New Record** → **Type** (as Brevo shows it: TXT or CNAME) ·
+   **Name** (GoDaddy may call it Host): only the part before
+   `.hushmallow.com`, as GoDaddy adds the domain itself (`@` means
+   hushmallow.com itself) · **Value** (for a CNAME it may read Points to),
+   copied, not typed · **TTL**: leave the default → **Save**.
+3. **Never change or delete the records already there**: the website's, the
+   email's (the mailbox's MX, its SPF and the rest), Stripe checkout's and
+   ThinkStill's. **Never change the nameservers.** GoDaddy has no proxy
+   switch to set.
 
-| Type | Name | Value | What it is |
-|---|---|---|---|
-| TXT | `resend._domainkey` (Resend) or `<selector>pm._domainkey` (Postmark, e.g. `20261016123456pm._domainkey`) | `p=MIGfMA0G…` / `k=rsa; p=MIGf…`, the public key the provider shows | **DKIM**: signs every email for hushmallow.com |
-| MX | `send` (Resend) | `feedback-smtp.<region>.amazonses.com`, priority `10` | bounces for the sending subdomain |
-| TXT | `send` (Resend) | `v=spf1 include:amazonses.com ~all` | **SPF** for the sending subdomain |
-| CNAME | `pm-bounces` (Postmark) | `pm.mtasv.net` | Return-Path: bounces, and **SPF** alignment |
-| TXT | `_dmarc` | `v=DMARC1; p=none; rua=mailto:hello@hushmallow.com; adkim=r; aspf=r` | **DMARC**: start with `p=none`; after two clean weeks of reports, `p=quarantine` |
+* Only **one** SPF record (`v=spf1 …`) per name, and only one `_dmarc` record
+  (**DMARC**). If Brevo asks for one that hushmallow.com already has (the
+  mailbox's own **SPF**, or an existing `_dmarc`), do not add a second and do
+  not edit the existing one here: ask first, because the mailbox depends on it.
+* **DKIM** is what signs every email for hushmallow.com: Brevo shows
+  Authenticated only once its DKIM record answers.
 
-* Only **one** SPF record (`v=spf1 …`) per name. If `hushmallow.com` itself
-  already has one (a mailbox provider for `hello@`), leave it as it is: the
-  records above live on subdomains and do not touch it.
-* Only one `_dmarc` record: if there is one already, keep it (or tighten it).
+7b. The SMTP login, in Brevo:
+- [ ] Brevo → **SMTP & API** → **SMTP**: the server reads `smtp-relay.brevo.com`
+      and the port `587`; note the **Login** shown there (your Brevo SMTP
+      login). It goes only into Supabase in 7c, never into this repository.
+- [ ] **Generate a new SMTP key** (the label is from memory; name the key, e.g., `supabase-hushmallow1`). Copy
+      it once and paste it **only** into Supabase in 7c: never into a chat, an
+      email, a file, a doc or this repository. Lost it? Generate a new one in
+      Brevo, paste that, and delete the old one there.
 
-7b. In Supabase, Authentication → Emails → **SMTP Settings** → Enable custom SMTP **on**:
+7c. In Supabase, Authentication → Emails → **SMTP Settings** → Enable custom SMTP **on**:
 
-| Field | Resend | Postmark |
-|---|---|---|
-| Sender email | `hello@hushmallow.com` | `hello@hushmallow.com` |
-| Sender name | `hushmallow` | `hushmallow` |
-| Host | `smtp.resend.com` | `smtp.postmarkapp.com` |
-| Port | `465` | `587` |
-| Username | `resend` | the server API token |
-| Password | the API key | the server API token |
-| Minimum interval between emails | `60` seconds (the app waits 60 s before "Send it again") | `60` |
+| Field | Value |
+|---|---|
+| Sender email | `no-reply@hushmallow.com` |
+| Sender name | `hushmallow` |
+| Host | `smtp-relay.brevo.com` |
+| Port | `587` |
+| Username | your Brevo SMTP **Login** (Brevo → SMTP & API → SMTP, 7b) |
+| Password | the Brevo **SMTP key** from 7b, pasted only here |
+| Minimum interval between emails | `60` seconds (the app waits 60 s before "Send it again") |
 
 - [ ] Save.
 - [ ] Authentication → **Rate Limits** → Rate limit for sending emails:
@@ -178,9 +197,10 @@ DNS is on Cloudflare, every record is **DNS only**, grey cloud):
 
 ## 8. Email templates (5 min)
 
-Authentication → Emails → **Templates**. For each row: open the template,
-set **Subject**, replace the **body** with the whole file from
-`supabase/templates/` (its first line is a comment; it may stay), Save.
+Authentication → Emails → **Templates**: the five branded templates in this
+repository's `supabase/templates/`. For each row: open the template, set
+**Subject**, replace the **body** with the whole file (its first line is a
+comment; it may stay), Save. They are sent through Brevo (step 7).
 
 | Template in the dashboard | Subject | File |
 |---|---|---|
@@ -234,7 +254,9 @@ Workers & Pages → **hushmallow** → Settings → **Variables and Secrets**.
       publish while a Supabase secret or token is in its environment).
 - [ ] Deployments → the latest **Production** deployment → ⋯ → **Retry
       deployment** (new values only reach a new build). Wait for Success.
-- [ ] Custom domains: `app.hushmallow.com` is **Active**.
+- [ ] Custom domains: `app.hushmallow.com` is **Active**. Its DNS record is at
+      GoDaddy (`app` pointing to `hushmallow.pages.dev`) and is already in
+      place: leave it, and every other GoDaddy record, as it is.
 
 **Why previews never use hushmallow1.** A preview is built from
 any branch, reviewed or not, and published on a public `*.hushmallow.pages.dev`
@@ -264,7 +286,7 @@ on a local Supabase stack (the CI E2E, docs/AUTH.md).
       step, then open a **new** tab: the answer is kept for the tab's session.
 - [ ] Create an account with your own address and a name → "Check your email"
       shows it; "Send it again" counts down.
-- [ ] The email arrives from `hello@hushmallow.com`, subject "Confirm your
+- [ ] The email arrives from `hushmallow <no-reply@hushmallow.com>`, subject "Confirm your
       hushmallow account", not in spam (Gmail → Show original: SPF, DKIM and
       DMARC `PASS`). Its button opens `https://app.hushmallow.com/auth/callback?token_hash=…&type=email`.
 - [ ] Open it **on the phone**: "You're in", then the account screen there.
@@ -290,7 +312,7 @@ on a local Supabase stack (the CI E2E, docs/AUTH.md).
 |---|---|---|
 | No sign-in row in Settings, and `/#account` stays on the Hushfold | the readiness gate: the console line `[auth] sign-in is hidden: …` names it | steps 2 and 5, then a new tab |
 | "That email doesn't look quite right." for a real address | the built-in mailer (only the team gets email) | step 7 |
-| No email at all | SMTP host, port or password; the domain not verified; spam | Supabase → Logs → Auth, and the provider's own log |
+| No email at all | SMTP host, port, login or key; the domain not Authenticated in Brevo; spam | Supabase → Logs → Auth, and Brevo's own email logs; step 7 |
 | "Let's take a short breather. Try again in a minute." | an email or sign-in rate limit | step 7 (Rate Limits) |
 | "New accounts are paused for now." | sign-ups or the email provider switched off | step 5 |
 | The link opens `…com//auth/callback` or another site | the Site URL | step 4 |
