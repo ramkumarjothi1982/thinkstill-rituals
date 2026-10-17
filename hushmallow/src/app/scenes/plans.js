@@ -11,12 +11,17 @@
 // card then offers that plan again), then goes on to the secure checkout page
 // for the chosen plan and period; prices come from configuration only (none
 // set: none shown). Off, nothing here changes.
+// Signed in with a web plan already, a card that is an upgrade of it (the server's own rule, isUpgrade) says
+// "Upgrade to hushmallow Beyond" (or, the same plan monthly → yearly, "Switch to yearly") and opens Stripe's page
+// confirming exactly that change (never the portal's front page); any other change says "Change plan" and opens
+// Stripe's own plan chooser. Either comes back to src/app/plan-change.js, which says the change only once Stripe has
+// confirmed it. Cancelling stays in Settings → Manage subscription.
 // The foot ends with small "Terms · Privacy Policy" links (src/app/legal.js).
 import { h, iconBtn, toast } from '../ui.js';
 import { PLANS } from '../entitlements.js';
 import { rememberPlan, CHANGE_PLAN, PAYMENT_PENDING, BILLING_SUPPORT } from '../billing.js';
 import { BRAND, brandName } from '../../brand.js';
-import { brandMark, logoImg, fitWhole } from '../../ui/type.js';
+import { brandMark, logoImg, fitWhole, withBrand } from '../../ui/type.js';
 import { openSupport } from './support.js';
 import { plansBeyondNote } from '../privacy.js';
 import { legalLinks } from '../legal.js';
@@ -46,6 +51,47 @@ export const SIGN_IN_TO_RESTORE = 'Sign in to the account your plan is with.';
 /** Web subscriptions, checkout's 409: a plan already, or a payment going through (src/app/billing.js: the account card says them too). */
 export { CHANGE_PLAN, PAYMENT_PENDING };
 const SVG = 'http://www.w3.org/2000/svg';
+
+// ------------------------------------------------ a change of plan (web) --
+const RANK = { paid: 1, ultra: 2 }, LENGTH = { monthly: 1, yearly: 2 };
+/**
+ * The server's upgrade rule (POST /v1/billing/portal, intent 'upgrade'): a higher plan for the same or a longer
+ * period (Flow monthly → Beyond monthly or yearly, Flow yearly → Beyond yearly; never Flow yearly → Beyond monthly),
+ * or the same plan monthly → yearly. from, to: { plan, period }.
+ */
+export function isUpgrade(from, to) {
+  if (!RANK[from?.plan] || !LENGTH[from?.period] || !RANK[to?.plan] || !LENGTH[to?.period]) return false;
+  if (RANK[to.plan] > RANK[from.plan]) return LENGTH[to.period] >= LENGTH[from.period];
+  return to.plan === from.plan && from.period === 'monthly' && to.period === 'yearly';
+}
+/** What a card offers an account holding a web plan: 'held' (that plan), 'upgrade', 'yearly' (the same plan, yearly) or 'change'. */
+export function changeFor(held, target) {
+  // (a period the server has not said yet: the held plan's own card is the plan; every other card the chooser)
+  if (held.plan === target.plan && (held.period === target.period || !held.period)) return 'held';
+  if (isUpgrade(held, target)) return target.plan === held.plan ? 'yearly' : 'upgrade';
+  return 'change';
+}
+export const CHANGE_LABELS = Object.freeze({ upgrade: 'Upgrade to', yearly: 'Switch to yearly', change: 'Change plan', held: '✓ Your plan' });
+/** The full portal from the plans page, where a change cannot be made here (Settings' own Manage subscription). */
+export const MANAGE_TO_CHANGE = 'Change plan in Manage subscription';
+/** What the plans page says when Stripe's page for a change does not open (the server's CHANGE_CODES, billing.js). */
+export const CHANGE_ERRORS = Object.freeze({
+  already_on_plan: (name) => `You’re already on ${name}.`,
+  payment_issue: 'Your last payment didn’t go through. Update your card in Manage subscription, then try again.',
+  not_an_upgrade: 'That change is made in Manage subscription.',
+  plan_change_unavailable: 'Plan changes can’t open here just now. You can change your plan in Manage subscription.',
+  change_pending: 'A change to your plan is already on its way. You can see it in Manage subscription.',
+  not_updatable: 'This subscription can be changed in Manage subscription.',
+  none: 'There’s no subscription on this account yet.',
+  offline: 'Couldn’t open Stripe just now. Try again.',
+});
+const TO_PORTAL = ['not_an_upgrade', 'plan_change_unavailable', 'change_pending', 'not_updatable'];
+/** The web plan this account holds, as the billing server last said it: { plan, period, status } | null. */
+function heldPlan(ent, tier) {
+  if (!ent.isWeb || !ent.webSignedIn?.() || ent.source?.() !== 'billing' || !RANK[tier]) return null;
+  const p = ent.webPlan?.() || null;
+  return { plan: tier, period: p?.period === 'monthly' || p?.period === 'yearly' ? p.period : null, status: p?.status ?? null };
+}
 
 // Flow's sigil: three soft swells (Hushflow); Beyond reuses Zuzu's spiral
 function flowSigil() {
@@ -79,7 +125,9 @@ export default function plans(app, params = {}) {
   const { ent, world } = app;
   const tier = ent.tier();
   const focus = params.focus === 'ultra' || params.reason === 'ultra' ? 'ultra' : 'paid';
-  let period = app.state.planPeriod === 'yearly' ? 'yearly' : 'monthly';
+  // a web plan already held: each card offers the change from it (an upgrade, yearly, or Stripe's plan chooser)
+  const held = heldPlan(ent, tier);
+  let period = app.state.planPeriod === 'yearly' || app.state.planPeriod === 'monthly' ? app.state.planPeriod : held?.period || 'monthly';
   const included = (id) => tier === id || (id === 'paid' && tier === 'ultra');
 
   const noteText = () => periodNote({ native: ent.isNative, web: ent.isWeb, period });
@@ -96,8 +144,9 @@ export default function plans(app, params = {}) {
   const notes = [];   // [plan, price element, period element]
   const drawNotes = () => notes.forEach(([p, price, note]) => { price.textContent = priceLine(p); price.hidden = !price.textContent; note.textContent = noteText(); });
 
-  const buttons = [], fits = [];
+  const buttons = [], fits = [], redraws = [];
   function action(p) {
+    if (held && ent.canPurchase) return changeAction(p);
     if (included(p.id)) return h('div', { class: 'btn block invite-included', 'aria-disabled': 'true' }, '✓ Included in your plan');
     if (!ent.canPurchase) return h('div', { class: 'btn block', 'aria-disabled': 'true' }, 'Available in the app soon');
     const price = h('p', { class: 'invite-price', hidden: true });
@@ -110,6 +159,40 @@ export default function plans(app, params = {}) {
     buttons.push(btn);
     fits.push(() => fitWhole(btn, BUY_FIT));
     return h('div', { class: 'invite-cta' }, btn, price, note);
+  }
+
+  /** A card for an account that holds a web plan: drawn again for each period (the seg). */
+  function changeAction(p) {
+    const price = h('p', { class: 'invite-price', hidden: true });
+    const note = h('p', { class: 'invite-period', 'aria-live': 'polite' }, noteText());
+    notes.push([p, price, note]);
+    const said = h('div', { class: 'invite-change', role: 'status', 'aria-live': 'polite' });
+    const slot = h('div', { class: 'invite-cta-slot' });
+    let btn = null;
+    const draw = () => {
+      said.replaceChildren();
+      const kind = changeFor(held, { plan: p.id, period });
+      const old = btn;
+      if (kind === 'held') btn = null;
+      else {
+        const label = kind === 'upgrade'
+          ? h('span', { class: 'invite-buy-label' }, h('span', { class: 'nb' }, CHANGE_LABELS.upgrade), ' ', h('span', { class: 'nb' }, p.name))
+          : h('span', { class: 'invite-buy-label' }, h('span', { class: 'nb' }, CHANGE_LABELS[kind]));
+        const tone = kind === 'change' ? '' : p.id === 'ultra' ? ' ultra' : ' primary';
+        const b = h('button', { class: `btn block invite-buy invite-change-buy${tone}`, 'data-plan-action': kind, 'data-to': `${p.id}.${period}`,
+          onclick: () => changePlan(p, kind, b, said) }, label);
+        b.disabled = pending;
+        btn = b;
+      }
+      const i = old ? buttons.indexOf(old) : -1;
+      if (i >= 0) buttons.splice(i, 1, ...(btn ? [btn] : [])); else if (btn) buttons.push(btn);
+      slot.replaceChildren(btn || h('div', { class: 'btn block invite-included', 'aria-disabled': 'true', 'data-plan-action': 'held' }, CHANGE_LABELS.held));
+      if (btn) requestAnimationFrame(() => { if (!gone) fitWhole(btn, BUY_FIT); });
+    };
+    draw();
+    redraws.push(draw);
+    fits.push(() => { if (btn) fitWhole(btn, BUY_FIT); });
+    return h('div', { class: 'invite-cta' }, slot, price, note, said);
   }
 
   function invite(p) {
@@ -177,7 +260,15 @@ export default function plans(app, params = {}) {
     if (r?.pending) {
       try { await ent.refresh({ force: true }); } catch { /* said below */ }
       if (gone) return;
-      if (ent.source() === 'billing' && ent.has('paid')) { welcome(PLANS[ent.tier()].name); return; }
+      if (ent.source() === 'billing' && ent.has('paid')) {
+        // hushmallow Beyond, confirmed by the server: its own welcome over the Hushfold (src/app/scenes/beyond-welcome.js)
+        if (ent.tier() === 'ultra' && typeof app.welcomePlan === 'function') {
+          Promise.resolve(app.go('home', {}, { replace: true })).then(() => app.welcomePlan({ tier: 'ultra', period: ent.webPlan?.()?.period ?? null, from: null })).catch(() => {});
+          return;
+        }
+        welcome(PLANS[ent.tier()].name);
+        return;
+      }
       toast(PAYMENT_PENDING, 3600);
     } else if (r?.manage) {
       toast(CHANGE_PLAN, 3200);
@@ -192,6 +283,47 @@ export default function plans(app, params = {}) {
     else toast('That didn’t go through. Nothing was charged.', 3200);
     pending = false;
     setBusy(false);
+  }
+
+  /**
+   * A change from the web plan held: an upgrade (Stripe's page confirming exactly that plan and period) or, for any
+   * other change, Stripe's plan chooser. One at a time (a second tap is ignored until Stripe's page opens or an answer
+   * comes back), so two sessions are never opened; where it cannot open, a calm line, and the full portal where it helps.
+   */
+  async function changePlan(p, kind, btn, said) {
+    if (pending) return;
+    pending = true;
+    setBusy(true, btn);
+    const want = { plan: p.id, period };
+    let r = null;
+    try { r = await ent.manage(kind === 'change' ? { intent: 'switch' } : { intent: 'upgrade', plan: want.plan, period: want.period }); } catch { r = null; }
+    if (gone) return;
+    // on to Stripe's page (the buttons stay quiet while the page leaves; Back restores them: onPageShow)
+    if (r?.redirecting) return;
+    pending = false;
+    setBusy(false);
+    if (r?.needsAccount) { app.go('account', { view: 'signin', notice: SIGN_IN_TO_RESTORE }); return; }
+    const reason = r?.none ? 'none' : r?.reason;
+    let line, more = null;
+    if (reason === 'already_on_plan') line = CHANGE_ERRORS.already_on_plan(PLANS[want.plan].name);
+    else if (reason === 'payment_issue') { line = CHANGE_ERRORS.payment_issue; more = 'Manage subscription'; }
+    else if (TO_PORTAL.includes(reason)) { line = CHANGE_ERRORS[reason]; more = MANAGE_TO_CHANGE; }
+    else if (reason === 'none') line = CHANGE_ERRORS.none;
+    else line = CHANGE_ERRORS.offline;
+    said.replaceChildren(h('p', { class: 'invite-change-line' }, ...withBrand(line)),
+      ...(more ? [h('button', { class: 'btn block invite-manage', 'data-act': 'manage-subscription', onclick: (e) => manageNow(e.currentTarget, said) }, more)] : []));
+  }
+  /** Settings' Manage subscription, from here: Stripe's portal (the card, the plan, receipts, cancelling). */
+  async function manageNow(b, said) {
+    if (b.disabled || pending) return;
+    b.disabled = true;
+    let r = null;
+    try { r = await ent.manage(); } catch { r = null; }
+    if (gone) return;
+    if (r?.redirecting) { setTimeout(() => { b.disabled = false; }, 4000); return; }
+    b.disabled = false;
+    if (r?.needsAccount) { app.go('account', { view: 'signin', notice: SIGN_IN_TO_RESTORE }); return; }
+    said.querySelector?.('.invite-change-line')?.replaceChildren?.(r?.none ? CHANGE_ERRORS.none : CHANGE_ERRORS.offline);
   }
 
   // monthly / yearly (a real radio group; arrow keys move between them)
@@ -209,6 +341,7 @@ export default function plans(app, params = {}) {
     app.haptic?.('light'); app.audio?.ui?.('toggle');
     drawSeg();
     drawNotes();
+    redraws.forEach((f) => f());
     if (focusIt) seg.querySelector('[aria-checked="true"]')?.focus();
   }
   drawSeg();
@@ -236,7 +369,7 @@ export default function plans(app, params = {}) {
     gap,
     h('div', { class: 'plans-body' },
       head,
-      !everything && ent.canPurchase ? h('div', { class: 'seg-wrap' }, seg) : null,
+      (!everything || held) && ent.canPurchase ? h('div', { class: 'seg-wrap' }, seg) : null,
       h('div', { class: 'invites' }, ...order.map(invite)),
       h('div', { class: 'plans-foot' },
         h('button', { class: 'btn ghost block', onclick: async (e) => {
