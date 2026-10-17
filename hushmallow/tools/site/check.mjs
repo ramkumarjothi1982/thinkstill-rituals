@@ -33,7 +33,8 @@
 //    missing (it would load one import level at a time again), nothing else
 //    (a preload of a module the first screen does not need costs a phone its
 //    bandwidth), each once; and the Hushfold's logo as its <img> asks for it
-//    (logoPreload: the same srcset and sizes), every candidate a shipped file.
+//    (logoPreload: the same srcset and sizes, no href), every candidate a
+//    shipped file.
 // Prints a short summary; exits 1 with the list of problems.
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, readdirSync, realpathSync, statSync } from 'node:fs';

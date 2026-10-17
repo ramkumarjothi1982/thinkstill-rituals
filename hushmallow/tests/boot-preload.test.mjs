@@ -10,7 +10,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { BOOT_ENTRIES, FIRST_LOGO, bootModules, injectPreloads, logoPreload, preloadLinks, preloadsIn, staticImports } from '../tools/site/boot-preload.mjs';
-import { LOGO_WIDTHS, logoSrcset, BRAND } from '../src/brand.js';
+import { LOGO_WIDTHS, logoSrcset } from '../src/brand.js';
 import { inlineSources } from '../tools/site/security-headers.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
@@ -103,7 +103,7 @@ test('the built site preloads exactly its boot graph, and check.mjs holds it to 
   } finally { rmSync(out, { recursive: true, force: true }); rmSync(bad, { recursive: true, force: true }); }
 });
 
-test('the logo preload is the Hushfold <img>: same src, srcset and sizes, so the browser fetches one file for both', () => {
+test('the logo preload is the Hushfold <img>: same srcset and sizes, no href, so a browser fetches one file for both or none', () => {
   // hushfold.js draws its top-bar logo with logoImg({ tone: 'light', width: 132 }): sizes is then '132px' (type.js)
   assert.match(read('src/app/scenes/hushfold.js'), /m\.logoImg\(\{ tone: 'light', width: 132, alt: '' \}\)/, 'change FIRST_LOGO with it');
   assert.match(read('src/ui/type.js'), /const sz = sizes \|\| \(\/\^\(min\|max\|clamp\|calc\)/, 'a px width is its own sizes');
@@ -111,7 +111,9 @@ test('the logo preload is the Hushfold <img>: same src, srcset and sizes, so the
   const link = logoPreload('v/x1');
   const attr = (k) => new RegExp(`\\s${k}="([^"]+)"`).exec(link)[1];
   const tail = (u) => u.replace(/^.*\/assets\//, 'assets/');
-  assert.equal(attr('href'), `v/x1/${tail(BRAND.logo.light)}`, 'the img src (the fallback)');
+  // no href: Safari 11.1 to 17.1 know preload but not imagesrcset, so they would fetch the href (the 720 px file) and
+  // their <img> would then pick its own width (480 px at 3x, 360 px at 2x) from the srcset: the logo twice
+  assert.doesNotMatch(link, /\shref=/, 'no href (no fallback fetch)');
   assert.equal(attr('imagesrcset'), logoSrcset('light').split(', ').map((c) => `v/x1/${tail(c)}`).join(', '), 'the img srcset');
   assert.equal(attr('imagesizes'), '132px');
   assert.match(link, /^<link rel="preload" as="image" /);

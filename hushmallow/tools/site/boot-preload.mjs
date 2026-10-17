@@ -15,7 +15,10 @@
 //
 // The first screen's logo is preloaded too (logoPreload): the Hushfold's top bar asks for it only once its scene
 // has loaded, so without it the logo, the largest picture on that screen, arrives a round trip after everything
-// else. The preload names the same srcset and sizes as the <img>, so the browser picks the same file for both.
+// else. The preload names the same srcset and sizes as the <img>, so the browser picks the same file for both. It has
+// no href: a browser that knows preload but not imagesrcset (Safari 11.1 to 17.1) would fetch the href, and its <img>
+// then picks another width from the srcset, so the logo would come twice; without an href that browser skips the
+// preload and its <img> loads the logo as it always did.
 import { readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join, posix, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -74,10 +77,13 @@ export function bootModules(root, entries = BOOT_ENTRIES) {
 /** The Hushfold's logo (hushfold.js: logoImg({ tone: 'light', width: 132 }), so sizes is 132px). */
 export const FIRST_LOGO = Object.freeze({ tone: 'light', sizes: '132px' });
 
-/** The <link rel="preload" as="image"> for that logo: the <img>'s own src, srcset and sizes, under `prefix`. */
+/**
+ * The <link rel="preload" as="image"> for that logo: the <img>'s own srcset and sizes, under `prefix`, and no href
+ * (a browser without imagesrcset would fetch the href, a width its <img> does not pick: it skips the preload instead).
+ */
 export function logoPreload(prefix, { tone, sizes } = FIRST_LOGO) {
   const rel = (w) => posix.join(prefix, 'assets/brand', basename(new URL(logoUrl(tone, w)).pathname));
-  return `<link rel="preload" as="image" href="${rel(720)}" imagesrcset="${LOGO_WIDTHS.map((w) => `${rel(w)} ${w}w`).join(', ')}" imagesizes="${sizes}">`;
+  return `<link rel="preload" as="image" imagesrcset="${LOGO_WIDTHS.map((w) => `${rel(w)} ${w}w`).join(', ')}" imagesizes="${sizes}">`;
 }
 
 /** The <link rel="modulepreload"> lines for `modules` under `prefix` (the published index.html's v/<version>/). */
