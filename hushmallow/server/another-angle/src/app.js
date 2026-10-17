@@ -33,6 +33,19 @@ import { createBilling, bearerOf, PATHS as BILLING } from './billing/routes.js';
 export const EARLY_CHECK_CHARS = 2000;
 
 /**
+ * A session issued under rules this mode no longer has: after the switch to "billing", any session but a billing one;
+ * under "billing+testing" without TESTER_INVITE_CODES, a testing one (it was open to anyone). Without this a 30-day
+ * testing session minted before the switch would keep reaching the model without Beyond. The client asks for a new
+ * session on a 401 (src/beyond/angle-client.js), and that one follows the current rules. Other modes are unchanged.
+ * @param {import('./config.js').Config} cfg @param {{ src?: string }} payload
+ */
+export function sessionSuperseded(cfg, payload) {
+  if (cfg.entitlementMode === 'billing') return payload.src !== 'billing';
+  if (cfg.entitlementMode === 'billing+testing') return payload.src === 'testing' && cfg.inviteCodes.length === 0;
+  return false;
+}
+
+/**
  * @typedef {import('./providers/anthropic.js').Provider} Provider
  * @typedef {{ waitUntil?(p: Promise<unknown>): void }} Ctx
  */
@@ -247,7 +260,12 @@ export function createApp(options) {
       logEvt({ status: 'unauthorised', http: 401, err: /** @type {any} */ (verified).code });
       return error(401, 'unauthorised', 'A valid session token is required.', { ...cors, 'www-authenticate': 'Bearer realm="another-angle"' });
     }
-    const subject = /** @type {any} */ (verified).payload.sub;
+    const payload = /** @type {any} */ (verified).payload;
+    if (sessionSuperseded(cfg, payload)) {
+      logEvt({ status: 'unauthorised', http: 401, err: 'session_superseded' });
+      return error(401, 'session_superseded', 'This session is from before the current rules; start a new one.', { ...cors, 'www-authenticate': 'Bearer realm="another-angle"' });
+    }
+    const subject = payload.sub;
 
     if (!body.ok) { logEvt({ status: 'invalid', http: body.status, err: body.code }); return error(body.status, body.code, body.message, cors); }
     const v = validateAngleRequest(body.value);
@@ -358,7 +376,9 @@ export function createApp(options) {
     if (!cfg.signingKeys.length) return error(503, 'not_configured', 'TOKEN_SIGNING_KEY is not set.', cors);
     if (!(await allow(env.FEEDBACK_IP_LIMITER, fallbackFeedbackLimiter, await ipKey(request, cfg)))) return error(429, 'rate_limited', 'Too many requests. Try again in a minute.', { ...cors, 'retry-after': '60' });
     const m = /^Bearer ([A-Za-z0-9._-]{10,2048})$/.exec(request.headers.get('authorization') || '');
-    if (!m || !(await verifyToken(m[1], cfg.signingKeys, now())).ok) return error(401, 'unauthorised', 'A valid session token is required.', { ...cors, 'www-authenticate': 'Bearer realm="another-angle"' });
+    const verified = m ? await verifyToken(m[1], cfg.signingKeys, now()) : null;
+    if (!verified?.ok) return error(401, 'unauthorised', 'A valid session token is required.', { ...cors, 'www-authenticate': 'Bearer realm="another-angle"' });
+    if (sessionSuperseded(cfg, verified.payload)) return error(401, 'session_superseded', 'This session is from before the current rules; start a new one.', { ...cors, 'www-authenticate': 'Bearer realm="another-angle"' });
     const body = await readJson(request, 2048);
     if (!body.ok) return error(body.status, body.code, body.message, cors);
     const v = validateFeedbackRequest(body.value);

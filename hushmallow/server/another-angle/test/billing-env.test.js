@@ -5,11 +5,12 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { req, makeEnv } from './helpers.js';
+import { req, makeEnv, angleReq, CLOCK_START } from './helpers.js';
+import { signToken } from '../src/auth/tokens.js';
 import { readConfig, BILLING_LIVE_APPROVED, STRIPE_API_VERSION_EXPECTED } from '../src/config.js';
 import {
   billingEnv, billingReq, setup, upstream, subscription, event, deliver, subscribe, status, lines, assertClean, stripeKey, withStagingProject,
-  varsTables, WRANGLER, PAYMENTS_MD, LIVE_KEY, TEST_KEY, WHSEC, STAGING_SUPABASE, PK,
+  varsTables, WRANGLER, PAYMENTS_MD, DAY, LIVE_KEY, TEST_KEY, WHSEC, STAGING_SUPABASE, PK,
 } from './billing-fixtures.js';
 
 const KEYS = ['sk_test', 'rk_test', 'sk_live', 'rk_live', 'pk_test'];
@@ -206,4 +207,46 @@ test('/v1/health says the Stripe mode, why a key is refused, the approval, the A
   const wrong = await health(makeEnv({ ...staging, STRIPE_SECRET_KEY: LIVE_KEY, BILLING_LIVE: 'approved' }));
   assert.deepEqual([wrong.stripe_mode, wrong.key_refused, wrong.live_approved], [null, 'live_key_on_staging', false]);
   assert.equal((await health(billingEnv({ STRIPE_AUTOMATIC_TAX: 'true' }))).automatic_tax, true);
+});
+
+// ------------------------------------------------- sessions after the switch --
+test('sessions minted before the switch: in "billing" only billing sessions reach the model; in "billing+testing" a testing one only with codes', async () => {
+  const signingKey = makeEnv().TOKEN_SIGNING_KEY;
+  const mint = (src) => signToken({ sub: `${src === 'billing' ? 'acct' : src === 'storekit' ? 'st' : 'dev'}_${'a'.repeat(32)}`, ent: 'beyond', src, iat: CLOCK_START, exp: CLOCK_START + 30 * DAY }, signingKey);
+  const tokens = { testing: await mint('testing'), billing: await mint('billing'), storekit: await mint('storekit') };
+  const ok = { testing: 'ok', billing: 'ok', storekit: 'ok' };
+  const cases = [
+    ['testing', '', ok],
+    ['storekit', '', ok],
+    ['both', '', ok],
+    ['billing', 'MALLOW-ONE', { testing: 'superseded', billing: 'ok', storekit: 'superseded' }],
+    ['billing+testing', 'MALLOW-ONE', ok],
+    ['billing+testing', '', { testing: 'superseded', billing: 'ok', storekit: 'ok' }],
+  ];
+  for (const [mode, codes, want] of cases) {
+    const s = setup({ env: makeEnv({ PROVIDER: 'mock', ENTITLEMENT_MODE: mode, TESTER_INVITE_CODES: codes }) });
+    for (const [src, token] of Object.entries(tokens)) {
+      const label = `${mode}${codes ? ' with codes' : ''}: a ${src} session`;
+      const a = await s.app.fetch(angleReq(token, { text: 'My colleague got promoted instead of me.' }), s.env);
+      const f = await s.app.fetch(req('/v1/feedback', { body: { rating: 'helped' }, headers: { authorization: `Bearer ${token}` } }), s.env);
+      if (want[src] === 'ok') {
+        assert.equal(a.status, 200, `${label}: angle`);
+        assert.equal((await a.json()).status, 'ok', label);
+        assert.equal(f.status, 202, `${label}: feedback`);
+      } else {
+        for (const [res, route] of [[a, 'angle'], [f, 'feedback']]) {
+          assert.equal(res.status, 401, `${label}: ${route}`);
+          assert.equal((await res.json()).error.code, 'session_superseded', `${label}: ${route}`);
+          assert.match(res.headers.get('www-authenticate') || '', /^Bearer /, 'the client asks for a new session on a 401');
+        }
+      }
+    }
+    if (Object.values(want).includes('superseded')) assert.ok(lines(s.logs).some((l) => l.evt === 'angle' && l.err === 'session_superseded'), `${mode}: logged`);
+    assertClean(s.logs);
+  }
+  // a crisis still gets support at once, whatever the session (the check before the token is unchanged)
+  const s = setup({ env: makeEnv({ PROVIDER: 'mock', ENTITLEMENT_MODE: 'billing' }) });
+  const crisis = await s.app.fetch(angleReq(tokens.testing, { text: 'I want to kill myself' }), s.env);
+  assert.equal(crisis.status, 200);
+  assert.equal((await crisis.json()).status, 'crisis');
 });
