@@ -9,7 +9,8 @@
 //     build without values, and never falls back to production (simulated below on a copy of the modules).
 //   - the build (tools/site/auth-config.mjs): a Cloudflare Pages build of a branch other than main
 //     (CF_PAGES_BRANCH) may only publish the staging project; main (and every build outside Pages) only
-//     production's. Production's values on a branch build are never published (sign-in off, a warning). A
+//     production's. Production's values on a branch build are never published: the build publishes the
+//     committed staging project instead, with a warning (sign-in off were there no staging project). A
 //     branch build given neither value publishes the committed staging project; a production build never does.
 //   - the staging Worker's deploy uses the staging secrets, never production's.
 // The simulated cases (the placeholder, another staging project) load a copy of the real modules with only the
@@ -278,17 +279,22 @@ test('the build: main and builds outside Pages publish hushmallow1 exactly as be
   assert.equal(main.source, before.source);
   assert.equal(main.headers, before.headers);
   assert.equal(before.headers, headersFile(PROJECT_URL, { version: 'abc123' }));
-  // a branch build given production's values: not published, sign-in off, and the log says why (and what to do)
+  // a branch build given production's values (hushmallow-pages-env.yml sets Preview to them): never published; the
+  // committed staging project instead, exactly as if the Preview environment gave its values, and the log says why
   const branch = buildPublicConfig({ ...env, CF_PAGES_BRANCH: 'claude/launch-rc' }, { version: 'abc123' });
+  const asStaging = buildPublicConfig({ SUPABASE_URL: OWNER_URL, SUPABASE_PUBLISHABLE_KEY: OWNER_KEY, CF_PAGES_BRANCH: 'claude/launch-rc' }, { version: 'abc123' });
   assert.equal(branch.ok, true);
   assert.equal(branch.stage, 'staging');
-  assert.equal(branch.enabled, false);
-  assert.deepEqual(body(branch.source), { enabled: false });
-  assert.match(branch.warning, /production project hushmallow1.*branch "claude\/launch-rc".*Not published: this build has no sign-in\. Delete SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY from the Preview environment/);
-  assert.match(branch.summary, /sign-in off \(production values refused on a branch build\)/);
+  assert.equal(branch.enabled, true);
+  assert.equal(branch.replaced, true);
+  assert.deepEqual(body(branch.source), { enabled: true, url: OWNER_URL, key: OWNER_KEY, mode: 'production' });
+  assert.equal(branch.source, asStaging.source);
+  assert.equal(branch.headers, asStaging.headers);
+  assert.match(branch.warning, /production project hushmallow1.*branch "claude\/launch-rc".*Production's values are not published: this build uses the staging project in src\/auth\/config\.js instead/);
+  assert.equal(branch.summary, `sign-in on: ${OWNER_URL} (the staging project hushmallow-staging, from src/auth/config.js: production's values in the build environment were refused), key sb_publishable_… [publishable]`);
   assert.ok(!branch.source.includes('igbxbfuaoybfzsroxuln') && !branch.headers.includes('igbxbfuaoybfzsroxuln'), 'production is nowhere in a branch build');
-  assert.equal(branch.headers, headersFile(null, { version: 'abc123' }));
-  assert.equal(buildPublicConfig({ SUPABASE_URL: `${PROJECT_URL}/`, SUPABASE_PUBLISHABLE_KEY: KEY, CF_PAGES_BRANCH: 'x' }).enabled, false);
+  const slash = buildPublicConfig({ SUPABASE_URL: `${PROJECT_URL}/`, SUPABASE_PUBLISHABLE_KEY: KEY, CF_PAGES_BRANCH: 'x' });
+  assert.ok(!slash.source.includes('igbxbfuaoybfzsroxuln') && !slash.headers.includes('igbxbfuaoybfzsroxuln'), 'nor with a trailing slash');
   // another project on a branch build: refused, as any unknown project is
   const other = buildPublicConfig({ SUPABASE_URL: FAKE_URL, SUPABASE_PUBLISHABLE_KEY: STAGING_KEY, CF_PAGES_BRANCH: 'claude/launch-rc' });
   assert.equal(other.ok, false);
@@ -360,10 +366,11 @@ test('the build, a staging project given: a branch build publishes ONLY it; main
       assert.equal(r.ok, false, JSON.stringify(extra));
       assert.match(r.errors.join('\n'), /not hushmallow1/);
     }
-    // production on main exactly as before; production on a branch: off, never published
+    // production on main exactly as before; production on a branch: never published, the staging project instead
     assert.deepEqual(body(build.buildPublicConfig({ SUPABASE_URL: PROJECT_URL, SUPABASE_PUBLISHABLE_KEY: KEY, CF_PAGES_BRANCH: 'main' }).source), { enabled: true, url: PROJECT_URL, key: KEY, mode: 'production' });
     const branchProd = build.buildPublicConfig({ SUPABASE_URL: PROJECT_URL, SUPABASE_PUBLISHABLE_KEY: KEY, CF_PAGES_BRANCH: 'claude/launch-rc' });
-    assert.deepEqual(body(branchProd.source), { enabled: false });
+    assert.deepEqual(body(branchProd.source), { enabled: true, url: sUrl, key: sKey, mode: 'production' });
+    assert.ok(!branchProd.source.includes('igbxbfuaoybfzsroxuln') && !branchProd.headers.includes('igbxbfuaoybfzsroxuln'));
     assert.match(branchProd.warning, /may only use the staging project hushmallow-staging/);
     // the refusals still hold for the staging project
     for (const key of [SECRET, jwt({ role: 'service_role' }), jwt({ role: 'anon' })]) assert.equal(build.buildPublicConfig({ SUPABASE_URL: sUrl, SUPABASE_PUBLISHABLE_KEY: key, CF_PAGES_BRANCH: 'x' }).ok, false);
@@ -408,22 +415,28 @@ test('the build without sign-in values: a branch build publishes the committed s
     assert.equal(r.headers, headersFile(null, { version: 'abc123' }));
     assert.ok(!r.source.includes(OWNER_REF) && !r.headers.includes(OWNER_REF), `${JSON.stringify(env)}: staging is nowhere in a production build`);
   }
-  // only when NEITHER value is given: production's values on a branch are never replaced, and a dev / ci build stays off
+  // production's values on a branch are never published: replaced by the committed staging project (not "committed":
+  // values were given), and a dev / ci build stays off
   const prodOnBranch = buildPublicConfig({ SUPABASE_URL: PROJECT_URL, SUPABASE_PUBLISHABLE_KEY: KEY, CF_PAGES_BRANCH: 'claude/launch-rc' });
-  assert.deepEqual([prodOnBranch.enabled, prodOnBranch.committed, body(prodOnBranch.source)], [false, undefined, { enabled: false }]);
-  assert.match(prodOnBranch.warning, /Delete SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY from the Preview environment \(the build then uses the staging project in src\/auth\/config\.js\)/);
+  assert.deepEqual([prodOnBranch.enabled, prodOnBranch.committed, prodOnBranch.replaced, body(prodOnBranch.source)], [true, undefined, true, { enabled: true, url: OWNER_URL, key: OWNER_KEY, mode: 'production' }]);
+  assert.match(prodOnBranch.warning, /Deleting SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY from the Preview environment silences this/);
   for (const mode of ['dev', 'ci']) assert.deepEqual(body(buildPublicConfig({ CF_PAGES_BRANCH: 'claude/launch-rc', HM_AUTH_MODE: mode }).source), { enabled: false }, mode);
   // no staging project (simulated): a branch build without values is off, as before
   const { build } = await withStagingRef('', 'build-default');
   assert.deepEqual(build.stagingDefault('staging', 'production'), { url: '', key: '' });
   const off = build.buildPublicConfig({ CF_PAGES_BRANCH: 'claude/launch-rc' });
   assert.deepEqual([off.ok, off.enabled, off.committed, body(off.source)], [true, false, undefined, { enabled: false }]);
+  // and production's values on a branch, with no staging project to use instead: off, never production's
+  const offProd = build.buildPublicConfig({ SUPABASE_URL: PROJECT_URL, SUPABASE_PUBLISHABLE_KEY: KEY, CF_PAGES_BRANCH: 'claude/launch-rc' });
+  assert.deepEqual([offProd.ok, offProd.enabled, offProd.replaced, body(offProd.source)], [true, false, undefined, { enabled: false }]);
+  assert.match(offProd.warning, /Not published: this build has no sign-in/);
+  assert.match(offProd.summary, /sign-in off \(production values refused on a branch build\)/);
   // another staging project (simulated): the default follows the two constants
   const { build: other } = await withStagingRef(FAKE_REF, 'build-default-other', { key: STAGING_KEY });
   assert.deepEqual(body(other.buildPublicConfig({ CF_PAGES_BRANCH: 'x' }).source), { enabled: true, url: FAKE_URL, key: STAGING_KEY, mode: 'production' });
 });
 
-test('build-site.sh: a branch build given production\'s values builds with sign-in off; one given no values builds with the staging project; the site check agrees', () => {
+test('build-site.sh: a branch build given production\'s values, or none, builds with the staging project, never production\'s; the site check agrees', () => {
   const build = (tag, extra) => {
     const out = join(tmp, tag);
     const env = { PATH: process.env.PATH, HOME: process.env.HOME || '/tmp', CF_PAGES_BRANCH: 'claude/launch-rc', ...extra };
@@ -433,10 +446,11 @@ test('build-site.sh: a branch build given production\'s values builds with sign-
     return res;
   };
   const r = build('site-branch', { SUPABASE_URL: PROJECT_URL, SUPABASE_PUBLISHABLE_KEY: KEY });
-  assert.match(r.log, /auth config: sign-in off \(production values refused on a branch build\)/);
-  assert.match(r.log, /check: .*sign-in off/);
-  assert.deepEqual(r.config, { enabled: false });
-  assert.ok(!r.headers.includes('igbxbfuaoybfzsroxuln'));
+  assert.match(r.log, /auth config: sign-in on: https:\/\/oghzabvkrxsejkkjdsuc\.supabase\.co \(the staging project hushmallow-staging, from src\/auth\/config\.js: production's values in the build environment were refused\)/);
+  assert.match(r.log, /check: .*sign-in on \(production, https:\/\/oghzabvkrxsejkkjdsuc\.supabase\.co\)/);
+  assert.deepEqual(r.config, { enabled: true, url: OWNER_URL, key: OWNER_KEY, mode: 'production' });
+  assert.ok(r.headers.includes(`connect-src 'self' ${OWNER_URL}`) && !r.headers.includes('igbxbfuaoybfzsroxuln'));
+  assert.ok(!r.log.includes('NSv1Liou2yjKjauX09U5qQ'), 'the build log never prints a key');
   // the published src/auth/config.js imports src/app/config.js (isPreviewHost): both are shipped
   assert.ok(r.shipped);
   // no sign-in values at all (the Preview environment without them): the committed staging project, which the check accepts

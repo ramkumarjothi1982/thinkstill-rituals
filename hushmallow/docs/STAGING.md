@@ -241,30 +241,27 @@ The owner sent the Project URL and the publishable key, and they are committed: 
 `server/another-angle/deploy/STAGING`). Never send the secret key (`sb_secret_…`), the service_role key or the
 database password: nothing needs them.
 
-### A5. Cloudflare Pages: the Preview variables (3 min)
+### A5. Cloudflare Pages: the Preview variables (nothing required; 1 min to tidy)
 
-Today **Preview** still holds production's values (the "hushmallow pages env" workflow set them on 13 Oct). A
-branch build refuses them: the preview builds **without sign-in** and its log says
-`auth config: WARNING: SUPABASE_URL is the production project hushmallow1 …`. Nothing reaches production's
-accounts, but the preview cannot sign in until this step is done.
+**Preview** holds production's values (the "hushmallow pages env" workflow sets both environments). Since
+17 Oct a branch build never publishes them: it publishes the staging project committed in
+`src/auth/config.js` instead, and its log says
+`auth config: WARNING: SUPABASE_URL is the production project hushmallow1 … this build uses the staging
+project in src/auth/config.js instead` and then
+`auth config: sign-in on: https://oghzabvkrxsejkkjdsuc.supabase.co (the staging project hushmallow-staging,
+from src/auth/config.js: production's values in the build environment were refused)`. (Before, such a build
+had no sign-in at all.) Nothing reaches production's accounts either way.
+
+Optional tidy-up, to silence the warning:
 
 1. **dash.cloudflare.com** → **Workers & Pages** → **hushmallow** → **Settings** → **Environment variables**
    (newer dashboards: **Variables and Secrets**).
-2. Choose **Preview**. **Delete** both `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` there (the ⋯ or the
-   bin next to each). Save. A branch build with neither then publishes the staging project committed in
-   `src/auth/config.js`. (Setting both, as **Text**, to `https://oghzabvkrxsejkkjdsuc.supabase.co` and
+2. Choose **Preview**. **Delete** both `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` there. (Setting both,
+   as **Text**, to `https://oghzabvkrxsejkkjdsuc.supabase.co` and
    `sb_publishable_Sn4YKE3TRTzMkWVN9i45_A_MYYxxirc` works too; never only one of them.)
 3. **Production** keeps production's values. Do not change them:
    * `SUPABASE_URL` = `https://igbxbfuaoybfzsroxuln.supabase.co`
    * `SUPABASE_PUBLISHABLE_KEY` = `sb_publishable_NSv1Liou2yjKjauX09U5qQ_CxwzDuiw`
-4. **Deployments** → the latest deployment of `claude/launch-rc` → **⋯** → **Retry deployment** (new
-   values only reach a new build). Its build log shows
-   `auth config: sign-in on: https://oghzabvkrxsejkkjdsuc.supabase.co (the staging project hushmallow-staging…`.
-
-Good to know:
-
-* Do not run the "hushmallow pages env" workflow (`tools/infra/PAGES_ENV`) again: it writes production's
-  values into Preview. If it ever runs, previews build without sign-in until you delete them again.
 
 ### A6. Anthropic: a separate staging key with its own low limit (5 min)
 
@@ -792,7 +789,7 @@ sandbox driver's (above). Use three hushmallow-staging test accounts: **E2E-A** 
   so another preview needs its origin added there (and as `APP_ORIGIN`, if Checkout should return to it),
   and in the staging project's Site URL and Redirect URLs (A3) if its email links should open it. The
   staging project has **one** Site URL, so its emails open one preview: `claude-launch-rc`.
-* Until Part A is done: no staging project exists, so the preview has no sign-in and no billing (Another
+* Until Part A is done the preview's sign-in has no project behind it ready to use, and there is no billing (Another
   Angle still works there with a tester code), and the staging Worker still holds copies of production's
   model key and tester codes. A5 to A7 are what end that.
 * The "hushmallow pages env" workflow (`tools/infra/PAGES_ENV`) still writes production's values into

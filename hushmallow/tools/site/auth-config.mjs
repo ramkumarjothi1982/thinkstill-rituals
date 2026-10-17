@@ -26,8 +26,11 @@
 // this machine), only production's hushmallow1, exactly as before. A branch
 // build that is given production's values never publishes them: it writes
 // { enabled: false } and says why (a warning in the log), so a preview never
-// signs in to production, whatever its variables say. A branch build given
-// neither value publishes the staging project committed in src/auth/config.js
+// signs in to production, whatever its variables say: it publishes the staging
+// project committed in src/auth/config.js instead (and says so in the log), as
+// hushmallow-pages-env.yml gives the Preview environment production's values on
+// purpose (for main's sake); with no staging project it writes { enabled: false }
+// instead. A branch build given neither value publishes the staging project committed in src/auth/config.js
 // (STAGING_PROJECT_URL + STAGING_PUBLISHABLE_KEY, both public), so the Preview
 // environment needs no sign-in variables at all (stagingDefault). A production
 // build given neither value still publishes { enabled: false }: it never falls
@@ -97,22 +100,32 @@ export function buildPublicConfig(env, { stamp = '', version } = {}) {
   const committed = url === '' && key === '' && !!stagingDefault(stage, mode).url;
   if (committed) ({ url, key } = stagingDefault(stage, mode));
   let v = validatePublicConfig({ url, key, mode, stage });
-  // a branch build given production's values (the Preview variables not changed yet): never published, sign-in off.
-  // Only values production itself would accept: a secret, a malformed value or a Supabase secret in the
-  // environment still fails the build, as before.
-  let warning = '';
+  // a branch build given production's values (hushmallow-pages-env.yml sets the Preview environment to them too):
+  // never published. The committed staging project instead, checked like any other values; with no staging
+  // project, sign-in off. Only values production itself would accept: a secret, a malformed value or a Supabase
+  // secret in the environment still fails the build, as before.
+  let warning = '', replaced = false;
   const asProduction = !v.ok && stage === 'staging' ? validatePublicConfig({ url, key, mode }) : null;
   if (asProduction?.ok && asProduction.enabled && !asProduction.local) {
-    warning = `SUPABASE_URL is the production project ${PROJECT_NAME}, and this is a build of branch "${String(env.CF_PAGES_BRANCH).trim().slice(0, 80)}" (a branch preview): a preview may only use the staging project ${STAGING_PROJECT_NAME}. Not published: this build has no sign-in. Delete SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY from the Preview environment (the build then uses the staging project in src/auth/config.js), or give it the staging project's values (docs/STAGING.md A5).`;
-    v = { ok: true, enabled: false };
+    const why = `SUPABASE_URL is the production project ${PROJECT_NAME}, and this is a build of branch "${String(env.CF_PAGES_BRANCH).trim().slice(0, 80)}" (a branch preview): a preview may only use the staging project ${STAGING_PROJECT_NAME}.`;
+    const fallback = stagingDefault(stage, mode);
+    if (fallback.url) {
+      replaced = true;
+      ({ url, key } = fallback);
+      v = validatePublicConfig({ url, key, mode, stage });
+      warning = `${why} Production's values are not published: this build uses the staging project in src/auth/config.js instead. (Deleting SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY from the Preview environment silences this, docs/STAGING.md A5.)`;
+    } else {
+      warning = `${why} Not published: this build has no sign-in. Give the Preview environment the staging project's values (docs/STAGING.md A5).`;
+      v = { ok: true, enabled: false };
+    }
   }
   if (!v.ok) errors.push(v.error);
   if (errors.length) return { ok: false, errors };
   const summary = v.enabled
-    ? `sign-in on: ${v.url} (${stage === 'staging' && !v.local ? `the staging project ${STAGING_PROJECT_NAME}${v.mode === 'production' ? '' : `, ${v.mode}`}${committed ? ', from src/auth/config.js: the build environment sets no SUPABASE_URL / SUPABASE_PUBLISHABLE_KEY' : ''}` : v.mode}), key ${keyLabel(v.key)} [${classifyKey(v.key)}]`
+    ? `sign-in on: ${v.url} (${stage === 'staging' && !v.local ? `the staging project ${STAGING_PROJECT_NAME}${v.mode === 'production' ? '' : `, ${v.mode}`}${committed ? ', from src/auth/config.js: the build environment sets no SUPABASE_URL / SUPABASE_PUBLISHABLE_KEY' : ''}${replaced ? ', from src/auth/config.js: production\'s values in the build environment were refused' : ''}` : v.mode}), key ${keyLabel(v.key)} [${classifyKey(v.key)}]`
     : warning ? 'sign-in off (production values refused on a branch build): publishing { enabled: false }'
       : 'sign-in off (no SUPABASE_URL / SUPABASE_PUBLISHABLE_KEY): publishing { enabled: false }';
-  return { ok: true, source: publicConfigModule(v, { stamp }), summary, enabled: !!v.enabled, stage, ...(committed ? { committed: true } : {}), ...(warning ? { warning } : {}), headers: headersFile(v.enabled ? new URL(v.url).origin : null, { production: !v.enabled || !v.local, version }) };
+  return { ok: true, source: publicConfigModule(v, { stamp }), summary, enabled: !!v.enabled, stage, ...(committed ? { committed: true } : {}), ...(replaced ? { replaced: true } : {}), ...(warning ? { warning } : {}), headers: headersFile(v.enabled ? new URL(v.url).origin : null, { production: !v.enabled || !v.local, version }) };
 }
 
 /** The Another Angle origin(s) the app may call: ANGLE_ENDPOINT when it is https on an allowed host (as src/beyond/endpoint.js decides). */
