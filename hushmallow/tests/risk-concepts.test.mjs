@@ -11,6 +11,7 @@ import { readFileSync, writeFileSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL, fileURLToPath } from 'node:url';
+import { cpuPerCall, within, readings } from './helpers/cost.mjs'; // (before any hushmallow module: its calibration runs first)
 import { normalise, riskScreen, CARE_AT, CHECK_AT } from '../src/beyond/risk-screen.js';
 import { checkText } from '../src/engine/safety.js';
 import { readSafety, loadGrief } from '../src/hushfold/input-overlay.js';
@@ -20,7 +21,6 @@ import { LOOKALIKES, LOOKALIKE_GRIEF } from './probes/risk-lookalikes.mjs';
 import { FRESH, FRESH_CONTEXT } from './probes/risk-fresh.mjs';
 import { EVERYDAY, GRIEF } from './probes/risk-sets.mjs';
 import * as H from './probes/risk-holdout.mjs';
-import { cpuPerCall, within, readings } from './helpers/cost.mjs';
 
 await loadGrief();
 const lv = (t, o) => riskScreen(t, o).level;
@@ -235,6 +235,6 @@ test('cheap: p95 under 10 ms for 600 characters read with the visit\'s history, 
     return warm[Math.floor(0.95 * warm.length)];
   };
   const r = within(10, pass);
-  assert.ok(r.ok, `p95 ${readings(r.seen, 2)} ms of CPU`);
+  assert.ok(r.ok, `p95 ${readings(r.seen, 2)} ms of CPU; ${r.note}`);
   assert.equal(CARE_AT, 6); assert.equal(CHECK_AT, 3);
 });

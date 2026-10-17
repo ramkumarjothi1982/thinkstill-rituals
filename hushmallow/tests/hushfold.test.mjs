@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
+import { cpuPerCall, within, readings } from './helpers/cost.mjs'; // (before any hushmallow module: its calibration runs first)
 import { checkText, legacySafety, safetyCopy } from '../src/engine/safety.js';
 import * as LEX from '../src/data/safety-lexicon.js';
 import * as F from '../src/ultra/frameworks.js';
@@ -23,7 +24,6 @@ import { countWord } from '../src/v3/tray.js';
 import { createPrefs } from '../src/app/prefs.js';
 import { getEmotion } from '../src/data/emotions.js';
 import { MALLOW_IDS } from '../src/mallows/registry.js';
-import { cpuPerCall, within, readings } from './helpers/cost.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const read = (p) => readFileSync(`${root}${p}`, 'utf8');
@@ -196,7 +196,7 @@ test('safety verification (12 Oct): the lexicon still compiles without lookbehin
   assert.equal(new Set(unseen.map((t) => t.slice(0, 2000).toLowerCase())).size, 15, 'fifteen texts, no two alike');
   let next = 0;
   const r = within(150, () => cpuPerCall(() => checkText(unseen[next++]), 5));
-  assert.ok(r.ok, `checkText on 2,000 characters stays fast: ${readings(r.seen)} ms of CPU per read (5 unseen texts a reading)`);
+  assert.ok(r.ok, `checkText on 2,000 characters stays fast: ${readings(r.seen)} ms of CPU per read (5 unseen texts a reading); ${r.note}`);
 });
 
 test('hushfold safety verification (12 Oct): a crisis or care level seen earlier in the visit holds when other words are sent', () => {
