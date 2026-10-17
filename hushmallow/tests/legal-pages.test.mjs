@@ -271,7 +271,22 @@ test('the Privacy Policy names every host and says what Delete account leaves be
   assert.ok(read('src/app/scenes/account.js').includes('\'the sign-in service’s own security log (such as when you signed in): we can’t delete it from here\''), 'the app says it');
   assert.match(sec('account'), /keeps its own security records, such as when you signed in and from which network address, to protect your account\. Deleting your account doesn’t delete these records: they are kept for/);
   assert.match(sec('retention'), /The sign-in service’s own security records stay after you delete your account, for/);
-  assert.match(sec('rights'), /Delete account\. This deletes your sign-in, your profile, your sync choices and everything kept with your account from our server, and that account’s things on this device\. It doesn’t delete the sign-in service’s own security records \(section 2\)/);
+  assert.match(sec('rights'), /Delete account\. This deletes your sign-in, your profile, your sync choices and everything else kept with your account in our account service, and that account’s things on this device\. It doesn’t delete the sign-in service’s own security records \(section 2\) or our server’s record of a web subscription \(section 4\)/);
+  // (review, 17 Oct 2026) so does our server's subscription record (the Billing Durable Object's "user:<uid>": Stripe's
+  // ids, plan, status), which the Worker is never told to delete: the app's delete screen, PAYMENTS.md's Known limits and
+  // the billing routes (none deletes) say so, and so do §4, §10 and §11; how long it stays is the owner's, not "everything"
+  assert.ok(read('src/app/scenes/account.js').includes('a web subscription, if you have one, and our server’s record of it (which plan and its status, never your card)'), 'the app says it');
+  assert.match(read('docs/PAYMENTS.md'), /The account's `Billing` record also stays, because the Worker is not told about deletions\./);
+  const paths = readFileSync(resolve(root, 'server/another-angle/src/billing/routes.js'), 'utf8').match(/export const PATHS = Object\.freeze\(\{([^}]*)\}\);/)[1];
+  assert.doesNotMatch(paths, /delete|account|erase|forget/i, 'no billing route deletes a record');
+  assert.doesNotMatch(sec('rights'), /everything kept with your account from our server/);
+  assert.match(sec('payments'), /Deleting your account doesn’t delete this record: our server isn’t told when an account is deleted, so it stays, with Stripe’s references and never your email or name, for/);
+  assert.match(sec('retention'), /Payments: our server’s subscription record \(section 4\) stays after you delete your account, for/);
+  assert.doesNotMatch(textOf(html), /five years/, 'no retention period that neither the code nor the owner gives');
+  if (isDraft(read('src/ui/legal.css'))) {
+    for (const id of ['payments', 'retention']) assert.ok([...sectionOf(html, id).matchAll(TODO)].some((m) => m[1] === 'billing-retention'), `§${id}: how long, the owner's`);
+    assert.ok([...sectionOf(html, 'retention').matchAll(TODO)].some((m) => m[1] === 'payment-records'), 'payment and tax records: the owner\'s, with an adviser');
+  }
   // §3 is Another Angle's server only: the sign-in service's records are §2's
   assert.doesNotMatch(sec('another-angle'), /Supabase|sign-in/);
   // the server's technical record, as server/another-angle/src/log.js keeps it: the area of life, a length bucket, a coarse safety level
