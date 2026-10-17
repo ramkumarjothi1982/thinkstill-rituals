@@ -404,13 +404,22 @@ function teardownPick(session, sub, { uid = null, sinceSec } = {}) {
   if (!session || session.object !== 'checkout.session' || session.livemode !== false) return { cancel: null, why: 'not a test-mode Checkout Session' };
   if (uid && session.client_reference_id !== uid && session.metadata?.user_id !== uid) return { cancel: null, why: 'the session is not the test account’s' };
   const subId = idOf(session.subscription);
-  if (!subId) return { cancel: null, why: 'no subscription (not paid)', done: true };
+  // no subscription yet: done only once Stripe says the session can no longer be paid (expired); an open one may be
+  // paying right now (its subscription appears when it completes), so it is read again, then left for a check by hand
+  if (!subId && session.status === 'expired') return { cancel: null, why: 'expired, never paid', done: true };
+  if (!subId && session.status === 'open') return { cancel: null, why: 'still open (not paid yet)', pending: true };
+  if (!subId) return { cancel: null, why: `no subscription, status ${String(session.status || 'unknown').slice(0, 20)}` };
   if (!sub || sub.object !== 'subscription' || sub.id !== subId || !/^sub_[A-Za-z0-9]{4,250}$/.test(sub.id) || sub.livemode !== false) return { cancel: null, why: 'its subscription could not be read in test mode' };
   if (idOf(sub.customer) !== idOf(session.customer)) return { cancel: null, why: 'its subscription is another customer’s' };
   if (!(Number(sub.created) >= sinceSec)) return { cancel: null, why: 'its subscription was made before this run started' };
   if (TERMINAL.includes(sub.status)) return { cancel: null, why: `already ${sub.status}`, done: true };
   return { cancel: sub.id };
 }
+/** Two signals this far apart (ms) are two Ctrl-Cs; closer, one Ctrl-C delivered twice (the terminal and `timeout`). */
+const SIGNAL_AGAIN_MS = 1000;
+const isSignalAgain = (firstMs, nowMs) => Number.isFinite(firstMs) && nowMs - firstMs >= SIGNAL_AGAIN_MS;
+/** How long the teardown reads an open Checkout Session again before leaving it for a check by hand. */
+const TEARDOWN_OPEN_WAIT_MS = 20000;
 /** A path with its object ids taken out, for a message. */
 const bare = (p) => String(p).split('?')[0].replace(/\b[a-z]{2,8}_[A-Za-z0-9_]{6,}/g, '…');
 
@@ -587,14 +596,17 @@ async function main(argv = process.argv.slice(2), env = process.env, { write = (
 
   // Ctrl-C and the outer `timeout`'s SIGTERM are this driver's (Playwright's own handlers are off: they would close the
   // browser and exit before the teardown): the step running stops at once, the rest are skipped, the teardown runs
-  // once, then the driver exits 1 (3 after a live object). A second signal, or the teardown taking over 150 s, quits at
-  // once with the Checkout Sessions to cancel by hand.
+  // once, then the driver exits 1 (3 after a live object). A second signal at least SIGNAL_AGAIN_MS after the first, or
+  // the teardown taking over 150 s, quits at once with the Checkout Sessions to cancel by hand. (One Ctrl-C under
+  // `timeout 1200 node …` often arrives twice within a few ms: the terminal's SIGINT to the group, and timeout passing it
+  // on. That second copy is not a second Ctrl-C.)
   const quit = (why) => {
     log.info(`${why}: quitting at once${X.teardownDone ? '' : `; cancel by hand ${handList(X)}`}`);
     process.exit(X.live ? 3 : 1);
   };
   const onSignal = (sig) => {
-    if (X.interrupted) { quit(`${sig} again`); return; }
+    if (X.interrupted) { if (isSignalAgain(X.interruptedAt, Date.now())) quit(`${sig} again`); return; }
+    X.interruptedAt = Date.now();
     X.interrupted = sig === 'SIGINT' ? 'interrupted (Ctrl-C)' : `terminated (${sig}, the outer timeout)`;
     log.info(`${X.interrupted}: the step running stops now, the rest are skipped, then the teardown runs${sig === 'SIGINT' ? ' (Ctrl-C again quits at once)' : ''}`);
     X.interruptStep?.(X.interrupted);
@@ -1674,7 +1686,13 @@ async function tearDown(X) {
   let cancelled = 0, failed = 0;
   for (const id of ids) {
     const who = X.sessions.find((x) => x.id === id)?.who;
-    const s = await X.stripe.get(`/v1/checkout/sessions/${id}`);
+    let s = await X.stripe.get(`/v1/checkout/sessions/${id}`);
+    // still open: a payment may be completing right now; read it again for up to TEARDOWN_OPEN_WAIT_MS (tests: shorter)
+    const every = X.openEveryMs ?? 4000, most = X.openWaitMs ?? TEARDOWN_OPEN_WAIT_MS;
+    for (let waited = 0; s.ok && !idOf(s.data?.subscription) && s.data?.status === 'open' && waited < most; waited += every) {
+      await new Promise((r) => setTimeout(r, every));
+      s = await X.stripe.get(`/v1/checkout/sessions/${id}`);
+    }
     if (!s.ok) { failed++; log.fail('teardown', `Checkout Session ${id} could not be read (${s.status} ${s.code}): cancel its subscription by hand`); continue; }
     const subId = idOf(s.data.subscription);
     let sub = null;
@@ -1700,7 +1718,7 @@ const STEP_FNS = { R1: stepR1, R2: stepR2, R3: stepR3, R4: stepR4, R5: stepR5, R
 module.exports = {
   STEPS, A_STEPS, SECRET_ENV, PRODUCTION_HOSTS, CHECKOUT_HOSTS, CARDS, EVERYDAY, WORLD,
   loadRepo, pickCrisisSentence, parseArgs, preflight, proxyFromEnv, createLog, judgeHealth, parsePublicConfig, judgeAuthConfig,
-  checkoutVerdict, portalVerdict, hasLive, teardownPick, judgeS12, gate, runStep, bindStepState, teardown, handList, checkpoint, sleep, until, newPage, newContext,
+  checkoutVerdict, portalVerdict, hasLive, teardownPick, isSignalAgain, SIGNAL_AGAIN_MS, TEARDOWN_OPEN_WAIT_MS, judgeS12, gate, runStep, bindStepState, teardown, handList, checkpoint, sleep, until, newPage, newContext,
   LiveStop, Cancelled, Fail, STEP, BUDGET, main,
 };
 

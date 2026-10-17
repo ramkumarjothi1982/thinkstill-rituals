@@ -224,8 +224,12 @@ test('the teardown\'s choice: only the subscription of a Checkout Session this r
   assert.deepEqual(pick(sess(), sub()), { cancel: 'sub_Run1aaaa' });
   assert.deepEqual(pick(sess(), sub({ status: 'past_due', cancel_at_period_end: true })), { cancel: 'sub_Run1aaaa' }, 'cancelled at the period end in R7: still running, cancelled at once');
   assert.equal(pick(sess(), sub({ created: 999 })).cancel, null, 'made before the run started: no margin');
-  assert.equal(pick(sess({ subscription: null }), null).cancel, null, 'declined or abandoned: nothing to cancel');
-  assert.equal(pick(sess({ subscription: null }), null).done, true);
+  assert.equal(pick(sess({ subscription: null, status: 'expired' }), null).cancel, null, 'declined or abandoned, then expired: nothing to cancel');
+  assert.equal(pick(sess({ subscription: null, status: 'expired' }), null).done, true);
+  // still open: a payment may be completing (the subscription appears only when the session completes): never "done"
+  assert.deepEqual(pick(sess({ subscription: null, status: 'open' }), null), { cancel: null, why: 'still open (not paid yet)', pending: true });
+  assert.equal(pick(sess({ subscription: null }), null).done, undefined, 'no status said: never assumed done');
+  assert.equal(pick(sess({ subscription: null, status: 'complete' }), null).done, undefined, 'complete with no subscription: checked by hand');
   assert.equal(pick(sess(), sub({ status: 'canceled' })).done, true);
   assert.equal(pick(sess(), sub({ status: 'incomplete_expired' })).cancel, null);
   assert.equal(pick(sess({ client_reference_id: 'uid-b', metadata: { user_id: 'uid-b' } }), sub()).cancel, null, 'a session of another account');
@@ -244,7 +248,7 @@ test('the teardown asks Stripe only about this run\'s Checkout Sessions, never s
   const startMs = 1_800_000_000_000, t = startMs / 1000;
   const S = {
     cs_test_A1aaaaaaaaaa: { object: 'checkout.session', id: 'cs_test_A1aaaaaaaaaa', livemode: false, customer: 'cus_Aaaa1', client_reference_id: 'uid-a', subscription: 'sub_RunA1aaa' },
-    cs_test_C1aaaaaaaaaa: { object: 'checkout.session', id: 'cs_test_C1aaaaaaaaaa', livemode: false, customer: 'cus_Cccc1', client_reference_id: 'uid-c', subscription: null },
+    cs_test_C1aaaaaaaaaa: { object: 'checkout.session', id: 'cs_test_C1aaaaaaaaaa', livemode: false, customer: 'cus_Cccc1', client_reference_id: 'uid-c', subscription: null, status: 'expired' },
     cs_test_C2aaaaaaaaaa: { object: 'checkout.session', id: 'cs_test_C2aaaaaaaaaa', livemode: false, customer: 'cus_Cccc1', client_reference_id: 'uid-c', subscription: { id: 'sub_RunC1aaa' } },
     cs_test_A0aaaaaaaaaa: { object: 'checkout.session', id: 'cs_test_A0aaaaaaaaaa', livemode: false, customer: 'cus_Aaaa1', client_reference_id: 'uid-a', subscription: 'sub_OldA1aaa' },
   };
@@ -287,6 +291,36 @@ test('the teardown asks Stripe only about this run\'s Checkout Sessions, never s
   assert.match(all, /^FAIL  teardown  sub_OldA1aaa left alone: its subscription was made before this run started/m);
   assert.match(all, /2 subscription\(s\) of this run's 4 Checkout Session\(s\) cancelled; nothing else was looked for or touched/);
   assert.equal(D.handList(X), 'the subscriptions of this run\'s Checkout Sessions (the sandbox → Payments → Checkout Sessions): cs_test_A0aaaaaaaaaa', 'what is left to do by hand');
+  // a session still open when the teardown reads it: read again; one paid meanwhile is cancelled, one still open is
+  // never called done: it stays on the list to check by hand
+  {
+    let reads = 0;
+    const paying = { object: 'checkout.session', id: 'cs_test_P1aaaaaaaaaa', livemode: false, customer: 'cus_Aaaa1', client_reference_id: 'uid-a', subscription: null, status: 'open' };
+    const open = { ...paying, id: 'cs_test_O1aaaaaaaaaa' };
+    const st = {
+      get: async (p) => {
+        const id = p.split('/').pop();
+        if (id === 'cs_test_P1aaaaaaaaaa') { reads++; return { ok: true, status: 200, code: '', data: reads >= 3 ? { ...paying, status: 'complete', subscription: 'sub_RunP1aaa' } : paying }; }
+        if (id === 'cs_test_O1aaaaaaaaaa') return { ok: true, status: 200, code: '', data: open };
+        if (id === 'sub_RunP1aaa') return { ok: true, status: 200, code: '', data: { object: 'subscription', id: 'sub_RunP1aaa', livemode: false, customer: 'cus_Aaaa1', created: t + 400, status: 'active' } };
+        return { ok: false, status: 404, data: null, code: 'resource_missing' };
+      },
+      del: async (p) => ({ ok: true, status: 200, code: '', data: { id: p.split('/').pop(), status: 'canceled' } }),
+    };
+    const ol = [];
+    const O = { log: D.createLog({ write: (l) => ol.push(l) }), local: false, stripe: st, startMs, uids: { A: 'uid-a' }, openEveryMs: 5, openWaitMs: 60,
+      sessions: [{ id: 'cs_test_P1aaaaaaaaaa', who: 'A' }, { id: 'cs_test_O1aaaaaaaaaa', who: 'A' }] };
+    assert.equal(await D.teardown(O), 1, 'the one still open counts as not seen to');
+    assert.match(ol.join('\n'), /cancelled sub_RunP1aaa \(of cs_test_P1aaaaaaaaaa\)/);
+    assert.match(ol.join('\n'), /^FAIL  teardown  cs_test_O1aaaaaaaaaa left alone: still open \(not paid yet\) \(check it by hand\)/m);
+    assert.equal(D.handList(O), 'the subscriptions of this run\'s Checkout Sessions (the sandbox → Payments → Checkout Sessions): cs_test_O1aaaaaaaaaa');
+  }
+  // one Ctrl-C delivered twice (the terminal and `timeout`) is one; a second Ctrl-C a second later is a second
+  assert.equal(D.SIGNAL_AGAIN_MS, 1000);
+  assert.equal(D.isSignalAgain(1000, 1004), false);
+  assert.equal(D.isSignalAgain(1000, 1999), false);
+  assert.equal(D.isSignalAgain(1000, 2000), true);
+  assert.equal(D.isSignalAgain(undefined, 5000), false);
   // a live object anywhere: everything stops
   const L = { ...X, teardownP: null, sessions: [{ id: 'cs_test_A1aaaaaaaaaa', who: 'A' }], stripe: { get: async () => { throw new D.LiveStop('livemode true'); }, del: async () => assert.fail('never') } };
   await assert.rejects(D.teardown(L), D.LiveStop);

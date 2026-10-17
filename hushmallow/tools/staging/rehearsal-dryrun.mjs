@@ -72,10 +72,14 @@ try {
   const B = { email: `dry-b-${tag}@example.com`, password: `${randomBytes(9).toString('base64url')}-b2` };
   const denv = { PATH: process.env.PATH, HOME: process.env.HOME || dir, REHEARSAL_A_EMAIL: A.email, REHEARSAL_A_PASSWORD: A.password, REHEARSAL_SIGNUP_EMAIL: SIGNUP, STAGING_E2E_EMAIL: B.email, STAGING_E2E_PASSWORD: B.password };
   const secrets = [A.email, A.password, SIGNUP, uid, encodeURIComponent(A.email), B.email, B.password];
-  const driver = (steps, onLine = null) => new Promise((r) => {
+  const driver = (steps, onLine = null, { underTimeout = false } = {}) => new Promise((r) => {
     const args = [join(here, 'rehearsal.cjs'), '--base', `http://127.0.0.1:${sitePort}`, '--allow-local-for-testing', '--steps', steps, '--out', out];
-    // its own process group, as a terminal starts it: a Ctrl-C there goes to the whole group (the browser has its own)
-    const c = spawn(process.execPath, args, { env: denv, stdio: ['ignore', 'pipe', 'pipe'], detached: true });
+    // its own process group, as a terminal starts it: a Ctrl-C there goes to the whole group (the browser has its own).
+    // underTimeout: as the docs run it, `timeout 1200 node …`, where one Ctrl-C reaches node twice (the group's, and
+    // timeout passing its own on)
+    const c = underTimeout
+      ? spawn('timeout', ['1200', process.execPath, ...args], { env: denv, stdio: ['ignore', 'pipe', 'pipe'], detached: true })
+      : spawn(process.execPath, args, { env: denv, stdio: ['ignore', 'pipe', 'pipe'], detached: true });
     let printed = '';
     const tee = (d) => { const s = d.toString(); printed += s; process.stdout.write(s); onLine?.(c, printed); };
     c.stdout.on('data', tee); c.stderr.on('data', tee);
@@ -101,6 +105,18 @@ try {
 
   // stopped half way: a Ctrl-C to the driver's process group, then the outer timeout's SIGTERM, in the middle of R1
   if (SIGNALS) {
+    // one Ctrl-C under `timeout 1200 node …` (the documented command): counted once, so the teardown runs
+    for (let i = 0; i < 3; i++) {
+      let sentAt = 0;
+      const r = await driver('R1,R2', (c, text) => {
+        if (sentAt || !/^PASS  R0 /m.test(text)) return;
+        sentAt = Date.now();
+        setTimeout(() => { try { process.kill(-c.pid, 'SIGINT'); } catch { /* gone */ } }, 1500);
+      }, { underTimeout: true });
+      const t = r.printed;
+      check(sentAt && /^INFO  teardown: local test mode/m.test(t) && !/again: quitting at once/.test(t) && t.includes('interrupted (Ctrl-C)'),
+        `one Ctrl-C under timeout (run ${i + 1} of 3): counted once, the teardown ran`, `exit ${r.exit}${r.sig ? ` by ${r.sig}` : ''}`);
+    }
     for (const sig of ['SIGINT', 'SIGTERM']) {
       let sentAt = 0, browsers = [];
       const r = await driver('R1,R2', (c, text) => {
