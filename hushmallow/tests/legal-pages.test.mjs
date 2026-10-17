@@ -313,11 +313,14 @@ test('both pages: not a crisis service, with Australian and international lines;
   const terms = textOf(read(PAGES[1]));
   for (const fact of [
     /emotional companion platform/, /not therapy, counselling or medical advice/, /doesn’t diagnose any condition/, /monthly or yearly/,
-    /billed by Stripe/, /renews automatically/, /cancel at any time in the app with Manage subscription/, /until the end of the current billing period/,
+    /billed by Stripe/, /Prices are in US dollars \(USD\)/, /renews automatically/, /cancel at any time in the app with Manage subscription/, /until the end of the current billing period/,
     /Australian Consumer Law/, /guarantees that cannot be excluded under the Australian Consumer Law/, /before a new price applies to you/,
     /They may be wrong, incomplete or not right for you/, /You decide what to make of them/, /To the extent the law allows/,
     /governed by the laws of/, /Changes to these terms/, /18 or older/, /Acceptable use/,
   ]) assert.match(terms, fact);
+  // the owner's USD decision (2026-10-17): no Australian-dollar price or currency is left; the tax wording stays the owner's placeholder
+  assert.doesNotMatch(terms, /A\$\d|\bAUD\b|Australian dollars?/);
+  assert.match(read(PAGES[1]), /<span class="legal-todo" data-todo="tax">\[Owner: [^\]]*GST[^\]]*\]<\/span>/);
 });
 
 // ------------------------------------------------- the owner's confirmed facts, 17 Oct 2026 --
@@ -369,7 +372,12 @@ test('the Terms: "Subscriptions, renewal and cancellation" says what the code do
   assert.match(html, /<li><a href="#subscriptions">Subscriptions, renewal and cancellation<\/a><\/li>/);
   const sub = textOf(sectionOf(html, 'subscriptions'));
   // the owner's prices (17 Oct 2026), in US dollars; never the provisional Australian dollars
-  assert.match(sub, /prices are in US dollars \(USD\): hushmallow Flow is US\$9\.99 a month or US\$99\.99 a year, and hushmallow Beyond is US\$19\.99 a month or US\$199\.99 a year\./);
+  assert.match(sub, /On the web, hushmallow Flow is US\$9\.99 a month or US\$99\.99 a year, and hushmallow Beyond is US\$19\.99 a month or US\$199\.99 a year\./);
+  // (review, 17 Oct 2026) the currency sentence and the tax placeholder's id are the USD workstream's own (its Billing line,
+  // word for word), so the two branches merge without a test of either going red; and the overview says the same
+  assert.ok(sub.includes('Prices are in US dollars (USD). The price and billing period are shown before you pay.'));
+  assert.match(textOf(html), /Subscriptions renew until you cancel\. Prices are in US dollars \(USD\)\./);
+  assert.doesNotMatch(html, /data-todo="taxes"/, 'one id for the tax placeholder: "tax"');
   assert.doesNotMatch(sub, /A\$|\bAUD\b|Australian dollars/);
   // renewal; cancelling at the period's end in Manage subscription (Settings → Plan: settings.js, Stripe's customer portal)
   assert.match(sub, /renews automatically at the end of each month or year[^.]*until you cancel/);
@@ -404,7 +412,7 @@ test('the Terms: "Subscriptions, renewal and cancellation" says what the code do
   // taxes: no tax wording until the owner has it (Stripe Tax is off at checkout until registrations are confirmed)
   const todos = (id) => [...sectionOf(html, id).matchAll(TODO)].map((m) => m[1]);
   if (draft) {
-    assert.ok(todos('subscriptions').includes('taxes'), 'the taxes placeholder');
+    assert.ok(todos('subscriptions').includes('tax'), 'the tax placeholder');
     assert.ok(todos('prices').includes('price-notice'), 'the notice period placeholder');
   }
   assert.doesNotMatch(textOf(sectionOf(html, 'subscriptions').replace(TODO, ' ')), /\b(?:GST|VAT|tax(?:es)?)\b/i, 'no tax claim outside the placeholder');
