@@ -63,7 +63,8 @@ concurrency:
 jobs:
   test:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    # the client suite takes 8-9 minutes on a runner (about 1,300 tests); 10 left no room for a busy one
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
