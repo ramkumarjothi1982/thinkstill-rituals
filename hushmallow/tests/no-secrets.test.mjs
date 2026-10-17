@@ -56,7 +56,8 @@ test('each pattern finds its secret, inside a line too; public keys and names in
   assert.deepEqual(Object.keys(FAKE), SECRET_PATTERNS.map((p) => p.kind), 'a fixture for every pattern');
   for (const [kind, values] of Object.entries(FAKE)) {
     for (const v of values) {
-      for (const line of [v, `STRIPE_SECRET_KEY=${v}`, `const k = '${v}';`, `"key":"${v}"`, `?k=%22${v}`]) {
+      // escapes and percent-encodings end in a letter: "\n", "\t", %3D, %3A, curl -u
+      for (const line of [v, `STRIPE_SECRET_KEY=${v}`, `const k = '${v}';`, `"key":"${v}"`, `?k=%22${v}`, `"A=1\\n${v}"`, `"a\\t${v}"`, `key%3D${v}`, `%3A${v}`, `curl -u${v}:`]) {
         assert.deepEqual(secretsInLine(line).map((s) => s.kind), [kind], `${kind}: ${line.slice(0, 24)}`);
       }
     }

@@ -23,8 +23,8 @@ import { fileURLToPath } from 'node:url';
 
 /** kind, and a pattern whose `head` group is the public prefix shown in a report. */
 export const SECRET_PATTERNS = [
-  // not after a letter, so mask_test_ or disk_live_ is never a key
-  { kind: 'a Stripe secret or restricted key', re: /(?<![A-Za-z])(?<head>[sr]k_(?:live|test)_)[A-Za-z0-9]{10,}/g },
+  // not after two letters, so mask_test_ or disk_live_ is never a key, while "\nsk_", %3Dsk_ or -usk_ is one
+  { kind: 'a Stripe secret or restricted key', re: /(?<![A-Za-z]{2})(?<head>[sr]k_(?:live|test)_)[A-Za-z0-9]{10,}/g },
   { kind: 'a Stripe webhook signing secret', re: /(?<head>whsec_)[A-Za-z0-9+/=]{16,}/g },
   { kind: 'a Supabase secret key', re: /(?<head>sb_secret_)[A-Za-z0-9_-]{8,}/g },
   { kind: 'a Supabase access token', re: /(?<head>sbp_)[a-f0-9]{40}/g },
