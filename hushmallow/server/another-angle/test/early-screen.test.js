@@ -9,6 +9,7 @@
 // validated text (and earlier angles' lines) before the quota is taken.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { makeApp, makeEnv, req, getToken, angleReq, anchor, ANCHORS, clock } from './helpers.js';
 import { checkSafety, screenInput } from '../src/safety/index.js';
 import { sessionSuperseded } from '../src/app.js';
@@ -89,4 +90,41 @@ test('support comes before the quota and the spend cap, and never uses a unit', 
   const t3 = await getToken(app, nokey);
   assert.equal((await (await app.fetch(angleReq(t3, { text: NORMALISED_CRISIS }), nokey)).json()).status, 'crisis');
   assert.equal(provider.calls.length, 2, 'only the two ordinary angles reached the model');
+});
+
+// The early check and the pipeline read the same words (review of 9ee68bfc, 17 Oct 2026): app.js screened the text and
+// all eight earlier-angle lines, then runAngle's steps 1b and 1c screened them all again. Now the request keeps one
+// reading per text (screenInput is pure: the same words always read the same) and hands it to runAngle (deps.screen),
+// so each text is screened once per request, and what every step decides is unchanged.
+test('one reading per text per request: app.js hands its screen to runAngle, which reads the text and each earlier line through it', async () => {
+  const { runAngle } = await import('../src/pipeline.js');
+  const { createMockProvider } = await import('../src/providers/mock.js');
+  const { SYSTEM_PROMPT } = await import('./helpers.js');
+  const deps = (provider, extra = {}) => ({ provider, systemPrompt: SYSTEM_PROMPT, maxTokens: 3000, attemptTimeoutMs: 15000, deadlineMs: 28000, ...extra });
+  const previous = [{ subtitle_line_1: 'Maybe the meeting was about timing.', subtitle_line_2: 'Not about your work at all.' }, { subtitle_line_1: 'A pause can be a plan.', subtitle_line_2: 'Ask what ready would look like.' }];
+  const input = (text) => ({ text, emotion: null, intention: null, previous });
+  // every text runAngle screens goes through the request's screen, in order, once
+  const seen = [];
+  const screen = (t) => { seen.push(t); return screenInput(t); };
+  const text = ANCHORS[0].text;
+  const withScreen = await runAngle(input(text), deps(createMockProvider({ script: [anchor(0)] }), { screen }));
+  assert.deepEqual(seen, [text, ...previous.flatMap((p) => [p.subtitle_line_1, p.subtitle_line_2])]);
+  const without = await runAngle(input(text), deps(createMockProvider({ script: [anchor(0)] })));
+  assert.deepEqual([withScreen.status, withScreen.meta.safety_level, withScreen.meta.screen_level], [without.status, without.meta.safety_level, without.meta.screen_level]);
+  // and for every kind of reading, the same answer as screenInput itself gives (support, a check, nothing)
+  for (const t of [...ALL, 'My boss embarrassed me again today.', "i'm so done with this week"]) {
+    const memo = new Map();
+    const once = (x) => { if (!memo.has(x)) memo.set(x, screenInput(x)); return memo.get(x); };
+    const a = await runAngle(input(t), deps(createMockProvider({ script: [anchor(1)] }), { screen: once }));
+    const b = await runAngle(input(t), deps(createMockProvider({ script: [anchor(1)] })));
+    assert.deepEqual([a.status, a.support?.level ?? null, a.support?.source ?? null, a.keep_support_close, a.meta.safety_source, a.meta.screen_level], [b.status, b.support?.level ?? null, b.support?.source ?? null, b.keep_support_close, b.meta.safety_source, b.meta.screen_level], t);
+  }
+  // app.js: one screen for the request, used for the early check, the validated text and each line, and handed on
+  const src = readFileSync(new URL('../src/app.js', import.meta.url), 'utf8');
+  assert.match(src, /const screen = \(t\) => \{ let r = screens\.get\(t\); if \(!r\) \{ r = screenInput\(t\); screens\.set\(t, r\); \} return r; \};/);
+  assert.match(src, /const early = screen\(cleanText\(raw\.slice\(0, EARLY_CHECK_CHARS\)\)\);/);
+  assert.match(src, /const safety = screen\(input\.text\);/);
+  assert.match(src, /const r = screen\(line\);/);
+  assert.match(src, /deadlineMs: cfg\.deadlineMs, userTag: await userTag\(cfg, subject, day\), now, usage, screen,/);
+  assert.equal((src.match(/screenInput\(/g) || []).length, 1, 'screenInput itself only inside the request\'s screen');
 });

@@ -53,7 +53,8 @@ export const hasWords = (text) => /[\p{L}\p{N}]/u.test(text);
  * @param {AngleInput} input
  * @param {{ provider: Provider, systemPrompt: string, maxTokens: number, attemptTimeoutMs: number,
  *   deadlineMs: number, minRetryBudgetMs?: number, userTag?: string, now?: () => number,
- *   skipLexicon?: boolean, recordDrafts?: boolean, usage?: UsagePart[], promptVersion?: string }} deps
+ *   skipLexicon?: boolean, recordDrafts?: boolean, usage?: UsagePart[], promptVersion?: string,
+ *   screen?: (text: string) => ReturnType<typeof screenInput> }} deps
  *   usage, when given, is the array model usage is pushed into as each call
  *   returns (so the caller can settle spend even if a later step throws).
  *   promptVersion names the prompt file systemPrompt came from (default the
@@ -93,7 +94,10 @@ export async function runAngle(input, deps) {
   }
   // 1b. The same words in their normalised spelling, and the shared risk screener (src/safety/risk-screen.js): a client that
   // skips its own check-in still meets them here. Care: no model call. 'check': the model is asked, told to judge safety first.
-  const screened = screenInput(input.text);
+  // (deps.screen: the request's own screenInput, remembered per text, so words the app.js check already read are not
+  // read again; it is screenInput itself, and the same words always read the same, so every step here is unchanged)
+  const screen = typeof deps.screen === 'function' ? deps.screen : screenInput;
+  const screened = screen(input.text);
   meta.screen_level = screened.screen_level;
   if ((screened.level === 'crisis' || screened.level === 'care') && !deps.skipLexicon) {
     meta.safety_source = screened.source;
@@ -107,7 +111,7 @@ export async function runAngle(input, deps) {
   // person's words: the model is told to judge safety first, and support is kept close.
   let previousCheck = false;
   for (const p of input.previous) {
-    const reads = [p.subtitle_line_1, p.subtitle_line_2].map((l) => screenInput(l));
+    const reads = [p.subtitle_line_1, p.subtitle_line_2].map((l) => screen(l));
     if (reads.some((r) => r.check)) previousCheck = true;
     const prev = deps.skipLexicon ? undefined : reads.find((r) => r.level === 'crisis' || r.level === 'care');
     if (!prev) continue;
