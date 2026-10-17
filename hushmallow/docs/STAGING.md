@@ -448,6 +448,7 @@ there; if they are only in live mode, make them here and send the new ids (B10).
 | Subscriptions | Read |
 | Customers | Write |
 | Prices | Read (and Products: Read, if the page ties them together) |
+| Subscription schedules | Read (optional: then the app can say which plan a downgrade set for the period end moves to; without it, it says when) |
 
 Copy the key once (`rk_test_…`) and paste it only into Cloudflare (B9). The permission names are from memory: a
 missing one shows up as `"stripe_http":403` in the staging Worker's log line (with the step in `err`) and in

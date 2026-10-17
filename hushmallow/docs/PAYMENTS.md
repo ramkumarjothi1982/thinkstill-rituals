@@ -74,6 +74,7 @@ Rehearse everything first in the staging **sandbox** (`docs/STAGING.md` Part B, 
    * Subscriptions: **Read**
    * Customers: **Write**
    * Prices: **Read** (and Products: Read, if the page ties them together)
+   * Subscription schedules: **Read** (optional: the plan a downgrade set for the period end moves to; without it the app says only when. The server reads a schedule on its own, never expanded into the subscription read, so a key without it loses nothing else)
 
    A missing permission shows up as a `403` from Stripe: the Worker's log line says `"stripe_http":403` with the step that failed (`err`, for example `price:…` or `customer:…`); add the permission it names. The account's full secret key (`sk_…`) is not needed and should not be used. Copy the key once, and paste it only where section 2 puts it.
 10. **The custom domain `checkout.hushmallow.com`** (D12), in this order only:

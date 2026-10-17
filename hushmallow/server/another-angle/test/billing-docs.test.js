@@ -36,8 +36,9 @@ test('keys: a restricted key with its permissions, a test key never on productio
   // the Worker's restricted key (STAGING.md B8): exactly the permissions it uses
   const table = /### B8\.[\s\S]*?\n\| Resource \| Permission \|\n\|---\|---\|\n((?:\|.*\|\n)+)/.exec(STAGING)?.[1] || '';
   assert.deepEqual(table.trim().split('\n').map((l) => l.split('|').slice(1, 3).map((x) => x.trim().split(' ')[0])), [
-    ['Checkout', 'Write'], ['Customer', 'Write'], ['Subscriptions', 'Read'], ['Customers', 'Write'], ['Prices', 'Read'],
+    ['Checkout', 'Write'], ['Customer', 'Write'], ['Subscriptions', 'Read'], ['Customers', 'Write'], ['Prices', 'Read'], ['Subscription', 'Read'],
   ]);
+  assert.match(table, /\| Subscription schedules \| Read \(optional/, 'schedules: optional, the subscription read never depends on them');
   for (const p of ['Checkout Sessions: **Write**', 'Customer portal: **Write**', 'Subscriptions: **Read**', 'Customers: **Write**', 'Prices: **Read**']) assert.ok(PAYMENTS.includes(p), p);
   // the production Worker's secrets: the live key only
   const prod = /## 2\. Set the Worker's secrets and vars[\s\S]*?```\n([\s\S]*?)```/.exec(PAYMENTS)?.[1] || '';

@@ -627,7 +627,7 @@ test('refresh shares the billing rate limit (BILLING_IP_LIMITER, else the isolat
 });
 
 // ------------------------------------------------- a change set for later --
-test('a change the portal set for the period end (D8: a downgrade, a shorter period) is in the status: scheduled_change { at, tier, period }, the schedule read expanded', async () => {
+test('a change the portal set for the period end (D8: a downgrade, a shorter period) is in the status: scheduled_change { at, tier, period }, its schedule read on its own', async () => {
   const end = (CLOCK_START + 30 * DAY) / 1000;
   /** The portal's schedule: this period on the plan held, then the plan chosen from the period end. */
   const schedule = (from, to, over = {}) => ({
@@ -644,7 +644,8 @@ test('a change the portal set for the period end (D8: a downgrade, a shorter per
   const later = { at: new Date(end * 1000).toISOString(), tier: 'paid', period: 'monthly' };
   assert.deepEqual([st.tier, st.period, st.status, st.scheduled_change], ['ultra', 'monthly', 'active', later]);
   const read = s.up.stripe().filter((c) => c.path === '/v1/subscriptions/sub_Test123').at(-1);
-  assert.deepEqual(read.query.getAll('expand[]'), ['schedule'], 'the schedule read expanded');
+  assert.deepEqual(read.query.getAll('expand[]'), [], 'the subscription read is never expanded (a restricted key may not read schedules)');
+  assert.ok(s.up.stripe().some((c) => c.method === 'GET' && c.path === '/v1/subscription_schedules/sub_sched_Test1234'), 'the schedule read on its own');
   assert.deepEqual((await status(s)).scheduled_change, later, 'kept in the record: GET status says it too');
   // a next phase on the same plan is no change of plan
   s.now.advance(1000);
@@ -656,6 +657,15 @@ test('a change the portal set for the period end (D8: a downgrade, a shorter per
   s.up.subs.set('sub_Test123', toFlowYearly);
   await deliver(s.app, s.env, event('customer.subscription.updated', { ...toFlowYearly, schedule: 'sub_sched_Test1234' }, s.now), { at: s.now() });
   assert.deepEqual((await status(s)).scheduled_change, { at: new Date(end * 1000).toISOString(), tier: 'paid', period: 'yearly' });
+  // a key that may not read schedules (Stripe answers 403): the plan is still recorded and confirmed; the change says
+  // when, not which plan
+  s.now.advance(1000);
+  s.up.fail = { path: /\/v1\/subscription_schedules\//, status: 403, error: { type: 'invalid_request_error', code: 'secret_key_required', message: 'This API call cannot be made with a restricted key lacking permission' } };
+  const noPerm = await refresh(s);
+  assert.equal(noPerm.status, 200);
+  const np = await noPerm.json();
+  assert.deepEqual([np.tier, np.period, np.status, np.scheduled_change], ['ultra', 'monthly', 'active', { at: new Date(end * 1000).toISOString(), tier: null, period: null }]);
+  s.up.fail = null;
   // the schedule's id only (an event's own copy, Stripe not having it): when, the plan not told
   const { summarise } = await import('../src/billing/store.js');
   const prices = { paid: { monthly: PRICES.paidMonthly, yearly: PRICES.paidYearly }, ultra: { monthly: PRICES.ultraMonthly, yearly: PRICES.ultraYearly } };

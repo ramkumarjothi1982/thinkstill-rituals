@@ -868,6 +868,12 @@ export function createBilling({ logger, now, fetch: fetchImpl = (input, init) =>
     } else return { http: 502, outcome: 'stripe_error', err: got.code, stripeHttp: got.status };
     if (idOf(sub?.id) !== subId) return { http: 502, outcome: 'stripe_error', err: 'id_mismatch' };
     if (strict && !ownedBy(sub, uidHint)) return { http: 403, outcome: 'not_yours' };
+    // a change the portal set for the period end: its schedule read on its own, so a key that may not read schedules
+    // (or a schedule Stripe cannot give just now) costs only which plan it moves to, never the record itself
+    if (got.ok && typeof sub.schedule === 'string' && /^sub_sched_[A-Za-z0-9]{4,250}$/.test(sub.schedule)) {
+      const sched = await stripe.retrieveSubscriptionSchedule(sub.schedule);
+      if (sched.ok && sched.data?.id === sub.schedule) sub = { ...sub, schedule: sched.data };
+    }
     const store = storeFor(env);
     const customer = idOf(sub.customer) || idOf(obj?.customer);
     const uid = uidOf(uidHint) || uidOf(sub.metadata?.user_id) || (customer ? uidOf(await store.owner(customer)) : null);
