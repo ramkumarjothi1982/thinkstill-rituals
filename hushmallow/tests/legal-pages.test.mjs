@@ -280,6 +280,11 @@ test('the Privacy Policy names every host and says what Delete account leaves be
   const paths = readFileSync(resolve(root, 'server/another-angle/src/billing/routes.js'), 'utf8').match(/export const PATHS = Object\.freeze\(\{([^}]*)\}\);/)[1];
   assert.doesNotMatch(paths, /delete|account|erase|forget/i, 'no billing route deletes a record');
   assert.doesNotMatch(sec('rights'), /everything kept with your account from our server/);
+  // the billing calls carry the same access token as Another Angle's start (src/app/billing.js), checked by the same verifier
+  // (routes.js account() → billing/account.js), so §4 says what it carries, as §3 does
+  assert.match(read('src/app/billing.js'), /headers: \{ authorization: `Bearer \$\{token\}`/);
+  assert.match(readFileSync(resolve(root, 'server/another-angle/src/billing/routes.js'), 'utf8'), /const account = \(token, cfg\) => verifierFor\(cfg\)\(token\);/);
+  assert.match(sec('payments'), /When you subscribe, check your plan or open Manage subscription, the app sends our server your account’s access token \(which carries your email address and the name you gave at sign-up, as section 3 explains\), so it knows whose plan it is\. Our server uses only your account’s id from it, and doesn’t log the token\./);
   assert.match(sec('payments'), /Deleting your account doesn’t delete this record: our server isn’t told when an account is deleted, so it stays, with Stripe’s references and never your email or name, for/);
   assert.match(sec('retention'), /Payments: our server’s subscription record \(section 4\) stays after you delete your account, for/);
   assert.doesNotMatch(textOf(html), /five years/, 'no retention period that neither the code nor the owner gives');
