@@ -44,6 +44,12 @@ const BILLING_LIVE_APPROVED = 'approved';
  * test/billing-env.test.js wants exactly this in any wrangler.toml table with billing vars: change both together.
  */
 const STRIPE_API_VERSION_EXPECTED = '2026-08-26.dahlia';
+/**
+ * Stripe Tax on Checkout (decision D3; the checkout route reads cfg.billing.automaticTax). Off unless STRIPE_AUTOMATIC_TAX
+ * says so: automatic_tax without an active AU GST registration (Collecting) calculates and collects nothing, silently, so
+ * it is switched on per environment only once that registration exists. The prices are tax-inclusive either way.
+ */
+const AUTOMATIC_TAX_DEFAULT = false;
 /** A Stripe secret or restricted key, and its mode (a publishable pk_ key is never one). */
 const STRIPE_KEY = /^(?:sk|rk)_(live|test)_[A-Za-z0-9]{8,}$/;
 
@@ -131,6 +137,7 @@ function readBilling(env, allowedOrigins) {
     // same one): STRIPE_API_VERSION_EXPECTED wherever billing is set (the wrangler guard), sent only when set
     apiVersion: /^\d{4}-\d{2}-\d{2}(?:\.[a-z]+)?$/.test(str(env.STRIPE_API_VERSION)) ? str(env.STRIPE_API_VERSION) : '',
     tokenTtlMs: int(env.BILLING_TOKEN_TTL_HOURS, 24, 1, 168) * 3600000,
+    automaticTax: bool(env.STRIPE_AUTOMATIC_TAX, AUTOMATIC_TAX_DEFAULT),
     configured: !!(secretKey && supabaseUrl && supabaseKey && appOrigin && anyPrice),
   };
 }

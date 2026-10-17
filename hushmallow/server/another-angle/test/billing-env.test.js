@@ -163,3 +163,18 @@ test('pinned, every Stripe call (checkout, portal, the webhook\'s subscription r
     for (const c of calls) assert.equal(c.headers['stripe-version'], pin || undefined, `${pin || 'unpinned'}: ${c.path}`);
   }
 });
+
+// ------------------------------------------------------------ Stripe Tax --
+test('STRIPE_AUTOMATIC_TAX: off unless switched on; staging says "false" until its AU registration is Collecting', () => {
+  assert.equal(readConfig({}).billing.automaticTax, false, 'off by default');
+  assert.equal(readConfig(billingEnv()).billing.automaticTax, false);
+  for (const v of ['true', 'TRUE', '1', 'on', 'yes']) assert.equal(readConfig(billingEnv({ STRIPE_AUTOMATIC_TAX: v })).billing.automaticTax, true, v);
+  for (const v of ['false', '0', 'off', 'no', 'ture', '']) assert.equal(readConfig(billingEnv({ STRIPE_AUTOMATIC_TAX: v })).billing.automaticTax, false, JSON.stringify(v));
+  const t = varsTables(WRANGLER);
+  assert.equal(t.staging.STRIPE_AUTOMATIC_TAX, 'false');
+  assert.equal(readConfig(t.staging).billing.automaticTax, false);
+  assert.equal(t.production.STRIPE_AUTOMATIC_TAX, undefined, 'production: no billing var');
+  // where it is set, it says exactly "true" or "false" (a typo would read as off without saying so)
+  for (const [name, vars] of Object.entries(t)) if ('STRIPE_AUTOMATIC_TAX' in vars) assert.ok(['true', 'false'].includes(vars.STRIPE_AUTOMATIC_TAX), name);
+  assert.match(WRANGLER, /^#.*STRIPE_AUTOMATIC_TAX/m, 'documented');
+});

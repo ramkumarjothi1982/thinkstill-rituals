@@ -58,6 +58,9 @@ APPLE_ENVIRONMENTS = "Production"
 #   STRIPE_PRICE_PAID_MONTHLY, STRIPE_PRICE_PAID_YEARLY,
 #   STRIPE_PRICE_ULTRA_MONTHLY, STRIPE_PRICE_ULTRA_YEARLY   price_… ids (A$)
 #   BILLING_TOKEN_TTL_HOURS   optional, default 24: the longest a Beyond session lasts
+#   STRIPE_AUTOMATIC_TAX      optional, "false" by default: "true" turns Stripe Tax on at
+#                             Checkout, only once the AU GST registration shows Collecting
+#                             in this Stripe environment (decision D3)
 #   STRIPE_API_VERSION        "2026-08-26.dahlia", required with the vars above: pins the
 #                             API version of the server's own requests; create the
 #                             webhook endpoint on the same version (src/config.js
@@ -267,6 +270,8 @@ STRIPE_PRICE_ULTRA_YEARLY = "price_TODO_owner"
 # The API version of the Worker's own Stripe requests; the staging webhook endpoint is created on the
 # same one (src/config.js STRIPE_API_VERSION_EXPECTED: every table with billing vars pins exactly this).
 STRIPE_API_VERSION = "2026-08-26.dahlia"
+# Stripe Tax at Checkout (decision D3): "false" until the sandbox's AU GST registration shows Collecting.
+STRIPE_AUTOMATIC_TAX = "false"
 
 [[env.staging.durable_objects.bindings]]
 name = "LEDGER"
