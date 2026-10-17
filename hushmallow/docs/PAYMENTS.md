@@ -77,7 +77,8 @@ STRIPE_PRICE_PAID_MONTHLY = "price_…"
 STRIPE_PRICE_PAID_YEARLY = "price_…"
 STRIPE_PRICE_ULTRA_MONTHLY = "price_…"
 STRIPE_PRICE_ULTRA_YEARLY = "price_…"
-# optional: BILLING_TOKEN_TTL_HOURS = "24", STRIPE_API_VERSION = "…"
+STRIPE_API_VERSION = "2026-08-26.dahlia"                    # required: the Worker's pin (create the webhook endpoint on it too)
+# optional: BILLING_TOKEN_TTL_HOURS = "24"
 ```
 
 A push to `main` that changes `wrangler.toml` deploys the Worker. The same deploy creates the `Billing` Durable Object class (migration `v2`); it holds nothing until billing is used. Afterwards:

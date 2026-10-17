@@ -6,9 +6,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { req } from './helpers.js';
-import { readConfig, BILLING_LIVE_APPROVED } from '../src/config.js';
+import { readConfig, BILLING_LIVE_APPROVED, STRIPE_API_VERSION_EXPECTED } from '../src/config.js';
 import {
-  billingEnv, setup, upstream, subscription, event, deliver, subscribe, status, lines, assertClean, stripeKey, withStagingProject,
+  billingEnv, billingReq, setup, upstream, subscription, event, deliver, subscribe, status, lines, assertClean, stripeKey, withStagingProject,
   varsTables, WRANGLER, PAYMENTS_MD, LIVE_KEY, TEST_KEY, WHSEC, STAGING_SUPABASE, PK,
 } from './billing-fixtures.js';
 
@@ -123,4 +123,43 @@ test('wrangler guards: BILLING_LIVE only in production [vars], only "approved", 
   assert.throws(() => checkBillingSwitches(WRANGLER.replace('[env.dev.vars]\n', '[env.dev.vars]\nBILLING_LIVE = "approved"\n')), /dev: BILLING_LIVE/);
   // the switch is documented where the owner sets it, as a comment (never a live value today)
   assert.match(WRANGLER, /^#.*BILLING_LIVE = "approved"/m);
+});
+
+// ------------------------------------------------------------ API version --
+/** Any table that sets billing up pins exactly the API version the code and the webhook endpoints are built for. */
+function checkApiVersion(toml) {
+  for (const [name, vars] of Object.entries(varsTables(toml))) {
+    if (!BILLING_SET.some((k) => k in vars)) continue;
+    assert.equal(vars.STRIPE_API_VERSION, STRIPE_API_VERSION_EXPECTED, `${name}: STRIPE_API_VERSION = "${STRIPE_API_VERSION_EXPECTED}" (src/config.js STRIPE_API_VERSION_EXPECTED)`);
+  }
+}
+
+test('wrangler guards: staging pins the API version; any table with billing vars must pin exactly the same one, production\'s activation too', () => {
+  assert.equal(STRIPE_API_VERSION_EXPECTED, '2026-08-26.dahlia');
+  checkApiVersion(WRANGLER);
+  const t = varsTables(WRANGLER);
+  assert.equal(t.staging.STRIPE_API_VERSION, STRIPE_API_VERSION_EXPECTED);
+  assert.equal(readConfig(t.staging).billing.apiVersion, STRIPE_API_VERSION_EXPECTED, 'and the Worker reads it');
+  // production and dev have no billing: no pin needed (and none set)
+  assert.equal(t.production.STRIPE_API_VERSION, undefined);
+  assert.equal(t.dev.STRIPE_API_VERSION, undefined);
+  // the documented production switch-on (docs/PAYMENTS.md section 2) pins it, so the activation commit passes
+  checkApiVersion(withProductionVars());
+  checkApiVersion(approve(withProductionVars()));
+  // unpinned, or another version, wherever billing is set: never
+  assert.throws(() => checkApiVersion(WRANGLER.replace(/^STRIPE_API_VERSION = .*\n/m, '')), /staging: STRIPE_API_VERSION/);
+  assert.throws(() => checkApiVersion(WRANGLER.replace(/^STRIPE_API_VERSION = .*$/m, 'STRIPE_API_VERSION = "2025-03-31.basil"')), /staging: STRIPE_API_VERSION/);
+  assert.throws(() => checkApiVersion(withProductionVars().replace(/^STRIPE_API_VERSION = .*\n/m, '')), /production: STRIPE_API_VERSION/);
+});
+
+test('pinned, every Stripe call (checkout, portal, the webhook\'s subscription read) sends Stripe-Version; unpinned, none does', async () => {
+  for (const pin of [STRIPE_API_VERSION_EXPECTED, '']) {
+    const s = setup({ env: billingEnv(pin ? { STRIPE_API_VERSION: pin } : {}) });
+    assert.equal((await s.app.fetch(billingReq('/v1/billing/checkout', { body: { plan: 'ultra', period: 'monthly' } }), s.env)).status, 200);
+    await subscribe(s);
+    assert.equal((await s.app.fetch(billingReq('/v1/billing/portal', { body: {} }), s.env)).status, 200);
+    const calls = s.up.stripe();
+    assert.deepEqual(calls.map((c) => c.path).sort(), ['/v1/billing_portal/sessions', '/v1/checkout/sessions', '/v1/subscriptions/sub_Test123']);
+    for (const c of calls) assert.equal(c.headers['stripe-version'], pin || undefined, `${pin || 'unpinned'}: ${c.path}`);
+  }
 });

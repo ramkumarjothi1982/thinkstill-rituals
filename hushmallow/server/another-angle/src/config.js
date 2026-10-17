@@ -38,6 +38,12 @@ const PRICE_VARS = ['STRIPE_PRICE_PAID_MONTHLY', 'STRIPE_PRICE_PAID_YEARLY', 'ST
  * [env.dev.vars]. Only this exact word approves.
  */
 const BILLING_LIVE_APPROVED = 'approved';
+/**
+ * The Stripe API version the Worker pins (STRIPE_API_VERSION) and every webhook endpoint is created on. The code reads
+ * both the older and the newer shapes, but one pinned version means the server's reads and the events it receives agree.
+ * test/billing-env.test.js wants exactly this in any wrangler.toml table with billing vars: change both together.
+ */
+const STRIPE_API_VERSION_EXPECTED = '2026-08-26.dahlia';
 /** A Stripe secret or restricted key, and its mode (a publishable pk_ key is never one). */
 const STRIPE_KEY = /^(?:sk|rk)_(live|test)_[A-Za-z0-9]{8,}$/;
 
@@ -121,7 +127,8 @@ function readBilling(env, allowedOrigins) {
     secretKey, webhookSecret, prices, supabaseUrl, supabaseKey, appOrigin, placeholderPrices, accountsStage, accountsPlaceholder,
     // the accepted key's mode ('' when unset or refused), why a key was refused, and the owner's approval
     keyMode, keyRefused, liveApproved,
-    // optional: pins the Stripe API version of the server's own requests (the webhook's comes from its endpoint)
+    // pins the Stripe API version of the server's own requests (the webhook's comes from its endpoint, created on the
+    // same one): STRIPE_API_VERSION_EXPECTED wherever billing is set (the wrangler guard), sent only when set
     apiVersion: /^\d{4}-\d{2}-\d{2}(?:\.[a-z]+)?$/.test(str(env.STRIPE_API_VERSION)) ? str(env.STRIPE_API_VERSION) : '',
     tokenTtlMs: int(env.BILLING_TOKEN_TTL_HOURS, 24, 1, 168) * 3600000,
     configured: !!(secretKey && supabaseUrl && supabaseKey && appOrigin && anyPrice),
@@ -173,4 +180,4 @@ export function readConfig(env) {
   };
 }
 
-export { APPLE_ROOT_CA_G3_SHA256, SUPABASE_PROJECT_URL, STAGING_SUPABASE_PROJECT_URL, BILLING_LIVE_APPROVED };
+export { APPLE_ROOT_CA_G3_SHA256, SUPABASE_PROJECT_URL, STAGING_SUPABASE_PROJECT_URL, BILLING_LIVE_APPROVED, STRIPE_API_VERSION_EXPECTED };
