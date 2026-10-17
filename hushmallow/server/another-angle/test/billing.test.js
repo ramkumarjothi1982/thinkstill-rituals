@@ -369,6 +369,9 @@ test('checkout: the account is checked with the sign-in project, then a subscrip
     mode: 'subscription', 'line_items[0][price]': PRICES.ultraYearly, 'line_items[0][quantity]': '1', customer: 'cus_New1abc', client_reference_id: UID,
     success_url: `${APP}/?billing=success&session_id={CHECKOUT_SESSION_ID}`, cancel_url: `${APP}/?billing=cancel`,
     'metadata[user_id]': UID, 'metadata[plan]': 'ultra', 'metadata[period]': 'yearly', 'metadata[price]': PRICES.ultraYearly, 'subscription_data[metadata][user_id]': UID,
+    // the owner's Checkout Studio settings (src/billing/routes.js CHECKOUT_STUDIO; test/billing-checkout.test.js has the rest)
+    ui_mode: 'hosted_page', billing_address_collection: 'auto', 'phone_number_collection[enabled]': 'false', 'automatic_tax[enabled]': 'false',
+    allow_promotion_codes: 'false', payment_method_collection: 'always', submit_type: 'auto', origin_context: 'web',
   });
   // Flow monthly maps to its own price
   await s.app.fetch(billingReq('/v1/billing/checkout', { body: { plan: 'paid', period: 'monthly' } }), s.env);

@@ -6,8 +6,9 @@
 // nothing else on the server changes.
 //
 //   POST /v1/billing/checkout  { plan: 'paid'|'ultra', period: 'monthly'|'yearly' } with the account's
-//                              Supabase access token (Authorization: Bearer) → { url } (Stripe Checkout,
-//                              subscription mode, the account's one Stripe customer, client_reference_id = the
+//                              Supabase access token (Authorization: Bearer) → { url } (Stripe-hosted Checkout,
+//                              subscription mode, the owner's Checkout Studio settings (CHECKOUT_STUDIO), the
+//                              account's one Stripe customer, client_reference_id = the
 //                              account id; back to APP_ORIGIN, ?billing=success&session_id=cs_…). Only a price that
 //                              is what its slot says (CHECKOUT_PRICE_RULES) is sold, and only to an account with no
 //                              subscription at Stripe, unpaid ones included (409 already_subscribed | payment_pending)
@@ -62,12 +63,39 @@ export const CHECKOUT_PRICE_RULES = Object.freeze({ currency: 'aud', tax_behavio
 /** How long a price read for that check is trusted in this isolate: one read per price id in that time, and a price fixed in Stripe sells within it. */
 export const CHECKOUT_PRICE_CACHE_MS = 600000;
 /**
- * Checkout's integration_identifier (Stripe's label for comparing checkout flows in the Dashboard): a fixed name and
- * 8 random letters, chosen once. Stripe takes it from API version CHECKOUT_INTEGRATION_IDENTIFIER_SINCE on, so it is
- * sent only when STRIPE_API_VERSION pins that or a later one: unpinned or older, Stripe would refuse the parameter.
+ * Checkout's integration_identifier (Stripe's label for comparing checkout flows in the Dashboard): the owner's Checkout
+ * Studio value. Stripe takes it from API version CHECKOUT_INTEGRATION_IDENTIFIER_SINCE on, so it is sent only when
+ * STRIPE_API_VERSION pins that or a later one (wrangler.toml pins 2026-08-26.dahlia): unpinned or older, Stripe would
+ * refuse the parameter.
  */
-export const CHECKOUT_INTEGRATION_IDENTIFIER = 'hushmallow_web_plans_xzwztwqy';
+export const CHECKOUT_INTEGRATION_IDENTIFIER = 'hosted_web_0001';
 export const CHECKOUT_INTEGRATION_IDENTIFIER_SINCE = '2026-03-25';
+/**
+ * The owner's Checkout Studio settings (docs/integration/DECISIONS.md, 2026-10-17), on every Checkout Session exactly as
+ * given. ui_mode 'hosted_page' is the Stripe-hosted page on the pinned API version (older versions name it 'hosted');
+ * submit_type 'auto' lets Checkout word the button; no payment_method_types, ever (dynamic payment methods, D10).
+ * With STRIPE_AUTOMATIC_TAX on, CHECKOUT_TAX replaces two of them (checkoutSettings).
+ */
+export const CHECKOUT_STUDIO = Object.freeze({
+  ui_mode: 'hosted_page',
+  billing_address_collection: 'auto',
+  phone_number_collection: Object.freeze({ enabled: false }),
+  automatic_tax: Object.freeze({ enabled: false }),
+  allow_promotion_codes: false,
+  payment_method_collection: 'always',
+  submit_type: 'auto',
+  origin_context: 'web',
+});
+/**
+ * Stripe Tax on (D3, only once an active registration is verified): automatic_tax on, and the address typed at checkout
+ * asked for (billing_address_collection 'required'), taxed and saved on the account's customer (customer_update), not a
+ * saved one. Deliberately overrides the Studio's automatic_tax and billing_address_collection.
+ */
+export const CHECKOUT_TAX = Object.freeze({
+  automatic_tax: Object.freeze({ enabled: true }),
+  billing_address_collection: 'required',
+  customer_update: Object.freeze({ address: 'auto' }),
+});
 /**
  * Statuses in which the account still has a subscription at Stripe, so checkout sells it no second one (409
  * already_subscribed: the portal pays or cancels it). Those giving access, and unpaid and paused: they give none but
@@ -372,12 +400,13 @@ export function createBilling({ logger, now, fetch: fetchImpl = (input, init) =>
     const back = cfg.billing.appOrigin;
     // the session this one replaces is part of the key: Stripe never hands back the one just expired
     const idempotencyKey = `checkout:${who.uid}:${plan}:${period}:${Math.floor(now() / CHECKOUT_WINDOW_MS)}:${prev.prev ? prev.prev.slice(-24) : '-'}`;
-    // no payment_method_types (Stripe's dynamic payment methods; which ones is a Dashboard setting, D10), no trial and
-    // no promotion codes (D14), no email (D13)
+    // the Studio's settings (CHECKOUT_STUDIO: no payment_method_types, D10; no promotion codes, D14), no trial and no
+    // email (D13)
     /** @param {string} customer @param {string} key */
     const create = (customer, key) => stripe.createCheckoutSession({
       mode: 'subscription',
       line_items: [{ price, quantity: 1 }],
+      // kept although the Studio lists none of the four: they tie the payment to the account (webhook, sync, entitlement)
       customer,
       client_reference_id: who.uid,
       // Stripe puts the session's id in place of {CHECKOUT_SESSION_ID}: the app asks POST /v1/billing/sync with it
@@ -385,9 +414,8 @@ export function createBilling({ logger, now, fetch: fetchImpl = (input, init) =>
       cancel_url: `${back}/?billing=cancel`,
       metadata: { user_id: who.uid, plan, period, price },
       subscription_data: { metadata: { user_id: who.uid } },
-      // Stripe Tax (D3: STRIPE_AUTOMATIC_TAX, off until the AU registration is Collecting). The customer is always
-      // passed, so the address typed at checkout is asked for and saved on it; else Stripe taxes the saved one (none).
-      ...(cfg.billing.automaticTax ? { automatic_tax: { enabled: true }, customer_update: { address: 'auto' }, billing_address_collection: 'required' } : {}),
+      // the Studio's values; Stripe Tax on (D3: STRIPE_AUTOMATIC_TAX) replaces two of them (CHECKOUT_TAX)
+      ...checkoutSettings(cfg.billing.automaticTax),
       ...(integrationIdentifierOn(cfg.billing.apiVersion) ? { integration_identifier: CHECKOUT_INTEGRATION_IDENTIFIER } : {}),
     }, { idempotencyKey: key });
     let r = await create(customer, idempotencyKey);
@@ -651,6 +679,15 @@ export function priceFault(p, plan, period) {
   if (p.active !== true) return 'inactive';
   if (p.tax_behavior !== CHECKOUT_PRICE_RULES.tax_behavior) return 'tax_behavior';
   return '';
+}
+
+/**
+ * A Checkout Session's settings besides the sale and the account link: the Studio's (CHECKOUT_STUDIO), with Stripe Tax's
+ * in place of two of them when it is on (CHECKOUT_TAX).
+ * @param {boolean} automaticTax @returns {Record<string, unknown>}
+ */
+export function checkoutSettings(automaticTax) {
+  return { ...CHECKOUT_STUDIO, ...(automaticTax ? CHECKOUT_TAX : {}) };
 }
 
 /** integration_identifier goes on a session: the pinned API version is CHECKOUT_INTEGRATION_IDENTIFIER_SINCE or later. @param {string} apiVersion */

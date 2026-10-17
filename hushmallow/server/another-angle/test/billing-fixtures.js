@@ -91,7 +91,7 @@ export function price(id, plan, period, over = {}) {
  * (unless `deletedListing` is 'empty') or making a session for it answers 400 resource_missing.
  */
 export function upstream({ users = { [TOKEN]: { id: UID, email: 'ana@example.com' } } } = {}) {
-  /** @type {{ url: string, path: string, method: string, headers: Record<string, string>, form: URLSearchParams | null, query: URLSearchParams }[]} */
+  /** @type {{ url: string, path: string, method: string, headers: Record<string, string>, form: URLSearchParams | null, body: string | null, query: URLSearchParams }[]} */
   const calls = [];
   /** @type {Map<string, any>} */
   const subs = new Map();
@@ -127,7 +127,8 @@ export function upstream({ users = { [TOKEN]: { id: UID, email: 'ana@example.com
   o.fetch = async (url, init = {}) => {
     const u = new URL(String(url));
     const headers = Object.fromEntries(new Headers(init.headers).entries());
-    const call = { url: u.href, path: u.pathname, method: init.method || 'GET', headers, form: typeof init.body === 'string' ? new URLSearchParams(init.body) : null, query: u.searchParams };
+    const body = typeof init.body === 'string' ? init.body : null;
+    const call = { url: u.href, path: u.pathname, method: init.method || 'GET', headers, form: body === null ? null : new URLSearchParams(body), body, query: u.searchParams };
     calls.push(call);
     if (u.origin === SUPABASE) {
       const token = (headers.authorization || '').replace(/^Bearer /, '');

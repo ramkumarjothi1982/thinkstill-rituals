@@ -1,14 +1,14 @@
 // Checkout, the return sync and the portal's plan change (src/billing/routes.js), against the fake Stripe of
 // test/billing-fixtures.js: the price check before selling, one customer and one subscription per account (checked
-// at Stripe), the previous Checkout Session settled first, the Stripe Tax switch and integration_identifier on the
-// session's form, POST /v1/billing/sync after Checkout, and the portal's intent 'switch'.
+// at Stripe), the previous Checkout Session settled first, the Checkout Studio settings, the Stripe Tax switch and
+// integration_identifier on the session's form, POST /v1/billing/sync after Checkout, and the portal's intent 'switch'.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { req, denyAll, allowAll, clock, ORIGIN, CLOCK_START } from './helpers.js';
 import {
   createBilling, CHECKOUT_PRICE_RULES, CHECKOUT_PRICE_CACHE_MS, CHECKOUT_INTEGRATION_IDENTIFIER, CHECKOUT_INTEGRATION_IDENTIFIER_SINCE,
-  integrationIdentifierOn, priceFault, PATHS, HELD_STATUSES,
+  CHECKOUT_STUDIO, CHECKOUT_TAX, checkoutSettings, integrationIdentifierOn, priceFault, PATHS, HELD_STATUSES,
 } from '../src/billing/routes.js';
 import { billingClient } from '../src/billing/store.js';
 import { createLogger } from '../src/log.js';
@@ -31,7 +31,7 @@ const allLogs = [];
 const track = (s) => { allLogs.push(s.logs); return s; };
 
 // ------------------------------------------------------------ the form --
-test('checkout form: the customer always; tax on adds automatic_tax, customer_update and billing_address_collection; a 2026-03-25+ pin adds integration_identifier; never payment_method_types', async () => {
+test('checkout form: the Studio\'s settings on every session and the account link kept; tax on replaces two of them and adds customer_update; a 2026-03-25+ pin adds integration_identifier; never payment_method_types', async () => {
   const formOf = async (over) => {
     const s = track(setup({ env: billingEnv(over) }));
     const res = await post(s, ULTRA_M);
@@ -45,8 +45,18 @@ test('checkout form: the customer always; tax on adds automatic_tax, customer_up
     success_url: `${APP}/?billing=success&session_id={CHECKOUT_SESSION_ID}`, cancel_url: `${APP}/?billing=cancel`,
     'metadata[user_id]': UID, 'metadata[plan]': 'ultra', 'metadata[period]': 'monthly', 'metadata[price]': PRICES.ultraMonthly,
     'subscription_data[metadata][user_id]': UID,
+    // the owner's Checkout Studio values, exactly
+    ui_mode: 'hosted_page', billing_address_collection: 'auto', 'phone_number_collection[enabled]': 'false', 'automatic_tax[enabled]': 'false',
+    allow_promotion_codes: 'false', payment_method_collection: 'always', submit_type: 'auto', origin_context: 'web',
   };
-  const tax = { 'automatic_tax[enabled]': 'true', 'customer_update[address]': 'auto', billing_address_collection: 'required' };
+  const tax = { 'automatic_tax[enabled]': 'true', billing_address_collection: 'required', 'customer_update[address]': 'auto' };
+  assert.deepEqual(CHECKOUT_STUDIO, {
+    ui_mode: 'hosted_page', billing_address_collection: 'auto', phone_number_collection: { enabled: false }, automatic_tax: { enabled: false },
+    allow_promotion_codes: false, payment_method_collection: 'always', submit_type: 'auto', origin_context: 'web',
+  });
+  assert.deepEqual(CHECKOUT_TAX, { automatic_tax: { enabled: true }, billing_address_collection: 'required', customer_update: { address: 'auto' } });
+  assert.deepEqual(checkoutSettings(false), { ...CHECKOUT_STUDIO });
+  assert.deepEqual(checkoutSettings(true), { ...CHECKOUT_STUDIO, ...CHECKOUT_TAX });
   // tax off (the default) and unpinned: the form, with the customer
   const off = await formOf({});
   assert.deepEqual(off.f, base);
@@ -54,6 +64,7 @@ test('checkout form: the customer always; tax on adds automatic_tax, customer_up
   // STRIPE_AUTOMATIC_TAX on: the customer is always passed, so the address typed at checkout is asked for and saved on it
   const on = await formOf({ STRIPE_AUTOMATIC_TAX: 'true' });
   assert.deepEqual(on.f, { ...base, ...tax });
+  assert.equal(on.f.ui_mode, 'hosted_page', 'the other Studio values stay with tax on');
   // pinned as wrangler.toml pins it: integration_identifier, and the Stripe-Version header
   const pinned = await formOf({ STRIPE_API_VERSION: STRIPE_API_VERSION_EXPECTED });
   assert.deepEqual(pinned.f, { ...base, integration_identifier: CHECKOUT_INTEGRATION_IDENTIFIER });
@@ -70,13 +81,32 @@ test('checkout form: the customer always; tax on adds automatic_tax, customer_up
   assert.equal(integrationIdentifierOn(''), false, 'unpinned');
   assert.equal(integrationIdentifierOn('2026-03-24.clover'), false);
   assert.equal(integrationIdentifierOn('2027-01-01.later'), true);
-  // the label: a fixed name and 8 letters, chosen once and committed
-  assert.match(CHECKOUT_INTEGRATION_IDENTIFIER, /^hushmallow_web_plans_[a-z]{8}$/);
+  // the label: the owner's Checkout Studio value
+  assert.equal(CHECKOUT_INTEGRATION_IDENTIFIER, 'hosted_web_0001');
   assert.equal(CHECKOUT_INTEGRATION_IDENTIFIER_SINCE, '2026-03-25');
   // never payment_method_types (dynamic payment methods), and no trial, promotion code or email (D10, D13, D14)
   for (const { f } of [off, on, pinned, both]) {
-    assert.deepEqual(Object.keys(f).filter((k) => /payment_method|trial|promotion|discounts|customer_email|email/.test(k)), []);
+    assert.deepEqual(Object.keys(f).filter((k) => /payment_method_(?:types|configuration)|trial|discounts|email/.test(k)), []);
+    assert.deepEqual([f.allow_promotion_codes, f.payment_method_collection], ['false', 'always']);
   }
+  // the exact body sent, pinned as wrangler.toml pins it: tax off (the default), then tax on
+  const enc = (pairs) => pairs.map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`).join('&');
+  const sale = [
+    ['mode', 'subscription'], ['line_items[0][price]', PRICES.ultraMonthly], ['line_items[0][quantity]', '1'], ['customer', 'cus_New1abc'], ['client_reference_id', UID],
+    ['success_url', `${APP}/?billing=success&session_id={CHECKOUT_SESSION_ID}`], ['cancel_url', `${APP}/?billing=cancel`],
+    ['metadata[user_id]', UID], ['metadata[plan]', 'ultra'], ['metadata[period]', 'monthly'], ['metadata[price]', PRICES.ultraMonthly], ['subscription_data[metadata][user_id]', UID],
+  ];
+  assert.equal(pinned.c.body, enc([
+    ...sale, ['ui_mode', 'hosted_page'], ['billing_address_collection', 'auto'], ['phone_number_collection[enabled]', 'false'], ['automatic_tax[enabled]', 'false'],
+    ['allow_promotion_codes', 'false'], ['payment_method_collection', 'always'], ['submit_type', 'auto'], ['origin_context', 'web'], ['integration_identifier', 'hosted_web_0001'],
+  ]));
+  assert.equal(both.c.body, enc([
+    ...sale, ['ui_mode', 'hosted_page'], ['billing_address_collection', 'required'], ['phone_number_collection[enabled]', 'false'], ['automatic_tax[enabled]', 'true'],
+    ['allow_promotion_codes', 'false'], ['payment_method_collection', 'always'], ['submit_type', 'auto'], ['origin_context', 'web'], ['customer_update[address]', 'auto'],
+    ['integration_identifier', 'hosted_web_0001'],
+  ]));
+  assert.ok(pinned.c.body.startsWith('mode=subscription&line_items%5B0%5D%5Bprice%5D=price_BeyondMonthly1&line_items%5B0%5D%5Bquantity%5D=1&customer=cus_New1abc&'));
+  assert.ok(pinned.c.body.endsWith('&ui_mode=hosted_page&billing_address_collection=auto&phone_number_collection%5Benabled%5D=false&automatic_tax%5Benabled%5D=false&allow_promotion_codes=false&payment_method_collection=always&submit_type=auto&origin_context=web&integration_identifier=hosted_web_0001'));
   // the customer: the account id only, under customer:<account>
   const made = off.s.up.stripe().filter((c) => c.path === '/v1/customers');
   assert.equal(made.length, 1);
