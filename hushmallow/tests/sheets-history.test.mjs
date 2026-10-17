@@ -406,8 +406,9 @@ test('account: addresses break only after "@" or a dot (the Settings row too); a
   assert.ok(ARRIVALS.includes('signed-in') && ARRIVALS.includes('verified'));
   assert.equal(carriesArrival('account', 'signed-in'), true);
   assert.equal(carriesArrival('guest-choice', 'verified'), true);
-  assert.equal(carriesArrival('welcome', 'signed-out'), false, 'any other notice is still a toast');
-  assert.match(src, /if \(params\.notice && !carriesArrival\(first, params\.arrived\)\) later\(\(\) => toast\(params\.notice, 3600\), 500\);/);
+  assert.equal(carriesArrival('welcome', 'signed-out'), false, 'any other notice from before a reload is still a toast');
+  // (a notice from another screen, such as the plans page's, is the first screen's lede: tests/account-notice.test.mjs)
+  assert.match(src, /if \(params\.notice && !notice && !carriesArrival\(first, params\.arrived\)\) later\(\(\) => toast\(params\.notice, 3600\), 500\);/);
   const main = read('src/app/main.js');
   assert.match(main, /if \(said && !opensAccount\) setTimeout\(\(\) => toast\(said, 3600\), 500\);/);
   assert.match(main, /app\.go\('account', \{ arrived: AUTH\.notice \|\| null, notice: said \}\)/);

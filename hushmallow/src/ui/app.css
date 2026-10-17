@@ -232,7 +232,10 @@ input.search:focus, input.text:focus { border-color: var(--accent); }
 .summary-card .v { font: var(--type-body); letter-spacing: var(--type-body-ls); font-weight: 600; margin-top: 4px; }
 .toast { position: fixed; left: 50%; bottom: calc(var(--safe-bottom) + 24px); transform: translateX(-50%); z-index: 20; background: rgba(255,255,255,.95); color: #1d1638;
   padding: 11px 18px; border-radius: 22px; font: var(--type-label); letter-spacing: var(--type-label-ls); text-align: center; text-wrap: balance; overflow-wrap: anywhere;
-  width: max-content; max-width: calc(100vw - 40px); box-sizing: border-box; box-shadow: var(--shadow-1); animation: toastIn 300ms var(--ease-out) both; }
+  width: max-content; max-width: calc(100vw - 40px); box-sizing: border-box; box-shadow: var(--shadow-1); animation: toastIn 300ms var(--ease-out) both; pointer-events: none; }
+/* a toast never takes a tap meant for what it sits over (a button under it on a small phone); only a link in it
+   does (plans.js: the framed "Continue on …", outsideNote) */
+.toast :is(a, button) { pointer-events: auto; }
 /* the toast's own entrance keeps the centring (bubbleIn ends at transform:none, which would undo translateX) */
 @keyframes toastIn { from { opacity: 0; transform: translate(-50%, 8px) scale(.96); } to { opacity: 1; transform: translate(-50%, 0); } }
 @keyframes softFade { from { opacity: 0; } to { opacity: 1; } }

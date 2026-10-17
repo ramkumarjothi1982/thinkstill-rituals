@@ -354,9 +354,14 @@ Not now) the card's lede says it the first time it shows, in full as the
 card shows the address anyway ("You're signed in as ana@example.com.",
 "Your email is confirmed. You're signed in as …"), never a toast over the
 card's fields on a small phone; `main.js` hands the notice to the scene
-(`params.notice`) and the scene toasts any other notice itself. Elsewhere
+(`params.notice`) and the scene toasts any other notice itself. A screen
+that sends a guest here with its reason (the plans page's "Sign in or create
+an account first, so your plan stays with you.") has it said as the first
+screen's lede instead (`carriesNotice`): a toast there covered "Create an
+account" on a 375×667 phone. Elsewhere
 the line is a toast, shortened for anyone nearby ("You're signed in as
-an…@example.com."), as on the `/auth/callback` page. "Keep this phone's
+an…@example.com."), as on the `/auth/callback` page. A toast never takes a
+tap: it goes through to what the toast covers (only a link in one is tappable). "Keep this phone's
 things?" names it in full: a link, or a shared phone, that signed in someone
 other than expected is plain at once. A field's error sits right under that field
 (Change password: "That password doesn't match." under Current password,

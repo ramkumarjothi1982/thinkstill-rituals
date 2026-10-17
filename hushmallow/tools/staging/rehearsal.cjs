@@ -18,7 +18,7 @@
 //       accounts; its provider is printed), the preview's published sign-in config is the staging project, Settings'
 //       version line says "staging".
 //   R1  a guest: the home screen asks nothing; Plans show the BILLING_PRICES a month and a year; "Step into hushmallow
-//       Beyond" opens the account screen with "Sign in or create an account first…".
+//       Beyond" opens the account screen saying "Sign in or create an account first…" (its lede, never a toast).
 //   R2  sign in (REHEARSAL_A_EMAIL / _PASSWORD) through the account screen, by password; Settings → Privacy shows the
 //       account row. With REHEARSAL_SIGNUP_EMAIL: a fresh browser signs up (the 18+ tick) and sees "Check your email".
 //   R3  Plans → Monthly → Flow → Stripe Checkout (checkout.stripe.com or checkout.hushmallow.com and a cs_test_ session,
@@ -1014,9 +1014,13 @@ async function stepR1(X) {
     await tapEl(page, '.invite-beyond .invite-buy');
     const view = await waitView(page, ['welcome', 'signin', 'create'], 30000);
     need(view, '"Step into hushmallow Beyond" did not open the account screen');
-    need(await toastSince(page, repo.signInFirst, t0, 10000), `the account screen opened (${view}) without "${repo.signInFirst}"`);
+    // said as the first screen's lede (src/app/scenes/account.js carriesNotice), never in a toast over its buttons
+    let lede = '';
+    const ledeSays = async () => (lede = await page.evaluate(() => (document.getElementById('hm-account-lede')?.textContent || '').replace(/\s+/g, ' ').trim())) === repo.signInFirst;
+    need(await until(ledeSays, 10000), `the account screen opened (${view}) without "${repo.signInFirst}" (its lede: "${lede}")`);
+    need(!(await toastSince(page, repo.signInFirst, t0, 1500)), `"${repo.signInFirst}" came in a toast over the account screen's buttons`);
     if (X.local) need(!ctx.__reqs.length, `a guest sent ${ctx.__reqs.length} request(s) to the billing server`);
-    return { reason: `home as a guest, nothing asks to sign in; Plans: ${m.paid} / ${m.ultra}, yearly ${y.paid} / ${y.ultra}; "Step into ${repo.plans.ultra}" → the account screen (${view}): "${repo.signInFirst}"${X.local ? ' (web billing on through ?billingDev; the guest sent nothing)' : ''}` };
+    return { reason: `home as a guest, nothing asks to sign in; Plans: ${m.paid} / ${m.ultra}, yearly ${y.paid} / ${y.ultra}; "Step into ${repo.plans.ultra}" → the account screen (${view}), its lede: "${repo.signInFirst}" (no toast)${X.local ? ' (web billing on through ?billingDev; the guest sent nothing)' : ''}` };
   });
 }
 
