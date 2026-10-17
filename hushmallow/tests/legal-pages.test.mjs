@@ -17,8 +17,9 @@
 //      passes, and fails on a page that breaks the rules); _headers gives
 //      /legal/* the strict policy;
 //   6. the app links to them: Settings → Privacy and About, the plans page's
-//      foot, and the sign-up form's "By creating an account you agree to the
-//      Terms and Privacy Policy."
+//      foot, and the sign-up form's required tick "I’m 18 or older, and I agree
+//      to the Terms and the Privacy Policy" (tests/signup-consent.test.mjs has
+//      the tick itself, the versions and what the account records).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, existsSync, mkdtempSync, rmSync, cpSync, writeFileSync, unlinkSync } from 'node:fs';
@@ -188,8 +189,10 @@ test('the draft switch: one line in legal.css shows both notices; with it gone, 
   assert.deepEqual(noticeProblems('<main><h1 class="legal-title">Terms of Use</h1>' + note + '</main>', true), ['the notice comes after the title']);
   assert.deepEqual(noticeProblems(titled(note), false), [], 'approved: the hidden notice may stay');
   assert.deepEqual(noticeProblems(titled(''), false), [], 'approved: or be deleted, with no test edit');
-  // terms.html names the governing law's State or Territory (the placeholder until the owner chooses one)
-  assert.match(textOf(read(PAGES[1])), /governed by the laws of (?:\[Owner: State or Territory\]|New South Wales|Victoria|Queensland|Western Australia|South Australia|Tasmania|the Australian Capital Territory|the Northern Territory) ?, Australia/);
+  // terms.html names the governing law: New South Wales, proposed by the owner (17 Oct 2026), with a visible note to confirm it
+  // while the pages are drafts (the note goes on approval, with every other placeholder)
+  assert.match(textOf(read(PAGES[1])), /governed by the laws of New South Wales, Australia/);
+  if (draft) assert.match(sectionOf(read(PAGES[1]), 'law'), /New South Wales, Australia <span class="legal-todo" data-todo="governing-law">\[Owner: confirm New South Wales[^<]*\]<\/span>/);
 });
 
 // ------------------------------------------------------------------ 3 --
@@ -204,10 +207,11 @@ test('legal pages: lowercase brand, the exact plan names, no plan words, no ther
     assert.doesNotMatch(text, /\bpaid\b/i, `${p}: never "Paid"`);
     // the brand is never uppercased by a style either: no text-transform on anything that holds it
     assert.doesNotMatch(html, /class="[^"]*t-(?:overline|badge)[^"]*"[^>]*>[^<]*hushmallow/, p);
-    // no claim of treatment, cure or detection; "therapy" and "diagnose" only to say what hushmallow is not
-    assert.doesNotMatch(text, /\b(?:treat|treats|treating|treatment|cure[sd]?|heal(?:s|ing)?|CBT|DBT|ACT therapy|detect\w*|screening|suicide prevention|clinically|proven)\b/i, p);
+    // no claim of treatment, cure or detection; "therapy", "treatment" and "diagnose" only to say what hushmallow is not
+    // (the owner's positioning, 17 Oct 2026: an emotional companion platform, not medical treatment, therapy or a crisis service)
+    assert.doesNotMatch(text, /\b(?:treat|treats|treating|cure[sd]?|heal(?:s|ing)?|CBT|DBT|ACT therapy|detect\w*|screening|suicide prevention|clinically|proven)\b/i, p);
     for (const s of text.split(/(?<=[.:;])\s+/)) {
-      if (/\b(?:therapy|therapeutic|therapist|diagnos\w*|counselling)\b/i.test(s)) assert.match(s, /\b(?:not|isn’t|doesn’t|no)\b/, `${p}: "${s}"`);
+      if (/\b(?:therapy|therapeutic|therapist|treatments?|diagnos\w*|counselling)\b/i.test(s)) assert.match(s, /\b(?:not|isn’t|doesn’t|no)\b/, `${p}: "${s}"`);
     }
   }
   // the transparency exception, used: the pages name the technology and the provider plainly
@@ -267,7 +271,27 @@ test('the Privacy Policy names every host and says what Delete account leaves be
   assert.ok(read('src/app/scenes/account.js').includes('\'the sign-in service’s own security log (such as when you signed in): we can’t delete it from here\''), 'the app says it');
   assert.match(sec('account'), /keeps its own security records, such as when you signed in and from which network address, to protect your account\. Deleting your account doesn’t delete these records: they are kept for/);
   assert.match(sec('retention'), /The sign-in service’s own security records stay after you delete your account, for/);
-  assert.match(sec('rights'), /Delete account\. This deletes your sign-in, your profile, your sync choices and everything kept with your account from our server, and that account’s things on this device\. It doesn’t delete the sign-in service’s own security records \(section 2\)/);
+  assert.match(sec('rights'), /Delete account\. This deletes your sign-in, your profile, your sync choices and everything else kept with your account in our account service, and that account’s things on this device\. It doesn’t delete the sign-in service’s own security records \(section 2\) or our server’s record of a web subscription \(section 4\)/);
+  // (review, 17 Oct 2026) so does our server's subscription record (the Billing Durable Object's "user:<uid>": Stripe's
+  // ids, plan, status), which the Worker is never told to delete: the app's delete screen, PAYMENTS.md's Known limits and
+  // the billing routes (none deletes) say so, and so do §4, §10 and §11; how long it stays is the owner's, not "everything"
+  assert.ok(read('src/app/scenes/account.js').includes('a web subscription, if you have one, and our server’s record of it (which plan and its status, never your card)'), 'the app says it');
+  assert.match(read('docs/PAYMENTS.md'), /The account's `Billing` record also stays, because the Worker is not told about deletions\./);
+  const paths = readFileSync(resolve(root, 'server/another-angle/src/billing/routes.js'), 'utf8').match(/export const PATHS = Object\.freeze\(\{([^}]*)\}\);/)[1];
+  assert.doesNotMatch(paths, /delete|account|erase|forget/i, 'no billing route deletes a record');
+  assert.doesNotMatch(sec('rights'), /everything kept with your account from our server/);
+  // the billing calls carry the same access token as Another Angle's start (src/app/billing.js), checked by the same verifier
+  // (routes.js account() → billing/account.js), so §4 says what it carries, as §3 does
+  assert.match(read('src/app/billing.js'), /headers: \{ authorization: `Bearer \$\{token\}`/);
+  assert.match(readFileSync(resolve(root, 'server/another-angle/src/billing/routes.js'), 'utf8'), /const account = \(token, cfg\) => verifierFor\(cfg\)\(token\);/);
+  assert.match(sec('payments'), /When you subscribe, check your plan or open Manage subscription, the app sends our server your account’s access token \(which carries your email address and the name you gave at sign-up, as section 3 explains\), so it knows whose plan it is\. Our server uses only your account’s id from it, and doesn’t log the token\./);
+  assert.match(sec('payments'), /Deleting your account doesn’t delete this record: our server isn’t told when an account is deleted, so it stays, with Stripe’s references and never your email or name, for/);
+  assert.match(sec('retention'), /Payments: our server’s subscription record \(section 4\) stays after you delete your account, for/);
+  assert.doesNotMatch(textOf(html), /five years/, 'no retention period that neither the code nor the owner gives');
+  if (isDraft(read('src/ui/legal.css'))) {
+    for (const id of ['payments', 'retention']) assert.ok([...sectionOf(html, id).matchAll(TODO)].some((m) => m[1] === 'billing-retention'), `§${id}: how long, the owner's`);
+    assert.ok([...sectionOf(html, 'retention').matchAll(TODO)].some((m) => m[1] === 'payment-records'), 'payment and tax records: the owner\'s, with an adviser');
+  }
   // §3 is Another Angle's server only: the sign-in service's records are §2's
   assert.doesNotMatch(sec('another-angle'), /Supabase|sign-in/);
   // the server's technical record, as server/another-angle/src/log.js keeps it: the area of life, a length bucket, a coarse safety level
@@ -293,7 +317,7 @@ test('both pages: not a crisis service, with Australian and international lines;
   }
   const terms = textOf(read(PAGES[1]));
   for (const fact of [
-    /wellbeing and entertainment app/, /not therapy, counselling or medical advice/, /doesn’t diagnose any condition/, /monthly or yearly/,
+    /emotional companion platform/, /not therapy, counselling or medical advice/, /doesn’t diagnose any condition/, /monthly or yearly/,
     /billed by Stripe/, /Prices are in US dollars \(USD\)/, /renews automatically/, /cancel at any time in the app with Manage subscription/, /until the end of the current billing period/,
     /Australian Consumer Law/, /guarantees that cannot be excluded under the Australian Consumer Law/, /before a new price applies to you/,
     /They may be wrong, incomplete or not right for you/, /You decide what to make of them/, /To the extent the law allows/,
@@ -343,7 +367,8 @@ test('the build publishes both pages at /legal/ (versioned styles, check.mjs pas
       const pp = join(bad, 'legal/privacy.html');
       writeFileSync(pp, readFileSync(pp, 'utf8')
         .replace('</head>', '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter">\n<script>1</script>\n</head>')
-        .replace('<a href="#device">', '<a href="#nowhere" onclick="x()">'));
+        .replace('<a href="#device">', '<a href="#nowhere" onclick="x()">')
+        .replace(/<meta name="legal-version" content="[^"]*">/, '<meta name="legal-version" content="1999-01-01">'));
       unlinkSync(join(bad, 'legal/terms.html'));
       const r = await checkSite(bad, 'legal1');
       const has = (re) => r.problems.some((x) => re.test(x));
@@ -353,6 +378,7 @@ test('the build publishes both pages at /legal/ (versioned styles, check.mjs pas
       assert.ok(has(/links to #nowhere, which is not an id/), 'a broken fragment');
       assert.ok(has(/legal\/terms\.html \(the app links to it\) is not in the site/), 'a missing page');
       assert.ok(has(/links to terms\.html, which is not in the site/), 'a broken link');
+      assert.ok(has(/legal\/privacy\.html says legal-version 1999-01-01, not \d{4}-\d{2}-\d{2}/), 'another version than the one a sign-up records');
     } finally { rmSync(bad, { recursive: true, force: true }); }
   } finally { rmSync(out, { recursive: true, force: true }); }
 });
@@ -368,7 +394,7 @@ class FakeEl {
 const text = (n) => (n.nodeType === 3 ? n.textContent : n.children.map(text).join(''));
 const find = (n, pred, out = []) => { if (n.nodeType === 1 && pred(n)) out.push(n); for (const k of n.children || []) find(k, pred, out); return out; };
 
-test('the app links to both pages in a new tab: legalLink, "Terms · Privacy Policy" and the sign-up line', async () => {
+test('the app links to both pages in a new tab: legalLink, "Terms · Privacy Policy" and the sign-up tick', async () => {
   globalThis.document = { createElement: (t) => new FakeEl(t), createElementNS: (_, t) => new FakeEl(t), createTextNode: (t) => Object.assign(new FakeEl('#text'), { textContent: String(t) }) };
   try {
     const L = await import('../src/app/legal.js');
@@ -391,12 +417,13 @@ test('the app links to both pages in a new tab: legalLink, "Terms · Privacy Pol
     assert.equal(text(pair), 'Terms · Privacy Policy');
     assert.equal(pair.attrs.class, 'legal-links');
     assert.deepEqual(find(pair, (n) => n.tagName === 'A').map((n) => n.attrs['data-legal']), ['terms', 'privacy']);
-    const agree = L.agreeLine('hm-auth-hint');
-    assert.equal(text(agree), 'By creating an account you agree to the Terms and Privacy Policy.');
-    assert.equal(text(agree), L.AGREE_LINE);
-    assert.deepEqual(find(agree, (n) => n.tagName === 'A').map((n) => [text(n), n.attrs.href]), [['Terms', 'legal/terms.html'], ['Privacy Policy', 'legal/privacy.html']]);
+    const agree = L.consentLabel();
+    assert.equal(agree.map((x) => (typeof x === 'string' ? x : text(x))).join(''), 'I’m 18 or older, and I agree to the Terms and the Privacy Policy');
+    assert.equal(agree.map((x) => (typeof x === 'string' ? x : text(x))).join(''), L.CONSENT_LINE);
+    assert.deepEqual(agree.filter((x) => typeof x !== 'string').map((n) => [text(n), n.attrs.href]), [['Terms', 'legal/terms.html'], ['Privacy Policy', 'legal/privacy.html']]);
+    assert.equal(L.agreeLine, undefined, 'the old "By creating an account…" line is merged into the tick');
     // never "AI" or the provider in the app's own words for them
-    for (const s of [...Object.values(L.LEGAL_LABELS), L.AGREE_LINE]) assert.doesNotMatch(s, /\bAI\b|Anthropic/);
+    for (const s of [...Object.values(L.LEGAL_LABELS), L.CONSENT_LINE]) assert.doesNotMatch(s, /\bAI\b|Anthropic/);
   } finally { delete globalThis.document; }
 });
 
@@ -412,12 +439,179 @@ test('the links sit where people look: Settings → Privacy and About, the plans
   const foot = plans.slice(plans.indexOf("h('div', { class: 'plans-foot' }"));
   assert.match(foot, /legalLinks\('legal-links plans-legal'\)\)\)\);/, 'the last thing in the plans foot');
   const account = read('src/app/scenes/account.js');
-  assert.match(account, /import \{ agreeLine \} from '\.\.\/legal\.js';/);
+  assert.match(account, /import \{ consentLabel, CONSENT_LINE \} from '\.\.\/legal\.js';/);
   const create = account.slice(account.indexOf('V.create = '), account.indexOf("V['check-email']"));
-  assert.match(create, /note: agreeLine\('hm-auth-hint hm-auth-center hm-auth-agree'\),/);
-  // the form puts the note after the fields and before the error and the button
+  assert.match(create, /const agree = consentTick\(uid\('agree'\)\);/);
+  // the tick is the form's last field: after the others and before the error and the button
+  assert.match(create, /fields: \[email, pw, name, agree\],/);
   assert.match(account, /\.\.\.before, \.\.\.fields\.map\(\(x\) => x\.wrap\), note, errEl, actionsEl\);/);
   // styled where each screen can see it: app.css (Settings, plans) and account.css (the account screens)
   assert.match(read('src/ui/app.css'), /^\.legal-links a \{ display: inline-flex; align-items: center; min-height: 44px;/m, '44 px targets');
-  assert.match(read('src/ui/account.css'), /^\.hm-auth-agree a \{/m);
+  assert.match(read('src/ui/account.css'), /^\.hm-auth-tick a \{/m);
+});
+
+// ------------------------------------------------- the owner's confirmed facts, 17 Oct 2026 --
+// (docs/integration/DECISIONS.md, "2026-10-17: owner-confirmed facts"). What is not confirmed stays a placeholder.
+test('the owner\'s facts (17 Oct 2026): the ABN shown, the entity still to check, 18+, support@, worldwide, the disclaimer', () => {
+  const draft = isDraft(read('src/ui/legal.css'));
+  const ABN = 'ABN 58 685 681 707';
+  for (const p of PAGES) {
+    const html = read(p), page = noComments(html), text = textOf(html);
+    const shown = textOf(page.replace(TODO, ' '));   // what an approved page keeps once every placeholder is replaced
+    // the ABN is confirmed: shown as itself, never a placeholder
+    assert.ok(shown.includes(`(${ABN})`), `${p}: the lead names the ABN`);
+    assert.doesNotMatch(page, /data-todo="abn"/, `${p}: no ABN placeholder`);
+    // the entity registered to it is not verified: never assume the brand is the entity; while a draft, its name is a
+    // placeholder that sends the owner to ABN Lookup
+    assert.doesNotMatch(shown, /hushmallow\s*\(ABN|hushmallow (?:Pty|Ltd|Limited|Inc)\b/i, `${p}: the brand is never the legal entity`);
+    const entity = [...page.matchAll(TODO)].filter((m) => m[1] === 'entity');
+    if (draft) {
+      assert.ok(entity.length >= 2, `${p}: the entity name, in the lead and the contact section`);
+      for (const m of entity) assert.match(m[2], /ABN Lookup/, `${p}: ${m[2]}`);
+      assert.ok(entity.some((m) => m[2].includes('abr.business.gov.au')), `${p}: where to check it`);
+      assert.ok([...page.matchAll(TODO)].some((m) => m[1] === 'address'), `${p}: the address too`);
+    }
+    // 18 and over is approved: no age decision left; support@ is the confirmed contact: nothing left to confirm about it
+    for (const todo of ['age', 'contact-email']) assert.doesNotMatch(page, new RegExp(`data-todo="${todo}"`), `${p}: ${todo}`);
+    assert.doesNotMatch(text, /confirm the minimum age|confirm the support address|confirm this is the address/i, p);
+    // worldwide, not Australia only
+    assert.match(text, /wherever in the world you use them/, p);
+    // the wellbeing and emergency disclaimer: a companion, not therapy or medical care, not for emergencies: 000 in Australia
+    const crisis = textOf(sectionOf(html, 'support'));
+    assert.match(page, /<h2 id="support">\d+\. Not for emergencies<\/h2>/, p);
+    assert.match(crisis, /not therapy or medical care|isn’t a crisis service, therapy or medical care/, p);
+    assert.match(crisis, /call (?:emergency services now: )?000 in Australia, or your local emergency number elsewhere/, p);
+    // the Australian lines first, then the international ones (the app's own sheet orders them by the phone's region)
+    const at = (s) => crisis.indexOf(s);
+    for (const s of ['Lifeline 13 11 14', '1300 659 467', '13 92 76', 'findahelpline.com', 'Samaritans 116 123', '988']) assert.ok(at(s) > 0, `${p}: ${s}`);
+    assert.ok(at('Lifeline 13 11 14') < at('findahelpline.com') && at('13 92 76') < at('Samaritans 116 123'), `${p}: Australia first`);
+  }
+  assert.match(textOf(read(PAGES[1])), /You must be 18 or older to use hushmallow \. By using it, you confirm that you are\./);
+  assert.match(textOf(read(PAGES[0])), /hushmallow is for people aged 18 and over\./);
+  assert.ok(textOf(sectionOf(read(PAGES[1]), 'contact')).includes(`, ${ABN}`), 'the Terms\' contact section names the ABN');
+  assert.match(textOf(read(PAGES[1])), /It isn’t medical treatment, therapy, medical advice or a crisis service\./, 'the positioning, in short');
+});
+
+test('the Terms: "Subscriptions, renewal and cancellation" says what the code does, in US dollars', async () => {
+  const draft = isDraft(read('src/ui/legal.css'));
+  const html = read(PAGES[1]);
+  assert.match(html, /<h2 id="subscriptions">6\. Subscriptions, renewal and cancellation<\/h2>/);
+  assert.match(html, /<li><a href="#subscriptions">Subscriptions, renewal and cancellation<\/a><\/li>/);
+  const sub = textOf(sectionOf(html, 'subscriptions'));
+  // the owner's prices (17 Oct 2026), in US dollars; never the provisional Australian dollars
+  assert.match(sub, /On the web, hushmallow Flow is US\$9\.99 a month or US\$99\.99 a year, and hushmallow Beyond is US\$19\.99 a month or US\$199\.99 a year\./);
+  // (review, 17 Oct 2026) the currency sentence and the tax placeholder's id are the USD workstream's own (its Billing line,
+  // word for word), so the two branches merge without a test of either going red; and the overview says the same
+  assert.ok(sub.includes('Prices are in US dollars (USD). The price and billing period are shown before you pay.'));
+  assert.match(textOf(html), /Subscriptions renew until you cancel\. Prices are in US dollars \(USD\)\./);
+  assert.doesNotMatch(html, /data-todo="taxes"/, 'one id for the tax placeholder: "tax"');
+  assert.doesNotMatch(sub, /A\$|\bAUD\b|Australian dollars/);
+  // renewal; cancelling at the period's end in Manage subscription (Settings → Plan: settings.js, Stripe's customer portal)
+  assert.match(sub, /renews automatically at the end of each month or year[^.]*until you cancel/);
+  assert.match(sub, /cancel at any time in the app with Manage subscription \(in Settings, under Plan\)/);
+  assert.match(sub, /Cancelling stops the next renewal: your plan stays until the end of the current billing period/);
+  const settings = read('src/app/scenes/settings.js');
+  assert.ok(settings.includes("'Manage subscription')") && settings.indexOf("'data-act': 'manage-subscription'") > settings.indexOf("section('Plan')"), 'the button is under Plan');
+  // a failed renewal: access for as long as the server's past_due cap, then it stops
+  const { PAST_DUE_GRACE_MS } = await import('../server/another-angle/src/billing/store.js');
+  const days = PAST_DUE_GRACE_MS / 86400000;
+  assert.equal(days, 14);
+  assert.match(sub, new RegExp(`While the payment is being retried, you keep your plan for up to ${days} days\\. If the payment still hasn’t gone through by then, your plan stops\\.`));
+  // no partial refunds, except where the law requires (the ACL and other consumer laws that can't be excluded)
+  assert.match(sub, /We don’t give partial refunds[^.]*except where the law requires it: the Australian Consumer Law, and other consumer laws that cannot be excluded/);
+  // (review, 17 Oct 2026) and nowhere else do the terms promise one: a refund of the unused part of a period is only the
+  // law's (§12 quotes the Australian Consumer Law), or, after a change that takes away a large part of a plan (§8) or an
+  // end we choose (§14), an owner decision left as a placeholder. Once approved, whatever the owner writes there stands
+  const unplaced = (id) => textOf(sectionOf(html, id).replace(TODO, ' '));
+  const numbered = [...noComments(html).matchAll(/<h2 id="([^"]+)">\d+\./g)].map((m) => m[1]);
+  assert.ok(numbered.includes('changes-service') && numbered.includes('ending') && numbered.includes('acl'));
+  if (draft) for (const id of numbered.filter((x) => x !== 'acl')) assert.doesNotMatch(unplaced(id), /refund[^.]*unused|unused[^.]*refund|pro[- ]?rat/i, `§${id}: a refund promise the owner hasn't made`);
+  assert.match(textOf(sectionOf(html, 'acl')), /to a refund for the unused portion/, '§12: the law\'s own remedy stays');
+  assert.match(unplaced('changes-service'), /If we make a change that significantly reduces what your subscription includes, we’ll tell you first, and you can cancel: your plan then stays until the end of the billing period you’ve been charged for, and you won’t be charged again\./);
+  assert.match(unplaced('ending'), /If we end your subscription for any other reason, or stop offering hushmallow altogether, we’ll give you reasonable notice\./);
+  if (draft) {
+    assert.ok([...sectionOf(html, 'changes-service').matchAll(TODO)].some((m) => m[1] === 'refund-reduced' && /section 6/.test(m[2])), '§8: the owner\'s decision');
+    assert.ok([...sectionOf(html, 'ending').matchAll(TODO)].some((m) => m[1] === 'refund-ending' && /section 6/.test(m[2])), '§14: the owner\'s decision');
+  }
+  // prices can change, with notice, from the next renewal; the notice period is the owner's
+  const prices = textOf(sectionOf(html, 'prices'));
+  assert.match(prices, /before a new price applies to you, and it starts only from your first renewal after that notice/);
+  // taxes: no tax wording until the owner has it (Stripe Tax is off at checkout until registrations are confirmed)
+  const todos = (id) => [...sectionOf(html, id).matchAll(TODO)].map((m) => m[1]);
+  if (draft) {
+    assert.ok(todos('subscriptions').includes('tax'), 'the tax placeholder');
+    assert.ok(todos('prices').includes('price-notice'), 'the notice period placeholder');
+  }
+  assert.doesNotMatch(textOf(sectionOf(html, 'subscriptions').replace(TODO, ' ')), /\b(?:GST|VAT|tax(?:es)?)\b/i, 'no tax claim outside the placeholder');
+  assert.doesNotMatch(sub, /web payments aren’t built yet/, 'web payments are built');
+});
+
+test('the Privacy Policy: "AI and sensitive information" says what Another Angle\'s code does; every processor is named', async () => {
+  const draft = isDraft(read('src/ui/legal.css'));
+  const html = read(PAGES[0]);
+  assert.match(html, /<h2 id="another-angle">3\. Another Angle: AI and sensitive information<\/h2>/);
+  const ai = textOf(sectionOf(html, 'another-angle'));
+  // opt-in consent (consent.js): nothing before Accept, nothing on Not now, a changed notice asks again (CONSENT_VERSION)
+  const C = await import('../src/beyond/consent.js');
+  assert.ok(Number.isInteger(C.CONSENT_VERSION) && C.CONSENT_VERSION >= 1);
+  assert.match(ai, /only after you tap Accept on its consent card\. If you tap Not now, nothing is sent/);
+  assert.match(ai, /If that notice changes in a way you should read again, the card asks you again before anything more is sent\./);
+  // checked on the device first (another-angle.js): support instead of sending; the question before each angle (angle-first.js)
+  const { ASK_BEFORE_ANGLE } = await import('../src/beyond/angle-first.js');
+  const { ANGLE_CHOICE } = await import('../src/beyond/lines.js');
+  assert.equal(ASK_BEFORE_ANGLE, true);
+  assert.match(ai, /Before anything is sent, the app reads your words on your device\. If they suggest you may be in danger or need support, it shows support lines instead, and nothing is sent\./);
+  assert.ok(ai.includes(`Nothing is sent before you choose, and nothing is sent if you choose ${ANGLE_CHOICE.be}.`));
+  assert.match(read('src/beyond/another-angle.js'), /safety \(crisis: urgent support, nothing sent; care: support, no reframe\)/);
+  // the server checks again before the model (its README: "Safety first — before any limit"; the model is never called)
+  assert.match(readFileSync(resolve(root, 'server/another-angle/README.md'), 'utf8'), /and the model is never called and no quota is used/);
+  assert.match(ai, /Our server checks the words it receives again, before anything goes to Anthropic\./);
+  // (review, 17 Oct 2026) support lines can also come after the words have left the phone: the server's own check, or the
+  // model's safety_status on its answer (angle-client.js read() honours both). Only the device's check sends nothing, and
+  // the Terms (§9) say exactly that, as this policy does
+  const reader = read('src/beyond/angle-client.js');
+  assert.match(reader, /if \(d\.status === 'crisis' \|\| d\.status === 'care'\) return \{ status: d\.status, keepSupportClose: true/);
+  assert.match(reader, /if \(flagged === 'crisis' \|\| flagged === 'care'\) return \{ status: flagged, keepSupportClose: true/);
+  assert.match(ai, /Anthropic’s model can also judge that what you wrote calls for support: then the app shows support lines instead of that perspective\. By then your words have been sent, as this section describes\./);
+  const termsAngle = textOf(sectionOf(read(PAGES[1]), 'another-angle'));
+  assert.doesNotMatch(termsAngle, /and then it sends nothing/, 'the Terms: not for every support answer');
+  assert.match(termsAngle, /If what you write suggests you may need support, the app may offer support lines instead of a perspective\. When the app’s own check on your device does this, nothing is sent\. Our server checks again, and the AI model can also answer with support lines: by then your words have been sent \(to our server, and in the model’s case to Anthropic\), as our Privacy Policy explains\./);
+  // what is sent: angle-client.js's own list, and the account's token only with web subscriptions (consent.js ACCOUNT_CHECK)
+  const client = read('src/beyond/angle-client.js');
+  assert.match(client, /What is sent: POST \/v1\/session \{ device_id, platform, app_version, invite\? \}/);
+  assert.match(ai, /a random code for this device, the app’s version and the type of device \(and any tester code\)/);
+  // the token is a Supabase access token: its claims carry the account's email and its user_metadata, which holds the name
+  // given at sign-up and the sign-up tick's record (client.js signUp's options.data; the fake issues the email claim too).
+  // The server forwards it to the account service and uses only the account id (billing/account.js: nothing logged, the
+  // token not kept, only a SHA-256 of it in memory for a minute). The card and the policy say so, never "not your email"
+  assert.match(read('src/auth/client.js'), /const data = \{ \.\.\.\(n \? \{ display_name: n \} : \{\}\), \.\.\.consentRecord\(now\(\)\) \};/);
+  assert.match(read('tools/auth/fake-supabase.mjs'), /sub: u\.id, email: u\.email, role: 'authenticated'/);
+  const verifier = readFileSync(resolve(root, 'server/another-angle/src/billing/account.js'), 'utf8');
+  assert.match(verifier, /under a SHA-256 of the token \(the\n\/\/ token itself is not kept\)\. Nothing here is logged\./);
+  assert.match(verifier, /return \{ ok: true, uid \};\n  \};\n\}/, 'the verifier answers with the account id alone');
+  for (const s of [C.ACCOUNT_CHECK, ai]) assert.doesNotMatch(s, /Never your name or email/, 'the token carries both');
+  assert.equal(C.ACCOUNT_CHECK, ' When you’re signed in, it also sends your account’s sign-in token, so our server can check your plan. The token carries your email (and the name you gave at sign-up, if any); our server uses only your account’s id and doesn’t log or store it.');
+  assert.match(ai, /the start also sends your account’s access token, so our server can confirm your account with our account service and check your plan\. Like any access token from our account service, it carries your account’s email address and what was recorded with your account when you signed up: your name, if you gave one, and your agreement to the Terms and this policy \(section 2\)\. Our server uses only your account’s id from it: it doesn’t log the token or what it carries, and keeps only a one-way scrambled code of it, in memory for up to a minute, so it needn’t ask again\. The token is never sent with your words, and never to Anthropic\./);
+  assert.doesNotMatch(ai, /Never your photos or your name/, 'the name may be in the token');
+  assert.match(ai, /Never your photos; and Anthropic is never sent your account, its email address or the name on it\./);
+  // the session code: at most the server's testing-token lifetime (30 days by default)
+  assert.match(readFileSync(resolve(root, 'server/another-angle/src/config.js'), 'utf8'), /testingTokenTtlMs: int\(env\.TESTING_TOKEN_TTL_DAYS, 30,/);
+  assert.match(ai, /keeps on your device for up to 30 days/);
+  // what the server keeps (log.js; the ledger's two days); how long Cloudflare keeps the logs is not in the code: the owner's
+  assert.match(ai, /These records are kept for/);
+  if (draft) assert.ok([...sectionOf(html, 'another-angle').matchAll(TODO)].some((m) => m[1] === 'log-retention'), 'the log retention is a placeholder');
+  // sensitive information: only with consent, only for the perspective, not kept
+  assert.match(ai, /so we handle it as sensitive information\. We send it only with your consent \(Accept on the consent card\), only to prepare your perspective, and our server doesn’t keep it\./);
+  // what stays on the device: a Belief Mallow only when kept ("Keep it on this phone"), and Delete my Another Angle data removes it
+  const { BELIEF } = await import('../src/beyond/belief/lines.js');
+  assert.ok(textOf(sectionOf(html, 'device')).includes(`if you choose “${BELIEF.end.keep}” for a Belief Mallow in Another Angle: its words`));
+  assert.ok(C.ANGLE_EXTRA_KEYS.includes('beyond.belief.kept'));
+  assert.match(ai, /“Delete my Another Angle data” removes [^.]*any sealed predictions and any Belief Mallows you kept\./);
+  // every processor, by name, in "Who we share information with"; Brevo sends the account emails (owner, 17 Oct 2026)
+  const dts = [...sectionOf(html, 'sharing').matchAll(/<dt>([^<]*)<\/dt>/g)].map((m) => m[1].split(':')[0]);
+  assert.deepEqual(dts, ['Supabase, Inc.', 'Cloudflare, Inc.', 'GitHub, Inc.', 'Anthropic, PBC', 'Stripe', 'Brevo']);
+  assert.match(textOf(sectionOf(html, 'account')), /are sent from no-reply@hushmallow\.com through Brevo, our email delivery service/);
+  assert.match(textOf(sectionOf(html, 'overseas')), /European Union: Brevo, which sends account emails/);
+  if (draft) for (const id of ['account', 'sharing', 'overseas']) assert.ok([...sectionOf(html, id).matchAll(TODO)].some((m) => m[1] === 'email-provider'), `§${id}: Brevo, to confirm`);
+  assert.doesNotMatch(textOf(html), /the email delivery service used for account emails/, 'the provider is named');
 });

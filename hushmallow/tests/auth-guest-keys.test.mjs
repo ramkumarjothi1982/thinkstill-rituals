@@ -121,7 +121,7 @@ test('sign in → “Not now” → the account’s page → sign out: the guest
   const other = memoryStorage();
   const mk = createAuth({ config: bootApp(other, published).config, ns: { mode: 'guest', uid: null }, ls: other, ss: memoryStorage(), loader: async () => supabaseLib(), storage: other, ...fakeDom(), loc, onReload: () => {} });
   fake.cfg.autoconfirm = true;
-  assert.equal((await mk.signUp({ email: 'ana@example.com', password: 'gentle-moon-42' })).ok, true);
+  assert.equal((await mk.signUp({ email: 'ana@example.com', password: 'gentle-moon-42', agreed: true })).ok, true);
   fake.cfg.autoconfirm = false;
   (await mk.ensureClient()).auth.stopAutoRefresh();
 

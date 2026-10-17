@@ -24,7 +24,8 @@
 //    and none of them names another site), carries no script, no inline
 //    style or handler and a strict Content-Security-Policy meta tag, and links
 //    only to shipped pages, ids that exist, https:, mailto: or tel:; _headers
-//    gives /legal/* its strict policy too.
+//    gives /legal/* its strict policy too. Each page carries the version a new
+//    account agrees to (LEGAL_VERSIONS, <meta name="legal-version">).
 // 7. No secret in any published file, art and config included (the patterns of
 //    tools/secret-scan.mjs, with no allow-list: no fake belongs on the site).
 // Prints a short summary; exits 1 with the list of problems.
@@ -260,10 +261,12 @@ export async function checkSite(outArg, ver, { env = process.env } = {}) {
 
 /** Section 6: the legal pages. enqueue(file, from) adds a file they load to the module and stylesheet graph. Returns their paths. */
 async function checkLegal(out, app, ver, problems, enqueue) {
-  let pages = [];
+  let pages = [], versions = {}, kinds = {};
   try {
     const mod = await import(pathToFileURL(join(app, LEGAL_MODULE)).href);
     pages = Object.values(mod.LEGAL_PAGES || {});
+    versions = mod.LEGAL_VERSIONS || {};
+    kinds = Object.fromEntries(Object.entries(mod.LEGAL_PAGES || {}).map(([k, v]) => [v, k]));
   } catch (e) { problems.push(`${LEGAL_MODULE} does not load in Node: ${e.message}`); return pages; }
   if (!pages.length) problems.push(`${LEGAL_MODULE} names no legal pages`);
   const idsOf = (file) => new Set([...readFileSync(file, 'utf8').replace(/<!--[\s\S]*?-->/g, '').matchAll(/\sid="([^"]+)"/g)].map((m) => m[1]));
@@ -271,6 +274,10 @@ async function checkLegal(out, app, ver, problems, enqueue) {
     const p = join(out, page);
     if (!isFile(p)) { problems.push(`${page} (the app links to it) is not in the site`); continue; }
     const html = readFileSync(p, 'utf8').replace(/<!--[\s\S]*?-->/g, '');
+    // the version a sign-up records for this page (src/app/legal.js) is the one the page says it is
+    const want = versions[kinds[page]];
+    const stamps = [...html.matchAll(/<meta name="legal-version" content="([^"]*)">/g)].map((m) => m[1]);
+    if (want && (stamps.length !== 1 || stamps[0] !== want)) problems.push(`${page} says legal-version ${stamps.join(', ') || '(none)'}, not ${want} (${LEGAL_MODULE})`);
     if (/<script\b/i.test(html)) problems.push(`${page} has a <script> (the legal pages run none)`);
     if (/<style\b|\sstyle\s*=/i.test(html)) problems.push(`${page} has inline style (its policy allows none)`);
     if (/<[a-z][^>]*\son[a-z]+\s*=/i.test(html)) problems.push(`${page} has an inline event handler`);

@@ -1,7 +1,9 @@
 // Finds secrets that must never be committed or published: Stripe secret and
 // restricted keys (sk_/rk_, live or test) and webhook signing secrets
 // (whsec_), Supabase secret keys (sb_secret_), service_role JWTs and access
-// tokens (sbp_), Anthropic keys (sk-ant-) and private keys (PEM).
+// tokens (sbp_), Anthropic keys (sk-ant-), Brevo SMTP and API keys (xsmtpsib-,
+// xkeysib-: the SMTP key belongs only in Supabase's SMTP settings) and private
+// keys (PEM).
 //   node hushmallow/tools/secret-scan.mjs                  every tracked file (git ls-files)
 //   node hushmallow/tools/secret-scan.mjs --staged         the lines a commit adds
 //   node hushmallow/tools/secret-scan.mjs --source <root>  a build's: the tracked files of a checkout
@@ -32,6 +34,7 @@ export const SECRET_PATTERNS = [
   { kind: 'a Supabase secret key', re: /(?<head>sb_secret_)[A-Za-z0-9_-]{8,}/g },
   { kind: 'a Supabase access token', re: /(?<head>sbp_)[a-f0-9]{40}/g },
   { kind: 'an Anthropic API key', re: /(?<head>sk-ant-)[A-Za-z0-9_-]{10,}/g },
+  { kind: 'a Brevo SMTP or API key', re: /(?<head>x(?:smtp|key)sib-)[A-Za-z0-9-]{20,}/g },
   { kind: 'a private key', re: /(?<head>-----BEGIN (?:[A-Z0-9]+ )*PRIVATE KEY-----)/g },
   // only a service_role JWT: the anon one is a public key
   { kind: 'a Supabase service_role JWT', re: /(?<head>eyJ)[A-Za-z0-9_-]+\.(?<payload>eyJ[A-Za-z0-9_-]+)\.[A-Za-z0-9_-]*/g, keep: (m) => /"role"\s*:\s*"service_role"/.test(Buffer.from(m.groups.payload, 'base64url').toString('utf8')) },

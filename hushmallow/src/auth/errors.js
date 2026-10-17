@@ -10,7 +10,7 @@
 //              | 'current' (checking the current password before a change)
 //              | 'password' | 'reauth' | 'delete' | 'profile' | 'sync' | 'session'
 //     code:    a stable id for tests and analytics-free logic
-//     field:   'email' | 'password' | 'current' | 'code' | 'name' | null (where to show it)
+//     field:   'email' | 'password' | 'current' | 'code' | 'name' | 'agree' | null (where to show it)
 //     kind:    'input' | 'link' | 'limit' | 'network' | 'server' | 'session' | 'unknown'
 
 export const MESSAGES = Object.freeze({
@@ -23,6 +23,8 @@ export const MESSAGES = Object.freeze({
   password_weak: 'That password is easy to guess. Try a longer one, or add a few words.',
   password_same: 'That’s your current password. Choose a new one.',
   name_long: 'Keep your name under 40 characters.',
+  // the sign-up form's required tick (src/app/legal.js CONSENT_LINE): asked before an account is made, or a provider opened
+  agree_needed: 'Please tick the box to say you’re 18 or older and agree to the Terms and the Privacy Policy.',
   link_expired: 'This link has expired or was already used. You can ask for a new one.',
   link_other_device: 'This link works on the device where you asked for it. If you were confirming your email, it’s confirmed: sign in to carry on.',
   link_invalid: 'This link isn’t complete. Open it straight from the email, or ask for a new one.',
@@ -138,6 +140,8 @@ export function friendlyError(err, context = 'unknown') {
       return R('sync_off', 'input', null, false);
     case 'name_long':
       return R('name_long', 'input', 'name');
+    case 'agree_needed':
+      return R('agree_needed', 'input', 'agree');
     case 'captcha_failed':
       return R('unknown', 'unknown');
     default: break;

@@ -52,7 +52,7 @@ const sidOf = (ls) => { try { return JSON.parse(Buffer.from(JSON.parse(ls.getIte
 
 async function signedUp(ls, email = 'ana@example.com', password = 'gentle-moon-42') {
   const p = page(ls);
-  const r = await p.auth.signUp({ email, password, name: 'Ana' });
+  const r = await p.auth.signUp({ email, password, name: 'Ana', agreed: true });
   assert.equal(r.ok, true); assert.equal(r.needsConfirmation, true);
   const m = await mail(email, 'signup');
   const c = await p.auth.ensureClient();
@@ -82,7 +82,7 @@ test('sign-up for an email that already has an account looks exactly like a new 
   await signedUp(ls, 'ana@example.com');
   const p = page(memoryStorage());
   fake.cfg.rateLimitMs = 0;
-  const r = await p.auth.signUp({ email: 'ana@example.com', password: 'another-pass-99' });
+  const r = await p.auth.signUp({ email: 'ana@example.com', password: 'another-pass-99', agreed: true });
   assert.deepEqual(r, { ok: true, needsConfirmation: true, email: 'ana@example.com' });
   await retire(p.auth);
 });
@@ -95,7 +95,7 @@ test('sign in: wrong password and unknown email are the same message; unconfirme
   const unknown = await p.auth.signIn({ email: 'nobody@example.com', password: 'nope-nope-nope' });
   assert.equal(wrong.ok, false); assert.equal(unknown.ok, false);
   assert.equal(wrong.error.message, unknown.error.message);
-  await p.auth.signUp({ email: 'bo@example.com', password: 'gentle-moon-42' });
+  await p.auth.signUp({ email: 'bo@example.com', password: 'gentle-moon-42', agreed: true });
   const unconfirmed = await p.auth.signIn({ email: 'bo@example.com', password: 'gentle-moon-42' });
   assert.equal(unconfirmed.error.code, 'email_not_confirmed');
   await retire(p.auth);

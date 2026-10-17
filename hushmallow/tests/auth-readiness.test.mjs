@@ -138,7 +138,7 @@ test('the client never starts a sign-up, sign-in, resend or reset against a proj
     return createAuth({ config, ns: bootNamespace({ config, ls }), ls, ss: memoryStorage(), loader: async () => supabaseLib(), doc, win, loc, storage: ls, onReload: () => {}, readiness: async () => ok });
   };
   const no = mk(false);
-  for (const [name, call] of [['signUp', () => no.signUp({ email: 'sky@example.com', password: 'gentle-moon-42' })], ['signIn', () => no.signIn({ email: 'sky@example.com', password: 'gentle-moon-42' })],
+  for (const [name, call] of [['signUp', () => no.signUp({ email: 'sky@example.com', password: 'gentle-moon-42', agreed: true })], ['signIn', () => no.signIn({ email: 'sky@example.com', password: 'gentle-moon-42' })],
     ['resend', () => no.resend({ email: 'sky@example.com' })], ['sendReset', () => no.sendReset({ email: 'sky@example.com' })]]) {
     const res = await call();
     assert.equal(res.ok, false, name);
@@ -150,7 +150,7 @@ test('the client never starts a sign-up, sign-in, resend or reset against a proj
   if (st && Array.isArray(st.users)) assert.equal(st.users.length, 0, 'no account was made');
   // ready: the same call goes through
   const yes = mk(true);
-  const su = await yes.signUp({ email: 'sky@example.com', password: 'gentle-moon-42' });
+  const su = await yes.signUp({ email: 'sky@example.com', password: 'gentle-moon-42', agreed: true });
   assert.equal(su.ok, true);
   assert.equal(su.needsConfirmation, true);
   try { (await yes.ensureClient()).auth.stopAutoRefresh(); } catch { /* never loaded */ }

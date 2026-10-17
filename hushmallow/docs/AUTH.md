@@ -229,7 +229,7 @@ it in the built app.
 
 ## Client API (`await app.auth.load()`)
 
-`status()` · `user()` · `onChange(fn)` · `init()` · `signUp({ email, password, name })` ·
+`status()` · `user()` · `onChange(fn)` · `init()` · `signUp({ email, password, name, agreed })` ·
 `signIn({ email, password })` · `chooseGuestData('keep'|'fresh')` · `enter(hash)` ·
 `signOut({ removeLocal })` · `resend({ email })` · `sendReset({ email })` ·
 `cooldownLeft(kind)` · `updatePassword({ current, password, nonce })` · `reauthenticate()` ·
@@ -237,8 +237,8 @@ it in the built app.
 `deleteAccount()` · `removeDeviceData()` · `profile.get/update/touch` ·
 `consents.get/set('settings'|'library', on)` · `sync.pushPreferences/pullPreferences/pushLibrary/pullLibrary/syncNow(store, prefs)` ·
 `guestDataWaiting` · `importGuestData()` ·
-`signInWithProvider('google')` (a hook: `PROVIDERS.google` is false until
-Google is configured; no button). Synchronous without loading:
+`signInWithProvider('google', { agreed })` (a hook: `PROVIDERS.google` is false until
+Google is configured; no button; it needs the sign-up tick too). Synchronous without loading:
 `app.auth.enabled`, `.status()`, `.user()`, `.pendingGuestChoice`,
 `.guestDataWaiting`, `.namespace`; `app.auth.start({ store, prefs })` (signed
 in: load, check the session, start the opt-in sync; main.js calls it on
@@ -302,7 +302,7 @@ on the scene names the screen; deeper screens get a history entry, so Back
 | Screen | What it does |
 |---|---|
 | `welcome` (guest) | three plain promises; Create an account / Sign in / Continue as a guest |
-| `create` | email (`autocomplete=email`), password (`new-password`, show/hide, a gentle strength meter and hint, 8+ characters), optional name (`nickname`) |
+| `create` | email (`autocomplete=email`), password (`new-password`, show/hide, a gentle strength meter and hint, 8+ characters), optional name (`nickname`), and the required tick "I’m 18 or older, and I agree to the Terms and the Privacy Policy" (both linked, new tabs): Create my account stays off until it is ticked, and the account records it (below) |
 | `check-email` | the address; "I've confirmed it: sign in"; "Send it again" with its 60 s cooldown counting down; use a different email |
 | `signin` | email, password (`current-password`, show/hide), Forgot your password?; wrong password and unknown email read the same; unconfirmed → "Send the link again" |
 | `forgot` → `reset-sent` | the same neutral answer for any email; resend with cooldown; the link sets the new password on `/auth/callback` |
@@ -482,10 +482,15 @@ end to end there.
 
 **SMTP (Authentication → Emails → SMTP Settings): required before real people sign up.**
 Supabase's built-in email service only delivers to members of the project's
-team and is heavily rate limited; real users need a custom SMTP provider
-(Resend, Postmark, Amazon SES, …) with a sender such as
-`hello@hushmallow.com`, SPF / DKIM / DMARC on the domain, then raise
+team and is heavily rate limited; real users need a custom SMTP provider. The
+owner's is **Brevo** (17 Oct 2026): host `smtp-relay.brevo.com`, port `587`,
+the Brevo SMTP login as the username and a Brevo SMTP key as the password
+(pasted only into Supabase, never into this repository), sender
+`no-reply@hushmallow.com`, sender name `hushmallow`; the domain authenticated in
+Brevo (Senders, Domains & Dedicated IPs → Domains), its SPF / DKIM / DMARC
+records at GoDaddy, where hushmallow.com's DNS is managed. Then raise
 Authentication → Rate Limits → emails per hour to fit (e.g. 30).
+`supabase/production/RUNBOOK.md` step 7 has every click.
 
 **Database**: run the SQL in `supabase/README.md` order, then
 `supabase/tests/rls_check.sql` (must end `ALL 35 CHECKS PASSED`).
@@ -495,7 +500,23 @@ Data API exposed schemas: `public` only (never `hm_private`).
 from Google Cloud; authorised redirect URI
 `https://igbxbfuaoybfzsroxuln.supabase.co/auth/v1/callback`), then set
 `PROVIDERS.google = true` in `src/auth/client.js` and add a button that calls
-`signInWithProvider('google')` (it returns through `/auth/callback?code=`).
+`signInWithProvider('google', { agreed })` (it returns through `/auth/callback?code=`).
+The hook refuses to redirect without the same 18+ / Terms and Privacy Policy tick
+as sign-up (`agreed: true`), since a provider sign-in can make an account. Before
+switching it on, record that acceptance on the account when it returns
+(`updateUser({ data: consentRecord() })`: `options.data` cannot travel through the
+redirect); `tests/signup-consent.test.mjs` keeps every provider off until then.
+
+**The sign-up record (owner, 17 Oct 2026).** `signUp` refuses anything but
+`agreed: true` before it loads or sends anything, and sends, as `options.data`
+(kept by Supabase as the user's `user_metadata`), the name if one was given and
+`{ age_18_confirmed_at, terms_accepted_at, terms_version, privacy_version }`
+(`src/app/legal.js` `consentRecord`; the versions are `TERMS_VERSION` and
+`PRIVACY_VERSION` there, stamped into each legal page as
+`<meta name="legal-version">`, and checked by the suite and `tools/site/check.mjs`).
+It is visible in Supabase → Authentication → Users → the user → Raw user meta data.
+`user_metadata` can be changed by its own signed-in user, so it records the
+person's own declaration, not a proof; nothing else checks age.
 
 ## Cloudflare Pages
 

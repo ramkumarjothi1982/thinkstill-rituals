@@ -10,8 +10,8 @@
 //   setConsent(store, 'yes'|'no', { account? }), withdrawConsent(store), deleteAngleData(store)
 //   sendsAccount(app)  web subscriptions are on (app.billing, src/app/billing.js): the session also carries
 //                      the account's sign-in token, and the notice says so. `account` is that: a yes given to
-//                      the notice from before it said so asks again, once; with billing off a stored yes
-//                      counts exactly as before
+//                      a notice whose account line was older than ACCOUNT_NOTICE asks again, once; with billing
+//                      off a stored yes counts exactly as before
 //   openConsent({ app, root, onDecide(choice), support? }) → { el, close }   the calm card in the scene
 //   openConsentSheet(app, { onDecide })                               the same notice as a sheet (Settings)
 //   mountAngleSettings(app, el, { endpoint })                          the Settings rows (with a Tester code row)
@@ -55,8 +55,18 @@ export const PROVIDER_SAFETY_HOLD = 'If its automatic safety checks flag a messa
 export const PROVIDER_USE = 'Anthropic uses your words only to prepare your perspective, to keep its service safe, and where the law requires. It isn’t sent your account or photos, but it sees anything you type, names included.';
 /** The owner's approved wording (DECISIONS.md line 4), on the delete-data sheet. */
 export const PROVIDER_DELETE = 'Anthropic’s copy is usually deleted within 30 days (kept longer only if flagged or the law requires it). We can’t delete it sooner from here.';
-/** Web subscriptions on (src/app/billing.js): what the session start also sends, in place of "Never your name or account." */
-export const ACCOUNT_CHECK = ' When you’re signed in, it also sends a sign-in token for your account, so our server can check your plan. Never your name or email.';
+/**
+ * Web subscriptions on (src/app/billing.js): what the session start also sends, in place of "Never your name or account."
+ * The token is the account's Supabase access token: its claims carry the account's email and its user_metadata (the name
+ * given at sign-up, src/auth/client.js signUp), so the line says so. The server forwards it to the sign-in project and uses
+ * only the account id (server/another-angle/src/billing/account.js: nothing logged, the token not kept).
+ */
+export const ACCOUNT_CHECK = ' When you’re signed in, it also sends your account’s sign-in token, so our server can check your plan. The token carries your email (and the name you gave at sign-up, if any); our server uses only your account’s id and doesn’t log or store it.';
+/**
+ * The account line's version, recorded with a yes given while it showed (setConsent's `account`). 2 (17 Oct 2026): it says
+ * what the token carries; a yes to the line before (recorded as `account: true`, "Never your name or email") asks again, once.
+ */
+export const ACCOUNT_NOTICE = 2;
 export const RETENTION_PLACEHOLDER = '[Owner to confirm before launch: how long Anthropic keeps what it receives, from privacy.claude.com.]';
 
 /** Web subscriptions are on: Another Angle's session also carries the account's sign-in token (ACCOUNT_CHECK says so). */
@@ -66,15 +76,15 @@ export function consentState(store, { account = false } = {}) {
   let c = null;
   try { c = store?.get(STORE_KEYS.consent, null); } catch { c = null; }
   if (!c || typeof c !== 'object' || c.v !== CONSENT_VERSION) return 'unasked';
-  // the session now carries the account's token: a yes to a notice that didn't say so is asked again (a "Not now" stays,
-  // nothing is sent then)
-  if (account && c.choice === 'yes' && c.account !== true) return 'unasked';
+  // the session now carries the account's token: a yes to a notice that didn't say so, or said it in the older account
+  // line, is asked again (a "Not now" stays, nothing is sent then)
+  if (account && c.choice === 'yes' && c.account !== ACCOUNT_NOTICE) return 'unasked';
   return c.choice === 'yes' ? 'yes' : c.choice === 'no' ? 'no' : 'unasked';
 }
 export function setConsent(store, choice, { account = false } = {}) {
   const v = choice === 'yes' ? 'yes' : 'no';
   // (account: the notice shown said the session carries the account's token; off, the record is exactly as before)
-  try { store?.set(STORE_KEYS.consent, { v: CONSENT_VERSION, choice: v, at: new Date().toISOString().slice(0, 10), ...(account ? { account: true } : {}) }); } catch { /* this visit only */ }
+  try { store?.set(STORE_KEYS.consent, { v: CONSENT_VERSION, choice: v, at: new Date().toISOString().slice(0, 10), ...(account ? { account: ACCOUNT_NOTICE } : {}) }); } catch { /* this visit only */ }
   if (v === 'no') { try { store?.remove(STORE_KEYS.session); } catch { /* ignore */ } }
   return v;
 }

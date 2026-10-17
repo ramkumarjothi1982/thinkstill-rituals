@@ -35,7 +35,7 @@ async function signedInPage(email) {
   const ls = memoryStorage({ 'hm2:prefs': JSON.stringify({ textScale: 1.25 }), 'hm2:hushfold.favourites': JSON.stringify({ v: 1, ids: ['quiet-lake'] }) });
   const g = createAuth({ config, ns: bootNamespace({ config, ls }), ls, ss: memoryStorage(), loader: async () => supabaseLib(), storage: ls, ...fakeDom(), loc, onReload: () => {} });
   live.push(g);
-  const su = await g.signUp({ email, password: 'gentle-moon-42' });   // autoconfirm: signed in at once
+  const su = await g.signUp({ email, password: 'gentle-moon-42', agreed: true });   // autoconfirm: signed in at once
   assert.equal(su.ok, true); assert.equal(su.signedIn, true);
   g.chooseGuestData('fresh');
   const ns = bootNamespace({ config, ls });
