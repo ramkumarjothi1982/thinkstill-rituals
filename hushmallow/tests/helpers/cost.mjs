@@ -134,8 +134,9 @@ const RUNS = 3;
  * fresh processes (`node -e "import('./hushmallow/tests/helpers/cost.mjs').then((m) => console.log(m.machine.ms))"`,
  * once per process), Node 22.22.0, 17 Oct 2026, on the machine the CI comparison above was read on: an Intel Xeon @
  * 2.80 GHz (Cascade Lake, KVM, 4 vCPUs, 1 thread per core), other test runs beside it at times. The same work then ran on
- * a second machine of the same session (an Intel Xeon @ 2.10 GHz, family 6 model 207, KVM, 4 vCPUs) at 0.79x of these
- * (median smallest-kind ratio of 20 fresh processes, 0.73-0.87, other agents' suites beside it: factor 1.00 in all 20).
+ * a second machine of the same session (an Intel Xeon @ 2.10 GHz, family 6 model 207, KVM, 4 vCPUs) at 0.8x of these
+ * (the smallest-kind ratio of 40 fresh processes: median 0.82 quiet, 0.79 with other agents' suites beside them, all
+ * within 0.73-0.87: factor 1.00 in all 40).
  * The slower machine's numbers are the ones kept, so neither machine's budgets are loosened, and a CI runner is credited
  * only its slowdown over the slower of the two. Re-measure them on such a machine, the same way, whenever this work or
  * its batch sizes change.
