@@ -53,7 +53,7 @@
 // are never used.
 
 import { friendlyError, errorCode, checkEmail, checkPassword } from './errors.js';
-import { isUid, readPersistedSession, removeAccountData, removeSupabaseKeys, settleNamespace, applyGuestChoice, needsGuestChoice, readMarker, guestHasData, sealAccount, unsealAccount, isSealed, MARKER_KEY, writeWipe, wipedSince, honourWipe, settleWipe, wipeKey, WIPE_RELOAD } from './namespace.js';
+import { isUid, readPersistedSession, removeAccountData, removeAccountDeviceKeys, removeSupabaseKeys, settleNamespace, applyGuestChoice, needsGuestChoice, readMarker, guestHasData, sealAccount, unsealAccount, isSealed, MARKER_KEY, writeWipe, wipedSince, honourWipe, settleWipe, wipeKey, WIPE_RELOAD } from './namespace.js';
 import * as S from './sync.js';
 import { consentRecord } from '../app/legal.js';
 import { FLOW_KEYS } from '../engine/flow-store.js';
@@ -623,6 +623,9 @@ export function createAuth({
       if (!uid || ownSession(uid)) { try { const c = await ensureClient(); await c.auth.signOut({ scope: 'local' }); } catch { /* offline: the tokens still go below */ } }
       if (uid) clearOwnKeys(uid); else removeSupabaseKeys(ls, config.storageKey);
       if (removeLocal && uid) removeAccountData(ls, uid);   // once more, right before the reload
+      // a plain sign-out keeps the account's copy for its next sign-in, but never its web plan or its Another Angle
+      // session under the device-level keys: the next person here starts as a guest (the next check brings them back)
+      else if (uid) removeAccountDeviceKeys(ls, uid);
       consents = null; user = null; status = 'guest'; verified = null;
       notice('signed-out');
       emit('signed-out');

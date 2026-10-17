@@ -111,6 +111,14 @@ export function createEntitlements({ store, billing = null, now = () => Date.now
   // a returning pilot tester whose test plan this host no longer honours; nothing stored is changed)
   const testEnded = state.source === 'test' && !testOk && !native;
   if (testEnded) state = { tier: 'none', source: null, since: null };
+  // a web plan is the account's, not the phone's ('entitlement' is a device-level key, src/auth/namespace.js): it is kept
+  // with the account it was checked for (owner) and counts only in that account's namespace, never for a guest or for
+  // another account signed in on this browser (not even offline, before its own first answer). One kept without an
+  // owner (from before) counts for nobody until the server answers again. Nothing stored changes. A store without a
+  // namespace (sign-in off, where no web plan can be checked) keeps the rule it always had.
+  const ns = store?.namespace || null;
+  const owner = ns ? (ns.mode === 'account' && typeof ns.uid === 'string' ? ns.uid : null) : undefined;
+  if (ns && state?.source === 'billing' && (owner === null || state.owner !== owner)) state = { tier: 'none', source: null, since: null };
   // web subscriptions (src/app/billing.js; null when off): never in the App Store app, where Apple's purchase is the only one
   const web = native ? null : billing;
   // a web plan whose last check is older than the grace (or later than now) counts as no plan (nothing stored changes)
@@ -126,7 +134,7 @@ export function createEntitlements({ store, billing = null, now = () => Date.now
   /** The billing server's answer, kept with when it was checked. */
   const setWeb = (r) => {
     const since = state.source === 'billing' && state.tier === r.tier && state.since ? state.since : now();
-    state = { tier: r.tier, source: 'billing', since, checkedAt: now(), status: r.status, periodEnd: r.periodEnd, endsAt: r.endsAt ?? null, cancelAtPeriodEnd: r.cancelAtPeriodEnd, manageable: r.manageable };
+    state = { tier: r.tier, source: 'billing', since, checkedAt: now(), status: r.status, periodEnd: r.periodEnd, endsAt: r.endsAt ?? null, cancelAtPeriodEnd: r.cancelAtPeriodEnd, manageable: r.manageable, ...(ns ? { owner } : {}) };
     store.set('entitlement', state);
     listeners.forEach((fn) => fn(state));
   };
