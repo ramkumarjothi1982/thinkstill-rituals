@@ -178,7 +178,10 @@ export const CANCEL_FIRST = Object.freeze({
 export function renewingWebPlan(app) {
   if (!BLOCK_DELETE_WHILE_SUBSCRIBED || !app?.billing || !app.ent?.isWeb) return false;
   const p = app.ent.webPlan?.();
-  return !!p && RENEWING.includes(p.status) && !p.cancelAtPeriodEnd;
+  if (!p || !RENEWING.includes(p.status) || p.cancelAtPeriodEnd) return false;
+  // an end date set on or before the period end (a Dashboard cancel_at comes as ends_at alone): nothing more is
+  // charged, as Settings says (webPlanNote); one set after it still renews first
+  return !(Number.isFinite(p.endsAt) && !(Number.isFinite(p.periodEnd) && p.endsAt > p.periodEnd + 86400000));
 }
 
 /**

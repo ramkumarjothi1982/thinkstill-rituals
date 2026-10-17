@@ -995,6 +995,34 @@ test('delete account (D9): with no answer from the billing check, Delete waits (
   assert.equal(late.server.calls.length, 2, 'not asked again once answered');
 });
 
+test('delete account (D9): an end date set on or before the period end (a Dashboard cancel_at) is not renewing, as Settings says', async () => {
+  fakeDocument();
+  const A = await import('../src/app/scenes/account.js');
+  const { webPlanNote } = await import('../src/app/scenes/settings.js');
+  const periodEnd = '2027-10-16T09:00:00.000Z';
+  const LIVE = { tier: 'ultra', status: 'active', current_period_end: periodEnd, ends_at: null, cancel_at_period_end: false, manageable: true };
+  const at = (d) => new Date(Date.parse(periodEnd) + d).toISOString();
+  const hour = 3600000, day = 86400000;
+  // [ends_at, cancel_at_period_end, still renews]: the server sends cancel_at_period_end only when cancel_at is
+  // within a day of the period end; an earlier date comes as ends_at alone
+  const cases = [
+    [null, false, true], [null, true, false], [periodEnd, true, false],
+    ['2027-03-01T00:00:00.000Z', false, false], [at(hour), false, false], [at(day), false, false],
+    [at(day + hour), false, true], ['2028-01-16T09:00:00.000Z', false, true],
+  ];
+  for (const [ends, cape, renews] of cases) {
+    const s = setup();
+    s.server.status = { ...LIVE, ends_at: ends, cancel_at_period_end: cape };
+    const ent = createEntitlements({ store: memStore(), billing: s.billing });
+    const g = A.deleteGuard({ billing: s.billing, ent }, { submit: new FakeEl('button'), confirmed: () => true });
+    await g.checked;
+    assert.equal(A.renewingWebPlan({ billing: s.billing, ent }), renews, `${ends} ${cape}`);
+    assert.equal(g.blocked(), renews, `${ends} ${cape}`);
+    // the same reading as Settings: "Ends on … Nothing more is charged." exactly when it no longer renews
+    assert.equal(/Nothing more is charged\.$/.test(webPlanNote(ent.webPlan(), ent.tier())), !renews, `${ends} ${cape}`);
+  }
+});
+
 test('delete account (D9): the delete screen puts the step first, keeps Delete off while it shows, and refuses at submit too', () => {
   const src = read('src/app/scenes/account.js');
   const del = src.slice(src.indexOf('  V.delete = () => {'), src.indexOf('  // ----------------------------------------------------------- actions --'));
