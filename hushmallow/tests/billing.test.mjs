@@ -232,7 +232,7 @@ test('our custom domain (D12): checkout and the portal open on checkout.hushmall
 test('status and portal: the server\'s answer, read strictly; the portal opens only Stripe\'s page', async () => {
   const s = setup();
   s.server.status = { tier: 'ultra', status: 'active', current_period_end: '2026-11-16T09:00:00.000Z', cancel_at_period_end: true, manageable: true };
-  assert.deepEqual(await s.billing.status(), { ok: true, tier: 'ultra', period: null, status: 'active', periodEnd: Date.parse('2026-11-16T09:00:00Z'), endsAt: null, cancelAtPeriodEnd: true, manageable: true }, 'a server from before ends_at (and period)');
+  assert.deepEqual(await s.billing.status(), { ok: true, tier: 'ultra', period: null, status: 'active', periodEnd: Date.parse('2026-11-16T09:00:00Z'), endsAt: null, cancelAtPeriodEnd: true, manageable: true, scheduled: null }, 'a server from before ends_at (and period)');
   const [c] = s.server.calls;
   assert.equal(c.url, `${EP}/v1/billing/status`);
   assert.equal(c.init.method, 'GET');
@@ -255,7 +255,7 @@ test('status and portal: the server\'s answer, read strictly; the portal opens o
     assert.equal((await s.billing.status()).period, want, String(v));
   }
   s.server.status = { tier: 'gold', status: '<b>', current_period_end: 'soon' };
-  assert.deepEqual(await s.billing.status(), { ok: true, tier: 'none', period: null, status: 'none', periodEnd: null, endsAt: null, cancelAtPeriodEnd: false, manageable: false });
+  assert.deepEqual(await s.billing.status(), { ok: true, tier: 'none', period: null, status: 'none', periodEnd: null, endsAt: null, cancelAtPeriodEnd: false, manageable: false, scheduled: null });
   s.server.down = true;
   assert.deepEqual(await s.billing.status(), { ok: false, reason: 'network' });
   s.server.down = false;
@@ -316,8 +316,8 @@ test('entitlement source "billing": the server\'s answer, kept with when it was 
   assert.equal(ent.source(), 'billing');
   assert.equal(ent.has('ultra'), true);
   const kept = store.get('entitlement');
-  assert.deepEqual(kept, { tier: 'ultra', source: 'billing', since: NOW, checkedAt: NOW, period: null, status: 'active', periodEnd: Date.parse('2026-11-16T09:00:00Z'), endsAt: null, cancelAtPeriodEnd: false, manageable: true });
-  assert.deepEqual(ent.webPlan(), { period: null, status: 'active', periodEnd: Date.parse('2026-11-16T09:00:00Z'), endsAt: null, cancelAtPeriodEnd: false, manageable: true });
+  assert.deepEqual(kept, { tier: 'ultra', source: 'billing', since: NOW, checkedAt: NOW, period: null, status: 'active', periodEnd: Date.parse('2026-11-16T09:00:00Z'), endsAt: null, cancelAtPeriodEnd: false, manageable: true, scheduled: null });
+  assert.deepEqual(ent.webPlan(), { period: null, status: 'active', periodEnd: Date.parse('2026-11-16T09:00:00Z'), endsAt: null, cancelAtPeriodEnd: false, manageable: true, scheduled: null });
   // the period the server says (the plans page reads it to offer an upgrade): kept with the plan
   s.server.status = { ...s.server.status, period: 'yearly' };
   await ent.refresh({ force: true });
@@ -486,7 +486,7 @@ test('sync: the session id goes to /v1/billing/sync with the token (only a well-
   const id = `cs_test_${'a1B2'.repeat(15)}`;
   const s = setup();
   s.server.sync = { http: 200, body: { tier: 'ultra', status: 'active', current_period_end: '2026-11-16T09:00:00.000Z', ends_at: null, cancel_at_period_end: false, manageable: true } };
-  assert.deepEqual(await s.billing.sync(id), { ok: true, tier: 'ultra', period: null, status: 'active', periodEnd: Date.parse('2026-11-16T09:00:00Z'), endsAt: null, cancelAtPeriodEnd: false, manageable: true });
+  assert.deepEqual(await s.billing.sync(id), { ok: true, tier: 'ultra', period: null, status: 'active', periodEnd: Date.parse('2026-11-16T09:00:00Z'), endsAt: null, cancelAtPeriodEnd: false, manageable: true, scheduled: null });
   const [c] = s.server.calls;
   assert.equal(c.url, `${EP}/v1/billing/sync`);
   assert.equal(c.init.method, 'POST');

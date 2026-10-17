@@ -12,7 +12,7 @@
 //                              account id; back to APP_ORIGIN, ?billing=success&session_id=cs_…). Only a price that
 //                              is what its slot says (CHECKOUT_PRICE_RULES) is sold, and only to an account with no
 //                              subscription at Stripe, unpaid ones included (409 already_subscribed | payment_pending)
-//   GET  /v1/billing/status    the account's token → { tier, status, period, current_period_end, cancel_at_period_end, ends_at, manageable }
+//   GET  /v1/billing/status    the account's token → { tier, status, period, current_period_end, cancel_at_period_end, ends_at, manageable, scheduled_change }
 //   POST /v1/billing/sync      { session_id: 'cs_…' } (back from Checkout) → the status body, once that session's
 //                              subscription is read from Stripe and recorded (the webhook may still be on its way);
 //                              {} | { refresh: true } (back from a plan change) → the status body, once the account's
@@ -294,6 +294,7 @@ export function createBilling({ logger, now, fetch: fetchImpl = (input, init) =>
    * The status body. status: Stripe's own; period: the recorded price's ('monthly' | 'yearly', null when it is none of
    * the plans), so a monthly → yearly change shows. ends_at: when the plan ends, if it is set to (the cancel_at date,
    * else the period end when it cancels at period end), so Settings can say "Ends on …"; null while it renews.
+   * scheduled_change: a change of plan set for later (scheduledBody), or null.
    * @param {any} rec @returns {Record<string, unknown>}
    */
   const statusBody = (rec) => (rec ? {
@@ -302,7 +303,20 @@ export function createBilling({ logger, now, fetch: fetchImpl = (input, init) =>
     cancel_at_period_end: !!rec.cancel_at_period_end,
     ends_at: rec.cancel_at != null ? iso(rec.cancel_at) : rec.cancel_at_period_end ? iso(rec.current_period_end) : null,
     manageable: !!rec.customer,
-  } : { tier: 'none', status: 'none', period: null, current_period_end: null, cancel_at_period_end: false, ends_at: null, manageable: false });
+    scheduled_change: scheduledBody(rec),
+  } : { tier: 'none', status: 'none', period: null, current_period_end: null, cancel_at_period_end: false, ends_at: null, manageable: false, scheduled_change: null });
+  /**
+   * A change of plan the subscription has waiting for later (store.js summarise: the portal schedules a downgrade or a
+   * shorter period for the period end, D8): { at, tier, period } (tier and period null when the schedule does not say),
+   * or null, so the app can say "Your plan changes to … on …" rather than wait for a change that is not due yet. Only
+   * while the plan gives access, and never for one set to end.
+   * @param {any} rec
+   */
+  const scheduledBody = (rec) => {
+    const c = rec.scheduled;
+    if (!c || typeof c !== 'object' || effectiveTier(rec, now()) === 'none' || rec.cancel_at != null || rec.cancel_at_period_end) return null;
+    return { at: iso(c.at), tier: c.tier === 'paid' || c.tier === 'ultra' ? c.tier : null, period: c.period === 'monthly' || c.period === 'yearly' ? c.period : null };
+  };
 
   /** @type {Map<string, { at: number, price: any }>} */
   const priceCache = new Map();

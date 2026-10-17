@@ -15,9 +15,10 @@
 //
 // The record: { v, subscription, customer, status, tier, period,
 // current_period_end (ms), cancel_at_period_end, cancel_at (ms or null),
-// as_of (ms), past_due_since (ms, only while past_due) }. Stripe ids,
-// Stripe's status and the plan only: never words, feelings, card details,
-// names or emails.
+// scheduled ({ at (ms), tier, period } or null: a change waiting for later,
+// summarise), as_of (ms), past_due_since (ms, only while past_due) }. Stripe
+// ids, Stripe's status and the plan only: never words, feelings, card
+// details, names or emails.
 //
 // The state machine (supersedes): for the same subscription, a newer answer
 // (as_of: when the server asked Stripe for it) replaces an older one and an
@@ -39,9 +40,10 @@
 // (canceled, unpaid, incomplete, incomplete_expired, paused) is no plan.
 
 /**
+ * @typedef {{ at: number | null, tier: 'paid' | 'ultra' | null, period: 'monthly' | 'yearly' | null }} Scheduled
  * @typedef {{ v: 1, subscription: string, customer: string | null, status: string, tier: 'none' | 'paid' | 'ultra',
  *   period: 'monthly' | 'yearly' | null, current_period_end: number | null, cancel_at_period_end: boolean,
- *   cancel_at?: number | null, as_of: number, past_due_since?: number }} SubRecord
+ *   cancel_at?: number | null, scheduled?: Scheduled | null, as_of: number, past_due_since?: number }} SubRecord
  * @typedef {{ get(key: string): Promise<any>, put(key: string, v: any): Promise<void>, delete(key: string | string[]): Promise<any>,
  *   list(opts?: { prefix?: string }): Promise<Map<string, any>> }} Storage
  */
@@ -120,6 +122,34 @@ export function idOf(v) {
   return typeof s === 'string' && /^[a-z]{2,8}_[A-Za-z0-9]{4,250}$/.test(s) ? s : null;
 }
 
+/** A subscription schedule's id (sub_sched_…): idOf's shape has no room for its second underscore. */
+const SCHEDULE = /^sub_sched_[A-Za-z0-9]{4,250}$/;
+/**
+ * A change the subscription has waiting for later, or null. The portal schedules a downgrade or a shorter period for
+ * the period end (D8) with a subscription schedule: { at, tier, period } is when it lands (the schedule's next phase,
+ * else the period end) and the plan it moves to (that phase's price, one of the four; null when it cannot be told, as
+ * when the schedule was not read expanded). A schedule over or released, or one whose next phase keeps the plan, is
+ * no change of plan.
+ * @param {any} sub @param {Parameters<typeof planForPrice>[2]} prices @param {number | null} endMs
+ * @param {{ tier: string, period: string | null }} now the plan the subscription is on @param {number} asOf
+ * @returns {Scheduled | null}
+ */
+function scheduledChange(sub, prices, endMs, now, asOf) {
+  const sched = sub?.schedule;
+  if (typeof sched === 'string') return SCHEDULE.test(sched) ? { at: endMs, tier: null, period: null } : null;
+  if (!sched || typeof sched !== 'object' || !SCHEDULE.test(String(sched.id))) return null;
+  if (sched.status != null && sched.status !== 'active' && sched.status !== 'not_started') return null;
+  const next = (Array.isArray(sched.phases) ? sched.phases : [])
+    .filter((/** @type {any} */ ph) => typeof ph?.start_date === 'number' && ph.start_date * 1000 > asOf)
+    .sort((/** @type {any} */ a, /** @type {any} */ b) => a.start_date - b.start_date)[0];
+  if (!next) return null;
+  const it = Array.isArray(next.items) ? next.items[0] : null;
+  const price = it?.price;
+  const p = planForPrice(idOf(price) || undefined, typeof price === 'object' ? price?.lookup_key : undefined, prices);
+  if (p && p.plan === now.tier && p.period === now.period) return null;
+  return { at: next.start_date * 1000, tier: p ? p.plan : null, period: p ? p.period : null };
+}
+
 /**
  * A Stripe subscription → the record kept. The period end is the subscription's
  * own (older API versions) or the latest of its items' (newer ones).
@@ -146,6 +176,7 @@ export function summarise(sub, prices, asOf) {
     cancel_at_period_end: sub?.cancel_at_period_end === true
       || (cancelAt != null && endMs != null && Math.abs(cancelAt - endMs) <= DAY_MS && status !== 'canceled'),
     cancel_at: cancelAt,
+    scheduled: status === 'canceled' ? null : scheduledChange(sub, prices, endMs, { tier, period }, asOf),
     as_of: asOf,
   };
 }
@@ -236,11 +267,15 @@ function isCheckout(c) {
 /** An optional time in ms. @param {unknown} v */
 const optionalMs = (v) => v == null || Number.isFinite(v);
 
+/** An optional scheduled change (summarise). @param {any} v */
+const optionalScheduled = (v) => v == null || (typeof v === 'object' && Object.keys(v).every((k) => ['at', 'tier', 'period'].includes(k))
+  && optionalMs(v.at) && (v.tier == null || v.tier === 'paid' || v.tier === 'ultra') && (v.period == null || v.period === 'monthly' || v.period === 'yearly'));
+
 /** @param {any} r @returns {r is SubRecord} */
 function isRecord(r) {
   return !!r && typeof r === 'object' && typeof r.subscription === 'string' && /^sub_/.test(r.subscription)
     && typeof r.status === 'string' && ['none', 'paid', 'ultra'].includes(r.tier) && typeof r.as_of === 'number'
-    && optionalMs(r.cancel_at) && optionalMs(r.past_due_since);
+    && optionalMs(r.cancel_at) && optionalMs(r.past_due_since) && optionalScheduled(r.scheduled);
 }
 
 export class Billing {

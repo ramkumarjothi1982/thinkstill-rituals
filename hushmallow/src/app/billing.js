@@ -19,7 +19,8 @@
 //   createBilling({ auth, signIn, config?, shell?, prices?, fetchImpl?, nav?, timeoutMs? }) → billing | null (off)
 //     signedIn()             the account is signed in on this device
 //     accountToken()         → its current access token, or null (Another Angle's session sends it too, src/beyond/angle-client.js)
-//     status()               → { ok: true, tier, period, status, periodEnd, endsAt, cancelAtPeriodEnd, manageable } | { ok: false, reason, off? }
+//     status()               → { ok: true, tier, period, status, periodEnd, endsAt, cancelAtPeriodEnd, manageable, scheduled } | { ok: false, reason, off? }
+//                              (scheduled: { at, tier, period } of a change Stripe has set for later, or null: scheduledOf)
 //                              (period: 'monthly' | 'yearly' from the plan's recorded price, null from a server without it;
 //                              periodEnd, endsAt: ms or null; the server sends ISO or ms, both are read; off: the
 //                              server's 503 saying it has no web billing at all, one of BILLING_OFF_CODES)
@@ -147,6 +148,14 @@ const EARLIEST = Date.UTC(2020, 0, 1);
 function dateMs(v) {
   const t = typeof v === 'number' ? v : typeof v === 'string' && v ? Date.parse(v) : NaN;
   return Number.isFinite(t) && t >= EARLIEST ? t : null;
+}
+
+/** A change of plan set for later, as the server says it (status scheduled_change): { at (ms), tier, period } | null. */
+export function scheduledOf(v) {
+  if (!v || typeof v !== 'object') return null;
+  const at = dateMs(v.at);
+  if (at == null) return null;
+  return { at, tier: v.tier === 'paid' || v.tier === 'ultra' ? v.tier : null, period: periodOf(v.period) };
 }
 
 /**
@@ -277,6 +286,8 @@ export function createBilling({
       // endsAt: the day the subscription ends (cancelled at the period end, or a date set for it); null while it renews
       periodEnd: dateMs(d.current_period_end), endsAt: dateMs(d.ends_at),
       cancelAtPeriodEnd: d.cancel_at_period_end === true, manageable: d.manageable === true,
+      // a change of plan Stripe has set for later (the portal's downgrade or shorter period at the period end), or null
+      scheduled: scheduledOf(d.scheduled_change),
     };
   }
   /** Onwards to a Stripe page (the page leaves). false when the answer is not one. */

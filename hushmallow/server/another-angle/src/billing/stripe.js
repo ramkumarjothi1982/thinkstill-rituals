@@ -76,8 +76,11 @@ export function createStripe({ secretKey, apiVersion = '', fetch: fetchImpl, tim
     createCheckoutSession: (params, o) => call('POST', '/v1/checkout/sessions', params, o),
     /** POST /v1/billing_portal/sessions (flow_data: straight to one task, such as a plan change) @param {{ customer: string, return_url: string, flow_data?: Record<string, unknown> }} params */
     createPortalSession: (params) => call('POST', '/v1/billing_portal/sessions', params),
-    /** GET /v1/subscriptions/:id (the current truth, whatever order the events came in) @param {string} id */
-    retrieveSubscription: (id) => call('GET', `/v1/subscriptions/${encodeURIComponent(id)}`),
+    /**
+     * GET /v1/subscriptions/:id (the current truth, whatever order the events came in), its schedule expanded (a change
+     * the portal set for the period end: when, and to which price; store.js summarise) @param {string} id
+     */
+    retrieveSubscription: (id) => call('GET', `/v1/subscriptions/${encodeURIComponent(id)}?${new URLSearchParams({ 'expand[]': 'schedule' })}`),
     /** POST /v1/customers @param {Record<string, unknown>} params @param {{ idempotencyKey?: string }} [o] */
     createCustomer: (params, o) => call('POST', '/v1/customers', params, o),
     /** GET /v1/customers/:id (a deleted one reads back as { id, deleted: true }) @param {string} id */

@@ -190,7 +190,12 @@ export function upstream({ users = { [TOKEN]: { id: UID, email: 'ana@example.com
       s.status = 'expired';
       return reply(200, s);
     }
-    if (method === 'GET' && (m = /^\/v1\/subscriptions\/(sub_[A-Za-z0-9]+)$/.exec(p))) return subs.has(m[1]) ? reply(200, subs.get(m[1])) : missing();
+    if (method === 'GET' && (m = /^\/v1\/subscriptions\/(sub_[A-Za-z0-9]+)$/.exec(p))) {
+      if (!subs.has(m[1])) return missing();
+      // as Stripe: a schedule is its id unless the read expands it (expand[]=schedule)
+      const x = subs.get(m[1]);
+      return reply(200, x.schedule && typeof x.schedule === 'object' && !u.searchParams.getAll('expand[]').includes('schedule') ? { ...x, schedule: x.schedule.id } : x);
+    }
     if (method === 'GET' && (m = /^\/v1\/customers\/(cus_[A-Za-z0-9]+)$/.exec(p))) {
       const c = customers.get(m[1]);
       return !c ? missing() : reply(200, c.deleted ? { id: c.id, object: 'customer', deleted: true } : c);

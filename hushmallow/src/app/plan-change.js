@@ -13,8 +13,11 @@
 //                     at CONFIRM_WAITS. Confirmed: the key says so (state 'done', so Back onto the same way back never
 //                     says it twice) and the welcome opens (app.welcomePlan: hushmallow Beyond's with the Mallows, or a
 //                     smaller one). A payment to sort out (past_due, unpaid, incomplete): no success, the card line and
-//                     Manage subscription. Not in time: "Stripe is still confirming…", the key kept (state 'quiet') and
-//                     asked again quietly at the next start or when the app is back on screen (resumeChange).
+//                     Manage subscription. Set by Stripe for later (the portal schedules a downgrade or a shorter
+//                     period for the period end, D8: the status's scheduled_change): "Your plan changes to … on …",
+//                     and nothing more is asked. Not in time: a neutral line ("Your plan here still shows …"), never a
+//                     claim that Stripe is still confirming, the key kept (state 'quiet') and asked again quietly at
+//                     the next start or when the app is back on screen (resumeChange).
 //   ?billing=changed  (no to: Stripe's plan chooser) the same, against the plan kept before the trip (`from`); with
 //                     no plan known from before (from null, or none), it is never said to have changed.
 //   ?billing=unchanged  Stripe's back link (a change let go, or one that did not go through): asked once, quietly;
@@ -25,11 +28,12 @@
 //   after sign-in from the account's own plan kept on this phone (resumeChange's before), when it has one.
 //
 //   confirmChange(app, { kind, to }, { before, waits?, sleep?, session?, now?, ui? }) → 'confirmed' | 'payment_issue'
-//     | 'timeout' | 'unchanged' | 'repeat' | 'signed-out' | 'stopped' | null (another kind)
+//     | 'scheduled' | 'timeout' | 'unchanged' | 'repeat' | 'signed-out' | 'stopped' | null (another kind)
 //     | 'other-account' (the trip was another account's)
 //   resumeChange(app, { quiet?, before? }) → as above, or null (nothing kept here, it ran out, it is done, or another
 //     account's)
-//   verdict(plan, rec) → 'confirmed' | 'payment_issue' | 'waiting'   (plan: { tier, period, status } as the server said)
+//   verdict(plan, rec) → 'confirmed' | 'payment_issue' | 'scheduled' | 'waiting'   (plan: { tier, period, status,
+//     scheduled } as the server said)
 //   rememberChange(rec) / pendingChange() / forgetChange(): the kept change, { to, at, from, state, uid?, result? }
 //   departChange({ uid, from, to }) / takeTrip(): the trip to Stripe's page, { uid, from, to, at }
 //   ensurePlanCss() → resolves once src/ui/plan-welcome.css is in (the note, the payment sheet and the welcome)
@@ -58,10 +62,27 @@ const STATES = ['confirming', 'quiet', 'done'];
 const TIERS = ['none', 'paid', 'ultra'];
 const PERIODS = ['monthly', 'yearly'];
 
+/** "hushmallow Flow (monthly)": a plan's whole name, its period when known. */
+export function planLabel(tier, period = null) {
+  const name = PLANS[tier]?.name;
+  if (!name) return null;
+  return period === 'monthly' || period === 'yearly' ? `${name} (${period})` : name;
+}
+const dayOf = (t) => new Date(t).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+
 /** What the way back says. Calm, never a success before Stripe's word; the plan names in full. */
 export const CHANGE_LINES = Object.freeze({
   confirming: 'Confirming your new plan with Stripe…',
-  timeout: 'Stripe is still confirming your change. Your plan will update here as soon as it’s confirmed.',
+  /** not confirmed in time: what the app shows, never a claim about what Stripe is doing (the change may be set for later) */
+  timeout: (plan) => (plan ? `Your plan here still shows ${plan}. If Stripe confirms a change, it will update here.` : 'No change shows here yet. If Stripe confirms one, it will update here.'),
+  /** Stripe has the change set for later (plan: { tier, period, scheduled: { at, tier, period } } as the server said) */
+  scheduled: (plan) => {
+    const c = plan?.scheduled;
+    const now = planLabel(plan?.tier, plan?.period) || 'your plan';
+    const to = c?.tier ? planLabel(c.tier, c.period) : null;
+    const when = Number.isFinite(c?.at) ? ` on ${dayOf(c.at)}` : ' for the end of this billing period';
+    return to ? `Your plan changes to ${to}${when}. Until then, you’re on ${now}.` : `Your plan change is set${when.replace(' on ', ' for ')}. Until then, you’re on ${now}.`;
+  },
   paymentTitle: 'Your payment needs a look',
   /** the plan as it still is (the change waits on the payment) */
   paymentIssue: (plan) => `Your payment didn’t go through, so you’re still on ${plan}. Update your card in Settings → Manage subscription.`,
@@ -71,7 +92,7 @@ export const CHANGE_LINES = Object.freeze({
   signIn: 'Sign in to see your plan.',
   manageFailed: 'That didn’t open just now. Try again in a moment.',
 });
-const NOTE_MS = { timeout: 8000, unchanged: 4200 };
+const NOTE_MS = { timeout: 8000, unchanged: 4200, scheduled: 9000 };
 
 function safeSession() { try { return globalThis.sessionStorage || null; } catch { return null; } }
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -81,6 +102,8 @@ export function planOf(ent) {
   const p = ent?.webPlan?.() || null;
   return { tier: ent?.tier?.() ?? 'none', period: p?.period ?? null, status: p?.status ?? null };
 }
+/** planOf, and the change Stripe has set for later ({ at, tier, period } | null), for the verdict. */
+const answerOf = (ent) => ({ ...planOf(ent), scheduled: ent?.webPlan?.()?.scheduled ?? null });
 const cleanFrom = (f) => ({
   tier: TIERS.includes(f?.tier) ? f.tier : 'none',
   period: PERIODS.includes(f?.period) ? f.period : null,
@@ -153,6 +176,9 @@ export function verdict(plan, rec) {
   }
   if (landed && OK_STATUSES.includes(status)) return 'confirmed';
   if (PAYMENT_STATUSES.includes(status)) return 'payment_issue';
+  // not on the plan yet because Stripe has the change set for later (the portal's downgrade or shorter period at the
+  // period end, D8): nothing to wait for now
+  if (!landed && OK_STATUSES.includes(status) && Number.isFinite(plan?.scheduled?.at)) return 'scheduled';
   return 'waiting';
 }
 
@@ -192,7 +218,7 @@ function run(app, rec, { waits, sleep, session, now, view, quiet }) {
       const still = pendingChange({ session, now: now() });
       if (!still || still.at !== rec.at || still.state === 'done') { note?.close(); return 'stopped'; }
       if (!(await ask(ent))) continue;
-      const plan = planOf(ent);
+      const plan = answerOf(ent);
       const v = verdict(plan, rec);
       if (v === 'confirmed') {
         rememberChange({ ...rec, state: 'done', result: { tier: plan.tier, period: plan.period } }, { session });
@@ -206,10 +232,17 @@ function run(app, rec, { waits, sleep, session, now, view, quiet }) {
         view.paymentIssue(paymentLine(plan, rec));
         return 'payment_issue';
       }
+      // Stripe accepted it for later: said as it is, once (asked no more; the plan updates here on the day, as any)
+      if (v === 'scheduled') {
+        forgetChange({ session });
+        const line = CHANGE_LINES.scheduled(plan);
+        if (note) note.say(line, NOTE_MS.scheduled, 'scheduled'); else view.say(line, NOTE_MS.scheduled, 'scheduled');
+        return 'scheduled';
+      }
     }
-    // not confirmed in time: said once; asked again quietly at the next start or when the app is back on screen
+    // not confirmed in time: said once, neutrally; asked again quietly at the next start or when the app is back on screen
     rememberChange({ ...rec, state: 'quiet' }, { session });
-    if (note) note.say(CHANGE_LINES.timeout, NOTE_MS.timeout, 'timeout');
+    if (note) { const p = planOf(ent); note.say(CHANGE_LINES.timeout(p.tier !== 'none' ? planLabel(p.tier, p.period) : null), NOTE_MS.timeout, 'timeout'); }
     return 'timeout';
   })().finally(() => { running = null; });
   return running;

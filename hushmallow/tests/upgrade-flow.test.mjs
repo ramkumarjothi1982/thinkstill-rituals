@@ -136,7 +136,7 @@ test('switch: Stripe\'s plan chooser only; refused, never the portal\'s front pa
 test('refresh: POST /v1/billing/sync {} re-reads the subscription from Stripe; the answer, with its period, is the plan kept', async () => {
   const { server, billing, ent } = await account();
   server.answers = [plan('ultra', 'yearly', 'trialing')];
-  assert.deepEqual(await billing.refresh(), { ok: true, tier: 'ultra', period: 'yearly', status: 'trialing', periodEnd: Date.parse('2026-11-17T09:00:00Z'), endsAt: null, cancelAtPeriodEnd: false, manageable: true });
+  assert.deepEqual(await billing.refresh(), { ok: true, tier: 'ultra', period: 'yearly', status: 'trialing', periodEnd: Date.parse('2026-11-17T09:00:00Z'), endsAt: null, cancelAtPeriodEnd: false, manageable: true, scheduled: null });
   assert.deepEqual(server.calls.map((c) => [c.path, c.method, c.body]), [['/v1/billing/sync', 'POST', {}]], 'nothing but {}');
   await ent.refreshFromStripe();
   assert.equal(ent.tier(), 'ultra');
@@ -232,7 +232,9 @@ test('not confirmed in time: a calm line, the change kept for a quiet check late
   const out = await confirmChange({ ent }, { kind: 'changed', to: 'ultra.monthly' }, { before: planNow(ent), session, ui, sleep: async (ms) => { waits.push(ms); } });
   assert.equal(out, 'timeout');
   assert.deepEqual(waits, CONFIRM_WAITS.slice(1));
-  assert.deepEqual(ui.events, [['confirming'], ['say', 'Stripe is still confirming your change. Your plan will update here as soon as it’s confirmed.', 'timeout']]);
+  // a neutral line: what the app shows, never a claim that Stripe is still confirming (the change may be set for later)
+  assert.deepEqual(ui.events, [['confirming'], ['say', 'Your plan here still shows hushmallow Flow (monthly). If Stripe confirms a change, it will update here.', 'timeout']]);
+  assert.doesNotMatch(CHANGE_LINES.timeout('hushmallow Flow') + CHANGE_LINES.timeout(null), /still confirming|as soon as|is confirming/);
   assert.equal(server.calls.length, CONFIRM_WAITS.length);
   assert.equal(pendingChange({ session }).state, 'quiet');
   // back on screen: one quiet ask (no "Confirming…"), at most every QUIET_RECHECK_MS; confirmed, the welcome
@@ -249,6 +251,56 @@ test('not confirmed in time: a calm line, the change kept for a quiet check late
   assert.deepEqual(kinds(ui2), ['welcome']);
   assert.equal(pendingChange({ session, now: t }).state, 'done');
   assert.equal(await resumeChange({ ent }, { quiet: true, session, ui: ui2, now: () => t + QUIET_RECHECK_MS, sleep: async () => {} }), null, 'done: never again');
+});
+
+test('a change Stripe set for later (the chooser\'s downgrade or a shorter period, D8): said as it is at the first answer, never 85 s of "Confirming…" and a "still confirming"', async () => {
+  const at = '2026-11-17T09:00:00.000Z';
+  const later = (tier, period) => ({ scheduled_change: { at, tier, period } });
+  const run = async (held, answer, to = null) => {
+    resetPlanChange();
+    const { server, ent } = await account({ held });
+    server.answers = [answer];
+    const session = memSession(), ui = fakeUi(), waits = [];
+    const out = await confirmChange({ ent }, { kind: 'changed', to }, { before: planNow(ent), session, ui, sleep: async (ms) => { waits.push(ms); } });
+    return { out, ui, server, session, waits, ent };
+  };
+  // Beyond monthly → Flow on Stripe's chooser: Beyond stays until the period end
+  const r = await run(plan('ultra', 'monthly'), plan('ultra', 'monthly', 'active', later('paid', 'monthly')));
+  assert.equal(r.out, 'scheduled');
+  assert.deepEqual(r.ui.events, [['confirming'], ['say', 'Your plan changes to hushmallow Flow (monthly) on 17 November 2026. Until then, you’re on hushmallow Beyond (monthly).', 'scheduled']]);
+  assert.deepEqual(r.waits, [], 'one ask');
+  assert.equal(r.server.calls.length, 1);
+  assert.equal(pendingChange({ session: r.session }), null, 'nothing kept to ask again');
+  assert.equal(await resumeChange({ ent: r.ent }, { quiet: true, session: r.session, ui: fakeUi() }), null);
+  assert.deepEqual(r.ent.webPlan().scheduled, { at: Date.parse(at), tier: 'paid', period: 'monthly' }, 'kept with the plan');
+  // Beyond yearly → monthly: the same plan, the period named
+  const y = await run(plan('ultra', 'yearly'), plan('ultra', 'yearly', 'active', later('ultra', 'monthly')));
+  assert.equal(y.ui.events.at(-1)[1], 'Your plan changes to hushmallow Beyond (monthly) on 17 November 2026. Until then, you’re on hushmallow Beyond (yearly).');
+  // the schedule does not say the plan: the date only
+  const u = await run(plan('ultra', 'monthly'), plan('ultra', 'monthly', 'active', later(null, null)));
+  assert.equal(u.ui.events.at(-1)[1], 'Your plan change is set for 17 November 2026. Until then, you’re on hushmallow Beyond (monthly).');
+  // a change that landed at once is still the welcome, whatever is set for later
+  const now = await run(plan('ultra', 'monthly'), plan('paid', 'yearly', 'active', later('paid', 'monthly')));
+  assert.equal(now.out, 'confirmed');
+  // a payment to sort out is never "set for later"
+  const owed = await run(plan('ultra', 'monthly'), plan('ultra', 'monthly', 'past_due', later('paid', 'monthly')));
+  assert.equal(owed.out, 'payment_issue');
+  // found by the quiet check later (the first answers were behind): said then, once
+  resetPlanChange();
+  const q = await account({ held: plan('ultra', 'monthly') });
+  q.server.answers = [plan('ultra', 'monthly')];
+  const session = memSession();
+  assert.equal(await confirmChange({ ent: q.ent }, { kind: 'changed', to: null }, { before: planNow(q.ent), session, ui: fakeUi(), sleep: async () => {} }), 'timeout');
+  q.server.answers = [plan('ultra', 'monthly', 'active', later('paid', 'monthly'))];
+  const quiet = fakeUi();
+  assert.equal(await resumeChange({ ent: q.ent }, { quiet: true, session, ui: quiet, sleep: async () => {} }), 'scheduled');
+  assert.deepEqual(kinds(quiet), ['say']);
+  assert.match(quiet.events[0][1], /^Your plan changes to hushmallow Flow \(monthly\) on 17 November 2026\./);
+  assert.equal(pendingChange({ session }), null);
+  // the verdict itself
+  const chooser = { to: null, from: { tier: 'ultra', period: 'monthly' } };
+  assert.equal(verdict({ tier: 'ultra', period: 'monthly', status: 'active', scheduled: { at: Date.parse(at), tier: 'paid', period: 'monthly' } }, chooser), 'scheduled');
+  assert.equal(verdict({ tier: 'ultra', period: 'monthly', status: 'active', scheduled: null }, chooser), 'waiting');
 });
 
 test('a reload mid-confirmation resumes it (for 15 minutes from the way back), then it is forgotten', async () => {
@@ -751,8 +803,8 @@ test('the confirmation\'s own UI: a calm status line (role=status), then what ca
   await sleepFor(5);
   assert.equal(text(note.el), 'Confirming your new plan with Stripe…');
   assert.ok(!/welcome|confirmed|upgraded/i.test(text(note.el)), 'never a success');
-  note.say(CHANGE_LINES.timeout, 0, 'timeout');
-  assert.equal(text(note.el), CHANGE_LINES.timeout);
+  note.say(CHANGE_LINES.timeout('hushmallow Flow'), 0, 'timeout');
+  assert.equal(text(note.el), CHANGE_LINES.timeout('hushmallow Flow'));
   assert.equal(note.el.attrs['data-plan-confirm'], 'timeout');
   note.close();
   assert.equal(note.el.parentNode, null);

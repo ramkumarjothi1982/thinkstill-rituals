@@ -134,7 +134,7 @@ export function createEntitlements({ store, billing = null, now = () => Date.now
   /** The billing server's answer, kept with when it was checked. */
   const setWeb = (r) => {
     const since = state.source === 'billing' && state.tier === r.tier && state.since ? state.since : now();
-    state = { tier: r.tier, source: 'billing', since, checkedAt: now(), period: r.period ?? null, status: r.status, periodEnd: r.periodEnd, endsAt: r.endsAt ?? null, cancelAtPeriodEnd: r.cancelAtPeriodEnd, manageable: r.manageable, ...(ns ? { owner } : {}) };
+    state = { tier: r.tier, source: 'billing', since, checkedAt: now(), period: r.period ?? null, status: r.status, periodEnd: r.periodEnd, endsAt: r.endsAt ?? null, cancelAtPeriodEnd: r.cancelAtPeriodEnd, manageable: r.manageable, scheduled: r.scheduled ?? null, ...(ns ? { owner } : {}) };
     store.set('entitlement', state);
     listeners.forEach((fn) => fn(state));
   };
@@ -195,10 +195,13 @@ export function createEntitlements({ store, billing = null, now = () => Date.now
     /** Web subscriptions: the last check's answer was that the billing server has no web billing at all (a 503
      *  billing_not_configured or accounts_not_configured): no plan can be bought or managed there. */
     webOff: () => !!web && webOff,
-    /** A web plan's details for Settings and the plans page: { period, status, periodEnd, endsAt, cancelAtPeriodEnd, manageable } | null. */
+    /** A web plan's details for Settings and the plans page: { period, status, periodEnd, endsAt, cancelAtPeriodEnd, manageable, scheduled } | null
+     *  (scheduled: { at, tier, period } of a change Stripe has set for later, or null). */
     webPlan() {
       const s = cur();
-      return s.source === 'billing' ? { period: s.period === 'monthly' || s.period === 'yearly' ? s.period : null, status: s.status || null, periodEnd: s.periodEnd ?? null, endsAt: s.endsAt ?? null, cancelAtPeriodEnd: !!s.cancelAtPeriodEnd, manageable: !!s.manageable } : null;
+      const c = s.scheduled;
+      const scheduled = c && typeof c === 'object' && Number.isFinite(c.at) ? { at: c.at, tier: c.tier === 'paid' || c.tier === 'ultra' ? c.tier : null, period: c.period === 'monthly' || c.period === 'yearly' ? c.period : null } : null;
+      return s.source === 'billing' ? { period: s.period === 'monthly' || s.period === 'yearly' ? s.period : null, status: s.status || null, periodEnd: s.periodEnd ?? null, endsAt: s.endsAt ?? null, cancelAtPeriodEnd: !!s.cancelAtPeriodEnd, manageable: !!s.manageable, scheduled } : null;
     },
     /** Web subscriptions, back from Checkout: the plan from that session (src/app/billing.js sync), at once. */
     async sync(sessionId) { return web ? syncWeb(sessionId) : cur(); },

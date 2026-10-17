@@ -283,7 +283,7 @@ test('Flow monthly → Beyond monthly → Beyond yearly: Stripe\'s page confirmi
   F.assertClean(w.logs);
 });
 
-test('a way back before Stripe has the change (or a hand-made address): "Confirming…", then "still confirming", never a welcome; once Stripe has it, a quiet check confirms it', async () => {
+test('a way back before Stripe has the change (or a hand-made address): "Confirming…", then a neutral line, never a welcome; once Stripe has it, a quiet check confirms it', async () => {
   const w = world();
   await w.flowMonthly();
   const before = B.planNow(w.ent);
@@ -293,7 +293,8 @@ test('a way back before Stripe has the change (or a hand-made address): "Confirm
   const back = w.arrive(String(s1.form.get('flow_data[after_completion][redirect][return_url]')));
   assert.equal(await B.welcomeBack(w.appShell, back, { before, sleep: w.sleep, change: { ui: w.ui, now: w.now } }), 'timeout');
   assert.deepEqual(uiOf(w).map((x) => x.ev), ['confirming', 'say']);
-  assert.equal(uiOf(w)[1].text, PC.CHANGE_LINES.timeout);
+  assert.equal(uiOf(w)[1].text, PC.CHANGE_LINES.timeout('hushmallow Flow (monthly)'));
+  assert.doesNotMatch(uiOf(w)[1].text, /still confirming/);
   assert.ok(serverOf(w, B.PATHS.sync).length >= PC.CONFIRM_WAITS.length, 'the Worker was asked at each wait');
   assert.ok(serverOf(w, B.PATHS.sync).every((x) => x.status === 200 && x.json.tier === 'paid' && x.json.period === 'monthly'), 'and said Flow monthly each time');
   assert.equal(w.ent.tier(), 'paid');

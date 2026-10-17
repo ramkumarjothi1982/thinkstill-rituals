@@ -626,14 +626,67 @@ test('refresh shares the billing rate limit (BILLING_IP_LIMITER, else the isolat
   assertClean(allLogs.flat());
 });
 
+// ------------------------------------------------- a change set for later --
+test('a change the portal set for the period end (D8: a downgrade, a shorter period) is in the status: scheduled_change { at, tier, period }, the schedule read expanded', async () => {
+  const end = (CLOCK_START + 30 * DAY) / 1000;
+  /** The portal's schedule: this period on the plan held, then the plan chosen from the period end. */
+  const schedule = (from, to, over = {}) => ({
+    id: 'sub_sched_Test1234', object: 'subscription_schedule', status: 'active', end_behavior: 'release',
+    current_phase: { start_date: CLOCK_START / 1000, end_date: end },
+    phases: [{ start_date: CLOCK_START / 1000, end_date: end, items: [{ price: SLOT[from], quantity: 1 }] }, { start_date: end, end_date: end + 30 * DAY / 1000, items: [{ price: SLOT[to], quantity: 1 }] }],
+    ...over,
+  });
+  const s = await account('ultra.monthly');
+  s.now.advance(1000);
+  // Beyond monthly → Flow on Stripe's chooser: Beyond stays until the period end, then Flow
+  s.up.subs.set('sub_Test123', on('ultra.monthly', { schedule: schedule('ultra.monthly', 'paid.monthly') }, end));
+  const st = await (await refresh(s)).json();
+  const later = { at: new Date(end * 1000).toISOString(), tier: 'paid', period: 'monthly' };
+  assert.deepEqual([st.tier, st.period, st.status, st.scheduled_change], ['ultra', 'monthly', 'active', later]);
+  const read = s.up.stripe().filter((c) => c.path === '/v1/subscriptions/sub_Test123').at(-1);
+  assert.deepEqual(read.query.getAll('expand[]'), ['schedule'], 'the schedule read expanded');
+  assert.deepEqual((await status(s)).scheduled_change, later, 'kept in the record: GET status says it too');
+  // a next phase on the same plan is no change of plan
+  s.now.advance(1000);
+  s.up.subs.set('sub_Test123', on('ultra.monthly', { schedule: schedule('ultra.monthly', 'ultra.monthly') }, end));
+  assert.equal((await (await refresh(s)).json()).scheduled_change, null);
+  // the webhook's own path records it the same way (its event carries the schedule's id; the read expands it)
+  s.now.advance(1000);
+  const toFlowYearly = on('ultra.monthly', { schedule: schedule('ultra.monthly', 'paid.yearly') }, end);
+  s.up.subs.set('sub_Test123', toFlowYearly);
+  await deliver(s.app, s.env, event('customer.subscription.updated', { ...toFlowYearly, schedule: 'sub_sched_Test1234' }, s.now), { at: s.now() });
+  assert.deepEqual((await status(s)).scheduled_change, { at: new Date(end * 1000).toISOString(), tier: 'paid', period: 'yearly' });
+  // the schedule's id only (an event's own copy, Stripe not having it): when, the plan not told
+  const { summarise } = await import('../src/billing/store.js');
+  const prices = { paid: { monthly: PRICES.paidMonthly, yearly: PRICES.paidYearly }, ultra: { monthly: PRICES.ultraMonthly, yearly: PRICES.ultraYearly } };
+  assert.deepEqual(summarise(on('ultra.monthly', { schedule: 'sub_sched_Test1234' }, end), prices, CLOCK_START).scheduled, { at: end * 1000, tier: null, period: null });
+  // released, completed or cancelled, or no phase still to come: no change waiting
+  for (const over of [{ status: 'released' }, { status: 'completed' }, { status: 'canceled' }, { phases: [] }]) {
+    assert.equal(summarise(on('ultra.monthly', { schedule: schedule('ultra.monthly', 'paid.monthly', over) }, end), prices, CLOCK_START).scheduled, null, JSON.stringify(over));
+  }
+  assert.equal(summarise(on('ultra.monthly', { schedule: null }, end), prices, CLOCK_START).scheduled, null);
+  assert.equal(summarise(on('ultra.monthly', { schedule: 'not_a_schedule' }, end), prices, CLOCK_START).scheduled, null);
+  // a plan set to end says when it ends, never a change: scheduled_change null
+  s.now.advance(1000);
+  s.up.subs.set('sub_Test123', on('ultra.monthly', { schedule: schedule('ultra.monthly', 'paid.monthly'), cancel_at_period_end: true, cancel_at: end }, end));
+  const ending = await (await refresh(s)).json();
+  assert.deepEqual([ending.ends_at, ending.scheduled_change], [new Date(end * 1000).toISOString(), null]);
+  // an upgrade on a subscription with a change waiting is still change_pending (no confirm flow over a schedule)
+  s.now.advance(1000);
+  s.up.subs.set('sub_Test123', on('ultra.monthly', { schedule: schedule('ultra.monthly', 'paid.monthly') }, end));
+  await refresh(s);
+  assert.deepEqual(await code(await upgrade(s, 'ultra.yearly')), [409, 'change_pending']);
+  assertClean(allLogs.flat());
+});
+
 // ---------------------------------------------------- the status body --
 test('the status body carries the period and Stripe\'s status next to every field it had (old clients read on as before)', async () => {
   const s = await account('paid.yearly');
   const st = await status(s);
-  assert.deepEqual(Object.keys(st), ['tier', 'status', 'period', 'current_period_end', 'cancel_at_period_end', 'ends_at', 'manageable']);
+  assert.deepEqual(Object.keys(st), ['tier', 'status', 'period', 'current_period_end', 'cancel_at_period_end', 'ends_at', 'manageable', 'scheduled_change']);
   assert.deepEqual([st.tier, st.status, st.period], ['paid', 'active', 'yearly']);
   const none = await status(track(setup()));
-  assert.deepEqual(none, { tier: 'none', status: 'none', period: null, current_period_end: null, cancel_at_period_end: false, ends_at: null, manageable: false });
+  assert.deepEqual(none, { tier: 'none', status: 'none', period: null, current_period_end: null, cancel_at_period_end: false, ends_at: null, manageable: false, scheduled_change: null });
   // a price that is none of the plans: no tier, no period
   const u = track(setup());
   await subscribe(u, subscription({}, { price: 'price_Legacy1234' }));

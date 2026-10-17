@@ -467,13 +467,13 @@ test('checkout after a cancelled subscription reuses the Stripe customer', async
 // ---------------------------------------------------------- status / portal --
 test('status and portal: nothing yet, then the plan the webhook recorded; the portal for its customer', async () => {
   const s = setup();
-  assert.deepEqual(await status(s), { tier: 'none', status: 'none', period: null, current_period_end: null, cancel_at_period_end: false, ends_at: null, manageable: false });
+  assert.deepEqual(await status(s), { tier: 'none', status: 'none', period: null, current_period_end: null, cancel_at_period_end: false, ends_at: null, manageable: false, scheduled_change: null });
   assert.equal((await s.app.fetch(billingReq('/v1/billing/status', { token: null }), s.env)).status, 401);
   const none = await s.app.fetch(billingReq('/v1/billing/portal', { body: {} }), s.env);
   assert.equal(none.status, 404);
   assert.equal((await none.json()).error.code, 'no_subscription');
   await subscribe(s);
-  assert.deepEqual(await status(s), { tier: 'ultra', status: 'active', period: 'monthly', current_period_end: new Date(CLOCK_START + 30 * DAY).toISOString(), cancel_at_period_end: false, ends_at: null, manageable: true });
+  assert.deepEqual(await status(s), { tier: 'ultra', status: 'active', period: 'monthly', current_period_end: new Date(CLOCK_START + 30 * DAY).toISOString(), cancel_at_period_end: false, ends_at: null, manageable: true, scheduled_change: null });
   const p = await s.app.fetch(billingReq('/v1/billing/portal', { body: {} }), s.env);
   assert.equal(p.status, 200);
   assert.deepEqual(await p.json(), { url: 'https://billing.stripe.com/p/session/test_1' });
@@ -703,7 +703,7 @@ test('subscription summary: price → plan, the period end (item or subscription
   assert.deepEqual(planForPrice('price_Unknown1', 'hushmallow.ultra.yearly', prices), { plan: 'ultra', period: 'yearly' });
   assert.equal(planForPrice('price_Unknown1', 'something.else', prices), null);
   const s = summarise(subscription(), prices, 5);
-  assert.deepEqual(s, { v: 1, subscription: 'sub_Test123', customer: 'cus_Test123', status: 'active', tier: 'ultra', period: 'monthly', current_period_end: CLOCK_START + 30 * DAY, cancel_at_period_end: false, cancel_at: null, as_of: 5 });
+  assert.deepEqual(s, { v: 1, subscription: 'sub_Test123', customer: 'cus_Test123', status: 'active', tier: 'ultra', period: 'monthly', current_period_end: CLOCK_START + 30 * DAY, cancel_at_period_end: false, cancel_at: null, scheduled: null, as_of: 5 });
   // older API: the period end on the subscription itself
   const oldApi = summarise({ ...subscription(), current_period_end: (CLOCK_START + 7 * DAY) / 1000, items: { data: [{ price: { id: PRICES.paidMonthly } }] } }, prices, 5);
   assert.equal(oldApi.current_period_end, CLOCK_START + 7 * DAY);
