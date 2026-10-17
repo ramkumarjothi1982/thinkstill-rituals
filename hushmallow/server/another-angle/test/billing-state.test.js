@@ -527,3 +527,81 @@ test('two subscriptions: the list ranks access, then plan, then period end; a fa
   assert.equal(bad.status, 400);
   assertClean(s.logs);
 });
+
+test('a subscription whose customer Stripe deleted: its end is recorded (the list\'s resource_missing means nothing else runs); any other failure is still 502', async () => {
+  const listCalls = (s) => s.up.stripe().filter((c) => c.path === '/v1/subscriptions').length;
+  // a Beyond subscriber's customer deleted in the Dashboard (a clean-up, an erasure): Stripe cancels the subscription
+  // and sends customer.subscription.deleted; listing that customer's subscriptions answers 400 resource_missing
+  const s = setup();
+  await subscribe(s);
+  assert.equal((await status(s)).tier, 'ultra');
+  s.now.advance(60000);
+  s.up.customers.set('cus_Test123', { id: 'cus_Test123', object: 'customer', deleted: true });
+  s.up.subs.set('sub_Test123', subscription({ status: 'canceled' }));
+  const n = s.up.stripe().length;
+  const res = await deliver(s.app, s.env, event('customer.subscription.deleted', subscription({ status: 'canceled' }), s.now), { at: s.now() });
+  assert.equal(res.status, 200, await res.clone().text());
+  assert.deepEqual(s.up.stripe().slice(n).map((c) => `${c.method} ${c.path}`), ['GET /v1/subscriptions/sub_Test123', 'GET /v1/subscriptions', 'GET /v1/customers/cus_Test123']);
+  assert.deepEqual([(await status(s)).tier, (await status(s)).status], ['none', 'canceled']);
+  const l = lines(s.logs).filter((x) => x.route === 'webhook').at(-1);
+  assert.deepEqual([l.status, l.http, l.sub_status], ['applied', 200, 'canceled']);
+  // Stripe no longer finding the customer at all (404), nor the subscription (the event's own copy, canceled, is used)
+  const y = setup();
+  await subscribe(y);
+  y.now.advance(60000);
+  y.up.subs.delete('sub_Test123');
+  y.up.fail = { path: /^\/v1\/subscriptions$/, status: 400, error: { code: 'resource_missing', param: 'customer', type: 'invalid_request_error' } };
+  assert.equal(y.up.customers.has('cus_Test123'), false, 'GET /v1/customers/cus_Test123 answers 404');
+  assert.equal((await deliver(y.app, y.env, event('customer.subscription.deleted', subscription({ status: 'canceled' }), y.now), { at: y.now() })).status, 200);
+  assert.deepEqual([(await status(y)).tier, (await status(y)).status], ['none', 'canceled']);
+  // the return sync's path (recordSubscription without an event id): the same
+  const b = billingOf();
+  b.up.subs.set('sub_Test123', subscription());
+  const args = { subId: 'sub_Test123', uidHint: UID, obj: {}, eventType: 'checkout.session.completed', created: Math.floor(b.now() / 1000), eventId: null };
+  assert.equal((await b.billing.recordSubscription(args, b.env, b.cfg)).tier, 'ultra');
+  b.now.advance(60000);
+  b.up.subs.set('sub_Test123', subscription({ status: 'canceled' }));
+  b.up.customers.set('cus_Test123', { id: 'cus_Test123', object: 'customer', deleted: true });
+  assert.deepEqual(await b.billing.recordSubscription(args, b.env, b.cfg), { http: 200, outcome: 'applied', tier: 'none', subStatus: 'canceled', duplicate: false });
+  assert.equal((await b.db.get(UID)).status, 'canceled');
+  // a deleted customer's old subscription never takes access away from the account's next one (a new customer's)
+  const r = setup();
+  await subscribe(r);
+  r.now.advance(60000);
+  await subscribe(r, subscription({ id: 'sub_Next2', customer: 'cus_Next2' }, { end: (CLOCK_START + 60 * DAY) / 1000 }));
+  r.up.customers.set('cus_Test123', { id: 'cus_Test123', object: 'customer', deleted: true });
+  r.up.subs.set('sub_Test123', subscription({ status: 'canceled' }));
+  r.now.advance(60000);
+  assert.equal((await deliver(r.app, r.env, event('customer.subscription.deleted', subscription({ status: 'canceled' }), r.now), { at: r.now() })).status, 200);
+  assert.equal((await billingClient(r.env.BILLING).get(UID)).subscription, 'sub_Next2');
+  assert.deepEqual([(await status(r)).tier, (await status(r)).status], ['ultra', 'active']);
+  // not known to be gone: 502, Stripe retries, nothing changes
+  const k = setup();
+  await subscribe(k);
+  k.now.advance(60000);
+  k.up.subs.set('sub_Test123', subscription({ status: 'canceled' }));
+  const ended = () => deliver(k.app, k.env, event('customer.subscription.deleted', subscription({ status: 'canceled' }), k.now), { at: k.now() });
+  // the list down (500), or refused for good reason (403): the customer is not even asked about
+  for (const fail of [{ status: 500, error: { type: 'api_error' } }, { status: 403, error: { type: 'invalid_request_error' } }]) {
+    k.up.fail = { path: /^\/v1\/subscriptions$/, ...fail };
+    const before = k.up.stripe().length;
+    assert.equal((await ended()).status, 502);
+    assert.ok(!k.up.stripe().slice(before).some((c) => c.path.startsWith('/v1/customers/')));
+  }
+  // resource_missing, but the customer reads back as still there (not deleted), or cannot be read (500)
+  k.up.fail = { path: /^\/v1\/subscriptions$/, status: 400, error: { code: 'resource_missing', type: 'invalid_request_error' } };
+  k.up.customers.set('cus_Test123', { id: 'cus_Test123', object: 'customer', metadata: {} });
+  assert.equal((await ended()).status, 502);
+  k.up.fail = { path: /^\/v1\/(subscriptions|customers\/.*)$/, status: 500, error: { code: 'resource_missing', type: 'api_error' } };
+  assert.equal((await ended()).status, 502);
+  const last = lines(k.logs).filter((x) => x.route === 'webhook').at(-1);
+  assert.deepEqual([last.status, last.http, last.stripe_http], ['stripe_error', 502, 500]);
+  assert.deepEqual([(await status(k)).tier, (await status(k)).status], ['ultra', 'active']);
+  assert.equal(listCalls(k), 4);
+  // Stripe's retry once the customer is really gone: recorded
+  k.up.fail = null;
+  k.up.customers.get('cus_Test123').deleted = true;
+  assert.equal((await ended()).status, 200);
+  assert.deepEqual([(await status(k)).tier, (await status(k)).status], ['none', 'canceled']);
+  assertClean([...s.logs, ...y.logs, ...b.logs, ...r.logs, ...k.logs]);
+});

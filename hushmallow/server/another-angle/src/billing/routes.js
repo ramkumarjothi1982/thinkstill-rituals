@@ -592,13 +592,17 @@ export function createBilling({ logger, now, fetch: fetchImpl = (input, init) =>
     /** @type {string[] | null} */
     let covers = null;
     // it ended: the account may still have another subscription running (Flow billing on after a second one, Beyond,
-    // was cancelled). The customer's list decides, and its best replaces the record (store.js supersedes).
+    // was cancelled). The customer's list decides, and its best replaces the record (store.js supersedes). A customer
+    // Stripe has deleted (its list refused with resource_missing, and the customer reads back deleted or not found) has
+    // nothing else running: its subscriptions ended with it, so this end is recorded (else every retry fails, and the
+    // record keeps giving access). Any other failure is 502, and Stripe retries.
     if (TERMINAL.has(record.status) && customer) {
       const listAsOf = now();
       const listed = await stripe.listSubscriptions(customer);
-      if (!listed.ok) return { http: 502, outcome: 'stripe_error', err: listed.code, stripeHttp: listed.status };
+      const gone = !listed.ok && listed.code === 'resource_missing' && await customerGone(stripe, customer);
+      if (!listed.ok && !gone) return { http: 502, outcome: 'stripe_error', err: listed.code, stripeHttp: listed.status };
       /** @type {any[]} */
-      const subs = (Array.isArray(listed.data?.data) ? listed.data.data : []).filter((/** @type {any} */ x) => SUB.test(idOf(x?.id) || '') && idOf(x.customer) === customer);
+      const subs = (listed.ok && Array.isArray(listed.data?.data) ? listed.data.data : []).filter((/** @type {any} */ x) => SUB.test(idOf(x?.id) || '') && idOf(x.customer) === customer);
       /** @type {import('./store.js').SubRecord[]} */
       const recs = subs.map((x) => summarise(x, cfg.billing.prices, listAsOf));
       if (!recs.some((r) => r.subscription === subId)) { recs.push(record); subs.push(sub); }
