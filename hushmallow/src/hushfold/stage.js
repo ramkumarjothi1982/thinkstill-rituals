@@ -24,6 +24,7 @@ import { h } from '../app/ui.js';
 import { addTicker, removeTicker, prefersReducedMotion } from '../mallows/rig.js';
 
 const TAU = Math.PI * 2;
+const idle = (fn) => (typeof requestIdleCallback === 'function' ? requestIdleCallback(fn, { timeout: 1500 }) : setTimeout(fn, 300));
 
 // ------------------------------------------------------------ Mallow --
 export function createStageMallow(world, { touch = null } = {}) {
@@ -251,10 +252,11 @@ const NO_THOUGHTS = Object.freeze([]);
  *   2. nothing more while frozen (a paused world: the thoughts hold still where they are drawn);
  *   3. nothing while idle (no ripple, no thought, and nothing left on the canvas);
  *   4. clear, the ripples, then the ThoughtLayer's frame: the bodies on this canvas, their DOM word tags.
- * The ThoughtLayer (src/mallows/thought) loads lazily: whenThoughts() resolves with it (null if it could
- * not load). Until then `thoughts` is a stand-in with the same calls — empty: no list, no rects, no hits;
- * add() waits for the layer — and whatever kept the stand-in (the input router) reaches the layer
- * through it once it has loaded. After destroy() `thoughts` is that empty stand-in again.
+ * The ThoughtLayer (src/mallows/thought) loads lazily, in idle time once start() has run, or at once when it is
+ * wanted: whenThoughts() (which resolves with it, null if it could not load) or a thought added. Until then
+ * `thoughts` is a stand-in with the same calls — empty: no list, no rects, no hits; add() waits for the layer —
+ * and whatever kept the stand-in (the input router) reaches the layer through it once it has loaded. After
+ * destroy() `thoughts` is that empty stand-in again.
  * start() puts the stage on the shared loop (a ripple, a thought or a world ticker does too).
  *
  * keepOut() → the hero's rect (client px; thoughts and their words keep off it); bounds() → where the
@@ -311,7 +313,10 @@ export function createStage({ fx, tagRoot = null, reducedMotion = () => prefersR
     return shellB;
   }
 
-  const ready = import('../mallows/thought/index.js').then(({ ThoughtLayer }) => {
+  // the ThoughtLayer (about 100 KB) is fetched once the hero is up (start(), in idle time) or as soon as it is wanted
+  // (whenThoughts(), a thought added): never while the first Mallow's art downloads, as no thought comes before a Tell
+  let ready = null;
+  const load = () => ready || (destroyed ? Promise.resolve(null) : (ready = import('../mallows/thought/index.js').then(({ ThoughtLayer }) => {
     if (destroyed) return null;
     const L = new ThoughtLayer({ ctx2d: g, tagRoot, keepOut, bounds: bounds || shellBounds, onRead: onReadThought || onRead, reducedMotion, lowStim, haptic, audio, textScale: textK, onTagGesture });
     L.onChange = kick;
@@ -325,7 +330,7 @@ export function createStage({ fx, tagRoot = null, reducedMotion = () => prefersR
     unavailable = true; early = []; subs = [];
     console.warn('[stage] Thought Mallows unavailable:', e?.message || e);
     return null;
-  });
+  })));
 
   /** The thoughts before the layer has loaded (and after destroy): empty, the same calls, forwarding once it is there. */
   const soon = Object.freeze({
@@ -337,7 +342,7 @@ export function createStage({ fx, tagRoot = null, reducedMotion = () => prefersR
     get reading() { return !!layer?.reading; },
     add(th, place) {
       if (layer) return layer.add(th, place);
-      if (!unavailable && !destroyed) { early.push([th, place]); kick(); }
+      if (!unavailable && !destroyed) { early.push([th, place]); kick(); load(); }
       return null;
     },
     remove(th) { if (layer) layer.remove(th); else early = early.filter((q) => q[0] !== th); },
@@ -410,10 +415,10 @@ export function createStage({ fx, tagRoot = null, reducedMotion = () => prefersR
     canvas,
     /** The ThoughtLayer once it has loaded; until then (and after destroy) the empty stand-in. */
     get thoughts() { return layer || soon; },
-    /** Resolves with the ThoughtLayer (null if it could not load or the stage is gone). */
-    whenThoughts: () => ready,
-    /** Join the shared loop now (the shell: after the hero is up). */
-    start() { kick(); return stage; },
+    /** Resolves with the ThoughtLayer (null if it could not load or the stage is gone); fetches it now if it is not yet. */
+    whenThoughts: () => load(),
+    /** Join the shared loop now (the shell: after the hero is up); the ThoughtLayer follows in idle time. */
+    start() { kick(); if (!ready) idle(load); return stage; },
     worldTicker,
     /** Hold the thoughts and ripples still where they are drawn (a paused world); the world tickers still run. */
     freeze(b = true) { frozen = !!b; kick(); },

@@ -91,8 +91,8 @@ export const preloadLinks = (modules, prefix) => modules.map((m) => `<link rel="
 
 /**
  * index.html with its one hand-written modulepreload (MallowTouch, src/mallows/touch/mallow-touch.js) replaced by
- * `links`, in the same place (after the stylesheets, before the inline script: the inline code, and with it the
- * Content-Security-Policy hashes, is untouched). Throws when that line is not there exactly once.
+ * `links`, in the same place (after the stylesheets, before the stale-version script: the inline code, and with it
+ * the Content-Security-Policy hashes, is untouched). Throws when that line is not there exactly once.
  */
 export function injectPreloads(html, links, prefix) {
   const line = `<link rel="modulepreload" href="${posix.join(prefix, 'src/mallows/touch/mallow-touch.js')}">`;

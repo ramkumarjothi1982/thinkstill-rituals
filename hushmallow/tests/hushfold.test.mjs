@@ -640,11 +640,12 @@ test('H1: MallowTouch is the stage Mallow by default (owner P9); the rig is the 
   // its root is the focusable role=button with the squeeze instructions: no aria-hidden on the box
   assert.match(enter, /touchBox = h\('div', \{ class: 'hf-touch' \}\)/);
   assert.doesNotMatch(scene, /class: 'hf-touch', 'aria-hidden'/);
-  // 'system' follows the OS live; a load that never finishes falls back to the rig after 5 s
+  // 'system' follows the OS live; a set-up that never finishes falls back to the rig 5 s after its art is in
+  // (touchReady: the art has its own 30 s cap; tests/first-mallow.test.mjs)
   assert.match(enter, /reducedMotion: prefs\.get\('motion'\) === 'system' \? undefined : prefs\.reducedMotion\(\)/);
   assert.match(enter, /quality: \(dev && qs\.get\('tier'\)\) \|\| 'auto'/);
-  assert.match(enter, /Promise\.race\(\[touchMt\.loaded, /);
-  assert.match(enter, /, 5000\)/);
+  assert.match(enter, /await touchReady\(touchMt, loadMallowAssets\(touchMt\.id\)\);/);
+  assert.match(scene, /export async function touchReady\(mt, art, \{ artMs = 30000, setupMs = 5000 \} = \{\}\)/);
   assert.match(enter, /touchMt\?\.destroy\(\)/);
   assert.match(enter, /stageMallow \|\|= createStageMallow\(world, \{ touch: null \}\)/);
   // the QA hook is live

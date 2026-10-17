@@ -65,7 +65,7 @@ test('injectPreloads: the one MallowTouch preload becomes the whole list, the re
   const strip = (s) => s.replace(/<link rel="modulepreload"[^>]*>\n?/g, '');
   assert.equal(strip(html), strip(pub), 'nothing else changes');
   assert.ok(html.indexOf('rel="modulepreload"') > html.lastIndexOf('rel="stylesheet"'), 'after the stylesheets');
-  assert.ok(html.lastIndexOf('rel="modulepreload"') < html.indexOf('<script>'), 'before the inline script');
+  assert.ok(html.lastIndexOf('rel="modulepreload"') < html.indexOf('function hmStale'), 'before the stale-version script');
   assert.throws(() => injectPreloads(strip(pub), ['x'], 'v/x1'), /expected one/);
   assert.equal(preloadsIn('<!-- <link rel="modulepreload" href="a.js"> --><link href="b.js" rel="modulepreload">').join(), 'b.js');
 });
