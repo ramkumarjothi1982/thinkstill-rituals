@@ -18,7 +18,8 @@
 //   createBilling({ auth, signIn, config?, shell?, prices?, fetchImpl?, nav?, timeoutMs? }) → billing | null (off)
 //     signedIn()             the account is signed in on this device
 //     accountToken()         → its current access token, or null (Another Angle's session sends it too, src/beyond/angle-client.js)
-//     status()               → { ok: true, tier, status, periodEnd, cancelAtPeriodEnd, manageable } | { ok: false, reason }
+//     status()               → { ok: true, tier, status, periodEnd, endsAt, cancelAtPeriodEnd, manageable } | { ok: false, reason }
+//                              (periodEnd, endsAt: ms or null; the server sends ISO or ms, both are read)
 //     checkout(plan, period) → { redirecting } (on to Stripe Checkout) | { needsAccount } | { manage } (has a plan) | { failed, reason }
 //     portal()               → { redirecting } (Stripe's customer portal) | { needsAccount } | { none } | { failed, reason }
 //     prices()               → { productId: 'A$…' }, from BILLING_PRICES (only those set)
@@ -59,6 +60,13 @@ const PRODUCT = /^hushmallow\.(paid|ultra)\.(monthly|yearly)$/;
 const netFetch = (url, init) => globalThis.fetch(url, init);
 
 function safeSession() { try { return globalThis.sessionStorage || null; } catch { return null; } }
+// no subscription date is earlier: a seconds value sent by mistake reads as no date, never as January 1970
+const EARLIEST = Date.UTC(2020, 0, 1);
+/** A date from the server, ISO or ms → ms, or null. */
+function dateMs(v) {
+  const t = typeof v === 'number' ? v : typeof v === 'string' && v ? Date.parse(v) : NaN;
+  return Number.isFinite(t) && t >= EARLIEST ? t : null;
+}
 
 /**
  * Where billing goes, or null (off). Production: BILLING_PROVIDER 'stripe' and BILLING_ENDPOINT,
@@ -164,11 +172,12 @@ export function createBilling({
       if (r.signedOut || r.http === 401) return { ok: false, reason: 'signed-out' };
       if (r.http !== 200 || !r.data || typeof r.data !== 'object') return { ok: false, reason: reasonOf(r) };
       const d = r.data;
-      const end = Date.parse(d.current_period_end || '');
       return {
         ok: true, tier: ['none', 'paid', 'ultra'].includes(d.tier) ? d.tier : 'none',
         status: typeof d.status === 'string' && /^[a-z_]{1,24}$/.test(d.status) ? d.status : 'none',
-        periodEnd: Number.isFinite(end) ? end : null, cancelAtPeriodEnd: d.cancel_at_period_end === true, manageable: d.manageable === true,
+        // endsAt: the day the subscription ends (cancelled at the period end, or a date set for it); null while it renews
+        periodEnd: dateMs(d.current_period_end), endsAt: dateMs(d.ends_at),
+        cancelAtPeriodEnd: d.cancel_at_period_end === true, manageable: d.manageable === true,
       };
     },
     async checkout(plan, period) {

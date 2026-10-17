@@ -209,14 +209,25 @@ test('our custom domain (D12): checkout and the portal open on checkout.hushmall
 test('status and portal: the server\'s answer, read strictly; the portal opens only Stripe\'s page', async () => {
   const s = setup();
   s.server.status = { tier: 'ultra', status: 'active', current_period_end: '2026-11-16T09:00:00.000Z', cancel_at_period_end: true, manageable: true };
-  assert.deepEqual(await s.billing.status(), { ok: true, tier: 'ultra', status: 'active', periodEnd: Date.parse('2026-11-16T09:00:00Z'), cancelAtPeriodEnd: true, manageable: true });
+  assert.deepEqual(await s.billing.status(), { ok: true, tier: 'ultra', status: 'active', periodEnd: Date.parse('2026-11-16T09:00:00Z'), endsAt: null, cancelAtPeriodEnd: true, manageable: true }, 'a server from before ends_at');
   const [c] = s.server.calls;
   assert.equal(c.url, `${EP}/v1/billing/status`);
   assert.equal(c.init.method, 'GET');
   assert.equal(c.init.body, undefined);
   assert.deepEqual(c.init.headers, { authorization: 'Bearer eyJhbGciOi.account-token.sig' });
+  // ends_at (WS2): ISO or ms, both read; anything else (or a seconds value sent by mistake) is no date, never 1970
+  for (const v of ['2026-11-16T09:00:00.000Z', Date.parse('2026-11-16T09:00:00Z')]) {
+    s.server.status = { tier: 'ultra', status: 'active', current_period_end: v, ends_at: v, cancel_at_period_end: true, manageable: true };
+    const r = await s.billing.status();
+    assert.equal(r.endsAt, Date.parse('2026-11-16T09:00:00Z'), String(v));
+    assert.equal(r.periodEnd, Date.parse('2026-11-16T09:00:00Z'), String(v));
+  }
+  for (const v of [null, '', 'soon', 1794819600, -1, NaN, true, {}, '1794819600000']) {
+    s.server.status = { tier: 'ultra', status: 'active', current_period_end: null, ends_at: v, cancel_at_period_end: false, manageable: true };
+    assert.equal((await s.billing.status()).endsAt, null, String(v));
+  }
   s.server.status = { tier: 'gold', status: '<b>', current_period_end: 'soon' };
-  assert.deepEqual(await s.billing.status(), { ok: true, tier: 'none', status: 'none', periodEnd: null, cancelAtPeriodEnd: false, manageable: false });
+  assert.deepEqual(await s.billing.status(), { ok: true, tier: 'none', status: 'none', periodEnd: null, endsAt: null, cancelAtPeriodEnd: false, manageable: false });
   s.server.down = true;
   assert.deepEqual(await s.billing.status(), { ok: false, reason: 'network' });
   s.server.down = false;
@@ -258,8 +269,8 @@ test('entitlement source "billing": the server\'s answer, kept with when it was 
   assert.equal(ent.source(), 'billing');
   assert.equal(ent.has('ultra'), true);
   const kept = store.get('entitlement');
-  assert.deepEqual(kept, { tier: 'ultra', source: 'billing', since: NOW, checkedAt: NOW, status: 'active', periodEnd: Date.parse('2026-11-16T09:00:00Z'), cancelAtPeriodEnd: false, manageable: true });
-  assert.deepEqual(ent.webPlan(), { status: 'active', periodEnd: Date.parse('2026-11-16T09:00:00Z'), cancelAtPeriodEnd: false, manageable: true });
+  assert.deepEqual(kept, { tier: 'ultra', source: 'billing', since: NOW, checkedAt: NOW, status: 'active', periodEnd: Date.parse('2026-11-16T09:00:00Z'), endsAt: null, cancelAtPeriodEnd: false, manageable: true });
+  assert.deepEqual(ent.webPlan(), { status: 'active', periodEnd: Date.parse('2026-11-16T09:00:00Z'), endsAt: null, cancelAtPeriodEnd: false, manageable: true });
   // at most one check a minute (start, back to the foreground) unless forced
   const n = s.server.calls.length;
   await ent.refresh();
@@ -407,6 +418,22 @@ test('web billing copy: no App Store, no price written in, no plan word, no "ser
   assert.match(webPlanNote({ status: 'past_due', periodEnd: end }, 'ultra'), /^Your last payment didn’t go through\./);
   assert.equal(webPlanNote({ status: 'canceled', periodEnd: end }, 'none'), null);
   assert.equal(webPlanNote({ status: 'active', periodEnd: null }, 'ultra'), null);
+  // the server's ends_at (WS2): "Ends on" that day; a set end after this period still renews until then
+  const hour = 3600000;
+  assert.equal(webPlanNote({ status: 'active', periodEnd: end, endsAt: end, cancelAtPeriodEnd: true }, 'ultra'), 'Ends on 12 November 2026. Nothing more is charged.');
+  assert.equal(webPlanNote({ status: 'active', periodEnd: end, endsAt: end + hour, cancelAtPeriodEnd: false }, 'ultra'), 'Ends on 12 November 2026. Nothing more is charged.');
+  assert.equal(webPlanNote({ status: 'active', periodEnd: end, endsAt: Date.parse('2026-10-30T09:00:00Z'), cancelAtPeriodEnd: false }, 'paid'), 'Ends on 30 October 2026. Nothing more is charged.');
+  assert.equal(webPlanNote({ status: 'active', periodEnd: end, endsAt: Date.parse('2027-02-12T09:00:00Z'), cancelAtPeriodEnd: false }, 'paid'), 'Renews on 12 November 2026. Ends on 12 February 2027.');
+  assert.equal(webPlanNote({ status: 'active', periodEnd: null, endsAt: end, cancelAtPeriodEnd: false }, 'paid'), 'Ends on 12 November 2026. Nothing more is charged.');
+  assert.match(webPlanNote({ status: 'past_due', periodEnd: end, endsAt: end }, 'ultra'), /^Your last payment didn’t go through\./, 'a card to look at first');
+  // …from the server's answer through what this phone keeps to Settings
+  const ends = setup();
+  ends.server.status = { tier: 'paid', status: 'active', current_period_end: '2026-11-12T09:00:00.000Z', ends_at: '2026-11-12T09:00:00.000Z', cancel_at_period_end: true, manageable: true };
+  const store = memStore();
+  await createEntitlements({ store, billing: ends.billing }).refresh({ force: true });
+  const again = createEntitlements({ store, billing: ends.billing });
+  assert.equal(again.webPlan().endsAt, end, 'kept on this phone');
+  assert.equal(webPlanNote(again.webPlan(), again.tier()), 'Ends on 12 November 2026. Nothing more is charged.');
   // deleting the account never cancels a web subscription nor deletes our server's record of it, and the delete screen
   // says so (only with billing on)
   const acct = read('src/app/scenes/account.js');

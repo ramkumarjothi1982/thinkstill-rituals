@@ -126,7 +126,7 @@ export function createEntitlements({ store, billing = null, now = () => Date.now
   /** The billing server's answer, kept with when it was checked. */
   const setWeb = (r) => {
     const since = state.source === 'billing' && state.tier === r.tier && state.since ? state.since : now();
-    state = { tier: r.tier, source: 'billing', since, checkedAt: now(), status: r.status, periodEnd: r.periodEnd, cancelAtPeriodEnd: r.cancelAtPeriodEnd, manageable: r.manageable };
+    state = { tier: r.tier, source: 'billing', since, checkedAt: now(), status: r.status, periodEnd: r.periodEnd, endsAt: r.endsAt ?? null, cancelAtPeriodEnd: r.cancelAtPeriodEnd, manageable: r.manageable };
     store.set('entitlement', state);
     listeners.forEach((fn) => fn(state));
   };
@@ -163,10 +163,10 @@ export function createEntitlements({ store, billing = null, now = () => Date.now
     onChange(fn) { listeners.add(fn); return () => listeners.delete(fn); },
     /** Web subscriptions: the account is signed in here (a web plan needs one). */
     webSignedIn: () => !!web && web.signedIn(),
-    /** A web plan's details for Settings: { status, periodEnd, cancelAtPeriodEnd, manageable } | null. */
+    /** A web plan's details for Settings: { status, periodEnd, endsAt, cancelAtPeriodEnd, manageable } | null. */
     webPlan() {
       const s = cur();
-      return s.source === 'billing' ? { status: s.status || null, periodEnd: s.periodEnd ?? null, cancelAtPeriodEnd: !!s.cancelAtPeriodEnd, manageable: !!s.manageable } : null;
+      return s.source === 'billing' ? { status: s.status || null, periodEnd: s.periodEnd ?? null, endsAt: s.endsAt ?? null, cancelAtPeriodEnd: !!s.cancelAtPeriodEnd, manageable: !!s.manageable } : null;
     },
     async refresh({ force = false } = {}) {
       if (web) return refreshWeb(force);
