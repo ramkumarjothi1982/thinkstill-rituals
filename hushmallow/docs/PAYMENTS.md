@@ -206,8 +206,8 @@ The full rehearsal is on staging (`docs/STAGING.md`). The local harness is for w
    STRIPE_PRICE_PAID_YEARLY=<price_…>
    STRIPE_PRICE_ULTRA_MONTHLY=<price_…>
    STRIPE_PRICE_ULTRA_YEARLY=<price_…>
-   SUPABASE_URL=<the hushmallow-staging Project URL>
-   SUPABASE_PUBLISHABLE_KEY=<its sb_publishable_… key>
+   SUPABASE_URL=https://oghzabvkrxsejkkjdsuc.supabase.co
+   SUPABASE_PUBLISHABLE_KEY=<the staging project's sb_publishable_… key: [env.staging.vars]>
    ACCOUNTS_STAGE=staging
    APP_ORIGIN=http://localhost:8000
    ENTITLEMENT_MODE=billing

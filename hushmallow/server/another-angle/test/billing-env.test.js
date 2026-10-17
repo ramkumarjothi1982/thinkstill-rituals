@@ -189,7 +189,7 @@ test('/v1/health says the Stripe mode, why a key is refused, the approval, the A
     assert.equal(res.status, 200);
     const text = await res.text();
     assertClean(s.logs, text);
-    for (const v of [LIVE_KEY, TEST_KEY, WHSEC, PK, 'price_', 'cus_', 'acct_']) assert.ok(!text.includes(v), `no ${v.slice(0, 12)}`);
+    for (const v of [LIVE_KEY, TEST_KEY, WHSEC, PK, varsTables(WRANGLER).staging.SUPABASE_PUBLISHABLE_KEY, 'supabase.co', 'price_', 'cus_', 'acct_']) assert.ok(!text.includes(v), `no ${v.slice(0, 12)}`);
     return JSON.parse(text).billing;
   };
   // production today (nothing set): all off
@@ -199,9 +199,14 @@ test('/v1/health says the Stripe mode, why a key is refused, the approval, the A
   // production with its live key but no approval yet: refused, and says why
   assert.deepEqual(await health(billingEnv({ BILLING_LIVE: undefined })), { configured: false, webhook: true, stripe_mode: null, key_refused: 'live_not_approved', live_approved: false, api_version: null, automatic_tax: false });
   assert.equal((await health(billingEnv({ STRIPE_SECRET_KEY: TEST_KEY }))).key_refused, 'test_key_on_production');
-  // the staging Worker as committed (its own vars), with a test key, and with a live one pasted by mistake
+  // the staging Worker as committed (its own vars: the owner's staging project), with a test key: billing on, in test
+  // mode; with its sign-in values placeholders (as [env.staging] had them before), "accounts not configured"; and with
+  // a live key pasted by mistake
   const staging = { ...varsTables(WRANGLER).staging, BILLING: billingEnv().BILLING, STRIPE_WEBHOOK_SECRET: WHSEC };
   assert.deepEqual(await health(makeEnv({ ...staging, STRIPE_SECRET_KEY: TEST_KEY })), {
+    configured: true, webhook: true, stripe_mode: 'test', live_approved: false, api_version: STRIPE_API_VERSION_EXPECTED, automatic_tax: false,
+  });
+  assert.deepEqual(await health(makeEnv({ ...staging, SUPABASE_URL: 'https://STAGING_TODO.supabase.co', SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_TODO', STRIPE_SECRET_KEY: TEST_KEY })), {
     configured: false, webhook: true, stripe_mode: 'test', live_approved: false, api_version: STRIPE_API_VERSION_EXPECTED, automatic_tax: false,
     accounts_configured: false,
   });

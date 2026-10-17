@@ -276,16 +276,16 @@ export function varsTables(toml) {
 export const WRANGLER = readFileSync(new URL('../wrangler.toml', import.meta.url), 'utf8');
 export const PAYMENTS_MD = readFileSync(new URL('../../../docs/PAYMENTS.md', import.meta.url), 'utf8');
 
-/** A made-up staging project (20-character ref) for "once the owner has created hushmallow-staging". */
+/** A made-up staging project (20-character ref): the Worker's tests never use the owner's real one. */
 export const STAGING_SUPABASE = 'https://hmstagingtest0000000.supabase.co';
 /** The staging app's origin (the release branch's preview), its APP_ORIGIN. */
 export const STAGING_APP = 'https://claude-launch-rc.hushmallow.pages.dev';
 
 /**
- * The staging Worker's env once the owner's values are in, as wrangler.toml [env.staging.vars] will have them
- * (billing+testing, its own project, a test key, the pinned API version, Stripe Tax off), with the Worker's own
- * in-memory limits (20 billing requests and 3 sessions a minute) on the app's clock. Billing is on only where
- * src/config.js has a staging project (test/staging-loader.js).
+ * The staging Worker's env, shaped as wrangler.toml [env.staging.vars] has it (billing+testing, its own project, here
+ * the made-up STAGING_SUPABASE, a test key, the pinned API version, Stripe Tax off), with the Worker's own in-memory
+ * limits (20 billing requests and 3 sessions a minute) on the app's clock. Billing is on only where src/config.js
+ * names that same project (test/staging-loader.js).
  * @param {Record<string, any>} [over]
  */
 export function stagingWorkerEnv(over = {}) {
@@ -300,11 +300,15 @@ export function stagingWorkerEnv(over = {}) {
     ...over,
   });
 }
-/** A copy of src/config.js with only STAGING_SUPABASE_PROJECT_URL filled in (the one line the owner's values change). @param {string} url */
+/**
+ * A copy of src/config.js with only its STAGING_SUPABASE_PROJECT_URL line changed: a made-up staging project, or ''
+ * to simulate "no staging project" (the repository's own line names the owner's project).
+ * @param {string} url
+ */
 export async function withStagingProject(url) {
-  const line = "const STAGING_SUPABASE_PROJECT_URL = '';";
+  const line = /^const STAGING_SUPABASE_PROJECT_URL = '[^']*';$/m;
   const src = readFileSync(new URL('../src/config.js', import.meta.url), 'utf8');
-  assert.equal(src.split(line).length, 2, 'the placeholder line is there exactly once');
+  assert.equal(src.split(line).length, 2, 'the STAGING_SUPABASE_PROJECT_URL line is there exactly once');
   const dir = mkdtempSync(join(tmpdir(), 'hm-angle-staging-'));
   const file = join(dir, 'config.js');
   writeFileSync(file, src.replace(line, `const STAGING_SUPABASE_PROJECT_URL = '${url}';`));

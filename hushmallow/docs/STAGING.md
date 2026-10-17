@@ -20,15 +20,25 @@ step, in `docs/PAYMENTS.md`.
 
 | | Staging (branch previews) | Production |
 |---|---|---|
-| Accounts (Supabase) | its own project **hushmallow-staging** (Sydney), with its own test accounts | **hushmallow1** (ref `igbxbfuaoybfzsroxuln`) |
+| Accounts (Supabase) | its own project **hushmallow-staging** (ref `oghzabvkrxsejkkjdsuc`, Singapore, Free plan), with its own test accounts | **hushmallow1** (ref `igbxbfuaoybfzsroxuln`, Sydney) |
 | Server (Cloudflare Worker) | `hushmallow-another-angle-staging` | `hushmallow-another-angle` |
 | Model key (Anthropic) | its own key **hushmallow-staging**, with its own low monthly limit (GitHub secret `ANTHROPIC_API_KEY_STAGING`) | `ANTHROPIC_API_KEY` |
 | Tester codes | `TESTER_INVITE_CODES_STAGING` | `TESTER_INVITE_CODES` |
 | Stripe | its own **sandbox, hushmallow-staging** (test mode): its own keys, products, portal, tax settings and webhook endpoint | live mode, later (`docs/PAYMENTS.md`) |
 
-Until the owner has done Part A below, the staging project does not exist yet: the preview then has **no
-sign-in** (and so no billing), exactly like a build without sign-in values. It never falls back to
-production's accounts.
+The staging project exists: the owner created it on 17 Oct 2026, and its two public values are committed
+(`src/auth/config.js`, `server/another-angle/src/config.js`, `[env.staging.vars]`). Until its database and
+sign-in settings are in (A2, A3) and the preview is rebuilt without production's values (A5), the preview
+has **no working sign-in** (and so no billing). It never falls back to production's accounts.
+
+**Singapore, not Sydney (accepted, 17 Oct 2026).** The staging project was created in Singapore
+(`ap-southeast-1`) with a name Supabase generated. It is used as it is, without recreating it: it only ever
+holds test accounts made for the rehearsal, nothing else in staging depends on the region, and the code calls
+it `hushmallow-staging` whatever its dashboard name is (it may be renamed in the dashboard at any time;
+nothing changes). Production's hushmallow1 stays in **Sydney**, and so do real people's accounts
+(`docs/integration/DECISIONS.md`). Real people's data is not meant for the staging project: nothing stops a
+stranger who finds a preview from signing up, so once the rehearsal's sign-up tests are done, switch off
+**Authentication → Sign In / Providers → Allow new users to sign up** there (testers' accounts keep working).
 
 ## How the preview knows it is staging
 
@@ -38,8 +48,8 @@ production's accounts.
 | Web subscriptions | **on**: the Stripe sandbox, through the staging Worker | **off** (`BILLING_PROVIDER = ''`) until the owner switches production on |
 | Prices on the plans page | the owner's US-dollar prices below | none (they show only where billing is on) |
 | Settings → version line | `Version … · staging` | `Version …`, as before |
-| Sign-in (accounts) | **only** the staging project hushmallow-staging; off until it exists (`STAGING_PROJECT_REF` is still `''`) | **only** hushmallow1, as before |
-| Content-Security-Policy | the same policy, with the staging Worker in `connect-src` instead of production (and the staging project, once a branch build has its values) | today's policy, unchanged |
+| Sign-in (accounts) | **only** the staging project hushmallow-staging (`https://oghzabvkrxsejkkjdsuc.supabase.co`) | **only** hushmallow1, as before |
+| Content-Security-Policy | the same policy, with the staging Worker in `connect-src` instead of production, and the staging project | today's policy, unchanged |
 
 * **The host rule** (`src/app/config.js`, `isPreviewHost`): https, no port, and exactly **one** DNS label in
   front of `.hushmallow.pages.dev`. So `claude-launch-rc.hushmallow.pages.dev` is a preview, and so is a
@@ -61,11 +71,18 @@ production's accounts.
     address on production, is refused, never used.
   * **At build time:** Cloudflare Pages tells the build which branch it is building (`CF_PAGES_BRANCH`). A
     build of any branch other than `main` may only publish the staging project's values; a build of `main`
-    (and any build outside Pages) only hushmallow1's. A branch build that is given hushmallow1's values does
+    (and any build outside Pages) only hushmallow1's. A branch build that is given **neither**
+    `SUPABASE_URL` nor `SUPABASE_PUBLISHABLE_KEY` publishes the staging project committed in
+    `src/auth/config.js` (`STAGING_PROJECT_URL` and `STAGING_PUBLISHABLE_KEY`, both public), so the Preview
+    environment needs no sign-in variables; its log says
+    `auth config: sign-in on: https://oghzabvkrxsejkkjdsuc.supabase.co (the staging project hushmallow-staging, from src/auth/config.js: …)`.
+    A build of `main`, or outside Pages, given neither value still builds without sign-in: it never falls
+    back to anything. A branch build that is given hushmallow1's values does
     not publish them: it builds without sign-in and its log says
     `auth config: WARNING: SUPABASE_URL is the production project hushmallow1 …`. Staging values on `main`
     stop the build (production keeps its last good deploy). Everything the build refused before (a secret
-    key, a service_role key, another project, a malformed value) it still refuses, on every branch.
+    key, a service_role key, another project, half of the pair, a malformed value) it still refuses, on every
+    branch.
   * **On the staging Worker:** `ACCOUNTS_STAGE = "staging"` means it accepts only the staging project's
     accounts (`STAGING_SUPABASE_PROJECT_URL` in `server/another-angle/src/config.js`), never hushmallow1's.
   * A deployment's own address (`<hash>.hushmallow.pages.dev`) counts as a preview, `main`'s included: a
@@ -92,14 +109,14 @@ Only the staging environment changed:
 * `ENTITLEMENT_MODE = "billing+testing"`. Another Angle opens for an account with an active (test)
   hushmallow Beyond subscription, **or** with one of `TESTER_INVITE_CODES` (a testing session, as before).
   Without invite codes set, it opens for subscribers only.
-* `ACCOUNTS_STAGE = "staging"`, `SUPABASE_URL = "https://STAGING_TODO.supabase.co"` and
-  `SUPABASE_PUBLISHABLE_KEY = "sb_publishable_TODO"`: the staging project's public values, as
-  **placeholders** until the owner creates hushmallow-staging (Part A). Nothing of hushmallow1 is there any
-  more. The server treats a `TODO` value (and a staging Worker with no staging project in its code yet) as
+* `ACCOUNTS_STAGE = "staging"`, `SUPABASE_URL = "https://oghzabvkrxsejkkjdsuc.supabase.co"` and
+  `SUPABASE_PUBLISHABLE_KEY = "sb_publishable_Sn4YKE3TRTzMkWVN9i45_A_MYYxxirc"`: the staging project's two
+  public values (17 Oct 2026; the publishable key is public by design). Nothing of hushmallow1 is there. The
+  Worker accepts only accounts of the project `server/another-angle/src/config.js` names
+  (`STAGING_SUPABASE_PROJECT_URL`, the same URL). A `TODO` value (what was there before) would still count as
   "accounts not configured": it never asks any sign-in project, every billing route answers
-  `503 accounts_not_configured` ("…accounts are not configured (its sign-in project, SUPABASE_URL and
-  SUPABASE_PUBLISHABLE_KEY, is still a placeholder)"), and `/v1/health` shows
-  `"billing": { "configured": false, …, "accounts_configured": false }`.
+  `503 accounts_not_configured`, and `/v1/health` shows `"accounts_configured": false`. So until the staging
+  Worker is redeployed with these values, its health still says that.
 * Its secrets come from the **staging** repository secrets: the deploy
   (`.github/workflows/another-angle-staging.yml`) sets `ANTHROPIC_API_KEY` from `ANTHROPIC_API_KEY_STAGING`
   and `TESTER_INVITE_CODES` from `TESTER_INVITE_CODES_STAGING`, never from production's `ANTHROPIC_API_KEY` /
@@ -115,8 +132,8 @@ Only the staging environment changed:
   sandbox driver's preflight (P0) names the slot. If they are live mode's, make the same four in the sandbox
   (B4) and send Claude their ids (B10). A `price_TODO…` value would still count as unset (never sent to
   Stripe; `/v1/health` then says `"placeholder_prices"`), and so would one id pasted into two slots (neither
-  slot is sold; `/v1/health` says `"duplicate_prices"`, and the tests refuse it in `wrangler.toml`). While the accounts are placeholders, every billing
-  route answers `accounts_not_configured`; Another Angle still works for testers with an invite code.
+  slot is sold; `/v1/health` says `"duplicate_prices"`, and the tests refuse it in `wrangler.toml`). Another
+  Angle also works for testers with an invite code, with or without billing.
 * `STRIPE_API_VERSION = "2026-08-26.dahlia"`: the API version of the Worker's own Stripe requests, and the one
   the staging webhook endpoint is created on (B11). `STRIPE_AUTOMATIC_TAX = "false"` (the Checkout Studio's
   value): Stripe Tax at Checkout stays off until a registration in the sandbox shows Collecting and a test
@@ -133,10 +150,9 @@ device or subscriber, 100 sessions a day in all, 10 new testing sessions a day p
 Two parts:
 
 * **Part A (A1 to A7): staging gets its own accounts, model key and tester codes**, so nothing is shared
-  with production. Do A1 to A4 first. Do A5 only **after** Claude has committed the staging project's values
-  (before that, a preview build given the new values stops with "there is no staging project yet"). A6 and
-  A7 can be done at any time, the sooner the better: until A6 is done, the staging Worker still holds a
-  copy of production's model key.
+  with production. A1 and A4 are done (17 Oct 2026: the project exists and its public values are
+  committed). Do A2 and A3 now, then A5. A6 and A7 can be done at any time, the sooner the better: until A6
+  is done, the staging Worker still holds a copy of production's model key.
 * **Part B (B1 to B14): the Stripe sandbox hushmallow-staging**, click by click. B11 (the webhook endpoint)
   comes only after Claude says the staging Worker is deployed with the price ids, and B12 only if Claude should
   run the sandbox driver from its cloud session. "Where email links land" says where the staging project's
@@ -153,27 +169,29 @@ the Stripe price ids (B10: the owner's four of 2026-10-17 are already in; new on
 Dashboard labels move now and then; if one is not where this says, search the dashboard for the setting's
 name.
 
-### A1. Supabase: create the staging project (5 min)
+### A1. Supabase: the staging project (done, 17 Oct 2026)
 
-1. Open **supabase.com/dashboard** and sign in with the account that owns hushmallow1.
-2. Click **New project**.
-3. **Organization**: the same organization as hushmallow1.
-4. **Project name**: `hushmallow-staging` (exactly this, lower case).
-5. **Database password**: click **Generate a password** and keep it in your password manager. Nothing
-   below needs it.
-6. **Region**: Sydney (shown as **Oceania (Sydney)**, `ap-southeast-2`), the same region as hushmallow1.
-7. Leave everything else as it is. The **Free** plan is fine for staging. (A Free project with no activity
-   for a week is paused: the preview then hides sign-in until you open the project and click
-   **Restore project**.)
-8. Click **Create new project** and wait until the project is ready (a minute or two).
-9. Look at the address bar: it shows `/project/` followed by 20 letters and digits. That is the staging
-   project's **ref**. It must **not** be `igbxbfuaoybfzsroxuln` (that is production's hushmallow1).
+The owner created it on the Free plan. Its facts, for every step below:
+
+| | |
+|---|---|
+| Project URL | `https://oghzabvkrxsejkkjdsuc.supabase.co` |
+| Project ref | `oghzabvkrxsejkkjdsuc` (the address bar shows `/project/oghzabvkrxsejkkjdsuc`) |
+| Publishable key | `sb_publishable_Sn4YKE3TRTzMkWVN9i45_A_MYYxxirc` (public by design) |
+| Region | Singapore (`ap-southeast-1`), accepted for staging (above); production stays in Sydney |
+| Name in the dashboard | generated by Supabase; renaming it to `hushmallow-staging` (Project Settings → General) is optional and changes nothing in the code |
+
+It is not production: production's ref is `igbxbfuaoybfzsroxuln` (hushmallow1). Before each step below, check
+that the address bar shows `/project/oghzabvkrxsejkkjdsuc`. (A Free project with no activity for a week is
+paused: the preview then cannot sign in until you open the project and click **Restore project**.)
 
 ### A2. Supabase: the database, the same SQL as production (5 min)
 
 The two files in `supabase/staging/` are production's SQL byte for byte; only their comment lines at the
-top differ, and name the staging project. (The copies in `supabase/production/` would do the same.) Check
-the address bar shows the staging project's ref, never `igbxbfuaoybfzsroxuln`, before you run anything.
+top differ, and name the staging project. `tests/auth-bundle.test.mjs` keeps them exact: `ALL_MIGRATIONS.sql`
+is migrations 0001 to 0010 byte for byte, and `RLS_CHECK.sql` is `supabase/tests/rls_check.sql`. (The copies
+in `supabase/production/` would do the same.) Run them in the project whose address bar shows
+**`/project/oghzabvkrxsejkkjdsuc`**, never in hushmallow1 (`igbxbfuaoybfzsroxuln`).
 
 1. **SQL Editor** → **New query**. Paste the whole of `supabase/staging/ALL_MIGRATIONS.sql`. The role
    next to **Run** must be `postgres` (the default).
@@ -188,7 +206,7 @@ the address bar shows the staging project's ref, never `igbxbfuaoybfzsroxuln`, b
 
 ### A3. Supabase: sign-in settings for the preview (5 min)
 
-Still in **hushmallow-staging**:
+Still in the staging project (`/project/oghzabvkrxsejkkjdsuc`):
 
 1. **Authentication** → **URL Configuration**:
    * **Site URL**: `https://claude-launch-rc.hushmallow.pages.dev` (exactly, no trailing slash). Save.
@@ -214,52 +232,39 @@ Still in **hushmallow-staging**:
    **SMTP Settings**, as `RUNBOOK.md` step 7: Brevo, with a separate Brevo SMTP key for this project, pasted only
    there).
 
-### A4. Send Claude the staging project's two public values
+### A4. The staging project's two public values (done, 17 Oct 2026)
 
-1. **Project Settings** → **Data API** → copy the **Project URL** (`https://` + the ref + `.supabase.co`).
-2. **Project Settings** → **API Keys** → copy the **Publishable key** (`sb_publishable_…`).
-3. Paste both into the chat (or the pull request), labelled like this:
+The owner sent the Project URL and the publishable key, and they are committed: the ref and the key in
+`src/auth/config.js` (`STAGING_PROJECT_REF`, `STAGING_PUBLISHABLE_KEY`), the URL in
+`server/another-angle/src/config.js` (`STAGING_SUPABASE_PROJECT_URL`), and both in `[env.staging.vars]`
+(`SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`). The coordinator redeploys the staging Worker (a line appended to
+`server/another-angle/deploy/STAGING`). Never send the secret key (`sb_secret_…`), the service_role key or the
+database password: nothing needs them.
 
-   ```
-   hushmallow-staging Project URL      https://….supabase.co
-   hushmallow-staging publishable key  sb_publishable_…
-   ```
+### A5. Cloudflare Pages: the Preview variables (3 min)
 
-Both are public by design (Row Level Security is what protects the data). Never send the secret key
-(`sb_secret_…`), the service_role key or the database password.
-
-Claude then puts the ref into `src/auth/config.js` (`STAGING_PROJECT_REF`, today the placeholder `''`), the
-URL into `server/another-angle/src/config.js` (`STAGING_SUPABASE_PROJECT_URL`), and both values into
-`[env.staging.vars]` (`SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`) in place of the `TODO` placeholders, and
-commits. The coordinator then redeploys the staging Worker (a line appended to
-`server/another-angle/deploy/STAGING`).
-
-### A5. Cloudflare Pages: the Preview variables (3 min, after Claude's commit)
+Today **Preview** still holds production's values (the "hushmallow pages env" workflow set them on 13 Oct). A
+branch build refuses them: the preview builds **without sign-in** and its log says
+`auth config: WARNING: SUPABASE_URL is the production project hushmallow1 …`. Nothing reaches production's
+accounts, but the preview cannot sign in until this step is done.
 
 1. **dash.cloudflare.com** → **Workers & Pages** → **hushmallow** → **Settings** → **Environment variables**
    (newer dashboards: **Variables and Secrets**).
-2. Choose **Preview**. For each of the two, **Edit** (or **Add variable** if it is not there), type
-   **Text** (plain text; both values are public):
-   * `SUPABASE_URL` = the staging Project URL from A4
-   * `SUPABASE_PUBLISHABLE_KEY` = the staging publishable key from A4
-
-   Save.
+2. Choose **Preview**. **Delete** both `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` there (the ⋯ or the
+   bin next to each). Save. A branch build with neither then publishes the staging project committed in
+   `src/auth/config.js`. (Setting both, as **Text**, to `https://oghzabvkrxsejkkjdsuc.supabase.co` and
+   `sb_publishable_Sn4YKE3TRTzMkWVN9i45_A_MYYxxirc` works too; never only one of them.)
 3. **Production** keeps production's values. Do not change them:
    * `SUPABASE_URL` = `https://igbxbfuaoybfzsroxuln.supabase.co`
    * `SUPABASE_PUBLISHABLE_KEY` = `sb_publishable_NSv1Liou2yjKjauX09U5qQ_CxwzDuiw`
 4. **Deployments** → the latest deployment of `claude/launch-rc` → **⋯** → **Retry deployment** (new
    values only reach a new build). Its build log shows
-   `auth config: sign-in on: https://….supabase.co (the staging project hushmallow-staging)`.
+   `auth config: sign-in on: https://oghzabvkrxsejkkjdsuc.supabase.co (the staging project hushmallow-staging…`.
 
 Good to know:
 
-* Until this step is done, Preview still holds production's values (the "hushmallow pages env" workflow set
-  them on 13 Oct). A branch build refuses them: the preview builds **without sign-in** and its log says
-  `auth config: WARNING: SUPABASE_URL is the production project hushmallow1 …`. That is expected, and
-  nothing reaches production's accounts.
 * Do not run the "hushmallow pages env" workflow (`tools/infra/PAGES_ENV`) again: it writes production's
-  values into Preview. If it ever runs, previews build without sign-in until you set the staging values
-  again.
+  values into Preview. If it ever runs, previews build without sign-in until you delete them again.
 
 ### A6. Anthropic: a separate staging key with its own low limit (5 min)
 
@@ -301,8 +306,9 @@ curl -s -H 'origin: https://claude-launch-rc.hushmallow.pages.dev' \
   https://hushmallow-another-angle-staging.vibyfy-chat.workers.dev/v1/health
 ```
 
-`"accounts_configured":false` in the answer means the staging Worker's sign-in values are still the
-placeholders. `"provider_key":true` means the Worker has a model key (it cannot tell whose: that is A6).
+`"accounts_configured":false` in the answer means the staging Worker has not been redeployed with the
+staging project yet (it still runs the old placeholders). `"provider_key":true` means the Worker has a model
+key (it cannot tell whose: that is A6).
 
 ### Part B: the Stripe sandbox hushmallow-staging
 

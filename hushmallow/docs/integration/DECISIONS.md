@@ -241,6 +241,20 @@ Also on the pages since 17 October, from the code rather than the owner: the Ter
 
 Placeholders left for the owner: the legal entity name and postal address (check ABN Lookup), confirming New South Wales, the effective dates, other privacy laws now that the market is worldwide (with a lawyer), Brevo's company name, location and agreement, how long Cloudflare keeps the Worker's logs, how long Supabase keeps its sign-in security records, how long the server keeps a deleted account's subscription record (and how it is removed), how long payment and tax records must be kept (with an adviser), whether to keep the GitHub Pages copy, the website's host and any analytics or cookies, the reply time for access and complaints and whether access is free, taxes, how a plan switch is charged, whether to refund the unused part of a period after a change that takes away a large part of a plan or an end we choose (Terms §8 and §14), the price-change notice period, and (with a lawyer) the APP 8 basis for each overseas provider.
 
+## 2026-10-17: The staging sign-in project, in Singapore (owner)
+
+The owner created the staging Supabase project on the Free plan: Project URL `https://oghzabvkrxsejkkjdsuc.supabase.co` (ref `oghzabvkrxsejkkjdsuc`), in **Singapore** (`ap-southeast-1`), not Sydney as `docs/STAGING.md` A1 asked, with a project name Supabase generated. The owner asked whether it can be used for staging without recreating it.
+
+Default taken on the owner's behalf: **accepted for staging, as it is; production stays in Sydney.**
+
+- Staging holds test data only: the rehearsal's test accounts (the owner's team, `docs/STAGING.md` A3) and Stripe test-mode subscriptions. The public's accounts and data are only ever in production's hushmallow1 (ref `igbxbfuaoybfzsroxuln`), which stays in **Sydney** (`ap-southeast-2`). Real people's data is not meant for it; nothing in the code stops a stranger who finds a preview from signing up (and the preview's draft Privacy Policy says Sydney), so new sign-ups are switched off there once the rehearsal's sign-up tests are done (`docs/STAGING.md`).
+- Nothing depends on the staging project's region or dashboard name: the build, the browser and the staging Worker accept it by its URL only. The code's label `hushmallow-staging` (`STAGING_PROJECT_NAME`) is display-only; the project may be renamed in the dashboard at any time.
+- The two stages never cross: a branch preview accepts only the staging project, every other host only hushmallow1, and the staging Worker only staging accounts (both test suites). A branch build with no sign-in variables publishes the committed staging project; a production build never does.
+- Sign-in calls from Australia to Singapore take a little longer; acceptable for a rehearsal, which measures behaviour, not speed.
+- It is a new project (17 Oct 2026), not the old Singapore project retired before hushmallow1, which stays unused.
+
+Its public values (the URL and the publishable key, public by design) are committed in `src/auth/config.js`, `server/another-angle/src/config.js` and `[env.staging.vars]`. The owner's remaining steps for it (its SQL, its sign-in settings, the Pages Preview variables) are `docs/STAGING.md` A2, A3 and A5.
+
 ## Still open for the owner
 
 - **Australian support lines**: sign-off of the numbers and their wording by someone with wellbeing or clinical experience (STATUS §4.2), and whether 1800RESPECT should lead after abuse in Australia.

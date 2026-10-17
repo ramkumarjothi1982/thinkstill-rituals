@@ -865,13 +865,18 @@ const OWNER_PRICES = {
   STRIPE_PRICE_ULTRA_MONTHLY: 'price_1URQyUL6VU7tTQ408wYz4vYP', STRIPE_PRICE_ULTRA_YEARLY: 'price_1URQuYL6VU7tTQ403DSA9bfh',
 };
 
-/** A made-up staging project (20-character ref) for the cases "once the owner has created hushmallow-staging". */
+/** The owner's staging project (17 Oct 2026, Singapore): its public values, as the repository must hold them. */
+const OWNER_STAGING = 'https://oghzabvkrxsejkkjdsuc.supabase.co';
+const OWNER_STAGING_KEY = 'sb_publishable_Sn4YKE3TRTzMkWVN9i45_A_MYYxxirc';
+/** Production's publishable key (public): never in [env.staging]. */
+const PRODUCTION_KEY = 'sb_publishable_NSv1Liou2yjKjauX09U5qQ_CxwzDuiw';
+/** A made-up staging project (20-character ref), for the cases simulated on a copy of src/config.js. */
 const STAGING_SUPABASE = 'https://hmstagingtest0000000.supabase.co';
-const STAGING_LINE = "const STAGING_SUPABASE_PROJECT_URL = '';";
-/** A copy of src/config.js with only STAGING_SUPABASE_PROJECT_URL filled in (the one line the owner's values change). */
+const STAGING_LINE = /^const STAGING_SUPABASE_PROJECT_URL = '[^']*';$/m;
+/** A copy of src/config.js with only its STAGING_SUPABASE_PROJECT_URL line changed ('' simulates "no staging project"). */
 async function withStagingProject(url) {
   const src = readFileSync(new URL('../src/config.js', import.meta.url), 'utf8');
-  assert.equal(src.split(STAGING_LINE).length, 2, 'the placeholder line is there exactly once');
+  assert.equal(src.split(STAGING_LINE).length, 2, 'the STAGING_SUPABASE_PROJECT_URL line is there exactly once');
   const dir = mkdtempSync(join(tmpdir(), 'hm-angle-staging-'));
   const file = join(dir, 'config.js');
   writeFileSync(file, src.replace(STAGING_LINE, `const STAGING_SUPABASE_PROJECT_URL = '${url}';`));
@@ -892,7 +897,7 @@ function tomlVars(toml, table) {
   return out;
 }
 
-test('wrangler.toml [env.staging]: billing+testing for staging only, the preview origin, its own placeholder sign-in project and the owner\'s four price ids; production unchanged', async () => {
+test('wrangler.toml [env.staging]: billing+testing for staging only, the preview origin, its own sign-in project (the owner\'s) and the owner\'s four price ids; production unchanged', async () => {
   const toml = readFileSync(new URL('../wrangler.toml', import.meta.url), 'utf8');
   const prod = tomlVars(toml, 'vars'), dev = tomlVars(toml, 'env.dev.vars'), staging = tomlVars(toml, 'env.staging.vars');
   // production and dev exactly as before
@@ -907,11 +912,21 @@ test('wrangler.toml [env.staging]: billing+testing for staging only, the preview
   assert.equal(staging.ENTITLEMENT_MODE, 'billing+testing');
   assert.deepEqual(staging.ALLOWED_ORIGINS.split(','), ['https://ramkumarjothi1982.github.io', 'https://claude-upbeat-pasteur-b0aqg1.hushmallow.pages.dev', PREVIEW, 'http://localhost:8000', 'http://127.0.0.1:8000']);
   assert.equal(staging.APP_ORIGIN, PREVIEW, 'Checkout returns to the preview');
-  // its own sign-in project, hushmallow-staging, never production's: placeholders until the owner creates it
+  // its own sign-in project, hushmallow-staging (the owner's, 17 Oct 2026), never production's
   assert.equal(staging.ACCOUNTS_STAGE, 'staging');
-  assert.equal(staging.SUPABASE_URL, 'https://STAGING_TODO.supabase.co');
-  assert.equal(staging.SUPABASE_PUBLISHABLE_KEY, 'sb_publishable_TODO');
+  assert.equal(staging.SUPABASE_URL, OWNER_STAGING);
+  assert.equal(staging.SUPABASE_URL, STAGING_SUPABASE_PROJECT_URL, 'the project src/config.js accepts for the staging stage');
+  assert.equal(staging.SUPABASE_PUBLISHABLE_KEY, OWNER_STAGING_KEY);
+  assert.match(staging.SUPABASE_PUBLISHABLE_KEY, /^sb_publishable_[A-Za-z0-9_-]{16,128}$/, 'a publishable key (public), never a secret one');
+  assert.notEqual(staging.SUPABASE_URL, SUPABASE_PROJECT_URL);
+  assert.notEqual(staging.SUPABASE_PUBLISHABLE_KEY, PRODUCTION_KEY);
   assert.doesNotMatch(toml.split(/^\[env\.staging\]$/m)[1], /igbxbfuaoybfzsroxuln|sb_publishable_NSv1/, 'nothing of production\'s project in [env.staging]');
+  assert.doesNotMatch(toml, /STAGING_TODO|sb_publishable_TODO/, 'no placeholder left');
+  // …and nothing of the staging project anywhere else: once each, in [env.staging.vars] only
+  for (const v of ['oghzabvkrxsejkkjdsuc', OWNER_STAGING_KEY]) {
+    assert.equal(toml.split('\n').filter((l) => !/^\s*#/.test(l) && l.includes(v)).length, 1, v);
+    assert.ok(toml.indexOf(v) > toml.indexOf('[env.staging.vars]'), v);
+  }
   // the owner's four prices, each in its own slot, none a placeholder; and none of them anywhere in production or dev
   for (const k of STAGING_PRICE_VARS) assert.equal(staging[k], OWNER_PRICES[k], k);
   assert.equal(new Set(STAGING_PRICE_VARS.map((k) => staging[k])).size, 4, 'four different ids');
@@ -920,25 +935,34 @@ test('wrangler.toml [env.staging]: billing+testing for staging only, the preview
   // secrets are never vars; the rest of staging is as it was (the real model, a $3 cap, https, browsers only)
   for (const k of ['STRIPE_SECRET_KEY', 'STRIPE_WEBHOOK_SECRET', 'ANTHROPIC_API_KEY', 'TOKEN_SIGNING_KEY', 'TESTER_INVITE_CODES']) assert.equal(staging[k], undefined, k);
   assert.deepEqual([staging.PROVIDER, staging.DAILY_SPEND_CAP_USD, staging.REQUIRE_HTTPS, staging.ALLOW_NO_ORIGIN], ['anthropic', '3', 'true', 'false']);
-  // as the staging Worker reads it once the owner's TEST secrets are set: the four prices taken as they are, still
-  // off while the accounts are placeholders
+  // as the staging Worker reads it once the owner's TEST secrets are set: its own project and key, the four prices
+  // taken as they are: billing on, in test mode
   const cfg = readConfig({ ...staging, STRIPE_SECRET_KEY: TEST_SK, STRIPE_WEBHOOK_SECRET: WHSEC });
   assert.equal(cfg.entitlementMode, 'billing+testing');
   assert.equal(cfg.billing.appOrigin, PREVIEW);
   assert.equal(cfg.billing.accountsStage, 'staging');
-  assert.equal(cfg.billing.accountsPlaceholder, true);
-  assert.equal(cfg.billing.supabaseUrl, '');
-  assert.equal(cfg.billing.supabaseKey, '');
+  assert.equal(cfg.billing.accountsPlaceholder, false);
+  assert.equal(cfg.billing.supabaseUrl, OWNER_STAGING);
+  assert.equal(cfg.billing.supabaseKey, OWNER_STAGING_KEY);
   assert.deepEqual(cfg.billing.prices, {
     paid: { monthly: OWNER_PRICES.STRIPE_PRICE_PAID_MONTHLY, yearly: OWNER_PRICES.STRIPE_PRICE_PAID_YEARLY },
     ultra: { monthly: OWNER_PRICES.STRIPE_PRICE_ULTRA_MONTHLY, yearly: OWNER_PRICES.STRIPE_PRICE_ULTRA_YEARLY },
   });
   assert.equal(cfg.billing.placeholderPrices, 0);
-  assert.equal(cfg.billing.configured, false);
-  // …still off with the four test price ids alone: the accounts are placeholders
-  assert.equal(readConfig({ ...staging, ...REAL_PRICES, STRIPE_SECRET_KEY: TEST_SK, STRIPE_WEBHOOK_SECRET: WHSEC }).billing.configured, false);
-  // …and on, once the staging project exists too (its URL in src/config.js and in [env.staging.vars], and its key),
-  // with the committed price ids as they are
+  assert.deepEqual([cfg.billing.configured, cfg.billing.keyMode, cfg.billing.keyRefused], [true, 'test', '']);
+  // …and off without the TEST secrets (as the deployed Worker is until the owner sets them)
+  assert.equal(readConfig(staging).billing.configured, false);
+  // no staging project (simulated): off, "accounts not configured", whatever [env.staging.vars] says
+  const { readConfig: readWithout } = await withStagingProject('');
+  for (const vars of [staging, { ...staging, SUPABASE_URL: 'https://STAGING_TODO.supabase.co', SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_TODO' }]) {
+    const off = readWithout({ ...vars, ...REAL_PRICES, STRIPE_SECRET_KEY: TEST_SK, STRIPE_WEBHOOK_SECRET: WHSEC }).billing;
+    assert.deepEqual([off.configured, off.accountsPlaceholder, off.supabaseUrl, off.supabaseKey], [false, true, '', '']);
+  }
+  // [env.staging]'s old placeholders, with the owner's project in src/config.js: off as well
+  const todo = readConfig({ ...staging, SUPABASE_URL: 'https://STAGING_TODO.supabase.co', SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_TODO', STRIPE_SECRET_KEY: TEST_SK, STRIPE_WEBHOOK_SECRET: WHSEC }).billing;
+  assert.deepEqual([todo.configured, todo.accountsPlaceholder], [false, true]);
+  // another staging project (simulated: its URL in src/config.js and in the vars, and its key): on, with the
+  // committed price ids as they are; the owner's project is then refused
   const { readConfig: readWithStaging } = await withStagingProject(STAGING_SUPABASE);
   const on = readWithStaging({ ...staging, SUPABASE_URL: STAGING_SUPABASE, SUPABASE_PUBLISHABLE_KEY: PK, STRIPE_SECRET_KEY: TEST_SK, STRIPE_WEBHOOK_SECRET: WHSEC }).billing;
   assert.equal(on.configured, true);
@@ -946,6 +970,7 @@ test('wrangler.toml [env.staging]: billing+testing for staging only, the preview
   assert.equal(on.supabaseUrl, STAGING_SUPABASE);
   assert.equal(on.placeholderPrices, 0);
   assert.equal(on.accountsPlaceholder, false);
+  assert.equal(readWithStaging({ ...staging, STRIPE_SECRET_KEY: TEST_SK, STRIPE_WEBHOOK_SECRET: WHSEC }).billing.configured, false);
   // production's [vars] never turn billing on: no billing var at all (the live activation is its own commit, BILLING_LIVE)
   assert.equal(readConfig(prod).billing.configured, false);
   assert.equal(readConfig(prod).entitlementMode, 'testing');
@@ -954,7 +979,7 @@ test('wrangler.toml [env.staging]: billing+testing for staging only, the preview
 
 test('the staging Worker\'s sign-in project: placeholders mean "accounts not configured" (503 accounts_not_configured), and nothing is asked', async () => {
   const ACCOUNTS = { ACCOUNTS_STAGE: 'staging', SUPABASE_URL: 'https://STAGING_TODO.supabase.co', SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_TODO' };
-  // the staging Worker today: everything else real (Stripe test keys, the four prices), the accounts placeholders
+  // a staging Worker with everything else real (Stripe test keys, the four prices) and the accounts placeholders
   const s = setup({ env: billingEnv({ ...ACCOUNTS, ENTITLEMENT_MODE: 'billing+testing', TESTER_INVITE_CODES: 'MALLOW-ONE' }) });
   const c = readConfig(s.env).billing;
   assert.deepEqual([c.configured, c.accountsPlaceholder, c.accountsStage, c.supabaseUrl, c.supabaseKey], [false, true, 'staging', '', '']);
@@ -986,14 +1011,19 @@ test('the staging Worker\'s sign-in project: placeholders mean "accounts not con
   assert.equal((await (await both.app.fetch(billingReq('/v1/billing/status'), both.env)).json()).error.code, 'accounts_not_configured');
   assert.deepEqual((await (await both.app.fetch(req('/v1/health'), both.env)).json()).billing, { configured: false, webhook: true, placeholder_prices: 4, accounts_configured: false, ...FLAGS.test });
   assert.equal(both.up.calls.length, 0);
-  // each placeholder alone is enough, on any Worker
-  for (const over of [{ SUPABASE_URL: 'https://STAGING_TODO.supabase.co' }, { SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_TODO' }, { SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_TODO_owner_staging_key' }, { ACCOUNTS_STAGE: 'staging' }]) {
-    const b = readConfig(billingEnv(over)).billing;
+  // each placeholder alone is enough, on any Worker; and with no staging project in src/config.js (simulated), the
+  // staging stage alone
+  const { readConfig: readWithout } = await withStagingProject('');
+  for (const [over, read] of [[{ SUPABASE_URL: 'https://STAGING_TODO.supabase.co' }, readConfig], [{ SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_TODO' }, readConfig], [{ SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_TODO_owner_staging_key' }, readConfig], [{ ACCOUNTS_STAGE: 'staging' }, readWithout]]) {
+    const b = read(billingEnv(over)).billing;
     assert.deepEqual([b.configured, b.accountsPlaceholder, b.supabaseUrl, b.supabaseKey], [false, true, '', ''], JSON.stringify(over));
   }
-  // a staging Worker with production's project: refused (it has no staging project yet, and never production's)
+  // a staging Worker with production's project: refused, never production's (with the owner's staging project in
+  // src/config.js it is simply not the staging project; with none, the accounts are not configured at all)
   const cross = readConfig(billingEnv({ ACCOUNTS_STAGE: 'staging', SUPABASE_URL: SUPABASE })).billing;
-  assert.deepEqual([cross.configured, cross.supabaseUrl, cross.accountsPlaceholder], [false, '', true]);
+  assert.deepEqual([cross.configured, cross.supabaseUrl, cross.accountsPlaceholder], [false, '', false]);
+  const crossWithout = readWithout(billingEnv({ ACCOUNTS_STAGE: 'staging', SUPABASE_URL: SUPABASE })).billing;
+  assert.deepEqual([crossWithout.configured, crossWithout.supabaseUrl, crossWithout.accountsPlaceholder], [false, '', true]);
   // not a placeholder: a lower-case "todo" can be part of a real ref or key; an unknown stage has no project
   assert.equal(readConfig(billingEnv({ SUPABASE_URL: 'https://abctodoabcdefghijklm.supabase.co' })).billing.accountsPlaceholder, false);
   assert.equal(readConfig(billingEnv({ SUPABASE_PUBLISHABLE_KEY: `sb_publishable_x_TODO_${'c'.repeat(16)}` })).billing.accountsPlaceholder, false);
@@ -1010,25 +1040,31 @@ test('the staging Worker\'s sign-in project: placeholders mean "accounts not con
   assert.deepEqual((await (await off.app.fetch(req('/v1/health'), off.env)).json()).billing, { configured: false, webhook: true, ...FLAGS.live });
 });
 
-test('once hushmallow-staging exists: the staging Worker accepts only its project, production only hushmallow1; the server and the app name the same project', async () => {
-  // today: no staging project anywhere (the app's STAGING_PROJECT_REF, this server's constant, [env.staging]'s placeholder)
-  assert.equal(STAGING_SUPABASE_PROJECT_URL, '');
+test('hushmallow-staging: the staging Worker accepts only its project, production only hushmallow1; the server, the app and [env.staging] name the same project', async () => {
+  // the repository: the owner's project (17 Oct 2026) in this server's constant, the app's STAGING_PROJECT_REF and [env.staging]
+  assert.equal(STAGING_SUPABASE_PROJECT_URL, OWNER_STAGING);
+  assert.notEqual(STAGING_SUPABASE_PROJECT_URL, SUPABASE_PROJECT_URL, 'never production\'s');
   const appConfig = readFileSync(new URL('../../../src/auth/config.js', import.meta.url), 'utf8');
   const ref = /^export const STAGING_PROJECT_REF = '([a-z0-9]*)';$/m.exec(appConfig)?.[1];
-  assert.equal(typeof ref, 'string', 'the app has STAGING_PROJECT_REF');
-  assert.equal(STAGING_SUPABASE_PROJECT_URL, ref ? `https://${ref}.supabase.co` : '', 'the server and the app name the same staging project');
+  assert.equal(ref, 'oghzabvkrxsejkkjdsuc', 'the app has the same STAGING_PROJECT_REF');
+  assert.equal(STAGING_SUPABASE_PROJECT_URL, `https://${ref}.supabase.co`, 'the server and the app name the same staging project');
+  assert.equal(/^export const STAGING_PUBLISHABLE_KEY = '([^']*)';$/m.exec(appConfig)?.[1], OWNER_STAGING_KEY, 'and the same publishable key');
   const toml = tomlVars(readFileSync(new URL('../wrangler.toml', import.meta.url), 'utf8'), 'env.staging.vars');
-  if (STAGING_SUPABASE_PROJECT_URL) assert.equal(toml.SUPABASE_URL, STAGING_SUPABASE_PROJECT_URL);
-  else assert.match(toml.SUPABASE_URL, /TODO/, '[env.staging] keeps its placeholder until then');
-  // with the staging project's URL filled in (a copy of src/config.js)
+  assert.deepEqual([toml.SUPABASE_URL, toml.SUPABASE_PUBLISHABLE_KEY], [STAGING_SUPABASE_PROJECT_URL, OWNER_STAGING_KEY]);
+  // the repository's own: the staging stage takes only the owner's project
+  for (const [read, project] of [[readConfig, OWNER_STAGING], [(await withStagingProject(STAGING_SUPABASE)).readConfig, STAGING_SUPABASE]]) {
+    const staging = read(billingEnv({ ACCOUNTS_STAGE: 'staging', SUPABASE_URL: project })).billing;
+    assert.deepEqual([staging.configured, staging.supabaseUrl, staging.accountsPlaceholder], [true, project, false], project);
+    assert.equal(read(billingEnv({ ACCOUNTS_STAGE: 'staging', SUPABASE_URL: `${project}/` })).billing.supabaseUrl, project);
+    assert.equal(read(billingEnv({ ACCOUNTS_STAGE: 'staging', SUPABASE_URL: SUPABASE })).billing.configured, false, 'the staging Worker never takes production\'s project');
+    assert.equal(read(billingEnv({ SUPABASE_URL: project })).billing.configured, false, 'production never takes the staging project');
+    assert.equal(read(billingEnv()).billing.supabaseUrl, SUPABASE, 'production as before');
+    assert.equal(read(billingEnv({ ACCOUNTS_STAGE: 'staging', SUPABASE_URL: project, SUPABASE_PUBLISHABLE_KEY: `sb_secret_${'c'.repeat(24)}` })).billing.configured, false, 'never a secret key');
+  }
+  assert.equal(readConfig(billingEnv({ ACCOUNTS_STAGE: 'staging', SUPABASE_URL: STAGING_SUPABASE })).billing.configured, false, 'no other staging project');
+  // the requests below: a made-up staging project on a copy of src/config.js (nothing here reaches the owner's)
   const { readConfig: read } = await withStagingProject(STAGING_SUPABASE);
   const staging = read(billingEnv({ ACCOUNTS_STAGE: 'staging', SUPABASE_URL: STAGING_SUPABASE })).billing;
-  assert.deepEqual([staging.configured, staging.supabaseUrl, staging.accountsPlaceholder], [true, STAGING_SUPABASE, false]);
-  assert.equal(read(billingEnv({ ACCOUNTS_STAGE: 'staging', SUPABASE_URL: `${STAGING_SUPABASE}/` })).billing.supabaseUrl, STAGING_SUPABASE);
-  assert.equal(read(billingEnv({ ACCOUNTS_STAGE: 'staging', SUPABASE_URL: SUPABASE })).billing.configured, false, 'the staging Worker never takes production\'s project');
-  assert.equal(read(billingEnv({ SUPABASE_URL: STAGING_SUPABASE })).billing.configured, false, 'production never takes the staging project');
-  assert.equal(read(billingEnv()).billing.supabaseUrl, SUPABASE, 'production as before');
-  assert.equal(read(billingEnv({ ACCOUNTS_STAGE: 'staging', SUPABASE_URL: STAGING_SUPABASE, SUPABASE_PUBLISHABLE_KEY: `sb_secret_${'c'.repeat(24)}` })).billing.configured, false, 'never a secret key');
   // a request to the staging Worker asks only the staging project
   const asked = [];
   const STAGING_TOKEN = jwt(UID, { iss: `${STAGING_SUPABASE}/auth/v1` });

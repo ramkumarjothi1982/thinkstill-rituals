@@ -7,18 +7,19 @@ const APPLE_ROOT_CA_G3_SHA256 = '63343ABFB89A6A03EBB57E9B3F5FA7BE7C4F5C756F3017B
 /** hushmallow1 (Sydney): production's sign-in project, the one whose accounts can subscribe (hushmallow/src/auth/config.js PROJECT_URL). */
 const SUPABASE_PROJECT_URL = 'https://igbxbfuaoybfzsroxuln.supabase.co';
 /**
- * hushmallow-staging (Sydney): the STAGING Worker's own sign-in project (ACCOUNTS_STAGE = "staging" in
- * wrangler.toml [env.staging]; hushmallow/src/auth/config.js STAGING_PROJECT_REF, docs/STAGING.md), so the
- * staging Worker never accepts a production account and production never a staging one.
- * PLACEHOLDER: '' means "no staging project yet": the staging Worker's accounts are not configured.
- * Once the owner has created it, its Project URL goes here and into [env.staging.vars] SUPABASE_URL, together.
+ * hushmallow-staging (ref oghzabvkrxsejkkjdsuc, Singapore, created by the owner on 17 Oct 2026): the STAGING Worker's
+ * own sign-in project (ACCOUNTS_STAGE = "staging" in wrangler.toml [env.staging]; hushmallow/src/auth/config.js
+ * STAGING_PROJECT_REF, docs/STAGING.md), so the staging Worker never accepts a production account and production
+ * never a staging one. The same URL is [env.staging.vars] SUPABASE_URL (test/billing.test.js keeps the two, and the
+ * app's ref, the same). '' would mean "no staging project": the staging Worker's accounts are then not configured
+ * (test/staging-loader.js simulates it).
  */
-const STAGING_SUPABASE_PROJECT_URL = '';
+const STAGING_SUPABASE_PROJECT_URL = 'https://oghzabvkrxsejkkjdsuc.supabase.co';
 /**
  * Placeholder sign-in values, such as SUPABASE_URL "https://STAGING_TODO.supabase.co" and SUPABASE_PUBLISHABLE_KEY
- * "sb_publishable_TODO" (wrangler.toml [env.staging], until the owner creates the staging project). They count as
- * unset and say "accounts not configured": the sign-in project is never asked. Upper-case TODO only (a real project
- * ref is lower case), and the key only right after its prefix.
+ * "sb_publishable_TODO" (what wrangler.toml [env.staging] held until the owner created the staging project). They
+ * count as unset and say "accounts not configured": the sign-in project is never asked. Upper-case TODO only (a real
+ * project ref is lower case), and the key only right after its prefix.
  */
 const ACCOUNTS_URL_PLACEHOLDER = /TODO/;
 const ACCOUNTS_KEY_PLACEHOLDER = /^sb_publishable_TODO(?:_|$)/;
@@ -130,7 +131,7 @@ function readBilling(env, allowedOrigins) {
     ultra: { monthly: price(2), yearly: price(3) },
   };
   // Only the project's publishable key (a secret key never belongs in a var). A placeholder (or a staging Worker with
-  // no staging project yet) is "accounts not configured".
+  // no staging project in this file) is "accounts not configured".
   const project = accountsStage === 'production' ? SUPABASE_PROJECT_URL : accountsStage === 'staging' ? STAGING_SUPABASE_PROJECT_URL : '';
   const accountsPlaceholder = ACCOUNTS_URL_PLACEHOLDER.test(str(env.SUPABASE_URL)) || ACCOUNTS_KEY_PLACEHOLDER.test(str(env.SUPABASE_PUBLISHABLE_KEY))
     || (accountsStage === 'staging' && !STAGING_SUPABASE_PROJECT_URL);

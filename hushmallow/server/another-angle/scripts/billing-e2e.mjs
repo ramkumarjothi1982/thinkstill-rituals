@@ -142,6 +142,8 @@ export async function repoConfig(toml = readWrangler()) {
   /** @type {string[]} */
   const problems = [];
   if (!STAGING_SUPABASE_PROJECT_URL) problems.push('src/config.js STAGING_SUPABASE_PROJECT_URL is empty (hushmallow-staging does not exist yet)');
+  // the Worker accepts accounts only of the project src/config.js names: [env.staging.vars] must name the same one
+  else if (String(s.SUPABASE_URL || '').replace(/\/+$/, '') !== STAGING_SUPABASE_PROJECT_URL) problems.push(/TODO/.test(s.SUPABASE_URL || '') ? '[env.staging.vars] SUPABASE_URL is still a placeholder' : '[env.staging.vars] SUPABASE_URL is not the project src/config.js STAGING_SUPABASE_PROJECT_URL names');
   if (!/^sb_publishable_[A-Za-z0-9_-]{16,}$/.test(s.SUPABASE_PUBLISHABLE_KEY || '') || /TODO/.test(s.SUPABASE_PUBLISHABLE_KEY || '')) problems.push('[env.staging.vars] SUPABASE_PUBLISHABLE_KEY is still a placeholder');
   /** @param {string} k */
   const price = (k) => {
@@ -259,10 +261,11 @@ const desc = (s) => (s ? `${s.tier}/${s.status}${s.ends_at ? ` ends ${String(s.e
 /**
  * Run the driver. Returns the exit code.
  * @param {{ env?: Record<string, string | undefined>, args?: string[], fetch?: typeof fetch, write?: (line: string) => void,
- *   sleep?: (ms: number) => Promise<void>, now?: () => number, config?: Config, stop?: { now: boolean } }} [o]
- *   config: the non-secret values (the repository's when left out); stop.now: set by Ctrl-C, ends at the next wait
+ *   sleep?: (ms: number) => Promise<void>, now?: () => number, config?: Config, toml?: string, stop?: { now: boolean } }} [o]
+ *   config: the non-secret values (repoConfig's when left out, from `toml`: wrangler.toml's text, the repository's when
+ *   left out); stop.now: set by Ctrl-C, ends at the next wait
  */
-export async function run({ env = process.env, args = [], fetch: f = (input, init) => fetch(input, init), write = (l) => console.log(l), sleep = (ms) => new Promise((r) => setTimeout(r, ms)), now = Date.now, config, stop = { now: false } } = {}) {
+export async function run({ env = process.env, args = [], fetch: f = (input, init) => fetch(input, init), write = (l) => console.log(l), sleep = (ms) => new Promise((r) => setTimeout(r, ms)), now = Date.now, config, toml, stop = { now: false } } = {}) {
   const at = args.indexOf('--phases');
   const asked = at >= 0 ? String(args[at + 1] || '').split(',').map((x) => x.trim().toUpperCase()).filter(Boolean) : [...PHASES];
   const unknown = asked.filter((x) => !PHASES.includes(x));
@@ -275,7 +278,7 @@ export async function run({ env = process.env, args = [], fetch: f = (input, ini
   let cfg;
   if (config) cfg = config;
   else {
-    const r = await repoConfig();
+    const r = await repoConfig(toml);
     if (r.problems.length) { write(`REFUSED  staging is not set up yet: ${r.problems.join('; ')}. Nothing was sent.`); return 2; }
     cfg = r.config;
   }

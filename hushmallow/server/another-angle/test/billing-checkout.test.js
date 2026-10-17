@@ -129,7 +129,12 @@ test('STRIPE_INTEGRATION_TODO.md says what the code sends: every Studio value, t
   // Values to Replace: none of mode/success_url/cancel_url is a placeholder; what is still unset is named
   const values = section('## Values to Replace');
   for (const k of ['mode', 'success_url', 'cancel_url']) assert.match(values, new RegExp(`^\\| \`${k}\` \\|[^\\n]*\\| Set: [^\\n]*\\| Nothing`, 'm'), k);
-  for (const x of [/live mode's own four prices/, /STAGING_TODO/, /STAGING_PROJECT_REF/, /sandbox or live\?[^\n]*\*\*To be verified\*\*/, /No such price/]) assert.match(values, x);
+  for (const x of [/live mode's own four prices/, /STAGING_PROJECT_REF/, /sandbox or live\?[^\n]*\*\*To be verified\*\*/, /No such price/]) assert.match(values, x);
+  // the staging sign-in project is set (the owner's, 17 Oct 2026), and no longer listed as a placeholder
+  assert.match(values, /No longer a placeholder: the staging sign-in project is set \(17 Oct 2026\), the owner's\s+`https:\/\/oghzabvkrxsejkkjdsuc\.supabase\.co` \(Singapore\)/);
+  assert.match(values, /^\| Staging sign-in project \|[^\n]*\| Set: `oghzabvkrxsejkkjdsuc` \(Singapore, 17 Oct 2026\) \|/m);
+  assert.doesNotMatch(values, /STAGING_PROJECT_REF = ''|STAGING_SUPABASE_PROJECT_URL = ''|`https:\/\/STAGING_TODO\.supabase\.co`/);
+  assert.doesNotMatch(values.split('No longer a placeholder')[0], /SUPABASE_URL|STAGING_PROJECT_REF/, 'not among the files that still hold a placeholder');
   // Configured Parameters: each Studio value exactly as the form sends it (the test above), and the label
   const configured = section('## Configured Parameters');
   const row = (k, v) => new RegExp(`^\\| \`${k.replace(/[[\]]/g, '\\$&')}\` \\| \`${v}\` \\|`, 'm');

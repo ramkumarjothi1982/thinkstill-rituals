@@ -32,7 +32,7 @@ test('here src/config.js has a staging project (test/staging-loader.js), so the 
   assert.equal(STAGING_SUPABASE_PROJECT_URL, STAGING_PROJECT);
 });
 
-/** The driver's non-secret values for that staging Worker (repoConfig's, once nothing is a placeholder). */
+/** The driver's non-secret values for that staging Worker (repoConfig's, for the made-up project). */
 const CONFIG = Object.freeze({
   stagingWorker: STAGING_WORKER, productionWorker: PRODUCTION_WORKER, appOrigin: PREVIEW, productionOrigin: D.PRODUCTION_APP,
   supabaseUrl: STAGING_PROJECT, publishableKey: F.PK,
@@ -143,17 +143,31 @@ test('the driver refuses anything but a test secret or restricted key, and an ac
   assert.equal(u.all.length, 0);
 });
 
-test('the driver refuses while staging still has placeholders (the repository today), and says which', async () => {
-  const { problems } = await D.repoConfig();
-  // the four price ids are the owner's now (wrangler.toml [env.staging.vars]), so only the staging project's key is
-  // left (here src/config.js has a staging project: test/staging-loader.js)
-  assert.deepEqual(problems, ['[env.staging.vars] SUPABASE_PUBLISHABLE_KEY is still a placeholder']);
-  const w = world();
-  assert.equal(await w.drive([], { config: undefined }), 2);
-  assert.match(w.out.join('\n'), /^REFUSED {2}staging is not set up yet: .*Nothing was sent\.$/);
-  assert.equal(w.all.length, 0);
-  // the parts that are not placeholders are the repository's own
-  const { config } = await D.repoConfig();
+test('the driver reads the repository\'s staging values, and refuses (saying which) while one is a placeholder or names another project', async () => {
+  const OWNER_STAGING = 'https://oghzabvkrxsejkkjdsuc.supabase.co';
+  const OWNER_KEY = 'sb_publishable_Sn4YKE3TRTzMkWVN9i45_A_MYYxxirc';
+  const t = F.varsTables(F.WRANGLER).staging;
+  assert.deepEqual([t.SUPABASE_URL, t.SUPABASE_PUBLISHABLE_KEY], [OWNER_STAGING, OWNER_KEY], 'the repository names the owner\'s project');
+  // here src/config.js names a made-up project (test/staging-loader.js), not the one [env.staging.vars] names: the
+  // driver refuses rather than sign in to one project and bill through a Worker that accepts another
+  assert.deepEqual((await D.repoConfig()).problems, ['[env.staging.vars] SUPABASE_URL is not the project src/config.js STAGING_SUPABASE_PROJECT_URL names']);
+  // the repository's values with this process's project: nothing left to refuse
+  const own = F.WRANGLER.replace(`SUPABASE_URL = "${OWNER_STAGING}"`, `SUPABASE_URL = "${STAGING_PROJECT}"`);
+  assert.notEqual(own, F.WRANGLER);
+  assert.deepEqual((await D.repoConfig(own)).problems, []);
+  // the old placeholders (simulated): each named
+  const todo = own.replace(`SUPABASE_URL = "${STAGING_PROJECT}"`, 'SUPABASE_URL = "https://STAGING_TODO.supabase.co"').replace(`SUPABASE_PUBLISHABLE_KEY = "${OWNER_KEY}"`, 'SUPABASE_PUBLISHABLE_KEY = "sb_publishable_TODO"');
+  assert.deepEqual((await D.repoConfig(todo)).problems, ['[env.staging.vars] SUPABASE_URL is still a placeholder', '[env.staging.vars] SUPABASE_PUBLISHABLE_KEY is still a placeholder']);
+  for (const toml of [undefined, todo]) {
+    const w = world();
+    assert.equal(await w.drive([], { config: undefined, toml }), 2);
+    assert.match(w.out.join('\n'), /^REFUSED {2}staging is not set up yet: .*Nothing was sent\.$/);
+    assert.equal(w.all.length, 0);
+  }
+  // the values are the repository's own
+  const { config } = await D.repoConfig(own);
+  assert.deepEqual([config.supabaseUrl, config.publishableKey], [STAGING_PROJECT, OWNER_KEY]);
+  assert.equal((await D.repoConfig()).config.publishableKey, OWNER_KEY);
   assert.equal(config.appOrigin, PREVIEW);
   assert.equal(config.apiVersion, STRIPE_API_VERSION_EXPECTED);
   assert.equal(config.automaticTax, false);

@@ -2,7 +2,9 @@
 
 Project **hushmallow1** · ref `igbxbfuaoybfzsroxuln` · Sydney (ap-southeast-2) ·
 `https://igbxbfuaoybfzsroxuln.supabase.co`. The old Singapore project is not
-used for anything.
+used for anything. (The staging project `oghzabvkrxsejkkjdsuc`, also in
+Singapore, is a new one for the branch previews only, and takes the same two
+files: `docs/STAGING.md` A2.)
 
 Nothing here is run automatically against the project. **You paste each file
 into the SQL editor** (Dashboard → SQL Editor → New query), in the order

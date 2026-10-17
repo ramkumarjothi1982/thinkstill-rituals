@@ -16,10 +16,12 @@
 # Sign-in (optional): the build variables SUPABASE_URL and
 # SUPABASE_PUBLISHABLE_KEY (Cloudflare Pages, Production and Preview) are the
 # only values published to the browser, in v/<version>/src/auth/public-config.js,
-# after tools/site/auth-config.mjs has checked them (only the hushmallow1
-# project, only a publishable key; a secret, another project or a malformed
-# value fails the build). Neither set: { enabled: false } and the app runs as
-# without accounts. HM_AUTH_MODE=dev|ci also allows a localhost server (the
+# after tools/site/auth-config.mjs has checked them (only the build's own
+# project: hushmallow1, or on a branch preview the staging project; only a
+# publishable key; a secret, another project or a malformed value fails the
+# build). Neither set: { enabled: false } and the app runs as without
+# accounts; a branch preview publishes the staging project committed in
+# src/auth/config.js instead (docs/STAGING.md). HM_AUTH_MODE=dev|ci also allows a localhost server (the
 # fake in tools/auth/ or a local Supabase stack); such a build only signs in
 # on localhost. /auth/callback/ is written with absolute /v/<version>/ paths
 # (it lives two folders down), and _headers keeps /auth/* uncached, unframed
