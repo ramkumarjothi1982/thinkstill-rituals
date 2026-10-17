@@ -1,7 +1,8 @@
 // No secret in git: every tracked file (git ls-files from the repository
 // root, binaries skipped) is free of Stripe secret and restricted keys and
 // webhook signing secrets, Supabase secret keys, service_role JWTs and access
-// tokens, Anthropic keys and private keys (tools/secret-scan.mjs). Publishable
+// tokens, Anthropic keys, Brevo SMTP and API keys and private keys
+// (tools/secret-scan.mjs). Publishable
 // keys are public and pass. ALLOW holds only the two deliberate fakes, each by
 // its exact line. tools/build-site.sh scans every tracked file before each build
 // (a checkout whose git fails stops the build; an export with no .git has every
@@ -37,6 +38,7 @@ const FAKE = {
   'a Supabase secret key': [['sb', 'secret', 'f'.repeat(20)].join('_')],
   'a Supabase access token': [`sbp_${'0a'.repeat(20)}`],
   'an Anthropic API key': [['sk', 'ant', 'api03', 'g'.repeat(40)].join('-')],
+  'a Brevo SMTP or API key': [['xsmtpsib', '0f'.repeat(32), 'Ab'.repeat(8)].join('-'), ['xkeysib', 'a1'.repeat(32), 'Zq'.repeat(8)].join('-')],
   'a private key': [['-----BEGIN', 'PRIVATE KEY-----'].join(' '), ['-----BEGIN', 'EC', 'PRIVATE KEY-----'].join(' '), ['-----BEGIN', 'OPENSSH', 'PRIVATE KEY-----'].join(' ')],
   'a Supabase service_role JWT': [jwt({ iss: 'supabase', ref: 'abcdefghijklmnopqrst', role: 'service_role', iat: 1, exp: 2 })],
 };
@@ -46,6 +48,7 @@ const PUBLIC = [
   jwt({ iss: 'supabase', ref: 'abcdefghijklmnopqrst', role: 'anon', iat: 1, exp: 2 }),
   `mask_test_${'k'.repeat(12)}`, `disk_live_${'l'.repeat(12)}`,
   'the rk_test_ key', 'an rk_live_… key', 'its whsec_ value', 'sb_secret_ or service_role', 'sk-ant-…', 'a PRIVATE KEY file',
+  'a Brevo SMTP key (xsmtpsib-…)', 'an xkeysib- key',
 ];
 
 test('every tracked file is free of secrets (git ls-files from the repository root)', () => {
