@@ -12,11 +12,16 @@
 // is their static import closure (import / export … from, never import()), computed from the published files, so
 // a new import is preloaded without editing anything here. tools/site/check.mjs fails the build when the published
 // index.html misses one of them or preloads anything else (tests/boot-preload.test.mjs keeps the entries true).
+//
+// The first screen's logo is preloaded too (logoPreload): the Hushfold's top bar asks for it only once its scene
+// has loaded, so without it the logo, the largest picture on that screen, arrives a round trip after everything
+// else. The preload names the same srcset and sizes as the <img>, so the browser picks the same file for both.
 import { readFileSync, realpathSync, writeFileSync } from 'node:fs';
-import { dirname, join, posix, relative, resolve, sep } from 'node:path';
+import { basename, dirname, join, posix, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 // (check.mjs imports this module too: neither runs the other's code at load, so the cycle is harmless)
 import { stripJs } from './check.mjs';
+import { LOGO_WIDTHS, logoUrl } from '../../src/brand.js';
 
 /** Paths relative to the app folder (hushmallow/ in the repository, v/<version>/ in the site), in the order needed. */
 export const BOOT_ENTRIES = Object.freeze([
@@ -66,6 +71,15 @@ export function bootModules(root, entries = BOOT_ENTRIES) {
   return order;
 }
 
+/** The Hushfold's logo (hushfold.js: logoImg({ tone: 'light', width: 132 }), so sizes is 132px). */
+export const FIRST_LOGO = Object.freeze({ tone: 'light', sizes: '132px' });
+
+/** The <link rel="preload" as="image"> for that logo: the <img>'s own src, srcset and sizes, under `prefix`. */
+export function logoPreload(prefix, { tone, sizes } = FIRST_LOGO) {
+  const rel = (w) => posix.join(prefix, 'assets/brand', basename(new URL(logoUrl(tone, w)).pathname));
+  return `<link rel="preload" as="image" href="${rel(720)}" imagesrcset="${LOGO_WIDTHS.map((w) => `${rel(w)} ${w}w`).join(', ')}" imagesizes="${sizes}">`;
+}
+
 /** The <link rel="modulepreload"> lines for `modules` under `prefix` (the published index.html's v/<version>/). */
 export const preloadLinks = (modules, prefix) => modules.map((m) => `<link rel="modulepreload" href="${posix.join(prefix, m)}">`);
 
@@ -94,6 +108,6 @@ if (main) {
   const prefix = `v/${ver}`;
   const mods = bootModules(join(out, prefix));
   const p = join(out, 'index.html');
-  writeFileSync(p, injectPreloads(readFileSync(p, 'utf8'), preloadLinks(mods, prefix), prefix));
-  console.log(`boot preload: ${mods.length} modules preloaded from index.html`);
+  writeFileSync(p, injectPreloads(readFileSync(p, 'utf8'), [...preloadLinks(mods, prefix), logoPreload(prefix)], prefix));
+  console.log(`boot preload: ${mods.length} modules and the logo preloaded from index.html`);
 }

@@ -1,6 +1,7 @@
 // The first screen's modules are preloaded from the published index.html (tools/site/boot-preload.mjs, run by
 // tools/build-site.sh), so a phone asks for all of them at once instead of discovering them one import level at a
 // time; tools/site/check.mjs fails a build whose index.html misses one, preloads anything else or preloads one twice.
+// The Hushfold's logo, the first screen's largest picture, is preloaded the way its <img> asks for it.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -8,7 +9,8 @@ import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { BOOT_ENTRIES, bootModules, injectPreloads, preloadLinks, preloadsIn, staticImports } from '../tools/site/boot-preload.mjs';
+import { BOOT_ENTRIES, FIRST_LOGO, bootModules, injectPreloads, logoPreload, preloadLinks, preloadsIn, staticImports } from '../tools/site/boot-preload.mjs';
+import { LOGO_WIDTHS, logoSrcset, BRAND } from '../src/brand.js';
 import { inlineSources } from '../tools/site/security-headers.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
@@ -76,24 +78,42 @@ test('the built site preloads exactly its boot graph, and check.mjs holds it to 
     for (const k of ['SUPABASE_URL', 'SUPABASE_PUBLISHABLE_KEY', 'HM_AUTH_MODE', 'CF_PAGES_BRANCH']) delete env[k];
     const log = execFileSync('bash', [`${root}tools/build-site.sh`, out, 'pre1'], { env, stdio: 'pipe' }).toString();
     const mods = bootModules(join(out, 'v/pre1'));
-    assert.match(log, new RegExp(`boot preload: ${mods.length} modules preloaded`));
+    assert.match(log, new RegExp(`boot preload: ${mods.length} modules and the logo preloaded`));
     assert.match(log, new RegExp(`${mods.length} boot modules preloaded`));
     assert.match(log, /check: ok/);
     const html = readFileSync(join(out, 'index.html'), 'utf8');
     assert.deepEqual(preloadsIn(html), mods.map((m) => `v/pre1/${m}`));
     assert.deepEqual(mods, bootModules(root), 'the published graph is the source graph');
+    assert.equal(html.split(logoPreload('v/pre1')).length, 2, 'the logo preloaded once');
     const { checkSite } = await import('../tools/site/check.mjs');
     assert.deepEqual((await checkSite(out, 'pre1', { env })).problems, []);
     // one missing, one extra (loaded on demand), one twice: each is a problem
     cpSync(out, bad, { recursive: true });
     const broken = html.replace('<link rel="modulepreload" href="v/pre1/src/app/scenes/hushfold.js">\n', '')
       .replace('<link rel="modulepreload" href="v/pre1/src/auth/boot.js">', '<link rel="modulepreload" href="v/pre1/src/auth/boot.js">\n<link rel="modulepreload" href="v/pre1/src/world/realm.js">\n<link rel="modulepreload" href="v/pre1/src/auth/boot.js">');
-    writeFileSync(join(bad, 'index.html'), broken);
+    writeFileSync(join(bad, 'index.html'), broken.replace('hushmallow-logo-light-360.webp 360w', 'hushmallow-logo-light-300.webp 360w'));
     const r = await checkSite(bad, 'pre1', { env });
     assert.deepEqual(r.problems.sort(), [
+      'index.html does not preload the Hushfold logo as its <img> asks for it (tools/site/boot-preload.mjs logoPreload)',
       'index.html does not modulepreload v/pre1/src/app/scenes/hushfold.js (the first screen needs it: tools/site/boot-preload.mjs)',
       'index.html preloads v/pre1/src/auth/boot.js twice',
+      'index.html preloads v/pre1/assets/brand/hushmallow-logo-light-300.webp, which is not in the site',
       'index.html preloads v/pre1/src/world/realm.js, which the first screen does not import statically (tools/site/boot-preload.mjs)',
-    ]);
+    ].sort());
   } finally { rmSync(out, { recursive: true, force: true }); rmSync(bad, { recursive: true, force: true }); }
+});
+
+test('the logo preload is the Hushfold <img>: same src, srcset and sizes, so the browser fetches one file for both', () => {
+  // hushfold.js draws its top-bar logo with logoImg({ tone: 'light', width: 132 }): sizes is then '132px' (type.js)
+  assert.match(read('src/app/scenes/hushfold.js'), /m\.logoImg\(\{ tone: 'light', width: 132, alt: '' \}\)/, 'change FIRST_LOGO with it');
+  assert.match(read('src/ui/type.js'), /const sz = sizes \|\| \(\/\^\(min\|max\|clamp\|calc\)/, 'a px width is its own sizes');
+  assert.deepEqual({ ...FIRST_LOGO }, { tone: 'light', sizes: '132px' });
+  const link = logoPreload('v/x1');
+  const attr = (k) => new RegExp(`\\s${k}="([^"]+)"`).exec(link)[1];
+  const tail = (u) => u.replace(/^.*\/assets\//, 'assets/');
+  assert.equal(attr('href'), `v/x1/${tail(BRAND.logo.light)}`, 'the img src (the fallback)');
+  assert.equal(attr('imagesrcset'), logoSrcset('light').split(', ').map((c) => `v/x1/${tail(c)}`).join(', '), 'the img srcset');
+  assert.equal(attr('imagesizes'), '132px');
+  assert.match(link, /^<link rel="preload" as="image" /);
+  assert.equal(LOGO_WIDTHS.length, attr('imagesrcset').split(', ').length);
 });

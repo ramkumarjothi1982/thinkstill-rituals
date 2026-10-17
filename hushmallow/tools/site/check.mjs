@@ -32,7 +32,8 @@
 //    (tools/site/boot-preload.mjs bootModules, from the published files): none
 //    missing (it would load one import level at a time again), nothing else
 //    (a preload of a module the first screen does not need costs a phone its
-//    bandwidth), each once.
+//    bandwidth), each once; and the Hushfold's logo as its <img> asks for it
+//    (logoPreload: the same srcset and sizes), every candidate a shipped file.
 // Prints a short summary; exits 1 with the list of problems.
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, readdirSync, realpathSync, statSync } from 'node:fs';
@@ -40,7 +41,7 @@ import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { buildStage } from './auth-config.mjs';
 import { describe, scanFiles } from '../secret-scan.mjs';
-import { bootModules, preloadsIn } from './boot-preload.mjs';
+import { bootModules, logoPreload, preloadsIn } from './boot-preload.mjs';
 
 // Referenced only by localhost labs (main.js v3Lab) and removed from the
 // published copy on purpose: listed, never a failure.
@@ -266,6 +267,10 @@ export async function checkSite(outArg, ver, { env = process.env } = {}) {
   for (const m of boot) if (!preloads.includes(m)) problems.push(`index.html does not modulepreload ${m} (the first screen needs it: tools/site/boot-preload.mjs)`);
   for (const m of new Set(preloads)) if (!boot.includes(m)) problems.push(`index.html preloads ${m}, which the first screen does not import statically (tools/site/boot-preload.mjs)`);
   for (const m of new Set(preloads.filter((x, i) => preloads.indexOf(x) !== i))) problems.push(`index.html preloads ${m} twice`);
+  if (!html.includes(logoPreload(`v/${ver}`))) problems.push('index.html does not preload the Hushfold logo as its <img> asks for it (tools/site/boot-preload.mjs logoPreload)');
+  for (const m of html.matchAll(/\simagesrcset="([^"]+)"/g)) {
+    for (const c of m[1].split(',').map((x) => x.trim().split(/\s+/)[0]).filter(Boolean)) if (!external(c) && !isFile(resolve(out, bare(c)))) problems.push(`index.html preloads ${c}, which is not in the site`);
+  }
 
   // ------------------------------------------------------- 7. secrets --
   const published = listAll(out);
