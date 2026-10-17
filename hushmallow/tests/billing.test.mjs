@@ -69,7 +69,7 @@ test('the shipped config: off (then nothing is switched on), or switched on with
   assert.deepEqual(Object.keys(BILLING_PRICES), ['hushmallow.paid.monthly', 'hushmallow.paid.yearly', 'hushmallow.ultra.monthly', 'hushmallow.ultra.yearly']);
   if (BILLING_PROVIDER === '') {
     assert.equal(BILLING_ENDPOINT, '');
-    // the owner's provisional test prices (docs/STAGING.md): shown only where billing is on (a branch preview)
+    // the owner's US-dollar prices (docs/STAGING.md): shown only where billing is on (a branch preview)
     for (const [id, v] of Object.entries(BILLING_PRICES)) assert.match(v, /^(?:US\$\d{1,3}(?:,\d{3})*(?:\.\d{2})?)?$/, `${id}: '' or a US-dollar price (US$9.99)`);
     assert.equal(resolveBilling({ loc: { hostname: 'app.hushmallow.com', protocol: 'https:', search: '' } }), null);
     assert.equal(resolveBilling(), null);

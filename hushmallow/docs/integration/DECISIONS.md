@@ -159,7 +159,47 @@ Australia is the launch market, and an Australian phone used to get no region (t
 | Sign-up line | "By creating an account you agree to the Terms and Privacy Policy" links to these drafts, which say they are not in force yet: until approval, the line points at draft terms |
 | Hosting | The policy names Cloudflare (app.hushmallow.com, the Worker) and GitHub, Inc. (the GitHub Pages copy, which the same build publishes); the website hushmallow.com is named as a separate site, its host and any analytics left to the owner |
 
-Placeholders for the owner: legal entity name, ABN, postal address, State or Territory for governing law, the effective dates, confirming the contact address and the minimum age, the email delivery service for account emails, how long Cloudflare keeps the Worker's logs, how long Supabase keeps its sign-in security records (they outlive Delete account), whether to keep the GitHub Pages copy (or retire it and take GitHub out of the policy), the website's host and whether it uses analytics or cookies, the reply time for access and complaints (30 days by default) and whether access is free, what Stripe sends us once payments are built, the billing, renewal and Manage subscription wording once web payments are built, the currency and GST, the refund policy, the price-change notice period, and (with a lawyer) the APP 8 basis for each overseas provider and the agreements behind it.
+Placeholders for the owner: legal entity name, ABN, postal address, State or Territory for governing law, the effective dates, confirming the contact address and the minimum age, the email delivery service for account emails, how long Cloudflare keeps the Worker's logs, how long Supabase keeps its sign-in security records (they outlive Delete account), whether to keep the GitHub Pages copy (or retire it and take GitHub out of the policy), the website's host and whether it uses analytics or cookies, the reply time for access and complaints (30 days by default) and whether access is free, what Stripe sends us once payments are built, the billing, renewal and Manage subscription wording once web payments are built, whether prices include GST or any other tax and its wording (the currency itself is decided: US dollars, 2026-10-17, below), the refund policy, the price-change notice period, and (with a lawyer) the APP 8 basis for each overseas provider and the agreements behind it.
+
+## 2026-10-17: Web payments in US dollars, and the Checkout Studio settings (owner)
+
+The owner decided: **"Please use USD as the base currency, not AUD."** The owner also fixed the Stripe Checkout Session's settings in Stripe's Checkout Studio, and asked for the four prices to be connected to the existing hushmallow subscription integration, including server-side entitlements and cancellation.
+
+**The prices** (created by the owner in Stripe; whether in the sandbox or live mode is not verified yet, and this environment cannot reach Stripe to check):
+
+| Plan (code id) | Monthly | Yearly |
+|---|---|---|
+| hushmallow Flow (`paid`) | US$9.99 | US$99.99 |
+| hushmallow Beyond (`ultra`) | US$19.99 | US$199.99 |
+
+Their four ids are in `[env.staging.vars]` (`server/another-angle/wrangler.toml`); production's `[vars]` stay without any billing var (`ENTITLEMENT_MODE = "testing"`): live activation is a later, separate commit the owner approves (`BILLING_LIVE`).
+
+**What changed with USD**
+
+- Checkout sells a price only in `usd` (`CHECKOUT_PRICE_RULES`, `server/another-angle/src/billing/routes.js`); the app shows US$ (`BILLING_PRICES`, display only: Checkout charges what Stripe holds).
+- A lookup key is optional: when a price has one it must be its slot's (`hushmallow.<plan>.<period>`), and a price with none is sold, its configured id then deciding the plan.
+- Tax behaviour: any while `STRIPE_AUTOMATIC_TAX` is off (the default and the Studio's value); `inclusive` or `exclusive` once it is on, never `unspecified`.
+- The terms say prices are in US dollars; whether they include GST or any other tax stays an `[Owner: …]` placeholder for the owner and their adviser (no tax or legal advice is given here).
+
+**The Checkout Studio settings**, sent on every Checkout Session exactly as given (`CHECKOUT_STUDIO`):
+
+| Parameter | Value |
+|---|---|
+| `ui_mode` | `hosted_page` (the name on the pinned API version 2026-08-26.dahlia; older versions call it `hosted`) |
+| `billing_address_collection` | `auto` |
+| `phone_number_collection[enabled]` | `false` |
+| `automatic_tax[enabled]` | `false` |
+| `allow_promotion_codes` | `false` |
+| `payment_method_collection` | `always` |
+| `submit_type` | `auto` |
+| `integration_identifier` | `hosted_web_0001` (sent because the pinned version supports it) |
+| `origin_context` | `web` |
+
+Kept although the Studio lists none of them (a deliberate deviation from "remove any parameters absent from the Field Intents"): `customer`, `client_reference_id`, `metadata` and `subscription_data[metadata]`. They tie the payment to the hushmallow account: the webhook and `POST /v1/billing/sync` find the account from them, which is what gives the entitlement and lets the portal cancel. Never `payment_method_types`.
+
+**The tax switch** (`STRIPE_AUTOMATIC_TAX`, decision D3) stays, default `"false"`. Off, the session carries exactly the Studio's values. On (only once an active registration is verified), it deliberately replaces two of them: `automatic_tax[enabled]=true` and `billing_address_collection=required`, with `customer_update[address]=auto` added.
+
+Status, what is still unset and the next steps: `hushmallow/STRIPE_INTEGRATION_TODO.md`.
 
 ## Still open for the owner
 
@@ -173,4 +213,5 @@ Placeholders for the owner: legal entity name, ABN, postal address, State or Ter
 - Development Partner Program: confirm not enrolled.
 - Art: is the browless cyan drawing Loomi; do Blubi, Noomi and Loomi read as distinct.
 - Does the ocean keep the feel of Drift and Dock's "Slow the wave".
+- Web payments: whether the four US-dollar price ids are the sandbox's or live mode's; live mode's own four prices; whether prices include tax (`hushmallow/STRIPE_INTEGRATION_TODO.md`).
 - Privacy Policy and Terms of Use: fill the placeholders above, have them reviewed by a lawyer, then delete the DRAFT SWITCH line in `src/ui/legal.css` (one line, both pages).

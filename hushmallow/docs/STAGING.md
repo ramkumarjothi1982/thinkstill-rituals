@@ -36,7 +36,7 @@ production's accounts.
 |---|---|---|
 | Another Angle | the staging Worker (`STAGING_ANGLE_ENDPOINT`), allowed only on `STAGING_ALLOWED_HOSTS` | the production Worker (`ANGLE_ENDPOINT` on `ANGLE_ALLOWED_HOSTS`), as before |
 | Web subscriptions | **on**: the Stripe sandbox, through the staging Worker | **off** (`BILLING_PROVIDER = ''`) until the owner switches production on |
-| Prices on the plans page | the provisional test prices below | none (they show only where billing is on) |
+| Prices on the plans page | the owner's US-dollar prices below | none (they show only where billing is on) |
 | Settings → version line | `Version … · staging` | `Version …`, as before |
 | Sign-in (accounts) | **only** the staging project hushmallow-staging; off until it exists (`STAGING_PROJECT_REF` is still `''`) | **only** hushmallow1, as before |
 | Content-Security-Policy | the same policy, with the staging Worker in `connect-src` instead of production (and the staging project, once a branch build has its values) | today's policy, unchanged |
@@ -71,16 +71,17 @@ production's accounts.
   * A deployment's own address (`<hash>.hushmallow.pages.dev`) counts as a preview, `main`'s included: a
     `main` deployment opened at its own hash address therefore has sign-in off (it carries production's
     values, which a preview never accepts). `app.hushmallow.com` and `hushmallow.pages.dev` are not affected.
-* **Prices** (`BILLING_PRICES` in `src/app/config.js`, the one place they are written). They are the owner's
-  **provisional test values**, not the final commercial prices:
+* **Prices** (`BILLING_PRICES` in `src/app/config.js`, the one place they are written), in **US dollars**
+  (the owner's decision, 2026-10-17; no longer Australian dollars):
 
   | Plan | Monthly | Yearly |
   |---|---|---|
-  | hushmallow Flow | A$9.99 | A$99.99 |
-  | hushmallow Beyond | A$19.99 | A$199.99 |
+  | hushmallow Flow | US$9.99 | US$99.99 |
+  | hushmallow Beyond | US$19.99 | US$199.99 |
 
-  The plans page shows "A$9.99 a month" and so on under each button. The amount Stripe charges is always
-  the one set in Stripe, so set the same amounts there (B4). The sandbox driver compares the two (P0).
+  The plans page shows "US$9.99 a month" and so on under each button (display only). The amount Stripe
+  charges is always the one set in Stripe, so the prices there hold the same amounts (B4). The sandbox driver
+  compares the two (P0).
 
 ## The staging Worker (`[env.staging]` in `server/another-angle/wrangler.toml`)
 
@@ -107,16 +108,18 @@ Only the staging environment changed:
   key, set by earlier deploys: replace it (A6).
 * `APP_ORIGIN = "https://claude-launch-rc.hushmallow.pages.dev"`, so Stripe sends people back to the preview.
 * `STRIPE_PRICE_PAID_MONTHLY`, `STRIPE_PRICE_PAID_YEARLY`, `STRIPE_PRICE_ULTRA_MONTHLY` and
-  `STRIPE_PRICE_ULTRA_YEARLY` are **placeholders**: `price_TODO_owner`. The server treats a `price_TODO…`
-  value as unset, so it is never sent to Stripe. Until the real test ids replace them, every billing route
-  answers `503 billing_not_configured`, with the message "…its Stripe price ids are still placeholders",
-  and `/v1/health` shows `"billing": { "configured": false, …, "placeholder_prices": 4 }` (while the
-  accounts are placeholders too, the answer is `accounts_not_configured`). Nothing else breaks: Another
-  Angle still works for testers with an invite code.
+  `STRIPE_PRICE_ULTRA_YEARLY` hold **the owner's four prices** (2026-10-17, in US dollars). This Worker takes
+  a test key only, so they must be the sandbox's (test-mode) prices, and **whether they are is not verified
+  yet** (`hushmallow/STRIPE_INTEGRATION_TODO.md`). A live-mode id answers the test key "No such price":
+  checkout's price check refuses it (`503 price_misconfigured`, `"err":"not_found"` in the log line) and the
+  sandbox driver's preflight (P0) names the slot. If they are live mode's, make the same four in the sandbox
+  (B4) and send Claude their ids (B10). A `price_TODO…` value would still count as unset (never sent to
+  Stripe; `/v1/health` then says `"placeholder_prices"`). While the accounts are placeholders, every billing
+  route answers `accounts_not_configured`; Another Angle still works for testers with an invite code.
 * `STRIPE_API_VERSION = "2026-08-26.dahlia"`: the API version of the Worker's own Stripe requests, and the one
-  the staging webhook endpoint is created on (B11). `STRIPE_AUTOMATIC_TAX = "false"`: Stripe Tax at Checkout
-  stays off until the sandbox's AU registration shows Collecting and a test calculation passes (B3,
-  `docs/PAYMENTS.md` "Stripe Tax").
+  the staging webhook endpoint is created on (B11). `STRIPE_AUTOMATIC_TAX = "false"` (the Checkout Studio's
+  value): Stripe Tax at Checkout stays off until a registration in the sandbox shows Collecting and a test
+  calculation passes (B3, `docs/PAYMENTS.md` "Stripe Tax").
 * Its Stripe key must be a **test** key (`rk_test_…`, B8). The staging Worker refuses a live key: billing stays
   off and `/v1/health` says `"key_refused": "live_key_on_staging"`. `BILLING_LIVE` never goes in
   `[env.staging.vars]` (the tests refuse it).
@@ -325,15 +328,17 @@ are from memory; follow what the page shows.
 
 1. **Tax** → **Settings**:
    * **Head office address**: your Australian business address. The status must then read **Active**.
-   * **Default tax behaviour**: **Inclusive**.
+   * **Default tax behaviour**: your or your accountant's choice. It applies only to a price with no tax
+     behaviour of its own, and with Stripe Tax on checkout sells only an inclusive or exclusive price.
    * **Preset product tax code**: the code you or your accountant choose from Stripe's list
      (https://docs.stripe.com/tax/tax-codes). Stripe's reference names `txcd_10103001` (SaaS) and
      `txcd_10000000` (General – Electronically Supplied Services) only as candidates; Claude does not choose
      one (decision D4).
-2. **Tax** → **Registrations** → **Add registration** → Australia → GST. In the sandbox, add it so the
-   rehearsal can test tax. (In live mode, only once you actually hold an ATO GST registration: Stripe records
-   registrations, it does not register you.)
-3. Tell Claude when the sandbox's AU registration shows **Collecting**. The sandbox driver then runs a test
+2. **Tax** → **Registrations** → **Add registration**, for example Australia → GST. In the sandbox, add it so
+   the rehearsal can test tax. (In live mode, only once you actually hold that registration: Stripe records
+   registrations, it does not register you. Which jurisdictions apply, with prices in US dollars, is for you and
+   your tax adviser.)
+3. Tell Claude when the sandbox's registration shows **Collecting**. The sandbox driver then runs a test
    calculation (P0), and once its `taxability_reason` is not `not_collecting`, `STRIPE_AUTOMATIC_TAX` can be
    turned on for staging (`docs/PAYMENTS.md` "Stripe Tax"). Until then it stays `"false"`.
 
@@ -342,29 +347,36 @@ are from memory; follow what the page shows.
 **Product catalogue** → **Create product**, twice. Customers see these names on Checkout, receipts and the
 portal.
 
-| Product name | Price | Billing period | Currency | Include tax in price | Lookup key (More options) |
+| Product name | Price | Billing period | Currency | Include tax in price | Lookup key (More options, recommended) |
 |---|---|---|---|---|---|
-| **hushmallow Flow** | 9.99 | Monthly | AUD | Yes (inclusive) | `hushmallow.paid.monthly` |
-| **hushmallow Flow** | 99.99 | Yearly | AUD | Yes (inclusive) | `hushmallow.paid.yearly` |
-| **hushmallow Beyond** | 19.99 | Monthly | AUD | Yes (inclusive) | `hushmallow.ultra.monthly` |
-| **hushmallow Beyond** | 199.99 | Yearly | AUD | Yes (inclusive) | `hushmallow.ultra.yearly` |
+| **hushmallow Flow** | 9.99 | Monthly | USD | Your choice (below) | `hushmallow.paid.monthly` |
+| **hushmallow Flow** | 99.99 | Yearly | USD | Your choice (below) | `hushmallow.paid.yearly` |
+| **hushmallow Beyond** | 19.99 | Monthly | USD | Your choice (below) | `hushmallow.ultra.monthly` |
+| **hushmallow Beyond** | 199.99 | Yearly | USD | Your choice (below) | `hushmallow.ultra.yearly` |
+
+The owner made two products and four prices like these on 2026-10-17, and their ids are in
+`[env.staging.vars]`. Check in the dashboard, with **Test mode** (the sandbox) showing, that the four are
+there; if they are only in live mode, make them here and send the new ids (B10).
 
 * Each price is **recurring**, every 1 month or every 1 year. Make the second price of each product with
   **Add another price** on the same product. Name the products exactly as above (lowercase `hushmallow`; never
   "Paid", "Ultra" or "Premium"); their tax code is the preset (B3) or the one you chose.
-* **Every price must have its lookup key**: checkout refuses to sell a price whose lookup key is not its
-  slot's (`503 price_misconfigured`), and the key is what decides the plan.
-* Tax behaviour **inclusive** on every price, whether or not tax is collected yet: it cannot be changed later
-  (from memory), so set it now.
-* No trials and no other prices (D14). These amounts are **provisional, for the rehearsal** (D2). Before launch
-  the final amounts go into live-mode prices and into `BILLING_PRICES` together.
+* **A lookup key is recommended, not required.** When a price has one, it must be its slot's (checkout
+  refuses any other: `503 price_misconfigured`) and it decides the plan. A price with none is sold, and its
+  configured id decides the plan; the driver's preflight (each slot's amount and product name) is then what
+  catches two ids swapped.
+* Tax behaviour: any is sold while `STRIPE_AUTOMATIC_TAX` is off. Before it goes on, each price needs
+  **inclusive** or **exclusive** (never unspecified). A used price's tax behaviour may not be changeable later
+  (from memory), so settle it with your accountant before launch.
+* No trials and no other prices (D14). These are the owner's amounts (D2); live mode needs its own four
+  prices at the same amounts, and `BILLING_PRICES` changes with them if they ever differ.
 
 ### B5. Payment methods and Checkout settings (3 min)
 
 1. **Settings** → **Payments** → **Payment methods** (the default configuration): keep **Cards**, **Apple Pay**
    and **Google Pay** (Link is your call). Turn **off BECS Direct Debit** and every other delayed method
    (D10). Nothing in the code sends `payment_method_types`, so this page decides.
-2. **Settings** → **Checkout and Payment Links**: **Adaptive Pricing off** (D11). If the page offers "Limit
+2. **Settings** → **Checkout and Payment Links**: **Adaptive Pricing off** (D11: US$ only). If the page offers "Limit
    customers to one subscription", turn it on (it works because the Worker always passes the customer).
 
 ### B6. The customer portal (5 min)
@@ -372,7 +384,7 @@ portal.
 **Settings** → **Billing** → **Customer portal**:
 
 * **Payment methods**: allow updates. **Invoice history**: on. **Customer information**: allow email and
-  billing-address edits (GST needs the address).
+  billing-address edits (Stripe Tax needs the address once it is on).
 * **Cancellations**: on, **At the end of the billing period**, no proration or refund on cancel (D7).
 * **Subscriptions** → **Customers can switch plans**: on, with hushmallow Flow (both prices) and hushmallow
   Beyond (both prices); quantity changes off. Proration (D8): prorate and invoice upgrades immediately;
@@ -443,8 +455,8 @@ hushmallow Beyond monthly  price_…
 hushmallow Beyond yearly   price_…
 ```
 
-Claude puts them into `[env.staging.vars]` in place of the four `price_TODO_owner` lines and commits the
-change. The coordinator then deploys the staging Worker (it appends a line to
+The owner's four ids of 2026-10-17 are already in `[env.staging.vars]`; send new ones only if those turn out
+to be live mode's, or are replaced. Claude puts them in place of the four there and commits the change. The coordinator then deploys the staging Worker (it appends a line to
 `server/another-angle/deploy/STAGING` on the release branch). The deploy runs the server's tests, deploys,
 and runs `scripts/e2e.mjs` against it, which includes the key-free billing checks (below). In
 `billing+testing` mode that end-to-end check gets its session with the first of `TESTER_INVITE_CODES_STAGING`
@@ -548,7 +560,7 @@ while any of it is still a placeholder.
 
 | Phase | What it does |
 |---|---|
-| P0 | Reads only. Staging `/v1/health`: `billing+testing`, configured, webhook, `stripe_mode` test, `api_version` 2026-08-26.dahlia, `live_approved` false, `automatic_tax` as `[env.staging.vars]` says, no placeholders. Production's: billing off, `testing`. The four prices by lookup key: AUD, inclusive, every 1 month or year, active, A$9.99/99.99/19.99/199.99, the products' names, the ids in `[env.staging.vars]`, the same amounts in `BILLING_PRICES`. The webhook endpoint: enabled, 2026-08-26.dahlia, exactly the 11 events. The default portal configuration (B6). Tax: settings Active and inclusive; an active AU registration if `automatic_tax` is on; with one, a test calculation for a Sydney address (`taxability_reason` not `not_collecting`, the total unchanged). |
+| P0 | Reads only. Staging `/v1/health`: `billing+testing`, configured, webhook, `stripe_mode` test, `api_version` 2026-08-26.dahlia, `live_approved` false, `automatic_tax` as `[env.staging.vars]` says, no placeholders. Production's: billing off, `testing`. The four prices by the ids in `[env.staging.vars]` (a live-mode id fails here: not found with the test key): USD, every 1 month or year, active, a lookup key of their own or none (none is said), a tax behaviour of inclusive or exclusive only if `automatic_tax` is on, US$9.99/99.99/19.99/199.99, the products' names, the same amounts in `BILLING_PRICES`. The webhook endpoint: enabled, 2026-08-26.dahlia, exactly the 11 events. The default portal configuration (B6). Tax: with `automatic_tax` on, settings Active and an active AU registration (off, both are only said); with one, a test calculation in USD for a Sydney address (`taxability_reason` not `not_collecting`; for an inclusive price, the total unchanged). |
 | P1 | The key-free checks (below), plus: `Origin: https://app.hushmallow.com` refused on staging (403), and a hushmallow1 token refused (401). |
 | S3 | Renewal: a test clock, a customer on it with `metadata.user_id`, a card, Flow monthly (tier `paid`); the clock past the period end; `invoice.paid` delivered (200); the period a month on, at the Worker too. |
 | S4 | A failed renewal, then recovery: Beyond monthly, the `…0341` card (`pm_card_chargeCustomerFail`); `invoice.payment_failed`, `past_due` with Beyond still open (`/v1/session` 200); a good card, the open invoice paid; `active` again. |
@@ -627,8 +639,8 @@ sandbox driver's (above). Use three hushmallow-staging test accounts: **E2E-A** 
 **1. Visit, as a guest**
 
 - [ ] The home screen opens, and nothing asks you to sign in.
-- [ ] Plans: hushmallow Flow shows "A$9.99 a month", hushmallow Beyond "A$19.99 a month". Yearly shows
-      "A$99.99 a year" and "A$199.99 a year".
+- [ ] Plans: hushmallow Flow shows "US$9.99 a month", hushmallow Beyond "US$19.99 a month". Yearly shows
+      "US$99.99 a year" and "US$199.99 a year".
 - [ ] (S1) "Step into hushmallow Beyond" as a guest opens the account screen: "Sign in or create an account
       first, so your plan stays with you."
 
@@ -647,7 +659,9 @@ sandbox driver's (above). Use three hushmallow-staging test accounts: **E2E-A** 
 
 - [ ] (S1, E2E-A) Plans → Monthly → "Step into hushmallow Beyond" opens Stripe Checkout on
       `checkout.stripe.com` (on `checkout.hushmallow.com` once B13 is done), in test mode, for **hushmallow
-      Beyond, A$19.99 a month**. Pay with `4242 4242 4242 4242`.
+      Beyond, US$19.99 a month**. Pay with `4242 4242 4242 4242`.
+- [ ] The Checkout page has the owner's Checkout Studio settings: Stripe's hosted page, no phone number, no
+      promotion code field, a billing address only where Stripe asks for one (with `STRIPE_AUTOMATIC_TAX` off).
 - [ ] Back on the preview, the address loses `?billing=success`, and within about 30 seconds the app says
       "Welcome to hushmallow Beyond". (The server records the plan at once through `POST /v1/billing/sync`;
       the app calls it, and takes `session_id` out of the address, from the client release that follows
@@ -711,8 +725,10 @@ sandbox driver's (above). Use three hushmallow-staging test accounts: **E2E-A** 
 
 - [ ] (S10, only once B3's registration is Collecting and staging has `STRIPE_AUTOMATIC_TAX = "true"`) Check
       out with an Australian address. In the dashboard (or the API, with `expand[]=line_items.data.taxes`)
-      the session's `taxability_reason` is not `not_collecting`, the total is still A$19.99 (inclusive), and
-      the invoice shows GST included. Note what a non-Australian address gives, for the owner to judge.
+      the session's `taxability_reason` is not `not_collecting`; with an inclusive price the total is still
+      US$19.99 (with an exclusive one the tax is added on top), and the invoice shows the tax. Checkout asks for
+      the billing address (the tax switch replaces the Studio's `auto`). Note what a non-Australian address
+      gives, for the owner to judge.
 - [ ] (S12) With E2E-A's Beyond still renewing, the delete screen's "Not touched" list says to cancel it
       first in Settings → Manage subscription (and, from the client release with the deletion guard (D9), a
       "Cancel your subscription first" step comes before Delete). After a cancel at the period end, deleting
@@ -739,7 +755,9 @@ sandbox driver's (above). Use three hushmallow-staging test accounts: **E2E-A** 
   values), its sign-in project hushmallow1, its model key, its tester codes or its security headers.
   Production billing stays off until the owner does `docs/PAYMENTS.md` sections 1 to 4 in **live** mode,
   and merges the activation commit that sets `BILLING_LIVE = "approved"`.
-* The prices above are provisional test values, not the final commercial prices.
+* The prices above are the owner's, in US dollars (2026-10-17). Whether the four ids in `[env.staging.vars]`
+  are the sandbox's or live mode's is still to be verified, and production needs its own four live prices
+  (`hushmallow/STRIPE_INTEGRATION_TODO.md`).
 * The privacy policy and terms (`legal/privacy.html`, `legal/terms.html`) are drafts awaiting the owner's and
   legal review; the sandbox portal links the preview's copies (B6).
 * A branch preview of **any** branch (and a deployment's own `<hash>.hushmallow.pages.dev` address)
