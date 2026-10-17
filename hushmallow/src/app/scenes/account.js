@@ -26,7 +26,8 @@
 //                  step takes the 6-digit code it emailed. Forgot it? one tap.
 //   signout        sign out (optionally removing this account's things here)
 //   device-data    remove this device's copy of the account's things
-//   delete         typed confirmation; says exactly what goes, where
+//   delete         typed confirmation; says exactly what goes, where; with web billing on and a
+//                  plan that still renews, "Cancel your subscription first" comes before it (D9)
 //   off / expired  sign-in is off in this build / the session ended
 // Choosing a new password from an emailed link happens on /auth/callback
 // (src/auth/callback.js), which then opens this screen signed in.
@@ -152,6 +153,64 @@ const NOT_TOUCHED = [
 export const WEB_PLAN_NOT_TOUCHED = 'a web subscription, if you have one, and our server’s record of it (which plan and its status, never your card): deleting your account doesn’t cancel it, so cancel it first in Settings → Manage subscription';
 /** The delete screen's "Not touched" list: as before, unless web subscriptions are on (never in the App Store app). */
 export const notTouched = (app) => (app?.billing ? NOT_TOUCHED.map((l) => (l.startsWith('your plan:') ? WEB_PLAN_NOT_TOUCHED : l)) : NOT_TOUCHED);
+
+/**
+ * Decision D9: an account whose web subscription still renews can't be deleted until it is cancelled. Deleting the
+ * account doesn't cancel it, and afterwards there is no account to open Manage subscription from, so a yearly plan
+ * would renew next year. false: deletion goes ahead, with only the "Not touched" line (WEB_PLAN_NOT_TOUCHED) saying so.
+ */
+export const BLOCK_DELETE_WHILE_SUBSCRIBED = true;
+/** Stripe statuses of a subscription that still renews (past_due: Stripe is still retrying the payment). */
+export const RENEWING = Object.freeze(['active', 'trialing', 'past_due']);
+export const CANCEL_FIRST = Object.freeze({
+  title: 'Cancel your subscription first',
+  body: 'Deleting your account doesn’t cancel your subscription, and it would keep renewing with no account to manage it from. Cancel it in Manage subscription, then come back here.',
+  refused: 'Cancel your subscription first, in Manage subscription above.',
+});
+/** The account's web plan still renews (only with web billing on, never in the App Store app): Delete account waits. */
+export function renewingWebPlan(app) {
+  if (!BLOCK_DELETE_WHILE_SUBSCRIBED || !app?.billing || !app.ent?.isWeb) return false;
+  const p = app.ent.webPlan?.();
+  return !!p && RENEWING.includes(p.status) && !p.cancelAtPeriodEnd;
+}
+
+/**
+ * The delete screen's first step while the web plan renews (D9): "Cancel your subscription first" with Manage
+ * subscription, and `submit` stays off until a check shows the plan ended or cancelling. It asks the server once on
+ * opening (cancelled in the portal since, or bought on another phone); `checked` settles after that answer.
+ * → null where it never applies (web billing off, the App Store app): the screen exactly as before.
+ * confirmed(): the typed word is right (the other condition for `submit`).
+ */
+export function deleteGuard(app, { submit = null, confirmed = () => false } = {}) {
+  if (!BLOCK_DELETE_WHILE_SUBSCRIBED || !app?.billing || !app.ent?.isWeb) return null;
+  const ent = app.ent;
+  const status = h('p', { class: 'hm-auth-hint', role: 'status', 'aria-live': 'polite' });
+  const manage = h('button', { type: 'button', class: 'hm-auth-btn primary', 'data-act': 'manage-subscription' }, 'Manage subscription');
+  manage.addEventListener('click', async () => {
+    if (manage.disabled) return;
+    manage.disabled = true;
+    status.textContent = '';
+    let r = null;
+    try { r = await ent.manage(); } catch { r = null; }
+    // leaving for the portal; Back from there can restore this page as it was, so the button wakes again
+    if (r?.redirecting) { setTimeout(() => { manage.disabled = false; }, 4000); return; }
+    manage.disabled = false;
+    status.textContent = r?.needsAccount ? 'Sign in again to manage your subscription.' : 'That didn’t open just now. Try again in a moment.';
+  });
+  const box = h('div', { class: 'hm-account-facts', 'data-cancel-first': '' },
+    h('h2', { class: 'hm-account-eyebrow' }, CANCEL_FIRST.title), h('p', { class: 'hm-auth-hint' }, CANCEL_FIRST.body),
+    h('div', { class: 'hm-auth-actions' }, manage), status);
+  const el = h('div', { style: { display: 'contents' } });
+  const blocked = () => renewingWebPlan(app);
+  const update = () => {
+    el.replaceChildren(...(blocked() ? [box] : []));
+    if (submit && !submit.form?.dataset?.busy) submit.disabled = blocked() || !confirmed();
+  };
+  update();
+  const off = ent.onChange?.(update);
+  const checked = Promise.resolve().then(() => ent.refresh({ force: true })).catch(() => {}).then(update);
+  return { el, blocked, checked, update, stop: () => off?.() };
+}
 
 export default function account(app, params = {}) {
   const cssReady = ensureCss();
@@ -823,6 +882,11 @@ export default function account(app, params = {}) {
       fields: [confirm], submit: 'Delete my account', busy: 'Deleting…', act: 'delete-confirm', danger: true,
       onSubmit: async (v) => {
         if (!VM.deleteConfirmed(v.confirm)) return { ok: false, error: { code: 'confirm', field: 'confirm', message: `Type “${VM.DELETE_WORD}” to confirm.` } };
+        // D9: never while the web plan still renews (after the check this screen made on opening)
+        if (guard) {
+          await guard.checked;
+          if (guard.blocked()) { later(() => guard.update(), 0); return { ok: false, error: { code: 'subscription', message: CANCEL_FIRST.refused } }; }
+        }
         const a = await api();
         const r = await a.deleteAccount();
         if (!r.ok) return r;
@@ -831,11 +895,14 @@ export default function account(app, params = {}) {
       after: [linkBtn('Keep my account', () => goBack(), 'cancel')],
     });
     f.submitBtn.disabled = true;
-    confirm.onInput(() => { f.submitBtn.disabled = !VM.deleteConfirmed(confirm.input.value); });
+    // web billing on: "Cancel your subscription first" while the plan renews, and Delete waits for it (null: as before)
+    const guard = deleteGuard(app, { submit: f.submitBtn, confirmed: () => VM.deleteConfirmed(confirm.input.value) });
+    confirm.onInput(() => { f.submitBtn.disabled = !!guard?.blocked() || !VM.deleteConfirmed(confirm.input.value); });
     return {
       title: 'Delete your account?',
       lede: 'This can’t be undone. Here is exactly what happens.',
       body: [
+        guard?.el,
         h('div', { class: 'hm-account-facts' },
           h('h2', { class: 'hm-account-eyebrow' }, 'Deleted from our server, now'), list(DELETED_ON_SERVER),
           h('h2', { class: 'hm-account-eyebrow' }, 'Deleted from this phone'), list(DELETED_HERE),
@@ -843,6 +910,7 @@ export default function account(app, params = {}) {
         f.form,
       ],
       mood: 'concerned',
+      stop: () => guard?.stop(),
     };
   };
 
@@ -874,14 +942,17 @@ export default function account(app, params = {}) {
   }
 
   // ------------------------------------------------------------ render --
+  let stopView = null;   // what the screen on show listens to (the delete screen's plan), dropped with it
   function render() {
     if (left) return;
     const top = nav[nav.length - 1];
     clearTimers();
+    stopView?.(); stopView = null;
     if (top.view !== 'password') pendingPw = null;   // the passwords of a change in progress go with its screen
     const make = V[top.view] || V.welcome;
     let v;
     try { v = make(top.opts || {}); } catch (e) { console.warn('[account]', e); v = V.welcome(); }
+    stopView = v.stop || null;
     el.dataset.authView = top.view;
     title.textContent = v.title;
     lede.replaceChildren(...[].concat(v.lede || []));
@@ -972,6 +1043,7 @@ export default function account(app, params = {}) {
       left = true;
       pendingPw = null;
       clearTimers();
+      stopView?.(); stopView = null;
       off?.();
       mallow?.destroy();
       vv?.removeEventListener?.('resize', fitKeyboard); vv?.removeEventListener?.('scroll', fitKeyboard);

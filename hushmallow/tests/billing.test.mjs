@@ -815,6 +815,114 @@ test('plans page, off: exactly the old test-purchase page (no web line, no sign-
   p.view.leave();
 });
 
+// ------------------------------------------------- deleting the account --
+test('delete account (D9): a web plan that still renews shows "Cancel your subscription first" and keeps Delete off until a check shows it ending', async () => {
+  fakeDocument();
+  const A = await import('../src/app/scenes/account.js');
+  assert.equal(A.BLOCK_DELETE_WHILE_SUBSCRIBED, true, 'the default under D9');
+  assert.deepEqual([...A.RENEWING], ['active', 'trialing', 'past_due']);
+  const LIVE = { tier: 'ultra', status: 'active', current_period_end: '2026-11-16T09:00:00.000Z', ends_at: null, cancel_at_period_end: false, manageable: true };
+  /** The delete screen's guard, as account.js builds it: a submit button and the typed word. */
+  const open = async ({ status = LIVE, kept = status, word = '' } = {}) => {
+    const s = setup();
+    s.server.status = kept;
+    const store = memStore();
+    const ent = createEntitlements({ store, billing: s.billing });
+    if (kept) await ent.refresh({ force: true });   // what this phone kept from before
+    s.server.status = status;
+    s.server.calls.length = 0;
+    const submit = new FakeEl('button');
+    const typed = { word };
+    const guard = A.deleteGuard({ billing: s.billing, ent }, { submit, confirmed: () => typed.word === 'delete' });
+    return { s, ent, guard, submit, typed };
+  };
+  const shown = (g) => all(g.el).map(text).join(' ');
+  // renewing: the step shows, Delete stays off whatever is typed, and the check on opening says the same
+  const live = await open({ word: 'delete' });
+  assert.equal(live.guard.blocked(), true);
+  assert.ok(shown(live.guard).includes('Cancel your subscription first'));
+  assert.ok(shown(live.guard).includes(A.CANCEL_FIRST.body));
+  assert.equal(live.submit.disabled, true);
+  await live.guard.checked;
+  assert.deepEqual(live.s.server.calls.map((c) => new URL(c.url).pathname), ['/v1/billing/status'], 'asked once on opening');
+  assert.equal(live.submit.disabled, true);
+  // Manage subscription: the portal's front page
+  const manage = all(live.guard.el).find((n) => n.tagName === 'BUTTON' && text(n) === 'Manage subscription');
+  await click(manage);
+  assert.deepEqual(live.s.server.calls.at(-1).body, {});
+  assert.deepEqual(live.s.navs, ['https://billing.stripe.com/p/session/test_1']);
+  // trialing and past_due renew too
+  for (const st of ['trialing', 'past_due']) assert.equal((await open({ status: { ...LIVE, status: st } })).guard.blocked(), true, st);
+  // cancelled there since: the check on opening lifts it, and Delete follows the typed word again
+  const cancelled = await open({ kept: LIVE, status: { ...LIVE, cancel_at_period_end: true, ends_at: LIVE.current_period_end } });
+  assert.equal(cancelled.guard.blocked(), true, 'until the check answers');
+  await cancelled.guard.checked;
+  assert.equal(cancelled.guard.blocked(), false);
+  assert.equal(shown(cancelled.guard), '', 'the step goes');
+  assert.equal(cancelled.submit.disabled, true, 'nothing typed yet');
+  cancelled.typed.word = 'delete';
+  cancelled.guard.update();
+  assert.equal(cancelled.submit.disabled, false);
+  // ended (canceled, unpaid, incomplete_expired) or no plan at all: nothing in the way
+  for (const st of ['canceled', 'unpaid', 'incomplete_expired', 'incomplete', 'paused']) {
+    const g = await open({ status: { ...LIVE, tier: 'none', status: st } });
+    await g.guard.checked;
+    assert.equal(g.guard.blocked(), false, st);
+  }
+  const none = await open({ kept: null, status: { tier: 'none', status: 'none', current_period_end: null, cancel_at_period_end: false, manageable: false }, word: 'delete' });
+  await none.guard.checked;
+  assert.equal(none.guard.blocked(), false);
+  assert.equal(shown(none.guard), '');
+  assert.equal(none.submit.disabled, false);
+  // bought on another phone (nothing kept here): the check on opening brings it, and the step appears
+  const elsewhere = await open({ kept: null, word: 'delete' });
+  assert.equal(elsewhere.guard.blocked(), false);
+  await elsewhere.guard.checked;
+  assert.equal(elsewhere.guard.blocked(), true);
+  assert.equal(elsewhere.submit.disabled, true);
+  assert.ok(shown(elsewhere.guard).includes('Cancel your subscription first'));
+  // a change while the screen is open (a check from coming back to the app) is followed; stop() lets go
+  const follow = await open({ word: 'delete' });
+  await follow.guard.checked;
+  follow.s.server.status = { ...LIVE, cancel_at_period_end: true };
+  await follow.ent.refresh({ force: true });
+  assert.equal(follow.submit.disabled, false);
+  follow.guard.stop();
+  follow.s.server.status = LIVE;
+  await follow.ent.refresh({ force: true });
+  assert.equal(follow.submit.disabled, false, 'no longer listening');
+  // web billing off, or no web billing in this app: no step, the screen exactly as before
+  const off = createEntitlements({ store: memStore() });
+  assert.equal(A.deleteGuard({ billing: null, ent: off }), null);
+  assert.equal(A.renewingWebPlan({ billing: null, ent: off }), false);
+  const outside = setup().billing;   // made before the shell's bridge is there
+  const prev = globalThis.window;
+  globalThis.window = { HushNative: { store: { current: async () => ({ tier: 'ultra' }), purchase: async () => ({ tier: 'ultra' }), restore: async () => ({ tier: 'ultra' }) } } };
+  try {
+    const shell = setup();
+    assert.equal(shell.billing, null, 'the App Store app: no web billing');
+    assert.equal(A.deleteGuard({ billing: shell.billing, ent: createEntitlements({ store: memStore(), billing: shell.billing }) }), null);
+    // even handed a billing object, StoreKit's entitlement (isWeb false) never meets the step
+    const native = createEntitlements({ store: memStore(), billing: outside });
+    assert.equal(native.isWeb, false);
+    assert.equal(A.deleteGuard({ billing: outside, ent: native }), null);
+    assert.equal(A.renewingWebPlan({ billing: outside, ent: native }), false);
+  } finally { if (prev === undefined) delete globalThis.window; else globalThis.window = prev; }
+});
+
+test('delete account (D9): the delete screen puts the step first, keeps Delete off while it shows, and refuses at submit too', () => {
+  const src = read('src/app/scenes/account.js');
+  const del = src.slice(src.indexOf('  V.delete = () => {'), src.indexOf('  // ----------------------------------------------------------- actions --'));
+  assert.match(del, /const guard = deleteGuard\(app, \{ submit: f\.submitBtn, confirmed: \(\) => VM\.deleteConfirmed\(confirm\.input\.value\) \}\);/);
+  assert.match(del, /confirm\.onInput\(\(\) => \{ f\.submitBtn\.disabled = !!guard\?\.blocked\(\) \|\| !VM\.deleteConfirmed\(confirm\.input\.value\); \}\);/);
+  assert.match(del, /body: \[\n\s+guard\?\.el,\n\s+h\('div', \{ class: 'hm-account-facts' \}/, 'the step comes first');
+  assert.match(del, /await guard\.checked;\n\s+if \(guard\.blocked\(\)\) \{ later\(\(\) => guard\.update\(\), 0\); return \{ ok: false/);
+  assert.ok(del.indexOf('await guard.checked') < del.indexOf('a.deleteAccount()'), 'before anything is deleted');
+  assert.match(del, /stop: \(\) => guard\?\.stop\(\),/);
+  assert.match(src, /stopView\?\.\(\); stopView = null;\n[\s\S]{0,200}const make = V\[top\.view\]/, 'dropped when another screen shows');
+  assert.equal((src.match(/stopView\?\.\(\); stopView = null;/g) || []).length, 2, 'and when the scene goes');
+});
+
 // ------------------------------------------------------- Another Angle --
 test('Another Angle: the account\'s token goes with /v1/session only when billing passes it; never with the words', async () => {
   const run = async (extra) => {
