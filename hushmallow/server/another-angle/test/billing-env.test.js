@@ -154,14 +154,14 @@ test('wrangler guards: staging pins the API version; any table with billing vars
   assert.throws(() => checkApiVersion(withProductionVars().replace(/^STRIPE_API_VERSION = .*\n/m, '')), /production: STRIPE_API_VERSION/);
 });
 
-test('pinned, every Stripe call (checkout\'s price read and session, the portal, the webhook\'s subscription read) sends Stripe-Version; unpinned, none does', async () => {
+test('pinned, every Stripe call (checkout\'s price read, customer and session, the portal, the webhook\'s subscription read) sends Stripe-Version; unpinned, none does', async () => {
   for (const pin of [STRIPE_API_VERSION_EXPECTED, '']) {
     const s = setup({ env: billingEnv(pin ? { STRIPE_API_VERSION: pin } : {}) });
     assert.equal((await s.app.fetch(billingReq('/v1/billing/checkout', { body: { plan: 'ultra', period: 'monthly' } }), s.env)).status, 200);
     await subscribe(s);
     assert.equal((await s.app.fetch(billingReq('/v1/billing/portal', { body: {} }), s.env)).status, 200);
     const calls = s.up.stripe();
-    assert.deepEqual(calls.map((c) => c.path).sort(), ['/v1/billing_portal/sessions', '/v1/checkout/sessions', '/v1/prices/price_BeyondMonthly1', '/v1/subscriptions/sub_Test123']);
+    assert.deepEqual(calls.map((c) => c.path).sort(), ['/v1/billing_portal/sessions', '/v1/checkout/sessions', '/v1/customers', '/v1/prices/price_BeyondMonthly1', '/v1/subscriptions/sub_Test123']);
     for (const c of calls) assert.equal(c.headers['stripe-version'], pin || undefined, `${pin || 'unpinned'}: ${c.path}`);
   }
 });

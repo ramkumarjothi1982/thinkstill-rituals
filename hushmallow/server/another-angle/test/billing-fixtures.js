@@ -82,8 +82,9 @@ export function price(id, plan, period, over = {}) {
 /**
  * A fake Stripe + sign-in project behind one fetch, recording every call. Stripe: checkout sessions (create, retrieve,
  * expire), portal sessions, customers, prices (the four configured ones, sellable), subscriptions (retrieve, and list
- * by customer). `fail` makes every call whose path matches answer with that status and error (a restricted key without
- * a permission, Stripe down).
+ * by customer). A POST with an Idempotency-Key it has seen gets the first answer again, as Stripe does. Sessions are of
+ * the key's mode (cs_live_… on a live key) and keep what checkout sent. `fail` makes every call whose path matches
+ * answer with that status and error (a restricted key without a permission, Stripe down).
  */
 export function upstream({ users = { [TOKEN]: { id: UID, email: 'ana@example.com' } } } = {}) {
   /** @type {{ url: string, path: string, method: string, headers: Record<string, string>, form: URLSearchParams | null, query: URLSearchParams }[]} */
@@ -97,10 +98,14 @@ export function upstream({ users = { [TOKEN]: { id: UID, email: 'ana@example.com
   /** @type {Map<string, any>} */
   const customers = new Map();
   for (const [id, [plan, period]] of Object.entries(PRICE_SLOTS)) prices.set(id, price(id, plan, period));
+  /** @type {Map<string, string>} the first answer to each Idempotency-Key */
+  const replays = new Map();
   const o = {
     calls, subs, prices, sessions, customers, users, checkoutUrl: 'https://checkout.stripe.com/c/pay/cs_test_a1',
     /** @type {{ path: RegExp, status: number, error: Record<string, string> } | null} */
     fail: null,
+    /** the clock sessions expire on (setup() gives it the app's) */
+    clock: () => CLOCK_START,
     /** @type {(url: string | URL | Request, init?: RequestInit) => Promise<Response>} */
     fetch: async () => new Response(null),
     stripe: () => calls.filter((c) => c.url.startsWith('https://api.stripe.com')),
@@ -123,16 +128,27 @@ export function upstream({ users = { [TOKEN]: { id: UID, email: 'ana@example.com
     if (u.origin !== 'https://api.stripe.com') throw new TypeError('unexpected host');
     if (o.fail && o.fail.path.test(u.pathname)) return reply(o.fail.status, { error: o.fail.error });
     const { method } = call, p = u.pathname;
+    const key = headers['idempotency-key'];
+    if (method === 'POST' && key && replays.has(`${p}|${key}`)) return new Response(replays.get(`${p}|${key}`), { status: 200, headers: { 'content-type': 'application/json' } });
+    /** @param {any} body */
+    const first = (body) => { if (key) replays.set(`${p}|${key}`, JSON.stringify(body)); return reply(200, body); };
+    const form = call.form || new URLSearchParams();
+    const metadata = Object.fromEntries([...form].filter(([k]) => /^metadata\[[a-z_]+\]$/.test(k)).map(([k, v]) => [k.slice(9, -1), v]));
     if (method === 'POST' && p === '/v1/checkout/sessions') {
-      const s = { id: `cs_test_a${sessions.size + 1}${'x'.repeat(12)}`, object: 'checkout.session', url: o.checkoutUrl, status: 'open', mode: 'subscription', livemode: false };
+      const live = /^Bearer [sr]k_live_/.test(headers.authorization || '');
+      const s = {
+        id: `cs_${live ? 'live' : 'test'}_A${sessions.size + 1}${'x'.repeat(12)}`, object: 'checkout.session', url: o.checkoutUrl, status: 'open',
+        mode: form.get('mode'), livemode: live, customer: form.get('customer'), client_reference_id: form.get('client_reference_id'), metadata,
+        automatic_tax: { enabled: form.get('automatic_tax[enabled]') === 'true' }, subscription: null, expires_at: Math.floor(o.clock() / 1000) + 86400,
+      };
       sessions.set(s.id, s);
-      return reply(200, s);
+      return first(s);
     }
     if (method === 'POST' && p === '/v1/billing_portal/sessions') return reply(200, { id: 'bps_1', object: 'billing_portal.session', url: 'https://billing.stripe.com/p/session/test_1' });
     if (method === 'POST' && p === '/v1/customers') {
-      const c = { id: `cus_New${customers.size + 1}abc`, object: 'customer', metadata: Object.fromEntries([...(call.form || [])].filter(([k]) => k.startsWith('metadata[')).map(([k, v]) => [k.slice(9, -1), v])) };
+      const c = { id: `cus_New${customers.size + 1}abc`, object: 'customer', metadata };
       customers.set(c.id, c);
-      return reply(200, c);
+      return first(c);
     }
     let m;
     if (method === 'GET' && (m = /^\/v1\/prices\/(price_[A-Za-z0-9]+)$/.exec(p))) return prices.has(m[1]) ? reply(200, prices.get(m[1])) : missing();
@@ -161,6 +177,7 @@ export function upstream({ users = { [TOKEN]: { id: UID, email: 'ana@example.com
 export function setup({ env = billingEnv(), up = upstream(), now = clock() } = {}) {
   /** @type {string[]} */
   const logs = [];
+  up.clock = now;
   const app = createApp({ systemPrompt: SYSTEM_PROMPT, provider: createMockProvider({ mode: 'heuristic' }), now, log: (l) => logs.push(l), fetch: up.fetch });
   return { app, logs, env, up, now };
 }

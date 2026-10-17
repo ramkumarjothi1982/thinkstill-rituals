@@ -7,8 +7,10 @@
 //
 //   POST /v1/billing/checkout  { plan: 'paid'|'ultra', period: 'monthly'|'yearly' } with the account's
 //                              Supabase access token (Authorization: Bearer) → { url } (Stripe Checkout,
-//                              subscription mode, client_reference_id = the account id; back to APP_ORIGIN). Only a
-//                              price that is what its slot says (CHECKOUT_PRICE_RULES) is sold
+//                              subscription mode, the account's one Stripe customer, client_reference_id = the
+//                              account id; back to APP_ORIGIN). Only a price that is what its slot says
+//                              (CHECKOUT_PRICE_RULES) is sold, and only to an account with no subscription at Stripe
+//                              (409 already_subscribed | payment_pending)
 //   GET  /v1/billing/status    the account's token → { tier, status, current_period_end, cancel_at_period_end, ends_at, manageable }
 //   POST /v1/billing/portal    the account's token → { url } (Stripe's customer portal: cancel, change plan, card, receipts)
 //   POST /v1/billing/webhook   Stripe's events, signed (Stripe-Signature); no Origin, the signature is the check
@@ -42,9 +44,9 @@ export const EVENTS = Object.freeze([
 ]);
 export const WEBHOOK_MAX_BYTES = 262144;
 /**
- * Checkouts for the same account, plan and period within one such window share an idempotency key, so two tabs
- * starting at once get one Checkout Session (paid once), never two subscriptions. Short, because Stripe gives back
- * the first answer to a key, a failure included.
+ * Checkouts for the same account, plan and period within one such window (replacing the same previous session) share
+ * an idempotency key, so two tabs starting at once get one Checkout Session (paid once), never two subscriptions.
+ * Short, because Stripe gives back the first answer to a key, a failure included.
  */
 export const CHECKOUT_WINDOW_MS = 120000;
 /**
@@ -56,9 +58,13 @@ export const CHECKOUT_WINDOW_MS = 120000;
 export const CHECKOUT_PRICE_RULES = Object.freeze({ currency: 'aud', tax_behavior: 'inclusive', interval: Object.freeze({ monthly: 'month', yearly: 'year' }) });
 /** How long a price read for that check is trusted in this isolate: one read per price id in that time, and a price fixed in Stripe sells within it. */
 export const CHECKOUT_PRICE_CACHE_MS = 600000;
+/** Stripe's default lifetime of a Checkout Session: for an answer without expires_at. */
+const CHECKOUT_SESSION_TTL_MS = 86400000;
 const PLANS = ['paid', 'ultra'];
 const SUB = /^sub_/;
 const PERIODS = ['monthly', 'yearly'];
+/** A Checkout Session id, and its Stripe mode. */
+const SESSION_ID = /^cs_(test|live)_[A-Za-z0-9]{10,250}$/;
 
 /**
  * @typedef {import('../config.js').Config} Config
@@ -184,6 +190,66 @@ export function createBilling({ logger, now, fetch: fetchImpl = (input, init) =>
     return fault ? { ok: false, fault } : { ok: true };
   }
 
+  /**
+   * The account's one Stripe customer: the one kept for it, else its subscription's (a record from before customers
+   * were made here), else a new one made for it with metadata[user_id] only (no email or name, decision D13: Checkout
+   * asks for the email). Linked to the account first, then kept once: a request racing this one is told the same one.
+   * @param {string} uid @param {any} rec @param {Config} cfg @param {ReturnType<typeof billingClient>} store
+   * @returns {Promise<{ ok: true, customer: string, fresh: boolean } | { ok: false, conflict?: true, err?: string, stripeHttp?: number }>}
+   */
+  async function customerFor(uid, rec, cfg, store) {
+    const before = idOf(rec?.customer);
+    let customer = (await store.customerOf(uid)) || (before?.startsWith('cus_') ? before : null), fresh = false;
+    if (!customer) {
+      const c = await stripeFor(cfg).createCustomer({ metadata: { user_id: uid } }, { idempotencyKey: `customer:${uid}` });
+      const id = c.ok ? idOf(c.data?.id) : null;
+      if (!id || !id.startsWith('cus_')) return c.ok ? { ok: false, err: 'customer:no_id' } : { ok: false, err: `customer:${c.code}`, stripeHttp: c.status };
+      customer = id;
+      fresh = true;
+    }
+    if ((await store.link(customer, uid)).conflict) return { ok: false, conflict: true };
+    const kept = await store.setCustomer(uid, customer);
+    return { ok: true, customer: kept.customer, fresh: fresh && kept.customer === customer };
+  }
+
+  /**
+   * The account's last Checkout Session, settled before another one is made, so an account never has two it could
+   * pay. Still open for the same plan, period, price and customer: handed back as it is (a second tab or tap pays
+   * the same session, once). Open for anything else: expired first. Already paid: its subscription is on its way
+   * (payment_pending), unless Stripe's list shows that subscription ended. Gone, past its expiry, or of the other
+   * Stripe mode (this key can neither read nor pay it): nothing to do.
+   * @param {string} uid @param {ReturnType<typeof billingClient>} store @param {ReturnType<typeof createStripe>} stripe
+   * @param {Config} cfg @param {{ plan: string, period: string, price: string, customer: string }} want @param {any[]} subs the customer's, as listed
+   * @returns {Promise<{ prev: string | null, reuse?: string, pending?: true, err?: string, stripeHttp?: number }>}
+   */
+  async function settlePrevious(uid, store, stripe, cfg, want, subs) {
+    const last = await store.lastCheckout(uid);
+    const m = last ? SESSION_ID.exec(last.id) : null;
+    if (!last || !m || m[1] !== cfg.billing.keyMode || last.expires_at <= now()) return { prev: null };
+    const prev = last.id;
+    let got = await stripe.retrieveCheckoutSession(prev);
+    if (!got.ok) return got.status === 404 ? { prev } : { prev, err: `session:${got.code}`, stripeHttp: got.status };
+    /** @type {any} */
+    let s = got.data;
+    if (s?.status === 'open') {
+      const same = s.metadata?.plan === want.plan && s.metadata?.period === want.period && s.metadata?.price === want.price
+        && idOf(s.customer) === want.customer;
+      const url = same ? httpsUrl(s.url) : null;
+      if (url) return { prev, reuse: url };
+      const x = await stripe.expireCheckoutSession(prev);
+      if (x.ok) return { prev };
+      // refused: it may have been paid that moment; read it again to see
+      got = await stripe.retrieveCheckoutSession(prev);
+      s = got.ok ? got.data : null;
+      if (!s || s.status === 'open') return { prev, err: `expire:${x.code}`, stripeHttp: x.status };
+    }
+    if (s?.status === 'complete') {
+      const sub = idOf(s.subscription);
+      if (!subs.some((x) => idOf(x?.id) === sub && TERMINAL.has(x.status))) return { prev, pending: true };
+    }
+    return { prev };
+  }
+
   /** @param {Request} request @param {Record<string, any>} env @param {Config} cfg @param {Record<string, string>} cors */
   async function checkout(request, env, cfg, cors) {
     const t0 = now();
@@ -198,39 +264,74 @@ export function createBilling({ logger, now, fetch: fetchImpl = (input, init) =>
     const plan = /** @type {'paid' | 'ultra'} */ (b.plan), period = /** @type {'monthly' | 'yearly'} */ (b.period);
     const price = cfg.billing.prices[plan][period];
     if (!price) { log('checkout', t0, { status: 'no_price', http: 503, plan, period }); return error(503, 'price_not_configured', 'This plan is not on sale yet.', cors); }
+    /** @param {string} err @param {number} [stripeHttp] */
+    const unavailable = (err, stripeHttp) => {
+      log('checkout', t0, { status: 'stripe_error', http: 502, plan, period, err: err.slice(0, 48), stripe_http: stripeHttp });
+      return error(502, 'billing_unavailable', 'The checkout could not be started just now.', cors);
+    };
+    /** @param {'already_subscribed' | 'payment_pending'} code @param {string} err */
+    const taken = (code, err) => {
+      log('checkout', t0, { status: code, http: 409, plan, period, err });
+      return code === 'already_subscribed'
+        ? error(409, code, 'This account already has a subscription; change it in the portal.', cors)
+        : error(409, code, 'A payment for this account is still going through.', cors);
+    };
     const store = storeFor(env);
     const rec = await store.get(who.uid);
-    // one subscription per account: a change of plan (Flow → Beyond) or period happens in the portal
-    if (rec && ACCESS.has(rec.status) && effectiveTier(rec, now()) !== 'none') {
-      log('checkout', t0, { status: 'already_subscribed', http: 409, plan, period, tier: rec.tier });
-      return error(409, 'already_subscribed', 'This account already has a subscription; change it in the portal.', cors);
-    }
-    // the price is what its slot says, or nothing is sold
+    // one subscription per account, whatever plan it maps to (an unmapped price included): a change of plan (Flow →
+    // Beyond) or period happens in the portal
+    if (rec && ACCESS.has(rec.status)) return taken('already_subscribed', 'record');
+    // the price is what its slot says, or nothing is sold (and no customer made)
     const checked = await checkPrice(cfg, plan, period, price);
     if (!checked.ok && checked.fault) {
       log('checkout', t0, { status: 'price_misconfigured', http: 503, plan, period, err: checked.fault });
       return error(503, 'price_misconfigured', 'This plan is not on sale just now.', cors);
     }
-    if (!checked.ok) {
-      log('checkout', t0, { status: 'stripe_error', http: 502, plan, period, err: `price:${checked.code}`.slice(0, 48), stripe_http: checked.status });
-      return error(502, 'billing_unavailable', 'The checkout could not be started just now.', cors);
+    if (!checked.ok) return unavailable(`price:${checked.code}`, checked.status);
+    const cust = await customerFor(who.uid, rec, cfg, store);
+    if (!cust.ok && cust.conflict) {
+      log('checkout', t0, { status: 'customer_conflict', http: 409, plan, period });
+      return error(409, 'customer_conflict', 'This account\'s billing needs a look from support.', cors);
     }
+    if (!cust.ok) return unavailable(cust.err || 'customer', cust.stripeHttp);
+    const { customer } = cust;
+    const stripe = stripeFor(cfg);
+    // Stripe's own word, ahead of the webhook: a subscription paid (or being paid) whose events are still on their way.
+    // A customer made just now has none.
+    /** @type {any[]} */
+    let subs = [];
+    if (!cust.fresh) {
+      const listed = await stripe.listSubscriptions(customer);
+      if (!listed.ok) return unavailable(`list:${listed.code}`, listed.status);
+      subs = (Array.isArray(listed.data?.data) ? listed.data.data : []).filter((/** @type {any} */ x) => SUB.test(idOf(x?.id) || '') && idOf(x.customer) === customer);
+      if (subs.some((x) => ACCESS.has(x.status))) return taken('already_subscribed', 'listed');
+      if (subs.some((x) => x.status === 'incomplete')) return taken('payment_pending', 'incomplete');
+    }
+    const prev = await settlePrevious(who.uid, store, stripe, cfg, { plan, period, price, customer }, subs);
+    if (prev.err) return unavailable(prev.err, prev.stripeHttp);
+    if (prev.pending) return taken('payment_pending', 'session_complete');
+    if (prev.reuse) { log('checkout', t0, { status: 'reused', http: 200, plan, period }); return json(200, { url: prev.reuse }, cors); }
     const back = cfg.billing.appOrigin;
-    const idempotencyKey = `checkout:${who.uid}:${plan}:${period}:${Math.floor(now() / CHECKOUT_WINDOW_MS)}`;
-    const r = await stripeFor(cfg).createCheckoutSession({
+    // the session this one replaces is part of the key: Stripe never hands back the one just expired
+    const idempotencyKey = `checkout:${who.uid}:${plan}:${period}:${Math.floor(now() / CHECKOUT_WINDOW_MS)}:${prev.prev ? prev.prev.slice(-24) : '-'}`;
+    // no payment_method_types (Stripe's dynamic payment methods; which ones is a Dashboard setting, D10), no trial and
+    // no promotion codes (D14), no email (D13)
+    const r = await stripe.createCheckoutSession({
       mode: 'subscription',
       line_items: [{ price, quantity: 1 }],
+      customer,
       client_reference_id: who.uid,
       success_url: `${back}/?billing=success`,
       cancel_url: `${back}/?billing=cancel`,
-      metadata: { user_id: who.uid, plan, period },
+      metadata: { user_id: who.uid, plan, period, price },
       subscription_data: { metadata: { user_id: who.uid } },
-      ...(rec?.customer ? { customer: rec.customer } : {}),
     }, { idempotencyKey });
     const url = r.ok ? httpsUrl(r.data?.url) : null;
-    if (!url) {
-      log('checkout', t0, { status: 'stripe_error', http: 502, plan, period, err: r.ok ? 'no_url' : r.code });
-      return error(502, 'billing_unavailable', 'The checkout could not be started just now.', cors);
+    if (!r.ok || !url) return unavailable(r.ok ? 'no_url' : r.code, r.ok ? undefined : r.status);
+    const id = String(r.data?.id || '');
+    if (SESSION_ID.test(id)) {
+      const exp = Number(r.data.expires_at);
+      await store.setCheckout(who.uid, { id, expires_at: exp > 0 ? exp * 1000 : now() + CHECKOUT_SESSION_TTL_MS });
     }
     log('checkout', t0, { status: 'ok', http: 200, plan, period });
     return json(200, { url }, cors);
