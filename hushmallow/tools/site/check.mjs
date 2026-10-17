@@ -29,7 +29,7 @@
 //    tools/secret-scan.mjs, with no allow-list: no fake belongs on the site).
 // Prints a short summary; exits 1 with the list of problems.
 import { createHash } from 'node:crypto';
-import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, realpathSync, statSync } from 'node:fs';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { buildStage } from './auth-config.mjs';
@@ -374,7 +374,10 @@ async function checkAuth(out, app, problems, stage) {
   return summary;
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+// run by any path: a linked checkout compares real paths (import.meta.url is the real one), or the check would silently not run
+let main = false;
+try { main = !!process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url); } catch { /* not a file: imported */ }
+if (main) {
   const [outArg, ver] = process.argv.slice(2);
   if (!outArg || !ver) { console.error('usage: node tools/site/check.mjs <out-dir> <version>'); process.exit(2); }
   const r = await checkSite(outArg, ver);

@@ -30,7 +30,8 @@
 # paths, so the GitHub Pages copy (served one folder down) works too; _headers
 # gives /legal/* a strict Content-Security-Policy (no script at all).
 set -euo pipefail
-here="$(cd "$(dirname "$0")/.." && pwd)"
+# the real path (-P): a linked checkout runs every node step by the path node sees
+here="$(cd "$(dirname "$0")/.." && pwd -P)"
 out="$1"; ver="$2"
 [[ "$ver" =~ ^[0-9a-zA-Z_-]+$ ]] || { echo "bad version: $ver" >&2; exit 1; }
 # the two public sign-in values, or { enabled: false }: checked first, so a refused value never leaves a half-built site

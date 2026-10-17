@@ -14,9 +14,9 @@
 // never matches; a fake that cannot be (a workflow line) goes in ALLOW, as
 // its exact line. Prints where a secret is and its kind, never the secret.
 import { createHash } from 'node:crypto';
-import { lstatSync, readFileSync } from 'node:fs';
+import { lstatSync, readFileSync, realpathSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
-import { join, resolve } from 'node:path';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 /** kind, and a pattern whose `head` group is the public prefix shown in a report. */
@@ -125,7 +125,10 @@ export const stagedDiff = (cwd = process.cwd()) => execFileSync('git', ['-c', 'c
 /** One report line: where, and what kind (the prefix only, never the value). */
 export const describe = (f) => `${f.file}:${f.line}: ${f.kind} (${f.head.startsWith('-----') ? f.head : `${f.head}…`})`;
 
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+// run by any path: Node gives import.meta.url as the real path, so a linked checkout (macOS /tmp, a ~/code link) compares real paths
+let main = false;
+try { main = !!process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url); } catch { /* not a file: imported */ }
+if (main) {
   const staged = process.argv.includes('--staged');
   let found;
   try {

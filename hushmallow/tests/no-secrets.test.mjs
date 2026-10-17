@@ -109,10 +109,14 @@ test('ALLOW: exactly the two deliberate fakes, each by its exact line', () => {
 
 test('the built site is scanned too, with no allow-list: a key in any published file fails the build, never printed', async () => {
   const out = mkdtempSync(join(tmpdir(), 'hm-secrets-site-'));
+  const links = mkdtempSync(join(tmpdir(), 'hm-secrets-link-'));
   try {
     const env = { ...gitEnv };
     for (const k of ['SUPABASE_URL', 'SUPABASE_PUBLISHABLE_KEY', 'HM_AUTH_MODE', 'CF_PAGES_BRANCH']) delete env[k];
-    const log = execFileSync('bash', [join(root, 'tools/build-site.sh'), out, 'sec1'], { env, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+    // built through a linked path to the checkout: every step still runs
+    const link = join(links, 'repo');
+    symlinkSync(repo, link);
+    const log = execFileSync('bash', [join(link, 'hushmallow/tools/build-site.sh'), out, 'sec1'], { env, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
     assert.match(log, /\d{3,} files scanned for secrets/);
     assert.match(log, /check: ok/);
     const { checkSite } = await import('../tools/site/check.mjs');
@@ -133,11 +137,13 @@ test('the built site is scanned too, with no allow-list: a key in any published 
       'v/sec1/assets/brand/notes.txt:2: a Stripe webhook signing secret (whsec_…) is in the site: take it out of the repository and roll it',
       `v/sec1/src/app/config.js:${at}: a Stripe secret or restricted key (rk_live_…) is in the site: take it out of the repository and roll it`,
     ]);
-    const cli = spawnSync(process.execPath, [join(root, 'tools/site/check.mjs'), out, 'sec1'], { env, encoding: 'utf8' });
-    assert.equal(cli.status, 1);
-    assert.match(cli.stderr, /check: 3 problems/);
-    for (const v of [rk, wh, allowedLine.match(/sb_secret_\w+/)[0]]) assert.ok(!cli.stderr.includes(v) && !cli.stdout.includes(v), 'a secret is never printed');
-  } finally { rmSync(out, { recursive: true, force: true }); }
+    for (const check of [join(root, 'tools/site/check.mjs'), join(link, 'hushmallow/tools/site/check.mjs')]) {
+      const cli = spawnSync(process.execPath, [check, out, 'sec1'], { env, encoding: 'utf8' });
+      assert.equal(cli.status, 1, `${check}: ${cli.stdout}${cli.stderr}`);
+      assert.match(cli.stderr, /check: 3 problems/);
+      for (const v of [rk, wh, allowedLine.match(/sb_secret_\w+/)[0]]) assert.ok(!cli.stderr.includes(v) && !cli.stdout.includes(v), 'a secret is never printed');
+    }
+  } finally { rmSync(out, { recursive: true, force: true }); rmSync(links, { recursive: true, force: true }); }
 });
 
 test('tools/hooks/pre-commit: a commit whose staged lines add a secret is refused (ALLOW applied); a clean one goes through', () => {
@@ -201,6 +207,45 @@ test('tools/hooks/pre-commit: a commit whose staged lines add a secret is refuse
     assert.equal(nonode.status, 1);
     assert.match(nonode.stderr, /node is not on PATH, so the secret scan cannot run/);
   } finally { rmSync(d, { recursive: true, force: true }); }
+});
+
+test('reached through a symlink (a linked checkout, macOS /tmp), the hook and the command line still scan', () => {
+  const d = tempRepo();
+  const links = mkdtempSync(join(tmpdir(), 'hm-secrets-link-'));
+  try {
+    // a clone with the hook and the scanner, reached by a linked path
+    mkdirSync(join(d, 'tools/hooks'), { recursive: true });
+    mkdirSync(join(d, 'hushmallow/tools'), { recursive: true });
+    writeFileSync(join(d, 'tools/hooks/pre-commit'), readFileSync(join(repo, 'tools/hooks/pre-commit')), { mode: 0o755 });
+    writeFileSync(join(d, 'hushmallow/tools/secret-scan.mjs'), readFileSync(SCAN));
+    git(d, 'add', '-A');
+    git(d, 'commit', '-q', '--no-verify', '-m', 'tools');
+    const link = join(links, 'clone'), linkRepo = join(links, 'repo');
+    symlinkSync(d, link);
+    symlinkSync(repo, linkRepo);
+    const key = `rk_live_${'L'.repeat(24)}`;
+    writeFileSync(join(d, 'config.js'), `export const STRIPE = '${key}';\n`);
+    git(d, 'add', 'config.js');
+    const at = { cwd: link, env: { ...gitEnv, PWD: link }, encoding: 'utf8' };   // a shell's cd keeps the linked path in PWD
+    const commit = (opts) => spawnSync('git', ['-c', 'user.name=test', '-c', 'user.email=test@example.invalid', '-c', 'commit.gpgsign=false', 'commit', '-q', '-m', 'key'], opts);
+    const refused = (r, how) => {
+      assert.notEqual(r.status, 0, `${how}: refused`);
+      assert.match(r.stderr, /config\.js:1: a Stripe secret or restricted key \(rk_live_…\)/, how);
+      assert.ok(!r.stderr.includes(key) && !r.stdout.includes(key), 'the key is never printed');
+      assert.equal(git(d, 'rev-list', '--count', 'HEAD').trim(), '1', `${how}: nothing was committed`);
+    };
+    // the command line by a linked path, tracked files and staged lines
+    for (const args of [[], ['--staged']]) {
+      const r = spawnSync(process.execPath, [join(link, 'hushmallow/tools/secret-scan.mjs'), ...args], at);
+      assert.equal(r.status, 1, `node <link>/hushmallow/tools/secret-scan.mjs ${args.join(' ')}: ${r.stdout}${r.stderr}`);
+    }
+    // the relative core.hooksPath, committing from the linked clone
+    git(d, 'config', 'core.hooksPath', 'tools/hooks');
+    refused(commit(at), 'relative hooksPath in a linked clone');
+    // an absolute core.hooksPath through a link to this repository
+    git(d, 'config', 'core.hooksPath', join(linkRepo, 'tools/hooks'));
+    refused(commit({ cwd: d, env: gitEnv, encoding: 'utf8' }), 'linked absolute hooksPath');
+  } finally { rmSync(d, { recursive: true, force: true }); rmSync(links, { recursive: true, force: true }); }
 });
 
 test('addedLines: only added lines, numbered from each hunk, whatever they start with', () => {

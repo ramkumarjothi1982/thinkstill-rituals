@@ -6,7 +6,8 @@
 # Turn it on once per clone, from the repository root:
 #   git config core.hooksPath tools/hooks
 # A deliberate fake: build it at run time, or add its exact line to ALLOW there.
-here="$(cd "$(dirname "$0")/../.." && pwd)" || exit 1
+# pwd -P: the real path, as node sees the scanner, even through a linked checkout
+here="$(cd "$(dirname "$0")/../.." && pwd -P)" || exit 1
 # no node, no check: refuse rather than let a key through unchecked
 command -v node >/dev/null 2>&1 || { echo "pre-commit: node is not on PATH, so the secret scan cannot run (hushmallow/tools/secret-scan.mjs)" >&2; exit 1; }
 exec node "$here/hushmallow/tools/secret-scan.mjs" --staged
