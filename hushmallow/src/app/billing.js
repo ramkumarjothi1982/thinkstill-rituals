@@ -36,6 +36,8 @@
 //     times: the webhook can take a moment) and said once; after the portal, asked for quietly until it differs from
 //     `before` (planNow(ent) as kept before the trip, taken at start)
 //   planNow(ent)            → { tier, status, cancelAtPeriodEnd, endsAt }: what a trip to the portal can change
+//   rememberPlan(plan, period) / plannedPlan({ take? }) → { plan, period } | null: the plan a guest chose on the plans
+//     page before signing in (this tab only, for PLAN_INTENT_MS), offered on the account card after sign-in
 //
 // Only Stripe's own pages are ever opened (STRIPE_PAGES: checkout.stripe.com,
 // billing.stripe.com, and our custom domain checkout.hushmallow.com, which Stripe
@@ -73,6 +75,27 @@ const PRODUCT = /^hushmallow\.(paid|ultra)\.(monthly|yearly)$/;
 const netFetch = (url, init) => globalThis.fetch(url, init);
 
 function safeSession() { try { return globalThis.sessionStorage || null; } catch { return null; } }
+
+/**
+ * How long a plan chosen by a guest is kept for after sign-in: enough to create an account and confirm the email on
+ * this phone, short enough that it never comes back as a surprise later. Only { plan, period, at }, in this tab.
+ */
+export const PLAN_INTENT_MS = 30 * 60000;
+const INTENT_KEY = 'hm2:planIntent';
+const isPlan = (plan, period) => ['paid', 'ultra'].includes(plan) && ['monthly', 'yearly'].includes(period);
+/** The plans page, a guest's "Step into…": kept for after sign-in. */
+export function rememberPlan(plan, period, { session = safeSession(), now = Date.now() } = {}) {
+  if (!isPlan(plan, period)) return;
+  try { session?.setItem(INTENT_KEY, JSON.stringify({ plan, period, at: now })); } catch { /* not kept: the plans page again */ }
+}
+/** That plan, chosen here in the last PLAN_INTENT_MS: { plan, period } | null (an old or odd one is forgotten). take: forget it now. */
+export function plannedPlan({ take = false, session = safeSession(), now = Date.now() } = {}) {
+  let v = null;
+  try { v = JSON.parse(session?.getItem(INTENT_KEY) || 'null'); } catch { v = null; }
+  const ok = !!v && isPlan(v.plan, v.period) && Number.isFinite(v.at) && now >= v.at && now - v.at < PLAN_INTENT_MS;
+  if (take || (v && !ok)) { try { session?.removeItem(INTENT_KEY); } catch { /* it lapses by its time */ } }
+  return ok ? { plan: v.plan, period: v.period } : null;
+}
 // no subscription date is earlier: a seconds value sent by mistake reads as no date, never as January 1970
 const EARLIEST = Date.UTC(2020, 0, 1);
 /** A date from the server, ISO or ms → ms, or null. */

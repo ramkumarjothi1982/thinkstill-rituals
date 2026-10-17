@@ -7,12 +7,14 @@
 // Each invitation leads with three or four things; the rest waits behind
 // "Everything included".
 // With web subscriptions on (src/app/billing.js, off by default) "Step into…"
-// asks a guest to sign in first (a web plan belongs to an account), then goes
-// on to the secure checkout page for the chosen plan and period; prices come
-// from configuration only (none set: none shown). Off, nothing here changes.
+// asks a guest to sign in first (a web plan belongs to an account; the account
+// card then offers that plan again), then goes on to the secure checkout page
+// for the chosen plan and period; prices come from configuration only (none
+// set: none shown). Off, nothing here changes.
 // The foot ends with small "Terms · Privacy Policy" links (src/app/legal.js).
 import { h, iconBtn, toast } from '../ui.js';
 import { PLANS } from '../entitlements.js';
+import { rememberPlan } from '../billing.js';
 import { BRAND, brandName } from '../../brand.js';
 import { brandMark, logoImg, fitWhole } from '../../ui/type.js';
 import { openSupport } from './support.js';
@@ -169,6 +171,7 @@ export default function plans(app, params = {}) {
     if (r?.redirecting) return;
     if (r?.needsAccount) {
       pending = false; setBusy(false);
+      rememberPlan(id, period);   // the account card offers it again after sign-in (src/app/scenes/account.js continuePlan)
       app.go('account', { view: 'welcome', notice: SIGN_IN_FIRST });
       return;
     }

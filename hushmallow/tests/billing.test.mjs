@@ -14,7 +14,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-import { createBilling, resolveBilling, inNativeShell, takeReturn, welcomeBack, stripePage, planNow, PATHS, PORTAL_WAITS, RETURN_LINES, STRIPE_PAGES, CHECKOUT_DOMAIN } from '../src/app/billing.js';
+import { createBilling, resolveBilling, inNativeShell, takeReturn, welcomeBack, stripePage, planNow, rememberPlan, plannedPlan, PATHS, PORTAL_WAITS, PLAN_INTENT_MS, RETURN_LINES, STRIPE_PAGES, CHECKOUT_DOMAIN } from '../src/app/billing.js';
 import { createEntitlements, BILLING_GRACE_MS, BILLING_RECHECK_MS, BILLING_CLOCK_SKEW_MS, PLANS } from '../src/app/entitlements.js';
 import { BILLING_PROVIDER, BILLING_ENDPOINT, BILLING_PRICES, ANGLE_ENDPOINT, ANGLE_ALLOWED_HOSTS } from '../src/app/config.js';
 import { createStore } from '../src/engine/storage.js';
@@ -921,6 +921,97 @@ test('delete account (D9): the delete screen puts the step first, keeps Delete o
   assert.match(del, /stop: \(\) => guard\?\.stop\(\),/);
   assert.match(src, /stopView\?\.\(\); stopView = null;\n[\s\S]{0,200}const make = V\[top\.view\]/, 'dropped when another screen shows');
   assert.equal((src.match(/stopView\?\.\(\); stopView = null;/g) || []).length, 2, 'and when the scene goes');
+});
+
+// ------------------------------------------------ the plan across sign-in --
+/** A tab's sessionStorage, faked (Node has none); → { ss, restore }. */
+function fakeSession() {
+  const m = new Map();
+  const ss = { getItem: (k) => (m.has(k) ? m.get(k) : null), setItem: (k, v) => m.set(k, String(v)), removeItem: (k) => m.delete(k), map: m };
+  const had = Object.getOwnPropertyDescriptor(globalThis, 'sessionStorage');
+  Object.defineProperty(globalThis, 'sessionStorage', { value: ss, configurable: true, writable: true });
+  return { ss, restore: () => { if (had) Object.defineProperty(globalThis, 'sessionStorage', had); else delete globalThis.sessionStorage; } };
+}
+
+test('the plan a guest chose is kept for half an hour in this tab, then forgotten; only { plan, period, at }', () => {
+  assert.equal(PLAN_INTENT_MS, 30 * 60000);
+  const m = new Map();
+  const session = { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) };
+  rememberPlan('ultra', 'yearly', { session, now: NOW });
+  assert.deepEqual(JSON.parse(m.get('hm2:planIntent')), { plan: 'ultra', period: 'yearly', at: NOW }, 'nothing else is kept');
+  assert.deepEqual(plannedPlan({ session, now: NOW + PLAN_INTENT_MS - 1 }), { plan: 'ultra', period: 'yearly' });
+  assert.equal(m.size, 1, 'a look keeps it');
+  assert.equal(plannedPlan({ session, now: NOW + PLAN_INTENT_MS }), null, 'half an hour later: gone');
+  assert.equal(m.size, 0, 'and forgotten');
+  rememberPlan('paid', 'monthly', { session, now: NOW });
+  assert.deepEqual(plannedPlan({ take: true, session, now: NOW }), { plan: 'paid', period: 'monthly' });
+  assert.equal(plannedPlan({ session, now: NOW }), null, 'taken once');
+  // never anything else; an odd or future-dated copy is forgotten
+  rememberPlan('premium', 'yearly', { session, now: NOW });
+  rememberPlan('ultra', 'weekly', { session, now: NOW });
+  assert.equal(m.size, 0);
+  for (const odd of ['{', '"x"', '{"plan":"ultra","period":"yearly"}', `{"plan":"ultra","period":"yearly","at":${NOW + 60000}}`, `{"plan":"gold","period":"yearly","at":${NOW}}`]) {
+    m.set('hm2:planIntent', odd);
+    assert.equal(plannedPlan({ session, now: NOW }), null, odd);
+  }
+  // storage blocked: nothing kept, nothing thrown
+  const blocked = { getItem() { throw new Error('blocked'); }, setItem() { throw new Error('blocked'); }, removeItem() { throw new Error('blocked'); } };
+  rememberPlan('ultra', 'yearly', { session: blocked });
+  assert.equal(plannedPlan({ take: true, session: blocked }), null);
+  assert.equal(plannedPlan({ session: null }), null);
+});
+
+test('the plan across sign-in: a guest\'s "Step into…" is kept, and the account card offers "Continue to hushmallow Beyond (yearly)" once', async () => {
+  const tab = fakeSession();
+  try {
+    // the plans page: a guest picks Beyond, yearly
+    const guest = setup({ signedIn: false });
+    const g = await plansPage(createEntitlements({ store: memStore(), billing: guest.billing }));
+    await click(g.buttons().find((b) => text(b) === 'Yearly'));
+    await click(g.buttons().find((b) => text(b) === 'Step into hushmallow Beyond'));
+    const { SIGN_IN_FIRST } = await import('../src/app/scenes/plans.js');
+    assert.deepEqual(g.calls, [['account', { view: 'welcome', notice: SIGN_IN_FIRST }]], 'to sign in, as before');
+    assert.deepEqual(plannedPlan(), { plan: 'ultra', period: 'yearly' });
+    // signed in (the page reloads into the account): the card offers it first
+    const A = await import('../src/app/scenes/account.js');
+    const s = setup();
+    const went = [];
+    const app = { billing: s.billing, ent: createEntitlements({ store: memStore(), billing: s.billing }), go: (...a) => went.push(a) };
+    const offer = A.continuePlan(app);
+    const btn = all(offer).find((n) => n.tagName === 'BUTTON');
+    assert.equal(text(btn), 'Continue to hushmallow Beyond (yearly)');
+    assert.equal(btn.attrs['data-act'], 'continue-plan');
+    await click(btn);
+    assert.deepEqual(s.server.calls.map((c) => [new URL(c.url).pathname, c.body]), [['/v1/billing/checkout', { plan: 'ultra', period: 'yearly' }]]);
+    assert.deepEqual(s.navs, ['https://checkout.stripe.com/c/pay/cs_test_a1']);
+    assert.equal(btn.disabled, true, 'quiet while the page leaves');
+    assert.equal(plannedPlan(), null, 'offered once');
+    assert.equal(A.continuePlan(app), null);
+    // a plan already (409): the plans page says so; a failure says nothing was charged
+    rememberPlan('paid', 'monthly');
+    s.server.checkout = { http: 409, body: { error: { code: 'already_subscribed' } } };
+    await click(all(A.continuePlan(app)).find((n) => n.tagName === 'BUTTON'));
+    assert.deepEqual(went, [['plans', { focus: 'paid' }]]);
+    rememberPlan('paid', 'monthly');
+    s.server.checkout = { http: 503, body: {} };
+    const failed = A.continuePlan(app);
+    const fb = all(failed).find((n) => n.tagName === 'BUTTON');
+    await click(fb);
+    assert.ok(all(failed).map(text).includes('That didn’t go through. Nothing was charged.'));
+    assert.equal(fb.disabled, false);
+    // never: with a plan already, as a guest, with web billing off or in the App Store app
+    rememberPlan('ultra', 'yearly');
+    s.server.status = { tier: 'paid', status: 'active', current_period_end: null, cancel_at_period_end: false, manageable: true };
+    const has = createEntitlements({ store: memStore(), billing: s.billing });
+    await has.refresh({ force: true });
+    assert.equal(A.continuePlan({ billing: s.billing, ent: has }), null, 'a plan already');
+    const away = setup({ signedIn: false });
+    assert.equal(A.continuePlan({ billing: away.billing, ent: createEntitlements({ store: memStore(), billing: away.billing }) }), null, 'a guest');
+    assert.equal(A.continuePlan({ billing: null, ent: createEntitlements({ store: memStore() }) }), null, 'billing off');
+    assert.deepEqual(plannedPlan(), { plan: 'ultra', period: 'yearly' }, 'none of those took it');
+    // the account card puts it first
+    assert.match(read('src/app/scenes/account.js'), /body: \[\n\s+continuePlan\(app\),\n\s+h\('p', \{ class: 'hm-auth-hint hm-auth-center', 'data-since': '' \}/);
+  } finally { tab.restore(); }
 });
 
 // ------------------------------------------------------- Another Angle --

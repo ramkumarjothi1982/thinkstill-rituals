@@ -16,7 +16,8 @@
 //   guest-choice   after a first sign-in on this device: keep this device's
 //                  guest things with the account here, or not now (asked once;
 //                  the account screen offers them again later)
-//   account        name, email, home Mallow, the two opt-in sync switches
+//   account        (a plan chosen on the plans page before signing in: "Continue to …" first,
+//                  web billing only) name, email, home Mallow, the two opt-in sync switches
 //                  (each with a plain privacy line and when it was given),
 //                  change password, sign out, remove this device's data,
 //                  delete account
@@ -51,6 +52,8 @@ import { checkEmail, checkPassword, friendlyError, passwordStrength, MESSAGES } 
 import * as VM from '../../auth/view-model.js';
 import { NOTICE_TEXT } from '../../auth/boot.js';
 import { agreeLine } from '../legal.js';
+import { PLANS } from '../entitlements.js';
+import { plannedPlan } from '../billing.js';
 
 const CSS = [new URL('../../auth/auth.css', import.meta.url).href, new URL('../../ui/account.css', import.meta.url).href];
 /** Both stylesheets; resolves when they have loaded (or after 1.2 s). */
@@ -210,6 +213,35 @@ export function deleteGuard(app, { submit = null, confirmed = () => false } = {}
   const off = ent.onChange?.(update);
   const checked = Promise.resolve().then(() => ent.refresh({ force: true })).catch(() => {}).then(update);
   return { el, blocked, checked, update, stop: () => off?.() };
+}
+
+/**
+ * The plan a guest chose before signing in (the plans page, src/app/billing.js plannedPlan): "Continue to hushmallow
+ * Beyond (yearly)", one tap on to its checkout. null: web billing off (or the App Store app), not signed in, a plan
+ * already, or nothing chosen in the last half hour here.
+ */
+export function continuePlan(app) {
+  const ent = app?.ent;
+  if (!app?.billing || !ent?.isWeb || !ent.webSignedIn?.() || ent.has?.('paid')) return null;
+  const want = plannedPlan();
+  if (!want) return null;
+  const status = h('p', { class: 'hm-auth-hint', role: 'status', 'aria-live': 'polite' });
+  const b = h('button', { type: 'button', class: 'hm-auth-btn primary', 'data-act': 'continue-plan' }, `Continue to ${PLANS[want.plan].name} (${want.period})`);
+  b.addEventListener('click', async () => {
+    if (b.disabled) return;
+    b.disabled = true;
+    status.textContent = '';
+    plannedPlan({ take: true });   // offered once: not again after this tap
+    let r = null;
+    try { r = await ent.purchase(want.plan, want.period); } catch { r = null; }
+    // on to the secure checkout page; Back from there can restore this page as it was, so the button wakes again
+    if (r?.redirecting) { setTimeout(() => { b.disabled = false; }, 4000); return; }
+    // a plan already, or a payment going through: the plans page says which
+    if (r?.manage || r?.pending) { app.go?.('plans', { focus: want.plan }); return; }
+    b.disabled = false;
+    status.textContent = 'That didn’t go through. Nothing was charged.';
+  });
+  return h('div', { class: 'hm-auth-actions', 'data-continue-plan': '' }, b, status);
 }
 
 export default function account(app, params = {}) {
@@ -645,6 +677,7 @@ export default function account(app, params = {}) {
       title: VM.greeting(acct.profile?.displayName) || 'Your account',
       lede: arrival || (u.email ? ['Signed in as ', strong(u.email)] : 'Signed in'),
       body: [
+        continuePlan(app),
         h('p', { class: 'hm-auth-hint hm-auth-center', 'data-since': '' }, since ? `With hushmallow since ${since}.` : ''),
         section('You', nameForm.form, h('div', { class: 'hm-auth-field' }, h('span', { class: 'hm-auth-label', id: uid('pick') }, 'Home Mallow'), picker, pickedName)),
         section('Keep with my account', hint('Both are off unless you turn them on. Turning one off deletes what it kept with your account; this phone keeps its own copy.'), settingsRow.el, libraryRow.el, syncStatus, loadNote),
