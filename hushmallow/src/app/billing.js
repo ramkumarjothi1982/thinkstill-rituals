@@ -227,12 +227,16 @@ export function outsideHref(loc = globalThis.location) {
 /**
  * Framed: FRAMED_LINE and a real link out (target _top: the person's own tap takes the whole window there, which a
  * frame may do; opening it from code after an answer arrives is refused by some browsers). h: src/app/ui.js's.
+ * after: words after the link, saying where to go once there (Settings: "and open Settings → Manage subscription there").
  */
-export function outsideNote(h, { loc = globalThis.location } = {}) {
+export function outsideNote(h, { loc = globalThis.location, after = null } = {}) {
   const href = outsideHref(loc);
   return h('span', { 'data-framed': '' }, FRAMED_LINE, href ? ' ' : null,
-    href ? h('a', { href, target: '_top', rel: 'noopener' }, `Continue on ${loc.host}`) : null);
+    href ? h('a', { href, target: '_top', rel: 'noopener' }, `Continue on ${loc.host}`) : null,
+    href && after ? ` ${after}` : null);
 }
+/** Settings' Manage subscription, framed: where the portal is once the app is in the whole window. */
+export const FRAMED_MANAGE = 'and open Settings → Manage subscription there.';
 
 export function createBilling({
   auth, signIn = false, config = resolveBilling(), shell = inNativeShell(), prices = BILLING_PRICES, fetchImpl = netFetch,

@@ -1697,8 +1697,8 @@ test('framed: no checkout or portal starts in a frame; the plan is still shown, 
     assert.equal(manage.disabled, false);
     guard.stop?.();
   } finally { if (prevLoc === undefined) delete globalThis.location; else globalThis.location = prevLoc; }
-  // Settings' Manage subscription says it too (a toast with the same link)
-  assert.match(read('src/app/scenes/settings.js'), /if \(r\?\.framed\) \{ toast\(outsideNote\(h\), 9000\); return; \}/);
+  // Settings' Manage subscription says it too, in a line that stays under the button (tests/upgrade-plans.test.mjs)
+  assert.match(read('src/app/scenes/settings.js'), /if \(r\?\.framed\) \{ manageSaid\.replaceChildren\(outsideNote\(h, \{ after: FRAMED_MANAGE \}\)\); return; \}/);
   const fake = (tag, attrs, ...kids) => ({ tag, attrs, kids: kids.filter((k) => k != null) });
   assert.deepEqual(outsideNote(fake, { loc }).kids.at(-1), { tag: 'a', attrs: { href: 'https://app.hushmallow.com/#account', target: '_top', rel: 'noopener' }, kids: ['Continue on app.hushmallow.com'] });
 });

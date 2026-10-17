@@ -13,7 +13,7 @@
 // Privacy Policy and About with "Terms · Privacy Policy" (src/app/legal.js).
 import { h, iconBtn, openSheet, toast } from '../ui.js';
 import { PLANS } from '../entitlements.js';
-import { outsideNote } from '../billing.js';
+import { outsideNote, FRAMED_MANAGE } from '../billing.js';
 import { openSupport } from './support.js';
 import { BUILD, deploySettings } from '../config.js';
 import { RUNNING } from '../update.js';
@@ -59,6 +59,8 @@ export default function settings(app) {
   vol.addEventListener('change', () => prefs.set('volume', Number(vol.value)));
 
   const tierName = ent.tier() === 'none' ? 'No plan yet' : PLANS[ent.tier()].name + (ent.source() === 'test' ? ' (test)' : '');
+  /** Under Manage subscription: the way out of a frame, a line that stays (role=status: said once, reachable after it). */
+  const manageSaid = h('p', { 'data-manage-said': '', role: 'status', 'aria-live': 'polite', style: type('caption', { color: 'var(--text-2)', textAlign: 'center', margin: '0 0 4px', textWrap: 'balance' }) });
   // web subscriptions: when the plan renews or ends, and a card that needs a look (the billing server's last answer)
   const webPlan = ent.isWeb ? ent.webPlan?.() : null;
   const planNote = webPlan ? webPlanNote(webPlan, ent.tier()) : null;
@@ -126,6 +128,8 @@ export default function settings(app) {
       ent.source() === 'test' ? h('button', { class: 'btn ghost block', onclick: () => { ent.cancelTest(); toast('Test plan removed'); app.go('home'); } }, 'Remove test plan') : null,
       manageable ? h('button', { class: 'btn ghost block', 'data-act': 'manage-subscription', 'aria-describedby': 'manage-hint', onclick: (e) => manageSubscription(e.currentTarget) }, 'Manage subscription') : null,
       manageable ? h('p', { id: 'manage-hint', 'data-manage-hint': '', style: type('caption', { color: 'var(--text-3)', textAlign: 'center', margin: '0 0 4px', textWrap: 'balance' }) }, MANAGE_HINT) : null,
+      // what came of it, kept on screen (never a toast that leaves before a keyboard or a screen reader reaches its link)
+      manageable ? manageSaid : null,
 
       section('About'),
       // what is written in advance and what leaves this phone: the same source as the Plans page (src/app/privacy.js),
@@ -151,8 +155,10 @@ export default function settings(app) {
     // leaving for the portal; Back from there can restore this page as it was, so the button wakes again
     if (r?.redirecting) { setTimeout(() => { btn.disabled = false; }, 4000); return; }
     btn.disabled = false;
-    // inside the Framer site: the portal opens only in a full window
-    if (r?.framed) { toast(outsideNote(h), 9000); return; }
+    // inside the Framer site: the portal opens only in a full window; the way there stays under the button (as on the
+    // plans page), with where Manage subscription is once there
+    if (r?.framed) { manageSaid.replaceChildren(outsideNote(h, { after: FRAMED_MANAGE })); return; }
+    manageSaid.replaceChildren();
     if (r?.needsAccount) { app.go('account', { view: 'signin' }); return; }
     toast(r?.none ? 'There’s no subscription on this account yet.' : 'That didn’t open just now. Try again in a moment.', 3200);
   }
