@@ -214,7 +214,7 @@ export function createBilling({ logger, now, fetch: fetchImpl = (input, init) =>
 
   /**
    * The account's last Checkout Session, settled before another one is made, so an account never has two it could
-   * pay. Still open for the same plan, period, price and customer: handed back as it is (a second tab or tap pays
+   * pay. Still open for the same plan, period, price, customer and tax: handed back as it is (a second tab or tap pays
    * the same session, once). Open for anything else: expired first. Already paid: its subscription is on its way
    * (payment_pending), unless Stripe's list shows that subscription ended. Gone, past its expiry, or of the other
    * Stripe mode (this key can neither read nor pay it): nothing to do.
@@ -233,7 +233,7 @@ export function createBilling({ logger, now, fetch: fetchImpl = (input, init) =>
     let s = got.data;
     if (s?.status === 'open') {
       const same = s.metadata?.plan === want.plan && s.metadata?.period === want.period && s.metadata?.price === want.price
-        && idOf(s.customer) === want.customer;
+        && idOf(s.customer) === want.customer && !!s.automatic_tax?.enabled === cfg.billing.automaticTax;
       const url = same ? httpsUrl(s.url) : null;
       if (url) return { prev, reuse: url };
       const x = await stripe.expireCheckoutSession(prev);
@@ -325,6 +325,9 @@ export function createBilling({ logger, now, fetch: fetchImpl = (input, init) =>
       cancel_url: `${back}/?billing=cancel`,
       metadata: { user_id: who.uid, plan, period, price },
       subscription_data: { metadata: { user_id: who.uid } },
+      // Stripe Tax (D3: STRIPE_AUTOMATIC_TAX, off until the AU registration is Collecting). The customer is always
+      // passed, so the address typed at checkout is asked for and saved on it; else Stripe taxes the saved one (none).
+      ...(cfg.billing.automaticTax ? { automatic_tax: { enabled: true }, customer_update: { address: 'auto' }, billing_address_collection: 'required' } : {}),
     }, { idempotencyKey });
     const url = r.ok ? httpsUrl(r.data?.url) : null;
     if (!r.ok || !url) return unavailable(r.ok ? 'no_url' : r.code, r.ok ? undefined : r.status);

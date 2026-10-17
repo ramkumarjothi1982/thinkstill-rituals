@@ -1,6 +1,6 @@
 // Checkout (src/billing/routes.js), against the fake Stripe of test/billing-fixtures.js: the price check before
-// selling, one customer and one subscription per account (checked at Stripe), and the previous Checkout Session
-// settled first.
+// selling, one customer and one subscription per account (checked at Stripe), the previous Checkout Session settled
+// first, and the Stripe Tax switch on the session's form.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -27,7 +27,7 @@ const allLogs = [];
 const track = (s) => { allLogs.push(s.logs); return s; };
 
 // ------------------------------------------------------------ the form --
-test('checkout form: the customer always, made with the account id only; never payment_method_types', async () => {
+test('checkout form: the customer always; tax on adds automatic_tax, customer_update and billing_address_collection; never payment_method_types', async () => {
   const formOf = async (over) => {
     const s = track(setup({ env: billingEnv(over) }));
     const res = await post(s, ULTRA_M);
@@ -41,12 +41,16 @@ test('checkout form: the customer always, made with the account id only; never p
     'metadata[user_id]': UID, 'metadata[plan]': 'ultra', 'metadata[period]': 'monthly', 'metadata[price]': PRICES.ultraMonthly,
     'subscription_data[metadata][user_id]': UID,
   };
+  const tax = { 'automatic_tax[enabled]': 'true', 'customer_update[address]': 'auto', billing_address_collection: 'required' };
   // tax off (the default) and unpinned: the form, with the customer
   const off = await formOf({});
   assert.deepEqual(off.f, base);
   assert.equal(off.c.headers['stripe-version'], undefined);
+  // STRIPE_AUTOMATIC_TAX on: the customer is always passed, so the address typed at checkout is asked for and saved on it
+  const on = await formOf({ STRIPE_AUTOMATIC_TAX: 'true' });
+  assert.deepEqual(on.f, { ...base, ...tax });
   // never payment_method_types (dynamic payment methods), and no trial, promotion code or email (D10, D13, D14)
-  for (const { f } of [off]) {
+  for (const { f } of [off, on]) {
     assert.deepEqual(Object.keys(f).filter((k) => /payment_method|trial|promotion|discounts|customer_email|email/.test(k)), []);
   }
   // the customer: the account id only, under customer:<account>
@@ -265,16 +269,21 @@ test('the previous Checkout Session: the same again is handed back; another plan
   const keys = creates(s).map((c) => c.headers['idempotency-key']);
   assert.equal(new Set(keys).size, 3);
   for (const k of keys) assert.ok(k.length <= 255 && k.startsWith(`checkout:${UID}:`));
+  // Stripe Tax switched on since: the open session has none, so it is replaced
+  const taxed = { ...s.env, STRIPE_AUTOMATIC_TAX: 'true' };
+  assert.equal((await s.app.fetch(billingReq('/v1/billing/checkout', { body: ULTRA_M }), taxed)).status, 200);
+  const s4 = sessionIds(s)[3];
+  assert.deepEqual([s.up.sessions.get(s3).status, s.up.sessions.get(s4).automatic_tax.enabled], ['expired', true]);
   // paid, and its subscription not ended: on its way (409 payment_pending), nothing made
-  Object.assign(s.up.sessions.get(s3), { status: 'complete', subscription: 'sub_Paid1' });
+  Object.assign(s.up.sessions.get(s4), { status: 'complete', subscription: 'sub_Paid1' });
   n = creates(s).length;
-  const pending = await post(s, ULTRA_M);
+  const pending = await s.app.fetch(billingReq('/v1/billing/checkout', { body: ULTRA_M }), taxed);
   assert.deepEqual(await code(pending), [409, 'payment_pending']);
   assert.deepEqual([lastLog(s, 'checkout').status, lastLog(s, 'checkout').err], ['payment_pending', 'session_complete']);
   assert.equal(creates(s).length, n);
   // … until Stripe's list shows that subscription ended
   s.up.subs.set('sub_Paid1', subscription({ id: 'sub_Paid1', customer: await db(s).customerOf(UID), status: 'canceled' }));
-  assert.equal((await post(s, ULTRA_M)).status, 200);
+  assert.equal((await s.app.fetch(billingReq('/v1/billing/checkout', { body: ULTRA_M }), taxed)).status, 200);
   assert.equal(creates(s).length, n + 1);
   assertClean(s.logs, await pending.json());
 });
