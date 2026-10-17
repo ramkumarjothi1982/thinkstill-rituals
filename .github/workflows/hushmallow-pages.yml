@@ -70,7 +70,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: node --test hushmallow/tests/*.test.mjs
+      # TAP to the log, and one annotation per failing test (tests/helpers/gh-annotations.mjs): a failure can then be
+      # read from the check run even where the log can't
+      - run: node --test --test-reporter=tap --test-reporter-destination=stdout --test-reporter=./hushmallow/tests/helpers/gh-annotations.mjs --test-reporter-destination=stdout hushmallow/tests/*.test.mjs
       # the same assembly and check the deploy runs, so a missing file fails here first
       - name: Assemble and check the site
         run: bash hushmallow/tools/build-site.sh "$RUNNER_TEMP/site" "${GITHUB_SHA::12}"
