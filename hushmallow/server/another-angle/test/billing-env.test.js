@@ -211,18 +211,22 @@ test('/v1/health says the Stripe mode, why a key is refused, the approval, the A
 });
 
 // ------------------------------------------------- sessions after the switch --
-test('sessions minted before the switch: in "billing" only billing sessions reach the model; in "billing+testing" a testing one only with codes', async () => {
+test('sessions minted before the switch: in "billing" only billing sessions reach the model; in "billing+testing" a testing one only if minted there with a code', async () => {
   const signingKey = makeEnv().TOKEN_SIGNING_KEY;
-  const mint = (src) => signToken({ sub: `${src === 'billing' ? 'acct' : src === 'storekit' ? 'st' : 'dev'}_${'a'.repeat(32)}`, ent: 'beyond', src, iat: CLOCK_START, exp: CLOCK_START + 30 * DAY }, signingKey);
-  const tokens = { testing: await mint('testing'), billing: await mint('billing'), storekit: await mint('storekit') };
-  const ok = { testing: 'ok', billing: 'ok', storekit: 'ok' };
+  const mint = (src, more = {}) => signToken({ sub: `${src === 'billing' ? 'acct' : src === 'storekit' ? 'st' : 'dev'}_${'a'.repeat(32)}`, ent: 'beyond', src, ...more, iat: CLOCK_START, exp: CLOCK_START + 30 * DAY }, signingKey);
+  // testing: from testing mode (with or without a code, it does not say); invited: minted under billing+testing with a code
+  const tokens = { testing: await mint('testing'), invited: await mint('testing', { inv: 1 }), billing: await mint('billing'), storekit: await mint('storekit') };
+  const ok = { testing: 'ok', invited: 'ok', billing: 'ok', storekit: 'ok' };
   const cases = [
     ['testing', '', ok],
+    ['testing', 'MALLOW-ONE', ok],
     ['storekit', '', ok],
     ['both', '', ok],
-    ['billing', 'MALLOW-ONE', { testing: 'superseded', billing: 'ok', storekit: 'superseded' }],
-    ['billing+testing', 'MALLOW-ONE', ok],
-    ['billing+testing', '', { testing: 'superseded', billing: 'ok', storekit: 'ok' }],
+    ['billing', 'MALLOW-ONE', { testing: 'superseded', invited: 'superseded', billing: 'ok', storekit: 'superseded' }],
+    // a testing session from before the switch may have been open to anyone (testing mode without codes): one new
+    // session, which the app asks for with its saved code
+    ['billing+testing', 'MALLOW-ONE', { testing: 'superseded', invited: 'ok', billing: 'ok', storekit: 'ok' }],
+    ['billing+testing', '', { testing: 'superseded', invited: 'superseded', billing: 'ok', storekit: 'ok' }],
   ];
   for (const [mode, codes, want] of cases) {
     const s = setup({ env: makeEnv({ PROVIDER: 'mock', ENTITLEMENT_MODE: mode, TESTER_INVITE_CODES: codes }) });
@@ -244,6 +248,17 @@ test('sessions minted before the switch: in "billing" only billing sessions reac
     }
     if (Object.values(want).includes('superseded')) assert.ok(lines(s.logs).some((l) => l.evt === 'angle' && l.err === 'session_superseded'), `${mode}: logged`);
     assertClean(s.logs);
+  }
+  // what a session carries: a tester's under billing+testing says it used a code and reaches the model; testing mode's
+  // says nothing new (as today)
+  const claimsOf = (t) => JSON.parse(Buffer.from(t.split('.')[1], 'base64url').toString());
+  for (const [mode, inv] of [['billing+testing', 1], ['testing', undefined]]) {
+    const m = setup({ env: makeEnv({ PROVIDER: 'mock', ENTITLEMENT_MODE: mode, TESTER_INVITE_CODES: 'MALLOW-ONE' }) });
+    const r = await m.app.fetch(req('/v1/session', { body: { invite: 'MALLOW-ONE', device_id: 'device-aaaaaaaaaaaaaaaa' } }), m.env);
+    assert.equal(r.status, 200, mode);
+    const { token, source } = await r.json();
+    assert.deepEqual([source, claimsOf(token).inv], ['testing', inv], mode);
+    assert.equal((await m.app.fetch(angleReq(token, { text: 'My colleague got promoted instead of me.' }), m.env)).status, 200, mode);
   }
   // a crisis still gets support at once, whatever the session (the check before the token is unchanged)
   const s = setup({ env: makeEnv({ PROVIDER: 'mock', ENTITLEMENT_MODE: 'billing' }) });

@@ -48,7 +48,8 @@ export async function keyedHash(secret, value, bytes = 16) {
 }
 
 /**
- * @typedef {{ v: 1, aud: string, sub: string, ent: 'beyond', src: 'testing' | 'storekit' | 'billing', iat: number, exp: number }} TokenPayload
+ * @typedef {{ v: 1, aud: string, sub: string, ent: 'beyond', src: 'testing' | 'storekit' | 'billing', inv?: 1, iat: number, exp: number }} TokenPayload
+ *   inv: a testing session minted under billing+testing with a tester code (src/app.js sessionSuperseded)
  */
 
 /**

@@ -34,14 +34,16 @@ export const EARLY_CHECK_CHARS = 2000;
 
 /**
  * A session issued under rules this mode no longer has: after the switch to "billing", any session but a billing one;
- * under "billing+testing" without TESTER_INVITE_CODES, a testing one (it was open to anyone). Without this a 30-day
- * testing session minted before the switch would keep reaching the model without Beyond. The client asks for a new
- * session on a 401 (src/beyond/angle-client.js), and that one follows the current rules. Other modes are unchanged.
- * @param {import('./config.js').Config} cfg @param {{ src?: string }} payload
+ * under "billing+testing", a testing one not minted there with a tester code (inv: 1), and any testing one while it has
+ * no TESTER_INVITE_CODES. A testing session from testing mode does not say whether a code was asked for (production
+ * may have had none: open to anyone), so without this it would keep reaching the model without Beyond for up to 30
+ * days after the switch. The client asks for a new session on a 401 (src/beyond/angle-client.js), with its saved code,
+ * and that one follows the current rules. Other modes are unchanged.
+ * @param {import('./config.js').Config} cfg @param {{ src?: string, inv?: number }} payload
  */
 export function sessionSuperseded(cfg, payload) {
   if (cfg.entitlementMode === 'billing') return payload.src !== 'billing';
-  if (cfg.entitlementMode === 'billing+testing') return payload.src === 'testing' && cfg.inviteCodes.length === 0;
+  if (cfg.entitlementMode === 'billing+testing') return payload.src === 'testing' && (cfg.inviteCodes.length === 0 || payload.inv !== 1);
   return false;
 }
 
@@ -210,7 +212,7 @@ export function createApp(options) {
       }
     }
     const iat = Math.floor(now() / 1000) * 1000;
-    const token = await signToken({ sub: ent.subject, ent: 'beyond', src: ent.source, iat, exp: ent.expiresAt }, cfg.signingKeys[0]);
+    const token = await signToken({ sub: ent.subject, ent: 'beyond', src: ent.source, ...(ent.invited ? { inv: 1 } : {}), iat, exp: ent.expiresAt }, cfg.signingKeys[0]);
     const used = await ledger.peek(`dev:${ent.subject}`, 'angles', day);
     logger.event({ evt: 'session', status: 'ok', http: 200, source: ent.source, latency_ms: now() - t0 });
     return json(200, {
