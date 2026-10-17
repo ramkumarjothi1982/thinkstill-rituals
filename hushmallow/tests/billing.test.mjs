@@ -495,6 +495,28 @@ test('back from Checkout: the session is synced once, then the plan is asked for
   assert.deepEqual(server.calls.map((c) => new URL(c.url).pathname), ['/v1/billing/status']);
 });
 
+test('back from Checkout, not signed in on this page: the sign-in screen says to sign in to see the plan, never "on its way"', async () => {
+  const id = `cs_test_${'a1B2'.repeat(15)}`;
+  const away = setup({ signedIn: false });
+  const toasts = [], went = [];
+  const app = { ent: createEntitlements({ store: memStore(), billing: away.billing }), toast: (t) => toasts.push(t), go: (...a) => went.push(a), haptic: () => {}, world: { react: () => {} } };
+  const slept = [];
+  assert.equal(await welcomeBack(app, { kind: 'success', sessionId: id }, { sleep: async (ms) => { slept.push(ms); } }), 'signed-out');
+  assert.deepEqual(went, [['account', { view: 'signin', notice: 'Sign in to see your plan.' }]]);
+  assert.equal(RETURN_LINES.signIn, 'Sign in to see your plan.');
+  assert.deepEqual(toasts, [], 'the account screen says it (its notice), never "on its way"');
+  assert.deepEqual(slept, [], 'nothing waited for');
+  assert.equal(away.server.calls.length, 0, 'nothing sent');
+  // a page without app.go (never main.js): the line as a toast
+  const bare = { ...app, go: undefined };
+  assert.equal(await welcomeBack(bare, 'success', { sleep: async () => {} }), 'signed-out');
+  assert.deepEqual(toasts, ['Sign in to see your plan.']);
+  // cancel says the same as ever, signed in or not
+  toasts.length = 0;
+  assert.equal(await welcomeBack(app, { kind: 'cancel', sessionId: null }), 'cancel');
+  assert.deepEqual(toasts, [RETURN_LINES.cancel]);
+});
+
 test('sync waits for a check already in flight: the older answer never lands after the session\'s', async () => {
   const id = `cs_test_${'a1B2'.repeat(15)}`;
   const server = billingServer({ status: { tier: 'none', status: 'canceled', current_period_end: null, cancel_at_period_end: false, manageable: true } });

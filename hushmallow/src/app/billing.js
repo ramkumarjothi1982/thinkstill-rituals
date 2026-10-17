@@ -52,10 +52,14 @@ export const CHECKOUT_DOMAIN = 'checkout.hushmallow.com';
 /** Exact host names only: a subdomain, a lookalike, another port or credentials never pass (stripePage). */
 export const STRIPE_PAGES = Object.freeze(['checkout.stripe.com', 'billing.stripe.com', CHECKOUT_DOMAIN]);
 export const TIMEOUT_MS = 10000;
-/** Said after Stripe: a checkout let go, or a plan still on its way (the webhook can take a moment). */
+/**
+ * Said after Stripe: a checkout let go, a plan still on its way (the webhook can take a moment), or back on a
+ * page where the account is not signed in (another browser, or signed out since): the plan is the account's.
+ */
 export const RETURN_LINES = Object.freeze({
   cancel: 'No problem. Nothing was charged.',
   pending: 'Thank you. Your plan is on its way: it can take a minute to arrive.',
+  signIn: 'Sign in to see your plan.',
 });
 const DEV_HOSTS = ['localhost', '127.0.0.1'];
 const DEV_KEY = 'hm2:billingDev';
@@ -238,8 +242,9 @@ export function takeReturn({ loc = globalThis.location, hist = globalThis.histor
 /**
  * Back from Stripe (takeReturn's answer, or just its kind). 'success': the Checkout Session is synced first (the plan
  * at once, before the webhook), then the plan is asked for again, a few times (the webhook can take a moment), and
- * said once it is here, else a calm "on its way"; 'cancel': nothing was charged; 'portal': the plan is asked for
- * again quietly (it may have been cancelled or changed there).
+ * said once it is here, else a calm "on its way"; not signed in on this page, the sign-in screen says to sign in to
+ * see it; 'cancel': nothing was charged; 'portal': the plan is asked for again quietly (it may have been cancelled
+ * or changed there).
  */
 export async function welcomeBack(app, back, { waits = [0, 2000, 4000, 8000, 15000], sleep = (ms) => new Promise((r) => setTimeout(r, ms)) } = {}) {
   const { kind, sessionId = null } = typeof back === 'string' ? { kind: back } : back || {};
@@ -247,6 +252,12 @@ export async function welcomeBack(app, back, { waits = [0, 2000, 4000, 8000, 150
   if (kind === 'cancel') { app.toast(RETURN_LINES.cancel); return 'cancel'; }
   if (kind === 'portal') { try { await ent.refresh({ force: true }); } catch { /* the next check */ } return 'portal'; }
   if (kind !== 'success') return null;
+  // not signed in here: nothing can be asked, and "on its way" would never come true on this page
+  if (!ent.webSignedIn?.()) {
+    if (typeof app.go === 'function') app.go('account', { view: 'signin', notice: RETURN_LINES.signIn });
+    else app.toast(RETURN_LINES.signIn, 3600);
+    return 'signed-out';
+  }
   const here = () => ent.source() === 'billing' && ent.has('paid');
   let arrived = false;
   // a server without the sync route yet (404), or any failure: the checks below, as before
