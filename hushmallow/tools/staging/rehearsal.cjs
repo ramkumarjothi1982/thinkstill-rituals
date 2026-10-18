@@ -1138,14 +1138,21 @@ async function stepR2(X) {
 // ----------------------------------------------------------------------------------------------------- Stripe pages --
 const visible = (loc) => loc.first().isVisible().catch(() => false);
 
-/** Checkout as it first shows: { text, phone, promo, testBadge }. */
+/**
+ * Checkout as it first shows: { text, phone, promo, testBadge, linkWasOn }. Link's "save my information" can start
+ * ticked, and then asks for a phone number of its own (not Checkout's phone collection, which the Worker turns off):
+ * it is unticked first, as payCard does anyway, so `phone` is only a field Checkout itself asks for.
+ */
 async function readCheckout(page) {
   await page.locator('#cardNumber, [data-testid="card-accordion-item-button"], .SubmitButton, [data-testid="hosted-payment-submit-button"]').first().waitFor({ state: 'visible', timeout: 60000 });
   await sleep(1500);
+  const link = page.locator('#enableStripePass');
+  const linkWasOn = await link.isChecked().catch(() => false);
+  if (linkWasOn) { await link.uncheck().catch(() => {}); await sleep(800); }
   const text = norm(await page.locator('body').innerText({ timeout: 15000 }).catch(() => ''));
   const phone = (await page.locator('#phoneNumber:visible, input[type="tel"]:visible, input[autocomplete="tel"]:visible').count().catch(() => 0)) > 0;
   const promo = (await page.locator('#promotionCode:visible, [data-testid="promotion-code-input"]:visible').count().catch(() => 0)) > 0 || /add promotion code|promotion code/i.test(text);
-  return { text, phone, promo, testBadge: /test mode|sandbox/i.test(text) };
+  return { text, phone, promo, testBadge: /test mode|sandbox/i.test(text), linkWasOn };
 }
 
 /** Fills Checkout's card form with one test card and submits it. */
@@ -1275,7 +1282,7 @@ async function stepR3(X) {
   need(co.text.includes(repo.plans.paid) && amountRe(price).test(co.text), `Checkout does not show ${repo.plans.paid} at ${price}`);
   need(!co.phone, 'Checkout has a phone number field (the Checkout Studio settings say none)');
   need(!co.promo, 'Checkout has a promotion code field (the Checkout Studio settings say none)');
-  said.push(`${repo.plans.paid} ${price}${co.testBadge ? ', test mode shown' : ''}, no phone or promotion code field`);
+  said.push(`${repo.plans.paid} ${price}${co.testBadge ? ', test mode shown' : ''}, no phone or promotion code field${co.linkWasOn ? ' (Link\'s "save my information" started ticked: unticked)' : ''}`);
   const t0 = Date.now();
   await payCard(page, CARDS.ok, { email: X.pre.A.email });
   const o = await outcome(X, page, 120000);
@@ -2015,7 +2022,7 @@ const STEP_FNS = { R1: stepR1, R2: stepR2, R3: stepR3, R3U: stepR3U, R4: stepR4,
 module.exports = {
   STEPS, A_STEPS, SECRET_ENV, PRODUCTION_HOSTS, CHECKOUT_HOSTS, CARDS, EVERYDAY, WORLD,
   loadRepo, pickCrisisSentence, parseArgs, preflight, proxyFromEnv, createLog, judgeHealth, parsePublicConfig, judgeAuthConfig,
-  checkoutVerdict, portalVerdict, stripePageKind, judgeConfirm, judgeUnchanged, amountRe, recorder, CONFIRM_LABELS, CANCEL_LABEL, CONFIRM_WAIT_MS, hasLive, teardownPick, isSignalAgain, SIGNAL_AGAIN_MS, TEARDOWN_OPEN_WAIT_MS, judgeS12, gate, runStep, bindStepState, teardown, handList, checkpoint, sleep, until, newPage, newContext,
+  checkoutVerdict, portalVerdict, readCheckout, stripePageKind, judgeConfirm, judgeUnchanged, amountRe, recorder, CONFIRM_LABELS, CANCEL_LABEL, CONFIRM_WAIT_MS, hasLive, teardownPick, isSignalAgain, SIGNAL_AGAIN_MS, TEARDOWN_OPEN_WAIT_MS, judgeS12, gate, runStep, bindStepState, teardown, handList, checkpoint, sleep, until, newPage, newContext,
   LiveStop, Cancelled, Fail, STEP, BUDGET, main,
 };
 

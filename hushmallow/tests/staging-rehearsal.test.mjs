@@ -710,3 +710,31 @@ test('the driver itself, refusing with fake secrets in its environment: exit 2, 
     assert.doesNotMatch(printed, /hushmallow staging rehearsal/, 'it never got as far as starting a browser');
   }
 });
+
+test('R3 reads Checkout\'s own fields: Link\'s phone number (when its "save my information" starts ticked) is not a phone field Checkout asks for', async () => {
+  // a Checkout page as Playwright sees it: Link's box, whose phone field shows only while it is ticked, and
+  // (optionally) Checkout's own phone collection, which shows whatever Link does
+  const fakePage = ({ linkOn, ownPhone }) => {
+    const st = { linkOn, unticked: 0 };
+    const loc = (sel) => ({
+      first() { return this; },
+      waitFor: async () => {},
+      isChecked: async () => (sel === '#enableStripePass' ? st.linkOn : false),
+      uncheck: async () => { if (sel === '#enableStripePass') { st.linkOn = false; st.unticked++; } },
+      innerText: async () => 'hushmallow sandbox Sandbox Subscribe to hushmallow Flow $9.99 per month Email Card information',
+      count: async () => (/phoneNumber|tel/.test(sel) ? (ownPhone || st.linkOn ? 1 : 0) : 0),
+    });
+    return { st, page: { locator: loc } };
+  };
+  const link = fakePage({ linkOn: true, ownPhone: false });
+  const a = await D.readCheckout(link.page);
+  assert.equal(a.phone, false, 'Link\'s phone field is not Checkout\'s phone collection');
+  assert.equal(a.linkWasOn, true);
+  assert.equal(link.st.unticked, 1, 'Link\'s box is unticked before the fields are read');
+  assert.equal(a.testBadge, true);
+  const own = await D.readCheckout(fakePage({ linkOn: false, ownPhone: true }).page);
+  assert.equal(own.phone, true, 'a phone field Checkout itself shows still fails R3');
+  assert.equal(own.linkWasOn, false);
+  const both = await D.readCheckout(fakePage({ linkOn: true, ownPhone: true }).page);
+  assert.equal(both.phone, true, 'unticking Link does not hide Checkout\'s own phone field');
+});
