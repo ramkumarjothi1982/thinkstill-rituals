@@ -266,7 +266,7 @@ async function newPage(ctx, name) {
   pages.add(page);
   page.on('close', () => pages.delete(page));
   page.on('console', (m) => {
-    if (m.type() !== 'error' || /favicon/.test(m.text())) return;
+    if (m.type() !== 'error' || /favicon/.test(m.text()) || /\/favicon\.ico(?:$|\?)/.test(m.location()?.url || '')) return;
     const where = m.location()?.url || '';
     // the browser logs every 4xx / 5xx the stack answers; those refusals are what several checks provoke
     if (/Failed to load resource/.test(m.text()) && (where.startsWith(API) || where.startsWith(MAIL))) { report.console.expected.push(`${name}: ${m.text().slice(0, 120)}`); return; }

@@ -90,6 +90,9 @@ done
 sed -e "s#\"src/#\"/v/$ver/src/#g; s#\"assets/#\"/v/$ver/assets/#g" "$here/404.html" > "$out/404.html"
 grep -q "\"/v/$ver/src/ui/legal.css\"" "$out/404.html" || { echo "404.html was not rewritten" >&2; exit 1; }
 if grep -nE '(href|src)="(\.\.?/|src/|assets/)' "$out/404.html"; then echo "relative path left in 404.html" >&2; exit 1; fi
+# /favicon.ico: what a browser asks for on a page that names no icon (version.json, an old bookmark), now that a
+# missing file is a 404 rather than the app page; the 48 px PNG, which every browser reads at that address
+cp "$here/assets/brand/favicon-48.png" "$out/favicon.ico"
 grep -q "v/$ver/src/app/main.js" "$out/index.html" || { echo "index.html was not rewritten" >&2; exit 1; }
 if grep -nE '(href|src)="(src|assets)/' "$out/index.html"; then echo "unversioned path left in index.html" >&2; exit 1; fi
 # every module the first screen statically needs, preloaded from index.html: fetched at once, not one import level at a time

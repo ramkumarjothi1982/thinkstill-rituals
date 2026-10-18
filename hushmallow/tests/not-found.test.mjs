@@ -41,7 +41,8 @@ test('the built site answers an unknown path at any depth with a small 404 page 
     const home = await fetch(`${base}/`);
     assert.equal(home.status, 200);
     assert.match(await home.text(), new RegExp(`v/${VER}/src/app/main\\.js" onerror="hmStale\\(\\)"`), 'a missing module (404) still fires hmStale');
-    for (const p of ['/auth/callback/', '/legal/privacy', '/legal/terms', '/version.json', '/src/app/main.js']) assert.equal((await fetch(base + p)).status, 200, p);
+    for (const p of ['/auth/callback/', '/legal/privacy', '/legal/terms', '/version.json', '/src/app/main.js', '/favicon.ico']) assert.equal((await fetch(base + p)).status, 200, p);
+    assert.deepEqual([...new Uint8Array(await (await fetch(`${base}/favicon.ico`)).arrayBuffer()).slice(0, 4)], [0x89, 0x50, 0x4e, 0x47], '/favicon.ico: the PNG icon');
     for (const [p, to] of [['/legal/privacy/', '/legal/privacy'], ['/index', '/'], ['/index.html', '/'], ['/auth/callback', '/auth/callback/']]) {
       const r = await fetch(base + p, { redirect: 'manual' });
       assert.deepEqual([r.status, r.headers.get('location')], [308, to], p);
