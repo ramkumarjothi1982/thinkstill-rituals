@@ -2,6 +2,8 @@
 // rehearsal, against the staging Worker and the hushmallow-staging Stripe sandbox, in Stripe test mode only.
 //
 //   npm run e2e:billing [-- --phases P0,P1,S3,S4,S5,S6,S7,S8,S9]      (all of them by default)
+//   npm run e2e:billing -- --production-health   also reads production's GET /v1/health (P0): only with the owner's
+//                                                go-ahead, since a staging run otherwise sends nothing to production
 //   on your own machine, with the three values in a gitignored file (never typed on a command line):
 //     node --env-file=.dev.vars.e2e scripts/billing-e2e.mjs
 //
@@ -13,8 +15,8 @@
 // Everything else (the Workers' addresses, the staging project, the price ids, the tax switch) is read from the
 // repository; while any of it is still a placeholder the driver refuses to start.
 //
-// What it does: P0 reads (health, the four prices, the webhook endpoint, the default portal configuration, Stripe
-// Tax); P1 sends the key-free checks (scripts/billing-checks.mjs); S3-S9 each make a test clock with one customer on
+// What it does: P0 reads (staging's health, the four prices, the webhook endpoint, the default portal configuration,
+// Stripe Tax; production's health only with --production-health); P1 sends the key-free checks (scripts/billing-checks.mjs); S3-S9 each make a test clock with one customer on
 // it, give the customer a test card and a subscription with metadata.user_id = the test account, move the clock on,
 // and wait for the Worker's GET /v1/billing/status to follow. S6 also asks the Worker, as the plans page does, for an
 // upgrade's confirmation page and the plan choice (POST /v1/billing/portal: the sandbox's portal configuration must
@@ -287,6 +289,8 @@ export async function run({ env = process.env, args = [], fetch: f = (input, ini
   const unknown = asked.filter((x) => !PHASES.includes(x));
   if (unknown.length || !asked.length) { write(`REFUSED  --phases takes ${PHASES.join(',')}`); return 2; }
   const phases = new Set(asked);
+  // production is never contacted unless this is asked for (the owner's rule for every staging run)
+  const productionHealth = args.includes('--production-health');
   const scenarios = [...phases].some((x) => x.startsWith('S'));
   const why = refusal(env, scenarios);
   if (why) { write(`REFUSED  ${why}`); return 2; }
@@ -348,10 +352,13 @@ export async function run({ env = process.env, args = [], fetch: f = (input, ini
     check(b.live_approved === false, 'P0 staging: live_approved false', String(b.live_approved));
     check(b.automatic_tax === cfg.automaticTax, `P0 staging: automatic_tax ${cfg.automaticTax}, as [env.staging.vars] says`, String(b.automatic_tax));
     check(!('placeholder_prices' in b) && !('duplicate_prices' in b) && b.accounts_configured !== false, 'P0 staging: no placeholder prices or sign-in values, no price id in two slots');
-    const p = await production('/v1/health', { method: 'GET' });
-    const pb = p.json?.billing || {};
-    check(p.status === 200 && p.json?.entitlement_mode === cfg.production.mode, `P0 production: entitlement_mode ${cfg.production.mode}, as [vars] says`, `${p.status} ${p.json?.entitlement_mode}`);
-    if (!cfg.production.liveApproved) check(pb.configured === false && pb.live_approved === false && pb.stripe_mode === null, 'P0 production: billing off (no approval, no key)', JSON.stringify({ configured: pb.configured, stripe_mode: pb.stripe_mode }));
+    if (productionHealth) {
+      const p = await production('/v1/health', { method: 'GET' });
+      const pb = p.json?.billing || {};
+      check(p.status === 200 && p.json?.entitlement_mode === cfg.production.mode, `P0 production: entitlement_mode ${cfg.production.mode}, as [vars] says`, `${p.status} ${p.json?.entitlement_mode}`);
+      // a production Worker deployed before web billing existed has no billing block at all: billing is off there too
+      if (!cfg.production.liveApproved) check(!p.json?.billing || (pb.configured === false && pb.live_approved === false && pb.stripe_mode === null), 'P0 production: billing off (no approval, no key)', p.json?.billing ? JSON.stringify({ configured: pb.configured, stripe_mode: pb.stripe_mode }) : 'no billing on that Worker');
+    } else info('P0 production: not contacted (a staging run sends nothing to production; --production-health reads its /v1/health, with the owner\'s go-ahead)');
 
     // the four prices, by the ids in [env.staging.vars] (a lookup key is optional: the id is then the mapping): what the
     // Worker sells (priceFault, its slot's amount included), under the products' names, so two ids swapped while pasting

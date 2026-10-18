@@ -193,6 +193,31 @@ test('one price id in two staging slots: the driver refuses to start (the Worker
   assertQuiet(w.out);
 });
 
+// ------------------------------------------------------- production, opt-in --
+test('production\'s health is read only with --production-health; a Worker with no billing block counts as billing off', async () => {
+  const w = world();
+  assert.equal(await w.drive(['--phases', 'P0']), 0, w.out.join('\n'));
+  assert.deepEqual(w.all.filter((c) => c.url.startsWith(PRODUCTION_WORKER)), [], 'P0 alone sends nothing to production');
+  assert.ok(w.out.some((l) => l.startsWith('INFO') && l.includes('P0 production: not contacted')));
+  const asked = world();
+  assert.equal(await asked.drive(['--phases', 'P0', '--production-health']), 0, asked.out.join('\n'));
+  assert.deepEqual(asked.all.filter((c) => c.url.startsWith(PRODUCTION_WORKER)).map((c) => new URL(c.url).pathname), ['/v1/health']);
+  for (const want of ['P0 production: entitlement_mode testing', 'P0 production: billing off (no approval, no key)']) assert.ok(asked.out.some((l) => l.startsWith('PASS') && l.includes(want)), want);
+  // a production Worker from before web billing answers with no billing block: billing is off there too
+  const older = world();
+  const route = older.route;
+  const fetchOld = async (/** @type {any} */ u, /** @type {any} */ i) => {
+    if (!String(u).startsWith(PRODUCTION_WORKER)) return route(u, i);
+    const res = await route(u, i);
+    const body = await res.json();
+    delete body.billing;
+    return new Response(JSON.stringify(body), { status: res.status, headers: { 'content-type': 'application/json' } });
+  };
+  assert.equal(await older.drive(['--phases', 'P0', '--production-health'], { fetch: /** @type {any} */ (fetchOld) }), 0, older.out.join('\n'));
+  assert.ok(older.out.some((l) => l.startsWith('PASS') && l.includes('P0 production: billing off') && l.includes('no billing on that Worker')));
+  assertQuiet(asked.out);
+});
+
 // -------------------------------------------------------------- a full run --
 test('a full run (P0, P1, S3-S9) against the Worker and a sandbox with test clocks: every check passes; every object is tagged and its clocks deleted', async () => {
   const w = world();
@@ -204,7 +229,7 @@ test('a full run (P0, P1, S3-S9) against the Worker and a sandbox with test cloc
   const runId = /run (\d{8}[0-9a-f]{8}),/.exec(w.out[0])?.[1];
   assert.ok(runId);
   for (const want of [
-    'P0 staging: entitlement_mode billing+testing', 'P0 production: billing off (no approval, no key)', 'P0 price hushmallow.ultra.yearly: US$199.99',
+    'P0 staging: entitlement_mode billing+testing', 'P0 price hushmallow.ultra.yearly: US$199.99',
     'P0 price hushmallow.paid.monthly: product "hushmallow Flow"', 'P0 webhook: exactly the 11 events', 'P0 portal: switching plans on, across all four prices',
     'P0 tax (AU): taxability_reason is not not_collecting', 'webhook: a stale signature → 400 bad_signature', 'checkout: Origin app.hushmallow.com → 403',
     'checkout: a token of igbxbfuaoybfzsroxuln → 401', 'S3: Stripe moved the period on by one month', 'S3: still active, and the Worker has the new period end',
@@ -219,6 +244,9 @@ test('a full run (P0, P1, S3-S9) against the Worker and a sandbox with test cloc
     'S6: Flow yearly → Beyond monthly (one up, one down): 409 not_an_upgrade', 'S6: Manage subscription: the portal\'s home',
   ]) assert.ok(w.out.some((l) => l.startsWith('PASS') && l.includes(want)), want);
   assert.match(text, /^INFO {2}S5: the 14-day past_due cap runs on the Worker's own clock/m);
+  // a staging run sends nothing to production: its health is read only with --production-health
+  assert.match(text, /^INFO {2}P0 production: not contacted/m);
+  assert.deepEqual(w.all.filter((c) => c.url.startsWith(PRODUCTION_WORKER)), []);
 
   const { s } = w.box;
   // six clocks, one customer each, all deleted at the end (with what was on them)
