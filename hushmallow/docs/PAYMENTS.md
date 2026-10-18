@@ -127,7 +127,7 @@ STRIPE_PRICE_PAID_MONTHLY = "price_…"
 STRIPE_PRICE_PAID_YEARLY = "price_…"
 STRIPE_PRICE_ULTRA_MONTHLY = "price_…"
 STRIPE_PRICE_ULTRA_YEARLY = "price_…"
-STRIPE_API_VERSION = "2026-08-26.dahlia"                    # required: the Worker's pin (create the webhook endpoint on it too)
+STRIPE_API_VERSION = "2026-08-26.dahlia"                    # required: the Worker's pin (create the webhook endpoint on it too; 2026-09-30.endive is also known to work)
 # optional: BILLING_TOKEN_TTL_HOURS = "24"
 # optional: STRIPE_AUTOMATIC_TAX = "true", only once section 1's Stripe Tax preconditions hold in live mode
 ```

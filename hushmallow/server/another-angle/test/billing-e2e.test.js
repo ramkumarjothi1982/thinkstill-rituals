@@ -399,6 +399,15 @@ test('S6 against a portal without Beyond\'s prices: the upgrade\'s confirmation 
   F.assertClean(w.logs);
 });
 
+test('P0 takes a webhook endpoint on either version the Worker is known to read (the sandbox\'s is on 2026-09-30.endive)', async () => {
+  for (const v of D.WEBHOOK_API_VERSIONS) {
+    const w = world({ box: { edit: (/** @type {any} */ s) => { s.endpoints[0].api_version = v; } } });
+    assert.equal(await w.drive(['--phases', 'P0']), 0, w.out.join('\n'));
+    assert.ok(w.out.some((l) => l.startsWith('PASS') && l.includes('P0 webhook: API version one the Worker is known to read')), v);
+  }
+  assert.deepEqual([...D.WEBHOOK_API_VERSIONS], [STRIPE_API_VERSION_EXPECTED, '2026-09-30.endive'], 'the Worker\'s own pinned version first');
+});
+
 test('P0 names what the sandbox was set up wrong: a price, the endpoint\'s events and version, the portal, Stripe Tax', async () => {
   const w = world({
     box: {
@@ -426,7 +435,7 @@ test('P0 names what the sandbox was set up wrong: a price, the endpoint\'s event
     /P0 price hushmallow\.ultra\.monthly: USD, recurring every 1 month, its slot's amount, active, lookup key its own or none {2}breaks: unit_amount/,
     /P0 price hushmallow\.paid\.monthly: the id in \[env\.staging\.vars\] is a price of this sandbox {2}404 resource_missing/,
     /P0 price hushmallow\.ultra\.monthly: US\$19\.99 {2}US\$14\.99/, /P0 price hushmallow\.ultra\.monthly: product "hushmallow Beyond" {2}"Beyond"/,
-    /P0 webhook: API version 2026-08-26\.dahlia {2}2025-03-31\.basil/, /P0 webhook: exactly the 11 events {2}missing invoice\.paid/,
+    /P0 webhook: API version one the Worker is known to read \(2026-08-26\.dahlia or 2026-09-30\.endive\) {2}2025-03-31\.basil/, /P0 webhook: exactly the 11 events {2}missing invoice\.paid/,
     /P0 portal: cancellation on, at the end of the billing period \(D7\) {2}immediately/, /P0 portal: switching plans on/,
   ]) assert.ok(fails.some((l) => want.test(l)), String(want));
   // automatic_tax off: the settings are only said, whatever their default tax behaviour

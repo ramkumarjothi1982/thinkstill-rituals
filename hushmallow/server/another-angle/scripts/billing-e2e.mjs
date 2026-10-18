@@ -41,6 +41,14 @@ import { keyFreeChecks, varsTables, readWrangler } from './billing-checks.mjs';
 
 export const STAGING_WORKER = 'https://hushmallow-another-angle-staging.vibyfy-chat.workers.dev';
 export const PRODUCTION_WORKER = 'https://hushmallow-another-angle.vibyfy-chat.workers.dev';
+/**
+ * The webhook endpoint's API versions the Worker is known to read: its own pinned one, and the one the sandbox's
+ * destination was created on (staging rehearsal, 18 Oct 2026: S3-S9 all passed on it). The Worker reads every
+ * subscription back from Stripe at its own pinned version and takes only ids from the event (a Checkout Session's
+ * mode, client_reference_id and subscription; an invoice's subscription, in both of its places), so the endpoint's
+ * version need not be the Worker's. Any other version fails P0 until it has been run here.
+ */
+export const WEBHOOK_API_VERSIONS = Object.freeze(['2026-08-26.dahlia', '2026-09-30.endive']);
 /** Production's own app: never one of the staging Worker's origins, so P1 expects it refused there. */
 export const PRODUCTION_APP = 'https://app.hushmallow.com';
 /** Test keys only: a restricted key (recommended) or the sandbox's secret key. */
@@ -379,7 +387,7 @@ export async function run({ env = process.env, args = [], fetch: f = (input, ini
       check(cfg.billingPrices[k] === usd(SANDBOX_AMOUNTS[k]), `P0 price ${k}: BILLING_PRICES says ${usd(SANDBOX_AMOUNTS[k])}`, String(cfg.billingPrices[k] || ''));
     }
 
-    // the staging webhook endpoint: enabled, on the pinned version, with exactly the events the Worker handles
+    // the staging webhook endpoint: enabled, on a version the Worker is known to read, with exactly the events it handles
     const url = `${cfg.stagingWorker}/v1/billing/webhook`;
     const we = await stripe.get('/v1/webhook_endpoints', { limit: 100 });
     /** @type {any[]} */
@@ -388,7 +396,7 @@ export async function run({ env = process.env, args = [], fetch: f = (input, ini
       const e = mine[0];
       endpoint = String(e.id || '');
       check(e.status === 'enabled', 'P0 webhook: enabled', String(e.status));
-      check(e.api_version === cfg.apiVersion, `P0 webhook: API version ${cfg.apiVersion}`, String(e.api_version));
+      check(WEBHOOK_API_VERSIONS.includes(e.api_version), `P0 webhook: API version one the Worker is known to read (${WEBHOOK_API_VERSIONS.join(' or ')})`, String(e.api_version));
       const got = [...(e.enabled_events || [])].sort(), want = [...cfg.events].sort();
       check(JSON.stringify(got) === JSON.stringify(want), `P0 webhook: exactly the ${want.length} events`, got.filter((x) => !want.includes(x)).concat(want.filter((x) => !got.includes(x)).map((x) => `missing ${x}`)).join(', '));
     }
