@@ -1,7 +1,8 @@
 // Hushflow director, integration unit B1: gentle sessions (calm worlds only), the safety
 // stop (pause / finish with a reason, also while the first world loads), the host hand-over
 // halfway through a melt, holds, a chosen next world, the Stay toggle, state.canNext and
-// state.title — and owner P1: nothing follows the Luminous Ocean yet.
+// state.title — and owner P1: nothing follows the last world (the Luminous Ocean until worlds 5–7 were switched on,
+// Boppo's Sunpop Orchard now; tests/worlds-five.test.mjs covers the whole sequence).
 // Run: node --test hushmallow/tests/
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -22,7 +23,17 @@ function installFakeDom() {
   globalThis.addEventListener = () => {}; globalThis.removeEventListener = () => {};
   globalThis.requestAnimationFrame = (fn) => setTimeout(() => fn(performance.now()), 16);
   globalThis.cancelAnimationFrame = (id) => clearTimeout(id);
-  return { el, restore() { for (const [k, d] of Object.entries(saved)) { if (d) Object.defineProperty(globalThis, k, d); else delete globalThis[k]; } } };
+  // (every director made on it is destroyed before it goes, even when an assertion stopped the test first: a live one keeps
+  // its 250 ms watchdog interval going, and the file then never exits — CI's job time limit instead of a 'not ok')
+  const made = [];
+  return {
+    el,
+    keep(D) { made.push(D); return D; },
+    restore() {
+      for (const D of made.splice(0)) { try { D.destroy(); } catch { /* (the test's own failure is the one to read) */ } }
+      for (const [k, d] of Object.entries(saved)) { if (d) Object.defineProperty(globalThis, k, d); else delete globalThis[k]; }
+    },
+  };
 }
 const fakeTicker = () => { const t = { fns: new Set(), add(fn) { t.fns.add(fn); }, remove(fn) { t.fns.delete(fn); }, tick(dt = 1 / 60) { for (const f of [...t.fns]) f(dt); } }; return t; };
 const memStore = () => { const m = new Map(); return { get: (k, d = null) => (m.has(k) ? JSON.parse(m.get(k)) : d), set: (k, v) => { m.set(k, JSON.stringify(v)); return true; }, remove: (k) => m.delete(k) }; };
@@ -61,9 +72,14 @@ const subs = (said = []) => ({ say(lines, o) { said.push({ lines: [].concat(line
 async function director(dom, list, extra = {}) {
   const { createHushflow } = await import('../src/hushfold/flow/director.js');
   const tk = extra.ticker || fakeTicker();
-  const D = createHushflow({ worldEl: dom.el(), fxEl: dom.el(), registry: createRegistry(list), ticker: tk, store: memStore(), reducedMotion: false, ...extra, ...(extra.ticker ? {} : { ticker: tk }) });
+  const D = dom.keep(createHushflow({ worldEl: dom.el(), fxEl: dom.el(), registry: createRegistry(list), ticker: tk, store: memStore(), reducedMotion: false, ...extra, ...(extra.ticker ? {} : { ticker: tk }) }));
   return { D, tk };
 }
+/**
+ * Wait in real time, stepping nothing, until fn() is true (at most `ms`): an idle-time build (setTimeout 60 in Node, then
+ * its prepare()) starts and ends when a busy runner lets it, so a fixed wait races it.
+ */
+async function soon(fn, ms = 5000) { const t0 = Date.now(); do await wait(5); while (!fn() && Date.now() - t0 < ms); return fn(); }
 /** Step until fn() is true (or n steps), letting idle-time builds run. */
 async function until(D, fn, n = 300, dt = 1 / 60) {
   for (let i = 0; i < n && !fn(); i++) { D.debug.step(dt); await wait(2); }
@@ -71,20 +87,23 @@ async function until(D, fn, n = 300, dt = 1 / 60) {
 }
 
 // ------------------------------------------------------------ registry --
-test('registry: the ocean is calm and final, the storm is not calm', () => {
+test('registry: the ocean is calm (no longer final), the storm is not calm; the orchard is final', () => {
   const storm = WORLDS.find((w) => w.id === 'static-storm'), ocean = WORLDS.find((w) => w.id === 'luminous-ocean');
   assert.equal(storm.calm, false);
   assert.equal(ocean.calm, true);
-  assert.equal(ocean.final, true, 'owner P1: nothing follows the ocean until a third world exists');
+  assert.ok(!ocean.final, 'owner P1: the ocean was final only until a third world existed');
+  assert.deepEqual(WORLDS.filter((w) => w.final).map((w) => w.id), ['sunpop-orchard'], 'owner P1: nothing follows the last world');
 });
 
-test('selectNext: a gentle session keeps only calm worlds; nothing follows the ocean in any session (P1)', () => {
+test('selectNext: a gentle session keeps only calm worlds; nothing follows the last world in any session (P1)', () => {
   const reg = createRegistry();
   for (const gentle of [false, true]) {
     for (const emotion of ['angry', 'anxious', 'sad', null]) {
-      const after = reg.select({ current: 'luminous-ocean', emotion, intention: 'calm', gentle });
-      assert.equal(after.id, null, `after the ocean (${emotion}, gentle ${gentle})`);
+      const after = reg.select({ current: 'sunpop-orchard', emotion, intention: 'calm', gentle });
+      assert.equal(after.id, null, `after the orchard (${emotion}, gentle ${gentle})`);
       assert.equal(after.reason, 'none');
+      // the ocean now drifts on into the cove (calm too, so in a gentle session as well)
+      assert.equal(reg.select({ current: 'luminous-ocean', emotion, intention: 'calm', gentle }).id, 'moonmilk-cove', `after the ocean (${emotion}, gentle ${gentle})`);
     }
   }
   // gentle: only calm worlds, from anywhere
@@ -350,7 +369,7 @@ test('director: finish() during loading — start() resolves null, the phase sta
     const worlds = [];
     D2.on('world', (e) => worlds.push(e));
     const p2 = D2.start({ worldId: 'w' });
-    await wait(90);
+    await soon(() => log2.includes('w:prepare'));          // (its gate holds prepare() there however long that takes)
     assert.ok(log2.includes('w:prepare'), 'it was building');
     D2.finish();
     gate.resolve();
@@ -418,8 +437,8 @@ test('director: a paused melt never hosts; it hosts once after resume', async ()
 test("director: hold('offer') — with Auto-flow on and the world complete it stays 'playing'; let go, it melts; safeForUpdate is false while held", async () => {
   const dom = installFakeDom();
   try {
-    const ctl = {};
-    const { D } = await director(dom, [world('a', { ctl }), world('b')], { subtitles: subs() });
+    const ctl = {}, logB = [];
+    const { D } = await director(dom, [world('a', { ctl }), world('b', { log: logB })], { subtitles: subs() });
     await D.start({ worldId: 'a' });
     D.setAutoFlow(true);
     const holdEv = [];
@@ -429,6 +448,7 @@ test("director: hold('offer') — with Auto-flow on and the world complete it st
     assert.equal(D.safeForUpdate(), false, 'never reload under an open offer');
     ctl.complete = true; ctl.progress = 1;
     await until(D, () => !!D.incoming && D.debug.time > 1, 400);
+    assert.ok(await soon(() => logB.includes('b:prepare')), 'b is built in idle time');
     for (let i = 0; i < 60 * 12; i++) D.debug.step(1 / 60);   // 12 s of rest, well past Auto-flow's 4 s
     await wait(20);
     assert.equal(D.state.phase, 'playing', 'held: no melt');
@@ -455,14 +475,20 @@ test('director: the person’s own Drift on goes while an offer holds Auto-flow 
   } finally { dom.restore(); }
 });
 
-test('director (owner P1): after the ocean canNext is false and next() does nothing, in every session; the completion says Stay as long as you like', async () => {
+test('director (owner P1): after the last world canNext is false and next() does nothing, in every session; the completion says Stay as long as you like', async () => {
   const dom = installFakeDom();
   try {
     for (const gentle of [false, true]) {
       const said = [];
       const { D } = await director(dom, WORLDS.map((w) => ({ ...w })), { subtitles: subs(said) });
-      await D.start({ worldId: 'luminous-ocean', emotion: 'anxious', intention: 'let-go', gentle });
-      assert.equal(D.state.worldId, 'luminous-ocean');
+      // the last world: the orchard; in a gentle session (calm worlds only, each once) the cove after the ocean
+      const last = gentle ? 'moonmilk-cove' : 'sunpop-orchard';
+      if (gentle) {
+        await D.start({ worldId: 'luminous-ocean', emotion: 'anxious', intention: 'let-go', gentle });
+        assert.ok(D.next());
+        assert.ok(await until(D, () => D.state.worldId === last && D.state.phase === 'playing', 900, 1 / 15), 'the ocean melts into the cove');
+      } else await D.start({ worldId: last, emotion: 'anxious', intention: 'let-go', gentle });
+      assert.equal(D.state.worldId, last);
       assert.equal(D.state.canNext, false, 'Drift on is disabled');
       assert.equal(D.next(), false);
       assert.equal(D.state.nextId, null);
@@ -472,15 +498,16 @@ test('director (owner P1): after the ocean canNext is false and next() does noth
       assert.equal(D.incoming, null, 'nothing is even prepared');
       D.destroy();
     }
-    // the ocean's completion: its completeStay line, never the choice
+    // the last world's completion: its completeStay line, never the choice
     const said = [], ctl = {};
-    const OCEAN = { ...WORLDS[1], load: world('o', { ctl }).load };
-    const { D } = await director(dom, [WORLDS[0], OCEAN], { subtitles: subs(said) });
-    await D.start({ worldId: 'luminous-ocean' });
+    const ORCHARD = WORLDS.find((w) => w.id === 'sunpop-orchard');
+    const LAST = { ...ORCHARD, load: world('o', { ctl }).load };
+    const { D } = await director(dom, [WORLDS[0], LAST], { subtitles: subs(said) });
+    await D.start({ worldId: 'sunpop-orchard' });
     ctl.complete = true;
     D.debug.step(1 / 60);
     await wait(10);
-    assert.ok(said.some((s) => s.lines?.[0] === WORLDS[1].dialogue.completeStay), JSON.stringify(said));
+    assert.ok(said.some((s) => s.lines?.[0] === ORCHARD.dialogue.completeStay), JSON.stringify(said));
     assert.ok(!said.some((s) => s.choice), 'no "Stay, or drift on?"');
     D.destroy();
   } finally { dom.restore(); }
@@ -590,11 +617,48 @@ test('director: setGentle(true) drops a staged world that is not calm; the next 
   } finally { dom.restore(); }
 });
 
+test('director: a gentle session plays each calm world once — never drifts back into one it played; a session that is not gentle may', async () => {
+  const dom = installFakeDom();
+  try {
+    const list = () => [world('sea', { calm: true, next: ['cove'] }), world('cove', { calm: true, next: ['hot'] }), world('hot', { next: ['sea'] })];
+    const { D } = await director(dom, list(), {});
+    await D.start({ worldId: 'sea', gentle: true });
+    assert.equal(D.state.canNext, true, 'the other calm world follows');
+    assert.ok(D.next());
+    assert.ok(await until(D, () => D.state.worldId === 'cove' && D.state.phase === 'playing', 600));
+    assert.equal(D.state.canNext, false, 'every calm world played: nothing follows (the sea was played, hot is not calm)');
+    assert.equal(D.next(), false);
+    assert.equal(D.next({ worldId: 'sea' }), true, 'a calm world the shell asks for by name still goes (care: "Somewhere calm")');
+    D.destroy();
+    // the same worlds, not gentle: the authored link, then (all played recently) the one played longest ago
+    const { D: D2 } = await director(dom, list(), {});
+    await D2.start({ worldId: 'cove' });
+    assert.ok(D2.next());
+    assert.ok(await until(D2, () => D2.state.worldId === 'hot' && D2.state.phase === 'playing', 600));
+    assert.equal(D2.state.canNext, true, 'not gentle: the rotation goes on');
+    // a session turned gentle (care) with a world it already played staged: that world is dropped, nothing follows
+    const ctl = {};
+    const { D: D3 } = await director(dom, [world('sea', { calm: true, next: ['cove'], ctl }), world('cove', { calm: true, next: ['sea'], ctl: {} })], {});
+    await D3.start({ worldId: 'sea' });
+    assert.ok(D3.next());
+    assert.ok(await until(D3, () => D3.state.worldId === 'cove' && D3.state.phase === 'playing', 600));
+    D3.next();
+    D3.pause();
+    await wait(120);
+    assert.equal(D3.state.nextId, 'sea', 'staged: back to the sea (not gentle)');
+    D3.setGentle(true);
+    assert.equal(D3.incoming, null, 'gentle now: the sea was played, so it is dropped');
+    D3.resume();
+    assert.equal(D3.state.canNext, false);
+    D2.destroy(); D3.destroy();
+  } finally { dom.restore(); }
+});
+
 test('director: stay(false) un-stays without melting; stay() keeps Auto-flow from melting a complete world', async () => {
   const dom = installFakeDom();
   try {
-    const ctl = {};
-    const { D } = await director(dom, [world('a', { ctl }), world('b')], { subtitles: subs() });
+    const ctl = {}, logB = [];
+    const { D } = await director(dom, [world('a', { ctl }), world('b', { log: logB })], { subtitles: subs() });
     const ev = [];
     D.on('stay', (e) => ev.push(e));
     await D.start({ worldId: 'a' });
@@ -603,7 +667,7 @@ test('director: stay(false) un-stays without melting; stay() keeps Auto-flow fro
     assert.equal(D.state.staying, true);
     ctl.complete = true;
     for (let i = 0; i < 60 * 8; i++) { D.debug.step(1 / 60); if (i % 30 === 0) await wait(1); }
-    await wait(120);                               // (b is built in idle time)
+    assert.ok(await soon(() => logB.includes('b:prepare')), 'b is built in idle time');
     for (let i = 0; i < 60 * 2; i++) D.debug.step(1 / 60);
     assert.equal(D.state.phase, 'playing', 'staying');
     D.stay(false);

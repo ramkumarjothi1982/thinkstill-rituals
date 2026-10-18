@@ -360,6 +360,12 @@ function visibleRect(el) {
   return r;
 }
 
+/** An element's box, however faded (null when it has no size). */
+function boxRect(el) {
+  const r = el.getBoundingClientRect();
+  return r.width >= 1 && r.height >= 1 ? r : null;
+}
+
 /** Where the Mallow's body is (or is about to be: a move in progress is read from its target). */
 function mallowBox(world) {
   const layer = document.getElementById('mallow-layer');
@@ -388,7 +394,9 @@ function collectObstacles(world, avoid) {
   const add = (r, kind, el) => {
     if (!r) return;
     const right = r.right ?? r.left + r.width, bottom = r.bottom ?? r.top + r.height;
-    if (kind === 'piece' && (right - r.left) * (bottom - r.top) > area * 0.5) return;   // full-screen layers (canvases, stages) aren't pieces
+    // full-screen layers found in the page (canvases, stages) aren't pieces; a rect a ritual passes as `avoid` always is
+    // (a V3 ritual's whole play area: on a tall phone it is more than half the screen)
+    if (kind === 'piece' && el && (right - r.left) * (bottom - r.top) > area * 0.5) return;
     out.push({ l: r.left, t: r.top, r: right, b: bottom, kind, el });
   };
   for (const el of document.querySelectorAll('#scene .topbar')) {
@@ -397,7 +405,9 @@ function collectObstacles(world, avoid) {
     for (const c of el.querySelectorAll('button, a, .eyebrow, [role="button"]')) add(visibleRect(c), 'barBtn', c);
   }
   for (const el of document.querySelectorAll('#scene .dock')) if (el.children.length) add(visibleRect(el), 'dock', el);
-  for (const el of document.querySelectorAll('#scene .move-title')) add(visibleRect(el), 'title', el);
+  // (a title a line has dimmed is still the title band: measured as faded out it would drop from the list, the line would
+  // move off it and bring it back, and the prompt would flicker for as long as the line shows)
+  for (const el of document.querySelectorAll('#scene .move-title')) add(el.classList.contains('say-dim') ? boxRect(el) : visibleRect(el), 'title', el);
   for (const el of document.querySelectorAll('#scene .card, #scene .ultra-card, #scene .summary-card')) add(visibleRect(el), 'card', el);
   for (const el of document.querySelectorAll(PIECES)) if (!el.closest('.topbar, .dock') && el.getAttribute('data-say-avoid') !== 'off') add(visibleRect(el), 'piece', el);
   for (const el of document.querySelectorAll(TEXTS)) if (!el.closest('.topbar, .dock, .move-title, .card')) add(visibleRect(el), 'text', el);

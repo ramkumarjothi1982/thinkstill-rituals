@@ -85,39 +85,60 @@ test('shipped code calls no remote service except Another Angle’s own server',
   assert.equal(angleSrc.split(angleFetch).length, 2, 'one fetch site in angle-client.js');
   assert.match(angleSrc, /const url = `\$\{endpoint\}\$\{path\}`;/);
   assert.match(angleSrc, /if \(!endpoint \|\| !Object\.values\(PATHS\)\.includes\(path\)\)/);
-  const { ANGLE_ENDPOINT, ANGLE_ALLOWED_HOSTS } = await import('../src/app/config.js');
+  const { ANGLE_ENDPOINT, ANGLE_ALLOWED_HOSTS, STAGING_ANGLE_ENDPOINT } = await import('../src/app/config.js');
   if (ANGLE_ENDPOINT) {
     const u = new URL(ANGLE_ENDPOINT);
     assert.equal(u.protocol, 'https:', 'ANGLE_ENDPOINT is https');
     assert.ok(ANGLE_ALLOWED_HOSTS.includes(u.hostname), 'ANGLE_ENDPOINT host is allow-listed');
   }
-  // the Worker's address appears once, in src/app/config.js (the endpoint and its allowed host): no staging
-  // or other workers.dev address anywhere in src, comments included
+  // the Worker's address appears once, in src/app/config.js (the endpoint and its allowed host), and so does the
+  // staging Worker's, for the branch previews only (STAGING_ANGLE_ENDPOINT and STAGING_ALLOWED_HOSTS, docs/STAGING.md):
+  // no other workers.dev address anywhere in src, comments included
   const workers = [];
+  const configLines = readFileSync(`${root}src/app/config.js`, 'utf8').split('\n');
   for (const f of walk(`${root}src`)) readFileSync(f, 'utf8').split('\n').forEach((l, i) => { if (/workers\.dev/i.test(l)) workers.push(`${f.slice(root.length)}:${i + 1}`); });
   assert.ok(workers.every((w) => w.startsWith('src/app/config.js:')), workers.join(', '));
-  assert.ok(workers.length <= 2, workers.join(', '));
-  if (ANGLE_ENDPOINT) assert.equal(workers.length, 2, workers.join(', '));
+  assert.ok(workers.every((w) => /^export const (ANGLE_ENDPOINT|ANGLE_ALLOWED_HOSTS|STAGING_ANGLE_ENDPOINT|STAGING_ALLOWED_HOSTS) = /.test(configLines[Number(w.split(':')[1]) - 1])), workers.join(', '));
+  assert.ok(workers.length <= 4, workers.join(', '));
+  if (ANGLE_ENDPOINT) assert.equal(workers.length, 4, workers.join(', '));
   // …and the optional sign-in (src/auth/client.js): one fetch handed to the vendored supabase-js,
   // which refuses every URL outside the one project (src/auth/config.js PROJECT_URL, or localhost in dev)
   const authFetch = 'const netFetch = (url, init) => globalThis.fetch(url, init);';
   const authSrc = readFileSync(`${root}src/auth/client.js`, 'utf8');
   assert.equal(authSrc.split(authFetch).length, 2, 'one fetch site in auth/client.js');
   assert.match(authSrc, /if \(u\.origin !== origin\) return Promise\.reject/);
-  const { PROJECT_URL } = await import('../src/auth/config.js');
+  const { PROJECT_URL, STAGING_PROJECT_URL } = await import('../src/auth/config.js');
   assert.equal(PROJECT_URL, 'https://igbxbfuaoybfzsroxuln.supabase.co');
+  // the branch previews' own project (docs/STAGING.md): derived from STAGING_PROJECT_REF, the owner's staging project
+  const STAGING_PROJECT_TEMPLATE = 'https://${STAGING_PROJECT_REF}.supabase.co';
+  assert.equal(STAGING_PROJECT_URL, 'https://oghzabvkrxsejkkjdsuc.supabase.co');
+  assert.notEqual(STAGING_PROJECT_URL, PROJECT_URL);
+  // …and web subscriptions (src/app/billing.js; off unless src/app/config.js switches them on): one fetch, only to the
+  // billing endpoint (the same Worker, one of ANGLE_ALLOWED_HOSTS) + one of its four paths, with the account's token
+  const billingFetch = 'const netFetch = (url, init) => globalThis.fetch(url, init);';
+  const billingSrc = readFileSync(`${root}src/app/billing.js`, 'utf8');
+  assert.equal(billingSrc.split(billingFetch).length, 2, 'one fetch site in app/billing.js');
+  assert.match(billingSrc, /const url = `\$\{endpoint\}\$\{path\}`;/);
+  assert.match(billingSrc, /if \(!endpoint \|\| !Object\.values\(PATHS\)\.includes\(path\)\)/);
+  const { PATHS: BILLING_PATHS } = await import('../src/app/billing.js');
+  assert.deepEqual({ ...BILLING_PATHS }, { checkout: '/v1/billing/checkout', status: '/v1/billing/status', portal: '/v1/billing/portal', sync: '/v1/billing/sync' }, 'exactly these four paths');
+  assert.ok(Object.isFrozen(BILLING_PATHS));
   for (const f of walk(`${root}src`)) {
     let s = readFileSync(f, 'utf8');
     if (f.endsWith('/src/app/update.js')) s = s.replace(versionCheck, '');
     if (f.endsWith('/src/beyond/angle-client.js')) s = s.replace(angleFetch, '');
     if (f.endsWith('/src/auth/client.js')) s = s.replace(authFetch, '');
+    if (f.endsWith('/src/app/billing.js')) s = s.replace(billingFetch, '');
     assert.doesNotMatch(s, /\bfetch\s*\(|XMLHttpRequest|new WebSocket|EventSource\(|sendBeacon/, f);
-    // the only URLs allowed: the SVG namespace, the support-line directory people can open themselves,
-    // (in src/app/config.js only) the configured Another Angle endpoint, and (in src/auth/config.js
-    // only) the sign-in project
-    const urls = (s.match(/https?:\/\/[^'"`\s)]+/g) || []).filter((u) => !/^https?:\/\/(www\.w3\.org\/|findahelpline\.com)/.test(u))
+    // the only URLs allowed: the SVG namespace, the support-line directory and Lifeline's crisis chat
+    // (Australia) that people can open themselves, (in src/app/config.js only) the configured Another
+    // Angle endpoint and the branch previews' staging one, and (in src/auth/config.js only) the sign-in project
+    // and the branch previews' staging project (STAGING_PROJECT_URL, written once as its template)
+    const urls = (s.match(/https?:\/\/[^'"`\s)]+/g) || []).filter((u) => !/^https?:\/\/(www\.w3\.org\/|findahelpline\.com|www\.lifeline\.org\.au\/crisis-chat\/$)/.test(u))
       .filter((u) => !(ANGLE_ENDPOINT && f.endsWith('/src/app/config.js') && u === ANGLE_ENDPOINT))
-      .filter((u) => !(f.endsWith('/src/auth/config.js') && u === PROJECT_URL));
+      .filter((u) => !(f.endsWith('/src/app/config.js') && u === STAGING_ANGLE_ENDPOINT))
+      .filter((u) => !(f.endsWith('/src/auth/config.js') && u === PROJECT_URL))
+      .filter((u) => !(f.endsWith('/src/auth/config.js') && u === STAGING_PROJECT_TEMPLATE));
     assert.deepEqual(urls, [], f);
   }
 });

@@ -443,3 +443,61 @@ test('createStage: every stage and stage.thoughts call in the Hushfold scene exi
     stage.destroy();
   } finally { B.restore(); }
 });
+
+test('createStage: the ThoughtLayer is not fetched with the first Mallow\'s art: in idle time after start(), or at once when wanted', async () => {
+  const B = browser();
+  const had = Object.getOwnPropertyDescriptor(globalThis, 'requestIdleCallback');
+  const idles = [];
+  globalThis.requestIdleCallback = (fn, opts) => { idles.push([fn, opts]); return idles.length; };
+  const soon = () => new Promise((r) => setTimeout(r, 30));
+  try {
+    const { ThoughtLayer } = await import('../src/mallows/thought/index.js');   // in this process already: a fetch would land at once
+    // made (in enter(), before the hero): nothing fetched, so the hero's art has the line to itself
+    const stage = createStage({ fx: B.fx });
+    const early = stage.thoughts;
+    await soon();
+    assert.equal(stage.thoughts, early, 'only the stand-in while the hero loads');
+    // the hero is up: start() asks for the layer in idle time (with a deadline), not in the same breath
+    stage.start();
+    assert.equal(idles.length, 1);
+    assert.ok(idles[0][1]?.timeout > 0, 'idle time, with a timeout');
+    await soon();
+    assert.equal(stage.thoughts, early, 'not before that idle time');
+    idles[0][0]({ timeRemaining: () => 10, didTimeout: false });
+    const layer = await stage.whenThoughts();
+    assert.ok(layer instanceof ThoughtLayer);
+    assert.equal(stage.thoughts, layer);
+    stage.start();
+    assert.equal(idles.length, 1, 'once');
+    stage.destroy();
+    // wanted before that (a Tell on a fast hand, a world resumed): whenThoughts() or a thought added fetches it at once
+    const s2 = createStage({ fx: B.fx });
+    assert.ok((await s2.whenThoughts()) instanceof ThoughtLayer);
+    s2.destroy();
+    const s3 = createStage({ fx: B.fx });
+    s3.thoughts.add({ text: 'I keep replaying it', emotion: 'overthinking' }, { x: 200, y: 300 });
+    await soon();
+    assert.ok(s3.thoughts instanceof ThoughtLayer, 'a thought added before the layer brings it');
+    assert.equal(s3.thoughts.list[0].text, 'I keep replaying it');
+    s3.destroy();
+    // gone before it was ever wanted: never fetched, and whenThoughts() says null
+    const s4 = createStage({ fx: B.fx });
+    s4.start();
+    s4.destroy();
+    idles.at(-1)[0]({ timeRemaining: () => 10, didTimeout: true });
+    assert.equal(await s4.whenThoughts(), null);
+  } finally {
+    if (had) Object.defineProperty(globalThis, 'requestIdleCallback', had); else delete globalThis.requestIdleCallback;
+    B.restore();
+  }
+});
+
+test('the Hushfold: the stage starts (and with it the ThoughtLayer\'s fetch) only once the hero is up, and every thought waits for whenThoughts()', () => {
+  const shell = read('src/app/scenes/hushfold.js');
+  const enter = shell.slice(shell.indexOf('    async enter() {'), shell.indexOf('      followOS();'));
+  assert.ok(enter.indexOf('stage = createStage(') < enter.indexOf('await rigP;'));
+  assert.ok(enter.indexOf('await rigP;') < enter.indexOf('stage.start();'), 'after the hero');
+  assert.equal([...shell.matchAll(/\bstage\.start\(\)/g)].length, 1);
+  // a thought is placed once the layer is there (whenThoughts() fetches it if idle time has not come yet)
+  assert.ok([...shell.matchAll(/await stage\.whenThoughts\(\)/g)].length >= 2, 'spawnThought and a resumed world');
+});

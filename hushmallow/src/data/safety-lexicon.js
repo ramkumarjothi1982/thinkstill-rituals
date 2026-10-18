@@ -375,7 +375,7 @@ export const HARM_LEXICON = {
   },
 };
 
-const EMERGENCY = { label: 'Right now', detail: 'If you or anyone else is in immediate danger, call 999 (UK), 911 (US), 112 (EU) or your local emergency number.' };
+const EMERGENCY = { label: 'Right now', detail: 'If you or anyone else is in immediate danger, call 999 (UK), 911 (US), 112 (EU), 000 (Australia) or your local emergency number.' };
 const ELSEWHERE = { label: 'Anywhere else', detail: 'findahelpline.com lists free, confidential helplines in many countries.' };
 
 export const HARM_COPY = {
@@ -386,6 +386,10 @@ export const HARM_COPY = {
       EMERGENCY,
       { label: 'Samaritans (UK & Ireland)', detail: 'Call 116 123 — free, any time, day or night.' },
       { label: '988 Suicide & Crisis Lifeline (US)', detail: 'Call or text 988.' },
+      // (16 Oct 2026, Australia: the launch market) the national services' published numbers, as the app's support sheet has them
+      { label: 'Lifeline (Australia)', detail: 'Call 13 11 14, any time, day or night. You can also text 0477 13 11 14, or chat online at lifeline.org.au.' },
+      { label: 'Suicide Call Back Service (Australia)', detail: 'Call 1300 659 467, any time.' },
+      { label: '13YARN (Australia)', detail: 'Call 13 92 76, any time — crisis support by and for Aboriginal and Torres Strait Islander people.' },
       ELSEWHERE,
     ],
   },
@@ -396,6 +400,7 @@ export const HARM_COPY = {
       EMERGENCY,
       { label: 'Samaritans (UK & Ireland)', detail: 'Call 116 123 — they also support people worried about someone else.' },
       { label: '988 Suicide & Crisis Lifeline (US)', detail: 'Call or text 988, including if you’re worried about someone else.' },
+      { label: 'Lifeline (Australia)', detail: 'Call 13 11 14, any time, including if you’re worried about someone else.' },
       ELSEWHERE,
     ],
   },
@@ -429,6 +434,7 @@ export const HARM_COPY = {
     EMERGENCY,
     { label: 'UK domestic abuse', detail: 'National Domestic Abuse Helpline: 0808 2000 247 — free, 24 hours.' },
     { label: 'US domestic violence', detail: 'National Domestic Violence Hotline: 1-800-799-7233.' },
+    { label: 'Australian family, domestic or sexual violence', detail: '1800RESPECT: 1800 737 732, any time.' },
     ELSEWHERE,
   ],
   /** Shown under any safety message, so the person never feels shut out. */

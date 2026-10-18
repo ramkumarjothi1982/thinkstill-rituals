@@ -19,8 +19,8 @@ const tables = [...all.matchAll(/create table if not exists public\.(\w+)\s*\(([
 const policies = [...all.matchAll(/create policy (\w+) on public\.(\w+)\s+for (select|insert|update|delete) to (\w+)([\s\S]*?);/g)].map((m) => ({ name: m[1], table: m[2], cmd: m[3], role: m[4], body: m[5] }));
 const functions = [...all.matchAll(/create or replace function ([\w.]+)\(\)([\s\S]*?)\$(\w*)\$[\s\S]*?\$\3\$;/g)].map((m) => ({ name: m[1], head: m[2] }));
 
-test('migrations run in order 0001 … 0009 and each is one transaction', () => {
-  assert.deepEqual(files, ['0001_foundation.sql', '0002_profiles.sql', '0003_sync_consents.sql', '0004_preferences.sql', '0005_library.sql', '0006_consent_withdrawal.sql', '0007_delete_my_account.sql', '0008_backfill_profiles.sql', '0009_row_cap_upserts.sql']);
+test('migrations run in order 0001 … 0010 and each is one transaction', () => {
+  assert.deepEqual(files, ['0001_foundation.sql', '0002_profiles.sql', '0003_sync_consents.sql', '0004_preferences.sql', '0005_library.sql', '0006_consent_withdrawal.sql', '0007_delete_my_account.sql', '0008_backfill_profiles.sql', '0009_row_cap_upserts.sql', '0010_consent_withdrawal_owner_rights.sql']);
   files.forEach((f, i) => {
     const s = strip(readFileSync(`${dir}/${f}`, 'utf8'));
     assert.match(s, /^\s*begin;/, `${f} begins a transaction`);
@@ -77,8 +77,11 @@ test('every function pins search_path to \'\'; security definer only where it mu
     assert.match(f.head, /set search_path = ''/, `${f.name}: search_path`);
     assert.match(f.head, /security (definer|invoker)/, `${f.name}: says how it runs`);
   }
-  const definers = functions.filter((f) => /security definer/.test(f.head)).map((f) => f.name).sort();
-  assert.deepEqual(definers, ['hm_private.handle_new_user', 'public.delete_my_account']);
+  // the last definition of each function is the one that stands (0010 redefines 0006's withdrawal trigger)
+  const latest = [...new Map(functions.map((f) => [f.name, f])).values()];
+  const definers = latest.filter((f) => /security definer/.test(f.head)).map((f) => f.name).sort();
+  // the withdrawal trigger runs as its owner so Supabase Auth's role can delete a user with sync on (0010)
+  assert.deepEqual(definers, ['hm_private.handle_new_user', 'hm_private.sync_consents_withdrawn', 'public.delete_my_account']);
   // only delete_my_account is in public (exposed as an RPC); everything else is private
   assert.deepEqual(functions.filter((f) => f.name.startsWith('public.')).map((f) => f.name), ['public.delete_my_account']);
   for (const f of functions.filter((x) => x.name.startsWith('hm_private.'))) assert.match(all, new RegExp(`revoke all on function ${f.name.replace('.', '\\.')}\\(\\) from anon, authenticated;`), f.name);

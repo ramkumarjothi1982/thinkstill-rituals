@@ -128,6 +128,8 @@ async function tap(p, selector) {
 }
 async function tapNav(p, selector) { await Promise.all([p.waitForNavigation({ timeout: 60000 }), tap(p, selector)]); await appReady(p); }
 async function fill(p, name, value) { const s = `[data-auth-view] input[name="${name}"]`; await p.waitForSelector(s, { timeout: 15000 }); await p.fill(s, value); }
+/** The sign-up form's required tick (18 or older, the Terms and the Privacy Policy): a real tap on the box, then it is ticked. */
+async function agree(p) { await tap(p, '[data-auth-view] input[name="agree"]'); await p.waitForFunction(() => document.querySelector('[data-auth-view] input[name="agree"]')?.checked === true, null, { timeout: 5000 }); }
 const errText = (p) => p.evaluate(() => [...document.querySelectorAll('[data-auth-view] .hm-auth-error')].map((e) => e.textContent).join(' ').trim());
 
 /** Sign in through the screens from wherever the account scene is. Resolves 'nav' (into the account) or 'choice' (the guest question). */
@@ -155,7 +157,7 @@ function layout(p) {
     const minFont = Math.min(...texts.map((e) => parseFloat(getComputedStyle(e).fontSize)));
     const inputs = [...scene.querySelectorAll('input:not([type=checkbox])')].filter(vis);
     const minInput = inputs.length ? Math.min(...inputs.map((e) => parseFloat(getComputedStyle(e).fontSize))) : 16;
-    const targets = [...scene.querySelectorAll('button, a.hm-auth-btn')].filter(vis);
+    const targets = [...scene.querySelectorAll('button, a.hm-auth-btn, label.hm-auth-tick')].filter(vis);
     const small = targets.filter((e) => e.getBoundingClientRect().height < 44 - 0.5).map((e) => e.dataset.act || e.textContent.trim().slice(0, 20));
     const clipped = targets.filter((e) => e.scrollWidth > e.clientWidth + 1).map((e) => e.textContent.trim().slice(0, 24));
     const card = scene.querySelector('.hm-auth-card').getBoundingClientRect();
@@ -200,6 +202,15 @@ async function flows(H) {
   const attrs = await p.evaluate(() => Object.fromEntries([...document.querySelectorAll('[data-auth-view] input')].map((i) => [i.name, i.getAttribute('autocomplete')])));
   check(attrs.email === 'email' && attrs.password === 'new-password', 'autocomplete: email, new-password', JSON.stringify(attrs));
   await fill(p, 'password', 'short');
+  // the 18+ / Terms tick: Create my account stays off until it is ticked, and a tap on "Terms" opens the page in a new tab
+  // without ticking it
+  const off = await p.evaluate(() => ({ disabled: document.querySelector('[data-act="create-submit"]').disabled, checked: document.querySelector('[data-auth-view] input[name="agree"]').checked, label: document.querySelector('[data-auth-view] input[name="agree"]').getAttribute('aria-label'), forId: document.querySelector('label.hm-auth-tick').htmlFor === document.querySelector('[data-auth-view] input[name="agree"]').id }));
+  check(off.disabled && !off.checked && off.forId && off.label === 'I’m 18 or older, and I agree to the Terms and the Privacy Policy', 'the tick: unticked, its label tied to it, and Create my account off until it is ticked', JSON.stringify(off));
+  const [terms] = await Promise.all([p.context().waitForEvent('page', { timeout: 10000 }).catch(() => null), tap(p, 'label.hm-auth-tick a[data-legal="terms"]')]);
+  check(!!terms && /\/legal\/terms(?:\.html)?$/.test(terms.url()) && !(await p.evaluate(() => document.querySelector('[data-auth-view] input[name="agree"]').checked)), '"Terms" opens the Terms of Use in a new tab (Pages serves it without .html) and leaves the box unticked', terms?.url());
+  if (terms) await terms.close();
+  await agree(p);
+  check(await p.evaluate(() => !document.querySelector('[data-act="create-submit"]').disabled), 'ticked: Create my account wakes');
   await tap(p, '[data-act="create-submit"]');
   await sleep(300);
   check(/at least 8/.test(await errText(p)) && await mood(p) === 'concerned', 'a short password: a friendly line and a concerned Mallow (nothing sent)');
@@ -423,7 +434,7 @@ async function flows(H) {
   const u = await H.page(uc, 'unconfirmed-375');
   await openAccount(u);
   await tap(u, '[data-act="create"]'); await waitView(u, 'create');
-  await fill(u, 'email', cy); await fill(u, 'password', PASS1);
+  await fill(u, 'email', cy); await fill(u, 'password', PASS1); await agree(u);
   await tap(u, '[data-act="create-submit"]'); await waitView(u, 'check-email');
   await tap(u, '[data-act="confirmed-signin"]'); await waitView(u, 'signin');
   await fill(u, 'password', PASS1);
@@ -453,7 +464,7 @@ async function people(H) {
   // Ana: "Not now", then "Bring them in"
   await openAccount(p);
   await tap(p, '[data-act="create"]'); await waitView(p, 'create');
-  await fill(p, 'email', 'ana@example.com'); await fill(p, 'password', PASS1);
+  await fill(p, 'email', 'ana@example.com'); await fill(p, 'password', PASS1); await agree(p);
   await tap(p, '[data-act="create-submit"]'); await waitView(p, 'guest-choice');
   await tapNav(p, '[data-act="fresh"]');
   await waitView(p, 'account');
@@ -475,7 +486,7 @@ async function people(H) {
   // Bo on the same browser
   await openAccount(p);
   await tap(p, '[data-act="create"]'); await waitView(p, 'create');
-  await fill(p, 'email', 'bo@example.com'); await fill(p, 'password', PASS1);
+  await fill(p, 'email', 'bo@example.com'); await fill(p, 'password', PASS1); await agree(p);
   await tap(p, '[data-act="create-submit"]'); await waitView(p, 'guest-choice');
   await tapNav(p, '[data-act="fresh"]');
   await waitView(p, 'account');
@@ -574,7 +585,7 @@ async function gallery(H) {
     }
     // signed in: a fresh account per size
     const email = `g${++n}@example.com`;
-    await p.evaluate(({ email, pw }) => window.__hush.auth.load().then(async (a) => { const r = await a.signUp({ email, password: pw, name: 'Sam' }); if (r.needsGuestChoice) a.chooseGuestData('keep'); a.enter('#account'); }), { email, pw: PASS1 }).catch(() => {});
+    await p.evaluate(({ email, pw }) => window.__hush.auth.load().then(async (a) => { const r = await a.signUp({ email, password: pw, name: 'Sam', agreed: true }); if (r.needsGuestChoice) a.chooseGuestData('keep'); a.enter('#account'); }), { email, pw: PASS1 }).catch(() => {});
     await p.waitForFunction(() => window.__hush?.auth?.status?.() === 'signed-in' && document.querySelector('[data-auth-view="account"]') && window.__account?.mallow, null, { timeout: 60000 });
     if (S.text) await p.evaluate((t) => window.__hush.prefs.set('textScale', t), S.text);
     await p.waitForFunction(() => !document.querySelector('[data-sync="settings"]')?.disabled, null, { timeout: 30000 });

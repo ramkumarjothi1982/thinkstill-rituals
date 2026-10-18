@@ -1,0 +1,156 @@
+{
+ "assets/mallows/blubi.webp": {
+  "from": "assets/mallows/blubi.png",
+  "png_bytes": 289754,
+  "png_sha256": "7c946b0ec6cfeaa806a3be95effe6cf2c0418e6118918c2549bfdc8cba68a254",
+  "webp_bytes": 222950,
+  "webp_sha256": "f31453ad37a75f8b1020f72edbe03cfcf1d9050d9ca2949aada54dd4153adea8"
+ },
+ "assets/mallows/boppo.webp": {
+  "from": "assets/mallows/boppo.png",
+  "png_bytes": 258846,
+  "png_sha256": "aea8d5c1b82d333c36fb9449e772b82615c44194c29c678ed4fd7d39ac02751f",
+  "webp_bytes": 191854,
+  "webp_sha256": "c7d6aef65c8ee71ce8ac29aa0c37f9ecfd3fb11beb704860b995b0d9c8d5a7ef"
+ },
+ "assets/mallows/glitzi.webp": {
+  "from": "assets/mallows/glitzi.png",
+  "png_bytes": 309948,
+  "png_sha256": "20df415a2e10cdbd9d7d00f66ae14f2280f4b2fdf7cb8dd874562e44a9a816ab",
+  "webp_bytes": 246798,
+  "webp_sha256": "892aa875e43917e27bc85d617c99b2bf57b9ddb9455fe57012a8c387825740a0"
+ },
+ "assets/mallows/loomi.webp": {
+  "from": "assets/mallows/loomi.png",
+  "png_bytes": 225405,
+  "png_sha256": "ade196c37bec7ded02a3be70361ab7b6cd07cb1fa84ef9653b0921ed083173fa",
+  "webp_bytes": 170674,
+  "webp_sha256": "5e252cf7082ecd11f436f1d9cfe5955498274dc958b7f4130f5d9eed8a2e960f"
+ },
+ "assets/mallows/noomi.webp": {
+  "from": "assets/mallows/noomi.png",
+  "png_bytes": 260255,
+  "png_sha256": "f47a66d6b559ce8d6c63f71c75156988a121f20bc79bd9847edd08fda7b4457a",
+  "webp_bytes": 192104,
+  "webp_sha256": "749f148f65dfaa47d362be5c0f86efdba6fc4703959563f8ec461946dc099da2"
+ },
+ "assets/mallows/pipzi.webp": {
+  "from": "assets/mallows/pipzi.png",
+  "png_bytes": 332393,
+  "png_sha256": "114d96cbbfb82699d806e3cde9df2b9d4e7e846456f7ace0a14244fe4d4f9807",
+  "webp_bytes": 238778,
+  "webp_sha256": "cf463b0857782066627034053916fbcf1795544e58fa519b73b0005cf012152b"
+ },
+ "assets/mallows/zuzu.webp": {
+  "from": "assets/mallows/zuzu.png",
+  "png_bytes": 280934,
+  "png_sha256": "d370d52a440e504b8d53d32136e545b62389f0ba78479735369bab8cf8bc6392",
+  "webp_bytes": 214220,
+  "webp_sha256": "09ac9501df9eb18a01ecd6510bd226f90afecbfcd56c1a76a8ed42a20bee97fc"
+ },
+ "assets/rig/blubi-body.webp": {
+  "from": "assets/rig/blubi-body.png",
+  "png_bytes": 285826,
+  "png_sha256": "a4729e25ea6c9f26a1efa5268b7406220b0297393907838be50409dc97d5c992",
+  "webp_bytes": 220456,
+  "webp_sha256": "4346af35777f2244b387a29ef619b8629bfb8cc6f61a4b41cef2c0ce791f2fce"
+ },
+ "assets/rig/boppo-body.webp": {
+  "from": "assets/rig/boppo-body.png",
+  "png_bytes": 256303,
+  "png_sha256": "e4131bec08e6e4aa3079e8e5dcb330e21cdc96d22f9380cdb896a5a8ede4c6d4",
+  "webp_bytes": 194146,
+  "webp_sha256": "9e84be8ea3e37372d36756adcfd68162182f1ce3f791bfbde15c0c4f07334f80"
+ },
+ "assets/rig/boppo-iris-L.webp": {
+  "from": "assets/rig/boppo-iris-L.png",
+  "png_bytes": 12273,
+  "png_sha256": "17baf799c1754c78de810e53be105c14042f2ac8c7c5ab0a75a597b1efdc28b2",
+  "webp_bytes": 9558,
+  "webp_sha256": "d6cf8ff9ddeb5a6d923de2ffefefa48304a845cf1b5bed499ca4f673d7ddc9e8"
+ },
+ "assets/rig/boppo-iris-R.webp": {
+  "from": "assets/rig/boppo-iris-R.png",
+  "png_bytes": 11775,
+  "png_sha256": "44a7898d1e91a8aed85b6af488e19c38e3c90b456bc70649aaf43ac00409016e",
+  "webp_bytes": 9162,
+  "webp_sha256": "244a29b85a5fe140a5ac00e168b33a532b721180b200c637011398631b642bdf"
+ },
+ "assets/rig/glitzi-body.webp": {
+  "from": "assets/rig/glitzi-body.png",
+  "png_bytes": 312220,
+  "png_sha256": "17ceb1eac1b6eb3d1e3948d0cacad4de5c225407e238c2cb0b4130174696f3e2",
+  "webp_bytes": 252690,
+  "webp_sha256": "8ec978d551692880cd7995e84748db38dcfa5e94f7796d40e25b7ade6002b1a4"
+ },
+ "assets/rig/iris-amber.webp": {
+  "from": "assets/rig/iris-amber.png",
+  "png_bytes": 10754,
+  "png_sha256": "0fb9f0da337aa760f330b76d95ca89d7ab55d1faf467dc67a2aab06331b9d6a8",
+  "webp_bytes": 8044,
+  "webp_sha256": "ba5699d71fe2dd0ffae05b3cc039b5df6094d8f3a6fa2d8f76c1bf584ee36a2a"
+ },
+ "assets/rig/iris-navy.webp": {
+  "from": "assets/rig/iris-navy.png",
+  "png_bytes": 11260,
+  "png_sha256": "f037223b4c9ec73993a8fd0b36080837b82969460855f791711a115e4bc00547",
+  "webp_bytes": 8342,
+  "webp_sha256": "de48a0bd754cee2e562037e0dbda675ef648abbe9c286581a6120296560951a4"
+ },
+ "assets/rig/loomi-body.webp": {
+  "from": "assets/rig/loomi-body.png",
+  "png_bytes": 221042,
+  "png_sha256": "93ed00524b1b2fd4fd4a266abeee043ea2a6f120f91d4290372f3ef2cce7b066",
+  "webp_bytes": 168076,
+  "webp_sha256": "dae6f8b8f147c0587eab8e03e1b2c68e640dc854bb5637e29854ab4487309715"
+ },
+ "assets/rig/noomi-body.webp": {
+  "from": "assets/rig/noomi-body.png",
+  "png_bytes": 256337,
+  "png_sha256": "5936df9aa7d40e1aab68a75ea50daa9fc61d77cd01ecefcc8a29e7bb6ecd7ddb",
+  "webp_bytes": 189786,
+  "webp_sha256": "0f65d84ce1afbea88391e5b434440369c8c457965e06460d23b13abc5bab3a60"
+ },
+ "assets/rig/pipzi-body.webp": {
+  "from": "assets/rig/pipzi-body.png",
+  "png_bytes": 342078,
+  "png_sha256": "a168d6a07b001c4c5806c32065e13878807c35a80c7ab295cd6d6f7301e7ae03",
+  "webp_bytes": 250278,
+  "webp_sha256": "c388125e1090aa9a93ac1c9ac3d598543b3be8c80ba7e0f47571f9c7560c3f1f"
+ },
+ "assets/rig/pipzi-iris-L.webp": {
+  "from": "assets/rig/pipzi-iris-L.png",
+  "png_bytes": 15057,
+  "png_sha256": "57d721bf0449818cc9c079145b5d3dfc8698e3d766c09cb82632f2f647081496",
+  "webp_bytes": 11092,
+  "webp_sha256": "9ad193159cbc10c6455c6805e717ba9acb1145f12304aef15f1c7476f9fdd602"
+ },
+ "assets/rig/pipzi-iris-R.webp": {
+  "from": "assets/rig/pipzi-iris-R.png",
+  "png_bytes": 14857,
+  "png_sha256": "e48285f14a40f9aade684b6dc584ba6a7e82997bcbe2e3d0e08cf5b65c670d7d",
+  "webp_bytes": 10848,
+  "webp_sha256": "ffb01b2458c7e9152aea14536be76b43afc357001358d07b36b9722bce6ed38e"
+ },
+ "assets/rig/zuzu-body.webp": {
+  "from": "assets/rig/zuzu-body.png",
+  "png_bytes": 277229,
+  "png_sha256": "b3f6b554e51db4a358f4f482ed122f87a00b6e2177279f6c2f0e917e49dedc2a",
+  "webp_bytes": 210920,
+  "webp_sha256": "012ee043a35ef7653b971049c44477526feccc7f25120d00d73cf48bb8e6b995"
+ },
+ "assets/rig/zuzu-spiral-L.webp": {
+  "from": "assets/rig/zuzu-spiral-L.png",
+  "png_bytes": 38884,
+  "png_sha256": "e80a791f81f42455668ec53d1a0c8e7fb1605ec6b16385171ee6c6aa43275c43",
+  "webp_bytes": 30756,
+  "webp_sha256": "e67adc89f386cad68a14ab4dd419ce0d048314502b5dd973b18da2b7389a8ffd"
+ },
+ "assets/rig/zuzu-spiral-R.webp": {
+  "from": "assets/rig/zuzu-spiral-R.png",
+  "png_bytes": 38266,
+  "png_sha256": "2069ff305e15947b190e88a607e8dd9007bef49a8f67feafdeed98833bd1d34c",
+  "webp_bytes": 30212,
+  "webp_sha256": "6fc0cdf1142ef0f7d85525d74888cb690d1ece149bdc9b4da517da16ab339042"
+ }
+}

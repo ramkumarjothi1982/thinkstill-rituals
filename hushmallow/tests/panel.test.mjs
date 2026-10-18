@@ -91,7 +91,7 @@ async function makePanel({ tier = 'ultra', flowState = {}, scene = {} } = {}) {
   const btn = (label) => buttons(['Pause', 'Resume', 'Stay longer', 'Drift on', 'Finish', 'Favourite'].includes(label) ? actions() : panel.el)
     .find((b) => b.textContent.trim().startsWith(label));
   const settle = () => new Promise((r) => setTimeout(r, 5));
-  return { panel, flow, calls, gone, sceneState, btn, buttons, settle };
+  return { panel, flow, calls, gone, sceneState, btn, buttons, settle, app };
 }
 
 test('panel: the Another Angle link is first, shown for Beyond only (or as the scene says), and opens the angle', async () => {
@@ -189,5 +189,32 @@ test('panel (H2/H3): Drift on is exactly the director\'s canNext; Stay longer to
     s.btn('Stay longer').click(); await s.settle();
     assert.deepEqual(stays, [true, false]);
     assert.equal(s.btn('Stay longer').getAttribute('aria-pressed'), 'false');
+  } finally { dom.restore(); }
+});
+
+test('panel (live mobile sweep, 17 Oct 2026): the plan button\'s name holds the words it shows, on every plan and as the plan changes (WCAG 2.5.3 Label in Name)', async () => {
+  // as axe's label-content-name-mismatch reads them: 4.14 by words (case, punctuation and spacing aside); 4.10–4.13 by
+  // characters, with only their own punctuation taken out — a "·" is not among it, so it has to be in the name too
+  const words = (s) => String(s).toLowerCase().replace(/[\p{P}\p{S}]+/gu, ' ').replace(/\s+/g, ' ').trim();
+  const PUNCT = /[ -⁯⸀-⹿\\'!"#$%&\xa3\xa2\xa5\xa7€()*+,\-.\/:;<=>?@\[\]^_`{|}~\xb1]/g;
+  const chars = (s) => String(s).toLowerCase().replace(PUNCT, '').replace(/\s{2,}/g, ' ').trim();
+  const check = (plan, tier) => {
+    const shown = plan.textContent, name = plan.getAttribute('aria-label') ?? shown;   // (no aria-label: the words are the name)
+    assert.ok(shown && name, tier);
+    assert.ok(words(name).includes(words(shown)), `${tier}: "${name}" holds "${shown}" (axe 4.14)`);
+    assert.ok(chars(name).includes(chars(shown)), `${tier}: "${name}" holds "${shown}" (axe 4.10–4.13)`);
+  };
+  const dom = installPanelDom();
+  try {
+    for (const tier of ['none', 'paid', 'ultra']) {
+      const p = await makePanel({ tier });
+      const plan = [...p.panel.el.all()].find((n) => n.tagName === 'BUTTON' && n._cls?.has('plan'));
+      check(plan, tier);
+      // signed in or out, upgraded or not: the button is the same one, its name follows
+      for (const next of ['none', 'paid', 'ultra', 'none']) { p.app.ent.tier = () => next; await p.panel.update(); check(plan, `${tier} → ${next}`); }
+    }
+    // the plan names themselves are still said with the plan: "Your plan: hushmallow Flow. See plans."
+    const p = await makePanel({ tier: 'paid' });
+    assert.match([...p.panel.el.all()].find((n) => n._cls?.has('plan')).getAttribute('aria-label'), /^Your plan: .+\. See plans\.$/);
   } finally { dom.restore(); }
 });

@@ -25,6 +25,7 @@ import { faceMix } from '../engine/interpret.js';
 import { openSupport } from '../app/scenes/support.js';
 import { brandName } from '../brand.js';
 import { canvasFontPx, fontsReady } from '../ui/type.js';
+import { stageRect, wantsCompact, keepBodyInside } from './stage-fit.js';
 
 const { clamp, lerp, smooth, ease, rgba, glow, Particles, Ripples, Trail } = fx;
 
@@ -86,6 +87,12 @@ export async function run(ctx) {
   howBtn.addEventListener('click', () => openHow());
   helpBtn.addEventListener('click', () => openSupport(app));
 
+  // a line (or a sound, a move of the Mallow) that comes a moment later is dropped once the ritual has ended (Finish,
+  // Leave): it would come over the next scene, and could replace that scene's own line (the landing's check-in)
+  let finished = false;
+  const alive = () => !finished && !signal.aborted;
+  const later = (ms, fn) => setTimeout(() => { if (alive()) fn(); }, ms);
+
   // --------------------------------------------------------- canvas --
   const cvs = h('canvas', { 'aria-hidden': 'true', style: { position: 'absolute', inset: '0', width: '100%', height: '100%', touchAction: 'none' } });
   world.fx.replaceChildren(cvs);
@@ -101,12 +108,18 @@ export async function run(ctx) {
     cvs.width = Math.round(view.w * dpr); cvs.height = Math.round(view.h * dpr);
     if (phaseName === 'end') { placeMallow('end'); return; }
     const scene = document.getElementById('scene').getBoundingClientRect();
-    const tb = (titleBox?.getBoundingClientRect().bottom ?? 120) + 10;
-    const dt = dock.getBoundingClientRect().top - 10;
-    stage.x = scene.left + 12; stage.w = scene.width - 24;
-    stage.y = tb; stage.h = Math.max(220, dt - tb);
-    stage.cx = stage.x + stage.w / 2; stage.cy = stage.y + stage.h / 2;
-    stage.s = clamp(Math.min(stage.w, stage.h) / 360, 0.72, 1.45);
+    // the stage is the band between the title and the dock, never under the dock (stage-fit.js); a short band
+    // (a small phone at a large text size) compacts the title first
+    // (both measured after each toggle: on a phone on its side the full title pushes the dock down the screen, and
+    // compacting it brings the dock back up; the decision is made on the full title, so it never flips back and forth)
+    const titleBottom = () => titleBox?.getBoundingClientRect().bottom ?? 120;
+    const dockTop = () => dock.getBoundingClientRect().top;
+    if (titleBox) {
+      titleBox.classList.remove('v3-compact');
+      if (wantsCompact(titleBottom(), dockTop())) titleBox.classList.add('v3-compact');
+    }
+    const bar = document.querySelector('#scene .ritual-ui > .topbar')?.getBoundingClientRect().bottom ?? 0;
+    Object.assign(stage, stageRect({ left: scene.left, width: scene.width, titleBottom: titleBottom(), dockTop: dockTop(), barBottom: bar }));
     stage.v++;
     vignette = g.createRadialGradient(stage.cx, stage.cy, Math.min(stage.w, stage.h) * 0.2, stage.cx, stage.cy, Math.max(view.w, view.h) * 0.75);
     vignette.addColorStop(0, rgba(pal.deep, 0)); vignette.addColorStop(1, rgba(pal.deep, 0.55));
@@ -117,15 +130,40 @@ export async function run(ctx) {
     const r = spot.getBoundingClientRect();
     if (mode === 'end' || !r.width) {
       const top = (titleBox?.getBoundingClientRect().bottom ?? 120) + 4, bottom = dock.getBoundingClientRect().top - 4;
-      world.fitBetween(top, Math.max(top + 80, bottom), { maxScale: 0.66 }); return;
+      world.fitBetween(top, Math.max(top + 80, bottom), { maxScale: 0.66 });
+    } else world.fitBetween(r.top - 8, r.bottom + 2, { maxScale: 0.42, x: ((r.left + r.width / 2) / innerWidth) * 100 });
+    keepMallowInside();
+  }
+  // the Mallow's body stays on screen, inside the safe-area insets, and over the dock's spot fitBetween centred it in;
+  // its layer (the canvas round it, mostly transparent) comes inside too, as long as that takes only a nudge
+  // (stage-fit.js keepBodyInside: on a phone on its side the layer is far wider than the body)
+  const insetProbe = h('div', { 'aria-hidden': 'true', style: { position: 'fixed', left: '0', top: '0', width: '0', height: '0', visibility: 'hidden', pointerEvents: 'none',
+    padding: 'env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px)' } });
+  function keepMallowInside() {
+    const layer = document.getElementById('mallow-layer');
+    if (!layer || !layer.offsetWidth) return;
+    if (!insetProbe.isConnected) document.body.append(insetProbe);
+    const ins = getComputedStyle(insetProbe), px = (v) => parseFloat(v) || 0;
+    const v = (k) => parseFloat(layer.style.getPropertyValue(k));
+    const mx = v('--mx'), my = v('--my'), ms = v('--ms');
+    if (!Number.isFinite(mx) || !Number.isFinite(my) || !(ms > 0)) return;
+    const cx = (mx / 100) * innerWidth, cy = (my / 100) * innerHeight, w = layer.offsetWidth * ms, hh = layer.offsetHeight * ms;
+    const box = { left: cx - w / 2, top: cy - hh / 2, right: cx + w / 2, bottom: cy + hh / 2 };
+    // the body where the rig frames it in the layer as placed (not mid-move, not mid-hop); no framing: the whole layer
+    const f = world.bodyFrame?.() || { left: 0, top: 0, right: 1, bottom: 1 };
+    const body = { left: box.left + f.left * w, top: box.top + f.top * hh, right: box.left + f.right * w, bottom: box.top + f.bottom * hh };
+    const fit = keepBodyInside(box, body, { left: px(ins.paddingLeft), top: px(ins.paddingTop), right: innerWidth - px(ins.paddingRight), bottom: innerHeight - px(ins.paddingBottom) });
+    if (Math.abs(fit.dx) > 0.01 || Math.abs(fit.dy) > 0.01 || fit.k < 1) {
+      // scaled about the body's centre, then moved (place() scales the layer about its own centre)
+      const bx = (body.left + body.right) / 2, by = (body.top + body.bottom) / 2;
+      world.place({ x: ((bx + fit.dx + (cx - bx) * fit.k) / innerWidth) * 100, y: ((by + fit.dy + (cy - by) * fit.k) / innerHeight) * 100, scale: ms * fit.k });
     }
-    world.fitBetween(r.top - 8, r.bottom + 2, { maxScale: 0.42, x: ((r.left + r.width / 2) / innerWidth) * 100 });
   }
   const resizeFns = new Set();
   const onResize = () => layout();
   addEventListener('resize', onResize);
   let roT = 0;
-  const ro = typeof ResizeObserver === 'function' ? new ResizeObserver(() => { cancelAnimationFrame(roT); roT = requestAnimationFrame(() => layout()); }) : null;
+  const ro = typeof ResizeObserver === 'function' ? new ResizeObserver(() => { cancelAnimationFrame(roT); roT = requestAnimationFrame(() => { if (alive()) layout(); }); }) : null;
   if (ro) { if (titleBox) ro.observe(titleBox); ro.observe(dock); }
 
   // ----------------------------------------------------- shared kit --
@@ -145,7 +183,11 @@ export async function run(ctx) {
   const haptic = (k) => app.haptic(k);
   let reactAt = 0;
   const react = (kind, force = false) => { const tt = performance.now(); if (!force && tt - reactAt < 700) return; reactAt = tt; world.react(kind); };
-  const say = (text, ms = 3400) => { if (text) { ctx.say(text, { who: lead.name, ms }); live.textContent = `${lead.name}: ${text}`; } };
+  // the Mallow's lines never cover the play area (the dial, the path, the pieces to touch): its bubble keeps out of the
+  // whole stage, borrowing the title band (whose prompt dims meanwhile) when nothing else is free; read live, so it
+  // follows a stage laid out again
+  const stageAvoid = () => (phaseName === 'end' ? [] : [{ left: stage.x, top: stage.y, right: stage.x + stage.w, bottom: stage.y + stage.h }]);
+  const say = (text, ms = 3400) => { if (text) { ctx.say(text, { who: lead.name, ms, avoid: stageAvoid }); live.textContent = `${lead.name}: ${text}`; } };
   const userMix = faceMix(ctx.input.emotions || []);
   const emote = (k) => {
     const m = {}; for (const [key, val] of Object.entries(userMix)) m[key] = val * (1 - k);
@@ -278,7 +320,7 @@ export async function run(ctx) {
       if (law.locked) { showLock(); return; }
       law.onDown?.({ x: 0, y: 0, id: -1 });
       engine.assist?.();
-      setTimeout(() => law?.onUp?.({ x: 0, y: 0, id: -1 }), 90);
+      later(90, () => law?.onUp?.({ x: 0, y: 0, id: -1 }));
     } else if (phaseName === 'law') law.assist?.();
     app.audio.ui('tap');
   });
@@ -313,8 +355,8 @@ export async function run(ctx) {
     world.realm?.setEmotion?.(Object.keys(userMix)[0] || 'neutral', ctx.input.intensity ?? 0.6);
     lastInput = 0;
     const r0 = round;
-    if (round === 1) setTimeout(() => { if (!signal.aborted && phaseName === 'play') say(copy.open[0], 3800); }, 650);
-    else if (round % 3 === 0) setTimeout(() => { if (!signal.aborted && round === r0) say(round % 5 === 0 ? 'We can keep going as long as it helps. Or rest here — that counts too.' : LOOP_LINES[(round + v.num) % LOOP_LINES.length], 3000); }, 900);
+    if (round === 1) later(650, () => { if (phaseName === 'play') say(copy.open[0], 3800); });
+    else if (round % 3 === 0) later(900, () => { if (round === r0) say(round % 5 === 0 ? 'We can keep going as long as it helps. Or rest here — that counts too.' : LOOP_LINES[(round + v.num) % LOOP_LINES.length], 3000); });
   }
   function passLaw() { return { kind: 'none', gate: (r) => r, allow: () => true, gateReady: () => true, locked: false, frame() {}, onDown() {}, onUp() {} }; }
 
@@ -381,7 +423,7 @@ export async function run(ctx) {
     ctx.setMove(1, { eyebrow: `${location} · World law`, title: LAW.name, prompt: law.howTo });
     if (promptOverride) promptOverride = null;
     lawChip.replaceChildren(h('b', {}, 'Closing move'), ' · ', LAW.rule.length < 90 ? LAW.rule : law.howTo);
-    if (copy.during[1]) setTimeout(() => { if (phaseName === 'law') say(copy.during[1], 3400); }, 900);
+    if (copy.during[1]) later(900, () => { if (phaseName === 'law') say(copy.during[1], 3400); });
     lastInput = now();
   }
 
@@ -393,13 +435,13 @@ export async function run(ctx) {
     world.realm?.transform?.(1);
     world.realm?.pulse?.('clear', { x: stage.cx, y: stage.cy });
     sound(heavy ? 'settle' : 'clear', { intensity: 0.55 });
-    if (heavy) setTimeout(() => sound('chime', { intensity: 0.35 }), 500);
+    if (heavy) later(500, () => sound('chime', { intensity: 0.35 }));
     haptic('success');
     emote(1);
     if (heavy) { world.setStage?.('comforting'); react('comfort', true); } else { world.setStage?.('celebrating'); react('celebrate', true); }
     ctx.setMove(law.kind === 'phase' ? 2 : 1, { eyebrow: location, title: ENG.name, prompt: cap(ENG.win) + '.' });
     lawChip.replaceChildren(h('b', {}, `✦ ${LAW.name}`), ' · ', cap(LAW.payoff) + '.');
-    if (round === 1) setTimeout(() => say(copy.exit[0], 4200), 500);
+    if (round === 1) later(500, () => { if (phaseName === 'finale') say(copy.exit[0], 4200); });
     roundsDone++;
   }
 
@@ -444,7 +486,7 @@ export async function run(ctx) {
     live.textContent = `Mind bend: ${bend}`;
     ctx.setMove(law.kind === 'phase' ? 3 : 2, { eyebrow: `${lead.name} · ${location}`, title: ritual.name.split(' — ')[0], prompt: 'Done. Take the moment with you.' });
     lawChip.replaceChildren();
-    requestAnimationFrame(() => placeMallow('end'));
+    requestAnimationFrame(() => { if (alive()) placeMallow('end'); });
   }
 
   function veil(a) { g.fillStyle = rgba(pal.deep, a); g.fillRect(0, 0, view.w, view.h); }
@@ -532,15 +574,16 @@ export async function run(ctx) {
   }
 
   // --------------------------------------------------------- finish --
-  let finished = false;
   function cleanup() {
-    cancelAnimationFrame(raf);
+    cancelAnimationFrame(raf); cancelAnimationFrame(roT);
     removeEventListener('resize', onResize);
     ro?.disconnect();
     try { engine?.destroy?.(); } catch (e) { console.warn(e); }
     world.fx.classList.remove('live');
     world.fx.replaceChildren();
     lawChip.remove();
+    insetProbe.remove();
+    titleBox?.classList.remove('v3-compact');
     dock.classList.remove('v3-dock', 'v3-ending');
     if (globalThis.__hm3) globalThis.__hm3.phase = 'closed';
   }

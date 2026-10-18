@@ -130,8 +130,134 @@ Taken after six independent reviews of `fb1bae2` (blind held-out safety, privacy
 | "Keep sealed predictions" | The Settings row formerly "Keep my saved angles" names what it really keeps (the fallback ritual's sealed predictions, with the words); "Delete my Another Angle data" now removes them too |
 | Copy | The dictation hint says hushmallow keeps the words on the phone and the keyboard's dictation follows the phone's settings; About names the feeling and kind of help Another Angle sends; account copy names "when you last opened the app" and that the sign-in service's own security log is not deleted from here; returning github.io testers see "Test access ended for the pilot." |
 
+## Defaults taken on the owner's behalf (2026-10-16, Australian support)
+
+Australia is the launch market, and an Australian phone used to get no region (the urgent sheet offered 112 and Find A Helpline, never 000 or Lifeline). Each is reversible.
+
+| Topic | Default |
+|---|---|
+| Who counts as Australia | Every `Australia/*` time zone (the old names too: ACT, NSW, Yancowinna, LHI…) and `Antarctica/Macquarie`; an `-AU` language only when the time zone names no place (UTC), as for the other regions. Christmas Island, the Cocos (Keeling) Islands and Norfolk Island are not counted (their lines are on Find A Helpline) |
+| The Australian lines | Emergency 000; Lifeline 13 11 14 (text 0477 13 11 14, chat at lifeline.org.au/crisis-chat); Suicide Call Back Service 1300 659 467; 13YARN 13 92 76; Beyond Blue 1300 22 4636; Kids Helpline 1800 55 1800 (ages 5 to 25); 1800RESPECT 1800 737 732. Listed for everyone; on an Australian phone they come right after the emergency card. The UK, Ireland, US and Canada sheets read as before, with the Australian cards after theirs |
+| The urgent sheet in Australia | "Call 000" then "Call 13 11 14 · Lifeline"; after "Not really" Lifeline then 000 |
+| After abuse, violence or threats in Australia | "Call 1800 737 732 · 1800RESPECT" then "Call 000 · If you’re in danger now" (elsewhere Find A Helpline stays first); the 1800RESPECT and Find A Helpline cards lead |
+| The shared support copy (app and Another Angle server) | The emergency line reads "999 (UK), 911 (US), 112 (EU), 000 (Australia)"; crisis adds Lifeline, the Suicide Call Back Service and 13YARN, someone in danger adds Lifeline, care adds 1800RESPECT. The detection rules are unchanged |
+
+## Defaults taken on the owner's behalf (2026-10-16, Privacy Policy and Terms: drafts)
+
+`legal/privacy.html` and `legal/terms.html` (published at `/legal/`) are drafts: one line in `src/ui/legal.css`, `.legal-page { --legal-draft: block; }` under its DRAFT SWITCH comment, shows "Draft — awaiting owner and legal review" (with the draft's date) on both pages. To approve, replace every `[Owner: …]` placeholder (the whole `<span class="legal-todo">`) with the final words, then delete that one line: no page or test needs another edit. `tests/legal-pages.test.mjs` follows the switch: while it is on, approving with a placeholder left is refused; once it is off, any placeholder or `[Owner …]` note left on either page fails the suite (and so the deploy), and nothing outside the notice may say "draft". The hidden notices may stay in the pages or be deleted afterwards: the suite accepts either.
+
+| Topic | Default |
+|---|---|
+| Minimum age | 18 and over (both pages), marked as an owner decision |
+| Contact address | support@hushmallow.com (to confirm) |
+| Refunds | None for the rest of a billing period or for a change of mind, except where the law requires; the Australian Consumer Law wording for services is quoted in full |
+| Price changes | At least 30 days' notice, from the first renewal after it |
+| A change that takes away a large part of a plan | Notice first, and a refund of the unused part of the billing period |
+| Liability cap | What the person was charged in the 12 months before the claim, to the extent the law allows |
+| Crisis lines on the pages | 000, Lifeline 13 11 14, Suicide Call Back Service 1300 659 467, 13YARN 13 92 76; elsewhere Find A Helpline, Samaritans 116 123, 988 (the app's own urgent sheet follows src/support.js, with the Australian lines above) |
+| Payments | Described as Stripe on the web (Stripe billing, Manage subscription to cancel), ahead of that work landing; both pages mark it for the owner to confirm once it is built |
+| Sign-up line | "By creating an account you agree to the Terms and Privacy Policy" links to these drafts, which say they are not in force yet: until approval, the line points at draft terms |
+| Hosting | The policy names Cloudflare (app.hushmallow.com, the Worker) and GitHub, Inc. (the GitHub Pages copy, which the same build publishes); the website hushmallow.com is named as a separate site, its host and any analytics left to the owner |
+
+Placeholders for the owner: legal entity name, ABN, postal address, State or Territory for governing law, the effective dates, confirming the contact address and the minimum age, the email delivery service for account emails, how long Cloudflare keeps the Worker's logs, how long Supabase keeps its sign-in security records (they outlive Delete account), whether to keep the GitHub Pages copy (or retire it and take GitHub out of the policy), the website's host and whether it uses analytics or cookies, the reply time for access and complaints (30 days by default) and whether access is free, what Stripe sends us once payments are built, the billing, renewal and Manage subscription wording once web payments are built, whether prices include GST or any other tax and its wording (the currency itself is decided: US dollars, 2026-10-17, below), the refund policy, the price-change notice period, and (with a lawyer) the APP 8 basis for each overseas provider and the agreements behind it.
+
+## 2026-10-17: Web payments in US dollars, and the Checkout Studio settings (owner)
+
+The owner decided: **"Please use USD as the base currency, not AUD."** The owner also fixed the Stripe Checkout Session's settings in Stripe's Checkout Studio, and asked for the four prices to be connected to the existing hushmallow subscription integration, including server-side entitlements and cancellation.
+
+**The prices** (created by the owner in Stripe; whether in the sandbox or live mode is not verified yet, and this environment cannot reach Stripe to check):
+
+| Plan (code id) | Monthly | Yearly |
+|---|---|---|
+| hushmallow Flow (`paid`) | US$9.99 | US$99.99 |
+| hushmallow Beyond (`ultra`) | US$19.99 | US$199.99 |
+
+Their four ids are in `[env.staging.vars]` (`server/another-angle/wrangler.toml`); production's `[vars]` stay without any billing var (`ENTITLEMENT_MODE = "testing"`): live activation is a later, separate commit the owner approves (`BILLING_LIVE`).
+
+**What changed with USD**
+
+- Checkout sells a price only in `usd` (`CHECKOUT_PRICE_RULES`, `server/another-angle/src/billing/routes.js`), and never one with another currency added (`currency_options`: Checkout would charge some customers in theirs); the app shows US$ (`BILLING_PRICES`, display only: Checkout charges what Stripe holds).
+- A lookup key is optional: when a price has one it must be its slot's (`hushmallow.<plan>.<period>`), and a price with none is sold, its configured id then deciding the plan.
+- Default taken on the owner's behalf (review, 2026-10-17): with lookup keys optional, checkout also sells a price only at the owner's amount for its slot (`CHECKOUT_PRICE_RULES.unit_amount`: 999, 9999, 1999, 19999 US cents, the same as `BILLING_PRICES`), and never an id that sits in two slots, so two ids swapped or pasted twice can never sell Beyond at Flow's price or give Flow for Beyond's, in live mode too (where the sandbox driver cannot look). Before activation the owner checks each live price's product by hand (`docs/PAYMENTS.md` section 4).
+- Tax behaviour: any while `STRIPE_AUTOMATIC_TAX` is off (the default and the Studio's value); `inclusive` or `exclusive` once it is on, never `unspecified`.
+- The terms say prices are in US dollars; whether they include GST or any other tax stays an `[Owner: …]` placeholder for the owner and their adviser (no tax or legal advice is given here).
+
+**The Checkout Studio settings**, sent on every Checkout Session exactly as given (`CHECKOUT_STUDIO`):
+
+| Parameter | Value |
+|---|---|
+| `ui_mode` | `hosted_page` (the name on the pinned API version 2026-08-26.dahlia; older versions call it `hosted`) |
+| `billing_address_collection` | `auto` |
+| `phone_number_collection[enabled]` | `false` |
+| `automatic_tax[enabled]` | `false` |
+| `allow_promotion_codes` | `false` |
+| `payment_method_collection` | `always` |
+| `submit_type` | `auto` |
+| `integration_identifier` | `hosted_web_0001` (sent because the pinned version supports it) |
+| `origin_context` | `web` |
+
+Kept although the Studio lists none of them (a deliberate deviation from "remove any parameters absent from the Field Intents"): `customer`, `client_reference_id`, `metadata` and `subscription_data[metadata]`. They tie the payment to the hushmallow account: the webhook and `POST /v1/billing/sync` find the account from them, which is what gives the entitlement and lets the portal cancel. Never `payment_method_types`.
+
+**The tax switch** (`STRIPE_AUTOMATIC_TAX`, decision D3) stays, default `"false"`. Off, the session carries exactly the Studio's values. On (only once an active registration is verified), it deliberately replaces two of them: `automatic_tax[enabled]=true` and `billing_address_collection=required`, with `customer_update[address]=auto` added.
+
+Status, what is still unset and the next steps: `hushmallow/STRIPE_INTEGRATION_TODO.md`.
+
+## 2026-10-17: owner-confirmed facts in the Privacy Policy and Terms (owner)
+
+The owner confirmed these facts; both pages (still drafts, the DRAFT SWITCH on) now say them. `tests/legal-pages.test.mjs` checks each one, and checks the subscription and Another Angle wording against the code that does it. Several of the 16 October placeholders above are answered here: the current list is at the end of this section.
+
+| Topic | Confirmed | On the pages |
+|---|---|---|
+| Brand | "hushmallow", always lowercase | unchanged |
+| ABN | 58 685 681 707 | shown plainly in both leads and the Terms' contact section. **The legal entity registered to it is not verified**: its name and address stay `[Owner: …]` placeholders that send the owner to ABN Lookup (abr.business.gov.au). The pages never give "hushmallow" as the entity |
+| Contact | support@hushmallow.com; website https://hushmallow.com; app https://app.hushmallow.com | the "confirm the address" notes are gone |
+| Market | Worldwide, not Australia only | "wherever in the world you use them"; the Australian Privacy Principles stay the policy's frame, with an owner-and-lawyer placeholder for other privacy laws (for example the GDPR) |
+| Minimum age | 18 and over, approved | the "confirm the minimum age" placeholders are gone |
+| Governing law | New South Wales, Australia, **proposed** | "New South Wales, Australia [Owner: confirm …]": the note stays visible until the owner confirms |
+| Subscriptions | USD: hushmallow Flow US$9.99/month or US$99.99/year; hushmallow Beyond US$19.99/month or US$199.99/year; automatic renewal until cancelled; cancel any time in Manage subscription (Stripe's customer portal), with access to the end of the paid period; up to 14 days of access while a renewal payment is retried, then it stops; no partial refunds except where the law requires (the Australian Consumer Law and other consumer laws that cannot be excluded) | Terms §6 "Subscriptions, renewal and cancellation" says exactly this (the 14 days is `PAST_DUE_GRACE_MS`); §7: prices can change with notice before the next renewal, the notice period an `[Owner: …]` placeholder; how a plan switch is charged (the portal's proration setting) a placeholder |
+| Tax | Stripe Tax is off at checkout until registrations are confirmed | one `[Owner: …]` placeholder in §6; no tax wording otherwise (no tax advice) |
+| Positioning | An emotional companion platform; not medical treatment, therapy or a crisis service | both pages; "treatment" and "therapy" appear only to say what hushmallow is not (the test allows them only in a negative sentence) |
+| Account emails | Brevo (smtp-relay.brevo.com, port 587, sender no-reply@hushmallow.com, sender name hushmallow) | the policy names Brevo as the processor that sends them (§2, §8, §9), with a placeholder to confirm its company name, where it handles the data and the agreement with it |
+| DNS | hushmallow.com is managed at GoDaddy; app.hushmallow.com points to hushmallow.pages.dev; the existing website, email, Stripe checkout and ThinkStill records must never be disturbed | not on the pages: the setup docs (`docs/STAGING.md`, `docs/PAYMENTS.md`, `supabase/production/RUNBOOK.md`) |
+
+Also on the pages since 17 October, from the code rather than the owner: the Terms' "Not for emergencies" section and the policy's (a companion, not therapy or medical care; 000 in Australia or the local emergency number; the Australian lines first, then Find A Helpline, Samaritans 116 123 and 988); the policy's §3 "Another Angle: AI and sensitive information" (the opt-in card, the device's own check before anything is sent, the question before each angle, the server's second check, what is sent, the account's token only with web subscriptions, what the server keeps, the approved Anthropic lines, sensitive information, a kept Belief Mallow); the policy's §4 (what the server keeps for a subscription, never card details, email or name); and "Deleting your account doesn't cancel a subscription" (D9).
+
+**Sign-up: 18+ and consent (owner, 17 Oct 2026).** The sign-up form's line "By creating an account you agree to the Terms and Privacy Policy" is now one required tick: "I’m 18 or older, and I agree to the Terms and the Privacy Policy", both linked (new tabs; a tap on a link opens the page and leaves the box alone). Create my account stays off until it is ticked; the label is tied to the box and the whole row is a 44 px target. The client refuses `signUp` without `agreed: true` (defence in depth) and records on the account, through Supabase's `options.data` (`user_metadata`): `{ age_18_confirmed_at, terms_accepted_at, terms_version, privacy_version }`, the times in ISO form. The versions are `TERMS_VERSION` and `PRIVACY_VERSION` in `src/app/legal.js`, stamped into each page as `<meta name="legal-version">` (`tests/signup-consent.test.mjs` and `tools/site/check.mjs` refuse a mismatch); today both are `2026-10-17-draft`, and a version ends in `-draft` exactly while the DRAFT SWITCH is on, so approving the pages needs new versions. `signInWithProvider` (off) needs the same tick before it redirects; no provider may be switched on until its return records the acceptance too (a test keeps `PROVIDERS` all off). Defaults taken here, each reversible:
+
+| Topic | Default |
+|---|---|
+| Assurance level | **Self-declaration** (the tick). Nothing else checks age. Stronger age verification (an ID or age-estimation service, a payment-card check) is **the owner's decision** |
+| Where the record lives | The account's `user_metadata` in Supabase (Authentication → Users → the user → Raw user meta data). A signed-in user can change their own `user_metadata`, so it records what the person declared, not a proof; a copy the user cannot edit (a column filled by the sign-up trigger) is an owner decision |
+| Accounts made before this release | No record, and not asked again. A version change does not ask existing accounts to accept again either: whether and how to ask (a prompt at sign-in, or notice under the Terms' "Changes to these terms") is the owner's decision |
+| Draft pages | Sign-ups record the draft versions (`…-draft`): the pages say they are not in force yet |
+
+**Corrections after review (17 Oct 2026).** Each one makes the pages say what the code does; `tests/legal-pages.test.mjs` checks it.
+
+- **Another Angle's account token** (web subscriptions on). It is the account's Supabase access token, whose claims carry the account's email and its `user_metadata` (the name given at sign-up and the tick's record). The consent card's account line (`ACCOUNT_CHECK`, `src/beyond/consent.js`) and the policy's §3 said "Never your name or email"; both now say what the token carries, and that the server uses only the account id from it and doesn't log or store it (`server/another-angle/src/billing/account.js`). A yes given to the older line is asked again, once, while billing is on (`ACCOUNT_NOTICE` 2); with billing off nothing changes. The billing calls (checkout, status, sync, portal: `src/app/billing.js`) carry the same token to the same check, and the policy's §4 now says so too.
+- **What Delete account leaves.** Our server's subscription record (the `Billing` Durable Object's `user:<uid>`: Stripe's ids, the plan and its status) is never deleted with the account, because the Worker is not told about deletions (`docs/PAYMENTS.md`, Known limits; the delete screen's `WEB_PLAN_NOT_TOUCHED` already said so). The policy said Delete account removes "everything kept with your account from our server"; §4, §10 and §11 now say this record stays, for an `[Owner: …]` retention period (`billing-retention`). The old, unconfirmed "tax records for five years" is gone: how long payment and tax records must be kept is an `[Owner, with your adviser: …]` placeholder (`payment-records`).
+- **Refunds, in one place.** The owner's rule is Terms §6: no partial refunds except where the law requires. §8 (a change that takes away a large part of a plan) and §14 (we end a subscription for another reason, or stop offering hushmallow) still promised a refund of the unused part of the period, from the 16 October defaults above, which the owner has not confirmed. Each is now an `[Owner decision: …]` placeholder (`refund-reduced`, `refund-ending`): as written, §6 applies, and §12's Australian Consumer Law remedies are untouched.
+- **Support lines after sending.** The Terms (§9) said that when support lines show instead of a perspective "it sends nothing". That holds only for the device's own check: the server's check and the model's own `safety_status` (`src/beyond/angle-client.js` `read()`) answer after the words were sent. §9 now says so, and the policy's §3 names the model's answer too.
+- **One currency sentence with the USD workstream.** Terms §6's Billing line is now the USD workstream's own, word for word ("Prices are in US dollars (USD). The price and billing period are shown before you pay.", with its `[Owner: …]` tax placeholder, id `tax`), and the four amounts sit under Prices, so the two branches' terms and tests agree. Whether prices include or add GST or any other tax stays the owner's, with an adviser (Stripe Tax is off at checkout until registrations are confirmed).
+
+Placeholders left for the owner: the legal entity name and postal address (check ABN Lookup), confirming New South Wales, the effective dates, other privacy laws now that the market is worldwide (with a lawyer), Brevo's company name, location and agreement, how long Cloudflare keeps the Worker's logs, how long Supabase keeps its sign-in security records, how long the server keeps a deleted account's subscription record (and how it is removed), how long payment and tax records must be kept (with an adviser), whether to keep the GitHub Pages copy, the website's host and any analytics or cookies, the reply time for access and complaints and whether access is free, taxes, how a plan switch is charged, whether to refund the unused part of a period after a change that takes away a large part of a plan or an end we choose (Terms §8 and §14), the price-change notice period, and (with a lawyer) the APP 8 basis for each overseas provider.
+
+## 2026-10-17: The staging sign-in project, in Singapore (owner)
+
+The owner created the staging Supabase project on the Free plan: Project URL `https://oghzabvkrxsejkkjdsuc.supabase.co` (ref `oghzabvkrxsejkkjdsuc`), in **Singapore** (`ap-southeast-1`), not Sydney as `docs/STAGING.md` A1 asked, with a project name Supabase generated. The owner asked whether it can be used for staging without recreating it.
+
+Default taken on the owner's behalf: **accepted for staging, as it is; production stays in Sydney.**
+
+- Staging holds test data only: the rehearsal's test accounts (the owner's team, `docs/STAGING.md` A3) and Stripe test-mode subscriptions. The public's accounts and data are only ever in production's hushmallow1 (ref `igbxbfuaoybfzsroxuln`), which stays in **Sydney** (`ap-southeast-2`). Real people's data is not meant for it; nothing in the code stops a stranger who finds a preview from signing up (and the preview's draft Privacy Policy says Sydney), so new sign-ups are switched off there once the rehearsal's sign-up tests are done (`docs/STAGING.md`).
+- Nothing depends on the staging project's region or dashboard name: the build, the browser and the staging Worker accept it by its URL only. The code's label `hushmallow-staging` (`STAGING_PROJECT_NAME`) is display-only; the project may be renamed in the dashboard at any time.
+- The two stages never cross: a branch preview accepts only the staging project, every other host only hushmallow1, and the staging Worker only staging accounts (both test suites). A branch build with no sign-in variables publishes the committed staging project; a production build never does.
+- Sign-in calls from Australia to Singapore take a little longer; acceptable for a rehearsal, which measures behaviour, not speed.
+- It is a new project (17 Oct 2026), not the old Singapore project retired before hushmallow1, which stays unused.
+
+Its public values (the URL and the publishable key, public by design) are committed in `src/auth/config.js`, `server/another-angle/src/config.js` and `[env.staging.vars]`. The owner's remaining steps for it (its SQL, its sign-in settings, the Pages Preview variables) are `docs/STAGING.md` A2, A3 and A5.
+
 ## Still open for the owner
 
+- **Australian support lines**: sign-off of the numbers and their wording by someone with wellbeing or clinical experience (STATUS §4.2), and whether 1800RESPECT should lead after abuse in Australia.
 - **Tester invite codes** (`TESTER_INVITE_CODES` on the production Worker): the only server-side gate on who reaches the real model.
 - Separate Anthropic API keys for production and for staging/CI, each with its own Console spend limit.
 - Whether a refusal from the provider should count as care (today Zuzu's own angle plays).
@@ -141,3 +267,6 @@ Taken after six independent reviews of `fb1bae2` (blind held-out safety, privacy
 - Development Partner Program: confirm not enrolled.
 - Art: is the browless cyan drawing Loomi; do Blubi, Noomi and Loomi read as distinct.
 - Does the ocean keep the feel of Drift and Dock's "Slow the wave".
+- Web payments: whether the four US-dollar price ids are the sandbox's or live mode's; live mode's own four prices; whether prices include tax (`hushmallow/STRIPE_INTEGRATION_TODO.md`).
+- Privacy Policy and Terms of Use: fill the placeholders above, have them reviewed by a lawyer, then delete the DRAFT SWITCH line in `src/ui/legal.css` (one line, both pages).
+- Age assurance at sign-up: self-declaration (the 18+ tick) today; whether to add stronger age verification, keep a copy of the acceptance the user cannot edit, and ask existing accounts again when the Terms or the policy change (bump `TERMS_VERSION` / `PRIVACY_VERSION` in `src/app/legal.js` with the pages' stamps, including on approval).

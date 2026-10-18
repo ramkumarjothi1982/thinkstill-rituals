@@ -7,24 +7,45 @@
 # bypassing every cache, and moves itself to the newer version), and the
 # old root src/app/main.js becomes a tiny forwarder for pages cached before
 # this layout existed. Only the app ships: no dev tools, workbook or Python.
-# The finished site is then checked (tools/site/check.mjs): every file the
-# page, its modules, its styles and its art tables name must be in it.
+# Every tracked file of the repository is scanned for secrets first
+# (tools/secret-scan.mjs), published or not; in an export with no .git, every
+# file under the repository root. The finished site is then checked
+# (tools/site/check.mjs): every file the page, its modules, its styles and its
+# art tables name must be in it, and no file may hold a secret key. Before that,
+# index.html gets a modulepreload for every module its first screen statically
+# needs (tools/site/boot-preload.mjs), so a phone asks for them all at once.
 #
 # Sign-in (optional): the build variables SUPABASE_URL and
 # SUPABASE_PUBLISHABLE_KEY (Cloudflare Pages, Production and Preview) are the
 # only values published to the browser, in v/<version>/src/auth/public-config.js,
-# after tools/site/auth-config.mjs has checked them (only the hushmallow1
-# project, only a publishable key; a secret, another project or a malformed
-# value fails the build). Neither set: { enabled: false } and the app runs as
-# without accounts. HM_AUTH_MODE=dev|ci also allows a localhost server (the
+# after tools/site/auth-config.mjs has checked them (only the build's own
+# project: hushmallow1, or on a branch preview the staging project; only a
+# publishable key; a secret, another project or a malformed value fails the
+# build). Neither set: { enabled: false } and the app runs as without
+# accounts; a branch preview publishes the staging project committed in
+# src/auth/config.js instead (docs/STAGING.md). HM_AUTH_MODE=dev|ci also allows a localhost server (the
 # fake in tools/auth/ or a local Supabase stack); such a build only signs in
 # on localhost. /auth/callback/ is written with absolute /v/<version>/ paths
 # (it lives two folders down), and _headers keeps /auth/* uncached, unframed
 # and referrer-free.
+#
+# The Privacy Policy and the Terms of Use (legal/*.html) are published at
+# /legal/, addresses that never change between versions (the app, the plans
+# page and the sign-up form link there: src/app/legal.js). Their styles, fonts
+# and logo come from this version's folder through relative ../v/<version>/
+# paths, so the GitHub Pages copy (served one folder down) works too; _headers
+# gives /legal/* a strict Content-Security-Policy (no script at all).
 set -euo pipefail
-here="$(cd "$(dirname "$0")/.." && pwd)"
+# the real path (-P): a linked checkout runs every node step by the path node sees
+here="$(cd "$(dirname "$0")/.." && pwd -P)"
 out="$1"; ver="$2"
 [[ "$ver" =~ ^[0-9a-zA-Z_-]+$ ]] || { echo "bad version: $ver" >&2; exit 1; }
+# Cloudflare Pages builds every push of every branch whatever it changes (the workflows filter by path),
+# so a key in a doc, the server or the repository root fails here before anything is built. A checkout
+# (.git at the repository root) has its tracked files scanned, and if git cannot list them (dubious
+# ownership, a gitdir that is gone, no git) the build stops (exit 2); only a copy with no .git at all
+# (an export, a tarball) has every file under the root read directly instead. Never skipped.
+node "$here/tools/secret-scan.mjs" --source "$here/.."
 # the two public sign-in values, or { enabled: false }: checked first, so a refused value never leaves a half-built site
 authtmp="$(mktemp -d)"; trap 'rm -rf "$authtmp"' EXIT
 node "$here/tools/site/auth-config.mjs" "$authtmp/public-config.js" "$ver" "$authtmp/_headers"
@@ -55,7 +76,26 @@ sed -e "s#\"\.\./\.\./src/#\"/v/$ver/src/#g; s#\"\.\./\.\./assets/#\"/v/$ver/ass
   "$here/auth/callback/index.html" > "$out/auth/callback/index.html"
 grep -q "/v/$ver/src/auth/callback.js" "$out/auth/callback/index.html" || { echo "auth/callback/index.html was not rewritten" >&2; exit 1; }
 if grep -nE '(href|src)="\.\.?/' "$out/auth/callback/index.html"; then echo "relative path left in auth/callback/index.html" >&2; exit 1; fi
+# /legal/: the Privacy Policy and the Terms of Use (relative ../v/<version>/ paths: they live one folder down)
+mkdir -p "$out/legal"
+for f in "$here"/legal/*.html; do
+  n=$(basename "$f")
+  sed -e "s#\"\.\./src/#\"../v/$ver/src/#g; s#\"\.\./assets/#\"../v/$ver/assets/#g" "$f" > "$out/legal/$n"
+  grep -q "\"../v/$ver/src/ui/legal.css\"" "$out/legal/$n" || { echo "legal/$n was not rewritten" >&2; exit 1; }
+  if grep -nE '(href|src)="\.\./(src|assets)/' "$out/legal/$n"; then echo "unversioned path left in legal/$n" >&2; exit 1; fi
+done
+# 404.html: Pages answers every path that is not a file with it (404), not with index.html, whose relative paths
+# under a nested path (/plans/yearly) resolved to that fallback again and again. Absolute /v/<version>/ paths: it
+# is served at any depth. A page cached from an old deploy still gets a failing module (404) and moves on (hmStale).
+sed -e "s#\"src/#\"/v/$ver/src/#g; s#\"assets/#\"/v/$ver/assets/#g" "$here/404.html" > "$out/404.html"
+grep -q "\"/v/$ver/src/ui/legal.css\"" "$out/404.html" || { echo "404.html was not rewritten" >&2; exit 1; }
+if grep -nE '(href|src)="(\.\.?/|src/|assets/)' "$out/404.html"; then echo "relative path left in 404.html" >&2; exit 1; fi
+# /favicon.ico: what a browser asks for on a page that names no icon (version.json, an old bookmark), now that a
+# missing file is a 404 rather than the app page; the 48 px PNG, which every browser reads at that address
+cp "$here/assets/brand/favicon-48.png" "$out/favicon.ico"
 grep -q "v/$ver/src/app/main.js" "$out/index.html" || { echo "index.html was not rewritten" >&2; exit 1; }
 if grep -nE '(href|src)="(src|assets)/' "$out/index.html"; then echo "unversioned path left in index.html" >&2; exit 1; fi
+# every module the first screen statically needs, preloaded from index.html: fetched at once, not one import level at a time
+node "$here/tools/site/boot-preload.mjs" "$out" "$ver"
 node "$here/tools/site/check.mjs" "$out" "$ver"
 echo "site: $out (version $ver)"

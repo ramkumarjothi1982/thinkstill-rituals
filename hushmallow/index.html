@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" style="background:#0a0818">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
@@ -15,10 +15,47 @@
 <link rel="apple-touch-icon" href="assets/brand/apple-touch-icon.png" sizes="180x180">
 <link rel="preload" href="assets/fonts/nunito-sans-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="assets/fonts/manrope-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<script>
+  // The first Mallow's art, asked for now, beside the code: otherwise the Hushfold asks for it only once all of
+  // its code has arrived. Only when the pick is certain: the Mallow of the hour, as the Hushfold picks it when
+  // none was chosen (src/app/scenes/hushfold.js mallowForNow), so never when this device keeps a chosen Mallow
+  // (in any namespace), when the address holds more than a scene (a sign-in link, a return from Stripe, a lab),
+  // or in the two minutes before the hour's Mallow changes. The files are those the registry loads for it
+  // (src/mallows/registry.js loadMallowAssets), beside the fonts above. Before the stylesheets: a script after
+  // them waits for them. tests/first-mallow.test.mjs holds this copy to the scene and the registry.
+  (function () {
+    var ART = {
+      noomi: ['mallows-hires/noomi', 'rig-hires/noomi-body', 'rig-hires/iris-navy'],
+      boppo: ['mallows-hires/boppo', 'rig-hires/boppo-body', 'rig-hires/boppo-iris-L', 'rig-hires/boppo-iris-R'],
+      pipzi: ['mallows/pipzi', 'rig/pipzi-body', 'rig/pipzi-iris-L', 'rig/pipzi-iris-R'],
+      loomi: ['mallows/loomi', 'rig/loomi-body', 'rig/iris-navy']
+    };
+    function forHour(d) { var hr = d.getHours(); return hr >= 21 || hr < 6 ? 'noomi' : hr < 11 ? 'boppo' : hr < 17 ? 'pipzi' : 'loomi'; }
+    try {
+      var now = new Date(), id = forHour(now), ls = null;
+      if (location.search || location.hash.indexOf('=') >= 0 || forHour(new Date(now.getTime() + 120000)) !== id) return;
+      try { ls = localStorage; } catch (e) { /* blocked: nothing kept here, nothing chosen */ }
+      for (var i = 0; ls && i < ls.length; i++) {
+        var k = ls.key(i), p = null;
+        if (!/^hm2:(u:[^:]*:)?prefs$/.test(k)) continue;
+        try { p = JSON.parse(ls.getItem(k)); } catch (e) { /* unreadable: the app finds no choice in it either */ }
+        if (p && p.mallow != null) return;
+      }
+      var at = document.querySelector('link[rel="preload"][as="font"]').href;
+      for (var j = 0; j < ART[id].length; j++) {
+        var l = document.createElement('link');
+        l.rel = 'preload'; l.as = 'image'; l.setAttribute('fetchpriority', 'high');
+        l.href = new URL('../' + ART[id][j] + '.webp', at).href;
+        document.head.appendChild(l);
+      }
+    } catch (e) { /* the Hushfold asks for its art itself */ }
+  })();
+</script>
 <link rel="stylesheet" href="src/ui/tokens.css">
 <link rel="stylesheet" href="src/ui/type.css">
 <link rel="stylesheet" href="src/ui/app.css">
 <link rel="stylesheet" href="src/ui/hushfold.css">
+<!-- published: this line becomes a modulepreload for every module the first screen statically needs (tools/site/boot-preload.mjs) -->
 <link rel="modulepreload" href="src/mallows/touch/mallow-touch.js">
 <script>
   // A page kept in the browser cache can outlive its deploy: the folder its

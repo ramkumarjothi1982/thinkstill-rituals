@@ -3,10 +3,10 @@
 //   * an exact file is served;
 //   * /dir/ serves /dir/index.html; /dir (when /dir/index.html exists) is a
 //     308 to /dir/ with the query kept; /page serves /page.html; /page.html
-//     is a 308 to /page;
+//     is a 308 to /page; /page/ and /dir/index are 308s to /page and /dir/;
 //   * anything else: with no top-level 404.html the site is treated as a
 //     single-page app and /index.html is served with 200 (what Pages does);
-//     with a 404.html, that page with 404;
+//     with a 404.html, that page with 404 and Cache-Control: no-store;
 //   * _headers rules (path patterns with * splats) are added to matching responses.
 // It mirrors the documented behaviour closely enough for these checks; it is
 // not Cloudflare. Usage: node hushmallow/tools/auth/pages-serve.mjs <dir> [port]
@@ -48,11 +48,18 @@ export function createPagesServer(dir) {
     const p = join(root, path);
     if (path.endsWith('/index.html')) return redirect(path.slice(0, -'index.html'.length));
     if (path.endsWith('.html') && isFile(p)) return redirect(path.slice(0, -5));
+    if (path.endsWith('/index') && isFile(`${p}.html`)) return redirect(path.slice(0, -'index'.length));
+    if (path.length > 1 && path.endsWith('/') && isFile(`${p.slice(0, -1)}.html`)) return redirect(path.slice(0, -1));
     if (path.endsWith('/') && isFile(join(p, 'index.html'))) return send(join(p, 'index.html'));
     if (!path.endsWith('/') && isFile(p)) return send(p);
     if (!path.endsWith('/') && isFile(join(p, 'index.html'))) return redirect(`${path}/`);
     if (!path.endsWith('/') && isFile(`${p}.html`)) return send(`${p}.html`);
-    if (isFile(join(root, '404.html'))) return send(join(root, '404.html'), 404);
+    // Pages sends a 404 with Cache-Control: no-store, whatever the rules say
+    if (isFile(join(root, '404.html'))) {
+      for (const k of Object.keys(extra)) if (k.toLowerCase() === 'cache-control') delete extra[k];
+      extra['Cache-Control'] = 'no-store';
+      return send(join(root, '404.html'), 404);
+    }
     return send(join(root, 'index.html'));   // no 404.html: single-page app fallback
   });
 }

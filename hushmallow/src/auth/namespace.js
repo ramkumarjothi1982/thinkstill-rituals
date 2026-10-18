@@ -8,10 +8,19 @@
 //
 // Device-level keys (DEVICE_KEYS) belong to the phone, not to a person:
 //   entitlement      the plan on this device (App Store / test purchase); the
-//                    store account, not our account, owns a purchase
+//                    store account, not our account, owns a purchase. A web
+//                    plan (source 'billing') is the exception: it is the
+//                    account's, kept with its owner and honoured only in that
+//                    account's namespace (src/app/entitlements.js)
 //   beyond.device    Another Angle's random device code (the server's daily
 //                    allowance is per device) and the server session bound to
-//                    it (beyond.session), and a tester invite code (beyond.invite)
+//                    it (beyond.session: kept with the namespace it was minted
+//                    in and used only there, since with web subscriptions on its
+//                    subject is the account; src/beyond/angle-client.js), and a
+//                    tester invite code (beyond.invite)
+// An account's web plan and its sessions go with it (removeAccountDeviceKeys):
+// on any sign-out, a deletion and "Remove this device's data"; so does a change
+// of plan this tab is confirming for it (sessionStorage: removeAccountTabKeys).
 //   sound, haptics   the two raw switches the audio / haptics engines keep
 // Everything else is account-level: prefs, favourites, Hushflow progress,
 // rotation bags, the Memory Garden, journey and played history, Another
@@ -374,13 +383,53 @@ export function accountNamespaces(ls) {
   return [...ids];
 }
 
-/** Removes one account's namespace from this device. Returns the number of keys removed. */
+/**
+ * Removes one account's namespace from this device, and what it keeps under device-level keys (removeAccountDeviceKeys).
+ * Returns the number of keys removed from the namespace.
+ */
 export function removeAccountData(ls, uid) {
   if (!isUid(uid)) return 0;
   const p = accountPrefix(uid);
   const doomed = keysOf(ls).filter((k) => k.startsWith(p));
   for (const k of doomed) { try { ls.removeItem(k); } catch { /* ignore */ } }
+  removeAccountDeviceKeys(ls, uid);
   return doomed.length;
+}
+
+const readJson = (ls, k) => { try { const v = JSON.parse(getRaw(ls, k) || 'null'); return v && typeof v === 'object' ? v : null; } catch { return null; } };
+/**
+ * What an account keeps under device-level keys: its web plan (hm2:entitlement with source 'billing'; an App Store or
+ * test plan is the phone's and stays) and an Another Angle session minted in its namespace (hm2:beyond.session; a
+ * guest's own stays, byte for byte). A web plan kept without an owner, from before owners were kept, goes too: only an
+ * account ever has one, and the next check brings back what is really there. (A session kept without an owner is left
+ * as it is: it may be the guest's, and no namespace ever uses one, src/beyond/angle-client.js.) Returns the number of
+ * keys removed.
+ */
+export function removeAccountDeviceKeys(ls, uid) {
+  if (!ls || !isUid(uid)) return 0;
+  const u = uid.toLowerCase();
+  let n = 0;
+  const drop = (key, test) => { const v = readJson(ls, PREFIX + key); if (v && test(v)) { try { ls.removeItem(PREFIX + key); n++; } catch { /* ignore */ } } };
+  drop('entitlement', (v) => v.source === 'billing' && (v.owner == null || v.owner === u));
+  drop('beyond.session', (v) => v.owner === u);
+  return n;
+}
+
+/**
+ * What an account keeps in one tab only (sessionStorage, without the namespace's prefix): a change of plan on its way
+ * back from Stripe and the trip to Stripe that started it (src/app/plan-change.js CHANGE_KEY, TRIP_KEY). They go with
+ * the account, as its device-level keys do (removeAccountDeviceKeys): on any sign-out, a deletion and "Remove this
+ * device's data" (src/auth/client.js). plan-change.js also keeps the account's id with them and drops them for any
+ * other account signed in on the tab.
+ */
+export const ACCOUNT_TAB_KEYS = Object.freeze(['planChange', 'planTrip']);
+/** Removes ACCOUNT_TAB_KEYS from this tab's sessionStorage. Returns the number removed. */
+export function removeAccountTabKeys(ss) {
+  let n = 0;
+  for (const k of ACCOUNT_TAB_KEYS) {
+    try { if (ss?.getItem(PREFIX + k) != null) { ss.removeItem(PREFIX + k); n++; } } catch { /* it lapses by its time */ }
+  }
+  return n;
 }
 
 /** Removes what supabase-js keeps for a project (session, user copy, PKCE verifiers). */

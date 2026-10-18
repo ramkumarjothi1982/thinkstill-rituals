@@ -5,6 +5,7 @@
 import SYSTEM_PROMPT from '../prompts/angle-v5.md';
 import { createApp } from './app.js';
 import { Ledger } from './limits/ledger.js';
+import { Billing } from './billing/store.js';
 
 const app = createApp({ systemPrompt: SYSTEM_PROMPT });
 
@@ -15,4 +16,4 @@ export default {
   },
 };
 
-export { Ledger };
+export { Ledger, Billing };

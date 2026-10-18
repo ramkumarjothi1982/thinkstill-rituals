@@ -11,6 +11,7 @@ import { readFileSync, writeFileSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL, fileURLToPath } from 'node:url';
+import { cpuPerCall, within, readings } from './helpers/cost.mjs'; // (before any hushmallow module: its calibration runs first)
 import { normalise, riskScreen, CARE_AT, CHECK_AT } from '../src/beyond/risk-screen.js';
 import { checkText } from '../src/engine/safety.js';
 import { readSafety, loadGrief } from '../src/hushfold/input-overlay.js';
@@ -214,21 +215,26 @@ test('the prefilters and windows change no reading (a copy of the screener witho
 });
 
 // ------------------------------------------------------------------------------------------------- cost --
-test('cheap: p95 under 10 ms for 600 characters read with the visit\'s history (the best of three per message, as the app reads it)', () => {
+test('cheap: p95 under 10 ms for 600 characters read with the visit\'s history, as the app reads it (each message\'s CPU time over six reads)', () => {
   const pool = [...EVERYDAY, ...GRIEF, ...LOOKALIKES, ...FRESH.map(([t]) => t)];
   const mk = (i) => { let t = ''; let k = i; while (t.length < 600) t += pool[k++ % pool.length] + '. '; return t.slice(0, 600); };
   for (let i = 0; i < 30; i++) riskScreen(mk(i * 11 + 500), { history: [mk(i * 11 + 501)] });
-  const warm = [];
-  for (let i = 0; i < 60; i++) {
-    const h = [mk(i * 5 + 1), mk(i * 5 + 2), mk(i * 5 + 3)];
-    riskScreen(mk(i * 5), { history: h }); // (the earlier Tells are read once, as each was when it was told)
-    let best = Infinity;
-    for (let r = 0; r < 3; r++) { const t = `${mk(i * 5)} ok${r}`; const a = performance.now(); riskScreen(t, { history: h }); best = Math.min(best, performance.now() - a); }
-    warm.push(best);
-  }
-  warm.sort((a, b) => a - b);
-  const p95 = warm[Math.floor(0.95 * warm.length)];
-  console.log(`  600 characters with 3 earlier Tells: median ${warm[30].toFixed(2)} ms, p95 ${p95.toFixed(2)} ms`);
-  assert.ok(p95 < 10, `p95 ${p95.toFixed(2)} ms`);
+  // each message's cost is this thread's CPU time over six reads of it (tests/helpers/cost.mjs): the other test files'
+  // turns on a busy runner's cores never count (they took the best of three wall-clock reads past 10 ms), a slow rule costs
+  // CPU on every read. The p95 is read again at most twice if it misses: a slow screener misses all three
+  const pass = () => {
+    const warm = [];
+    for (let i = 0; i < 60; i++) {
+      const h = [mk(i * 5 + 1), mk(i * 5 + 2), mk(i * 5 + 3)];
+      riskScreen(mk(i * 5), { history: h }); // (the earlier Tells are read once, as each was when it was told)
+      const ts = Array.from({ length: 6 }, (_, r) => `${mk(i * 5)} ok${r}`);
+      warm.push(cpuPerCall((r) => riskScreen(ts[r], { history: h }), ts.length));
+    }
+    warm.sort((a, b) => a - b);
+    console.log(`  600 characters with 3 earlier Tells: median ${warm[30].toFixed(2)} ms, p95 ${warm[Math.floor(0.95 * warm.length)].toFixed(2)} ms (CPU)`);
+    return warm[Math.floor(0.95 * warm.length)];
+  };
+  const r = within(10, pass);
+  assert.ok(r.ok, `p95 ${readings(r.seen, 2)} ms of CPU; ${r.note}`);
   assert.equal(CARE_AT, 6); assert.equal(CHECK_AT, 3);
 });

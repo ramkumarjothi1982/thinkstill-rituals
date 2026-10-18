@@ -324,7 +324,7 @@ test('the live registry runs on the verified high-res rigs; pipzi and loomi keep
   for (const id of ['pipzi', 'loomi']) {
     const m = MALLOWS[id];
     assert.ok(!m.hires && !m.art && !m.res, `${id} stays on its drawing`);
-    assert.match(m.file, new RegExp(`/assets/mallows/${id}\\.png$`));
+    assert.match(m.file, new RegExp(`/assets/mallows/${id}\\.webp$`));
     assert.deepEqual(m.size, OLD[id].size);
     assert.deepEqual(JSON.parse(JSON.stringify(m.face)), OLD[id].face);
   }
@@ -336,7 +336,7 @@ test('the live registry runs on the verified high-res rigs; pipzi and loomi keep
     assert.deepEqual(R.HIRES_ON, []);
     for (const id of MALLOW_IDS) {
       assert.ok(!R.MALLOWS[id].hires, `${id} not switched`);
-      assert.match(R.MALLOWS[id].file, new RegExp(`/assets/mallows/${id}\\.png$`));
+      assert.match(R.MALLOWS[id].file, new RegExp(`/assets/mallows/${id}\\.webp$`));
       assert.deepEqual(R.MALLOWS[id].size, OLD[id].size);
     }
   } finally { delete globalThis.location; }

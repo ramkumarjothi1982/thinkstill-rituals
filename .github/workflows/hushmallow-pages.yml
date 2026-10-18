@@ -63,13 +63,16 @@ concurrency:
 jobs:
   test:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    # the client suite takes 8-9 minutes on a runner (about 1,300 tests); 10 left no room for a busy one
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: node --test hushmallow/tests/*.test.mjs
+      # TAP to the log, and one annotation per failing test (tests/helpers/gh-annotations.mjs): a failure can then be
+      # read from the check run even where the log can't
+      - run: node --test --test-reporter=tap --test-reporter-destination=stdout --test-reporter=./hushmallow/tests/helpers/gh-annotations.mjs --test-reporter-destination=stdout hushmallow/tests/*.test.mjs
       # the same assembly and check the deploy runs, so a missing file fails here first
       - name: Assemble and check the site
         run: bash hushmallow/tools/build-site.sh "$RUNNER_TEMP/site" "${GITHUB_SHA::12}"
@@ -94,8 +97,10 @@ jobs:
       # the app only, in a folder named after this commit so every deploy
       # reaches people straight away instead of after their browser cache
       # expires (see hushmallow/tools/build-site.sh, which also checks it)
+      # without 404.html: this copy is served one folder down, where its absolute
+      # paths and home link would point outside the app (GitHub's own 404 instead)
       - name: Assemble site
-        run: bash hushmallow/tools/build-site.sh _site "${GITHUB_SHA::12}"
+        run: bash hushmallow/tools/build-site.sh _site "${GITHUB_SHA::12}" && rm _site/404.html
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

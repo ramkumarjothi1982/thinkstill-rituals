@@ -8,6 +8,12 @@
 # Runs only when asked: append a line to
 # hushmallow/server/another-angle/deploy/STAGING on a claude/** branch.
 # Production still deploys only from main (another-angle.yml).
+# Staging is separate from production (hushmallow/docs/STAGING.md): the
+# staging Worker gets the STAGING repository secrets ANTHROPIC_API_KEY_STAGING
+# (its own Anthropic key, with its own low monthly limit) and
+# TESTER_INVITE_CODES_STAGING, never production's. Without
+# ANTHROPIC_API_KEY_STAGING no model key is set or overwritten: the Worker
+# keeps the one it has, and the run's summary says so.
 name: Another Angle staging
 
 on:
@@ -61,10 +67,22 @@ jobs:
 
       - name: Prepare Worker secrets
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          TESTER_INVITE_CODES: ${{ secrets.TESTER_INVITE_CODES }}
+          # the staging Worker's own secrets (never production's); scripts/ci-secrets.mjs reads these two names
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY_STAGING }}
+          TESTER_INVITE_CODES: ${{ secrets.TESTER_INVITE_CODES_STAGING }}
         run: |
           umask 077
+          # an empty value is never written to the secrets file (ci-secrets.mjs), so the Worker keeps what it has
+          if [ -z "$ANTHROPIC_API_KEY" ]; then
+            msg="No ANTHROPIC_API_KEY_STAGING repository secret: this deploy does not set or overwrite the model key. The staging Worker keeps whatever ANTHROPIC_API_KEY it already has (until now, a copy of production's key). The owner must replace it in the Cloudflare dashboard with the staging key (Workers & Pages → hushmallow-another-angle-staging → Settings → Variables and Secrets), and add it as the ANTHROPIC_API_KEY_STAGING repository secret (hushmallow/docs/STAGING.md)."
+            echo "::warning title=No ANTHROPIC_API_KEY_STAGING::$msg"
+            { echo "### Model key: not changed"; echo; echo "$msg"; } >> "$GITHUB_STEP_SUMMARY"
+          fi
+          if [ -z "$TESTER_INVITE_CODES" ]; then
+            msg="No TESTER_INVITE_CODES_STAGING repository secret: this deploy does not set or overwrite the tester codes. The staging Worker keeps whatever TESTER_INVITE_CODES it already has, and the end-to-end check below has no code to start a session with. Add TESTER_INVITE_CODES_STAGING (staging-only codes, never production's) as a repository secret (hushmallow/docs/STAGING.md)."
+            echo "::warning title=No TESTER_INVITE_CODES_STAGING::$msg"
+            { echo "### Tester codes: not changed"; echo; echo "$msg"; } >> "$GITHUB_STEP_SUMMARY"
+          fi
           if npx wrangler secret list --env staging > "$RUNNER_TEMP/existing-secrets.json" 2> "$RUNNER_TEMP/secret-list.err"; then
             node scripts/ci-secrets.mjs "$RUNNER_TEMP/existing-secrets.json" "$RUNNER_TEMP/angle-secrets.json" --list-ok
           else
@@ -82,7 +100,7 @@ jobs:
 
       - name: End-to-end check
         env:
-          TESTER_INVITE_CODES: ${{ secrets.TESTER_INVITE_CODES }}
+          TESTER_INVITE_CODES: ${{ secrets.TESTER_INVITE_CODES_STAGING }}
         run: |
           url="$(grep -oE 'https://[a-zA-Z0-9.-]+\.workers\.dev' "$RUNNER_TEMP/deploy.log" | head -n 1 || true)"
           if [ -z "$url" ]; then echo "::error::No workers.dev URL in the deploy output."; exit 1; fi

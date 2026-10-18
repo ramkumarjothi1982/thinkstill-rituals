@@ -10,7 +10,11 @@
 //     user()              { id, email, emailConfirmed, createdAt, name } | null
 //     onChange(fn)        fn({ status, user, event }) → unsubscribe
 //     init()              boot: check the persisted session with the server
-//     signUp({ email, password, name })      → { ok, needsConfirmation, email } | { ok, signedIn, uid, needsGuestChoice }
+//     signUp({ email, password, name, agreed })  → { ok, needsConfirmation, email } | { ok, signedIn, uid, needsGuestChoice }
+//                         agreed: the sign-up form's required tick (18 or older, the Terms and the Privacy Policy;
+//                         src/app/legal.js CONSENT_LINE). Only `true` counts: anything else is refused before
+//                         anything loads or is sent. The acceptance is recorded on the account through signUp's
+//                         options.data (user_metadata): consentRecord(), with the name if one was given
 //     signIn({ email, password })            → { ok, signedIn, uid, email, needsGuestChoice } | { ok:false, error }
 //     chooseGuestData('keep'|'fresh')        the once-only question after a first sign-in on this device
 //     enter(hash)                            reload into the signed-in account's namespace
@@ -22,11 +26,13 @@
 //                         and updatePassword({ current, password, nonce }) finishes it
 //     reauthenticate()    emails a new code (60 s cooldown)
 //     deleteAccount()   server rows + the auth user (delete_my_account RPC), this device's copy, reload as guest
+//     accessToken()     the account's current access token (web subscriptions only: src/app/billing.js), or null
 //     removeDeviceData()  this account's things on this device only
 //     addQuiescer({ pause, resume })  the opt-in sync, paused (and waited for) before a sign-out,
 //                         a deletion or "Remove this device's data"; the account's store is sealed then
 //     profile.get/update/touch, consents.get/set, sync.* (opt-in gated)
-//     signInWithProvider('google')           a hook: off until the provider is configured (no button yet)
+//     signInWithProvider('google', { agreed })  a hook: off until the provider is configured (no button yet); like
+//                         signUp it needs the tick (agreed: true) before it redirects, since it can make an account
 //   Every failure is { ok: false, error: friendlyError(…) } (src/auth/errors.js).
 //
 // Sessions: persistSession + autoRefreshToken (supabase-js refreshes before
@@ -47,8 +53,9 @@
 // are never used.
 
 import { friendlyError, errorCode, checkEmail, checkPassword } from './errors.js';
-import { isUid, readPersistedSession, removeAccountData, removeSupabaseKeys, settleNamespace, applyGuestChoice, needsGuestChoice, readMarker, guestHasData, sealAccount, unsealAccount, isSealed, MARKER_KEY, writeWipe, wipedSince, honourWipe, settleWipe, wipeKey, WIPE_RELOAD } from './namespace.js';
+import { isUid, readPersistedSession, removeAccountData, removeAccountDeviceKeys, removeAccountTabKeys, removeSupabaseKeys, settleNamespace, applyGuestChoice, needsGuestChoice, readMarker, guestHasData, sealAccount, unsealAccount, isSealed, MARKER_KEY, writeWipe, wipedSince, honourWipe, settleWipe, wipeKey, WIPE_RELOAD } from './namespace.js';
 import * as S from './sync.js';
+import { consentRecord } from '../app/legal.js';
 import { FLOW_KEYS } from '../engine/flow-store.js';
 import { GARDEN_KEY } from '../engine/garden.js';
 
@@ -64,7 +71,11 @@ export const TOUCH_EVERY_MS = 6 * 60 * 60 * 1000;
 export const VERIFIED_MS = 10 * 60 * 1000;
 /** The most a sign-out or deletion waits for a sync already running. */
 export const QUIESCE_MS = 5000;
-/** Providers ready for a sign-in button. Google: set true once it is configured in Supabase (Auth → Providers). */
+/**
+ * Providers ready for a sign-in button. Google: set true once it is configured in Supabase (Auth → Providers), and
+ * once its return records the tick's acceptance on the account (options.data cannot carry it through a redirect:
+ * updateUser({ data: consentRecord() }) after the callback). tests/signup-consent.test.mjs keeps every one off until then.
+ */
 export const PROVIDERS = Object.freeze({ google: false });
 const NOTICE_KEY = 'hm2:auth.notice';
 const COOLDOWN_KEY = 'hm2:auth.cooldown';
@@ -171,6 +182,7 @@ export function createAuth({
   passive = false,
   storage,   // Node tests: the Storage supabase-js keeps its session in (the browser: localStorage)
   readiness = null,   // () → Promise<boolean>: the project is ready for sign-in (src/auth/readiness.js); null: not asked
+  providers = PROVIDERS,   // tests only: a provider switched on, to check its hook
 } = {}) {
   const enabled = !!config?.enabled;
   const mode = ns?.mode || 'off';
@@ -510,6 +522,18 @@ export function createAuth({
     ensureClient,
     verify,
     reconcile,
+    /**
+     * The signed-in account's access token, for our own billing server (src/app/billing.js) and Another
+     * Angle's session when web subscriptions are on: supabase-js refreshes one about to expire first. null for
+     * a guest, a page that is signing out, deleting or reloading, another account's session, or a token that
+     * could not be refreshed (offline). Never logged, never stored anywhere else.
+     */
+    async accessToken() {
+      if (!enabled || mode !== 'account' || settled || sealedHere()) return null;
+      try { const c = await ensureClient(); await c.auth.getSession(); } catch { /* offline: what is stored */ }
+      const own = ownSession();
+      return own?.at && own.exp * 1000 > now() + 30000 ? own.at : null;
+    },
     /** Whether the once-only "keep this device's guest things?" question is waiting. */
     get pendingGuestChoice() { const uid = pendingUid || bootUid; return !!uid && needsGuestChoice(ls, uid); },
     /** What happened before the last reload ('signed-in' | 'signed-out' | 'deleted' | 'expired' | 'verified' | 'password-updated'), once. */
@@ -527,19 +551,23 @@ export function createAuth({
       return status;
     },
 
-    async signUp({ email, password, name = '' } = {}) {
+    async signUp({ email, password, name = '', agreed = false } = {}) {
+      // the required tick first (defence in depth: the form keeps its button off until it is ticked)
+      if (agreed !== true) return fail(friendlyError({ code: 'agree_needed' }, 'signup'));
       const e = normEmail(email);
       const n = cleanName(name);
       const bad = checkEmail(e) || checkPassword(password) || (n.length > 40 ? friendlyError({ code: 'name_long' }) : null);
       if (bad) return fail(bad);
+      // what the account keeps of the tick: when, and which versions of the Terms and the Privacy Policy
+      const data = { ...(n ? { display_name: n } : {}), ...consentRecord(now()) };
       return flow('signup', async (c) => {
-        const { data, error } = await c.auth.signUp({ email: e, password, options: { emailRedirectTo: callbackUrl(loc), data: n ? { display_name: n } : {} } });
+        const { data: d, error } = await c.auth.signUp({ email: e, password, options: { emailRedirectTo: callbackUrl(loc), data } });
         if (error) {
           const f = friendlyError(error, 'signup');
           if (f.code === 'neutral_sent') { startCooldown(); return { ok: true, needsConfirmation: true, email: e }; }
           return fail(f);
         }
-        if (data?.session?.user) return afterSignIn(data.session);   // email confirmation switched off (local stacks only)
+        if (d?.session?.user) return afterSignIn(d.session);   // email confirmation switched off (local stacks only)
         startCooldown();
         return { ok: true, needsConfirmation: true, email: e };
       });
@@ -557,9 +585,10 @@ export function createAuth({
       });
     },
 
-    /** Google (and others) later: a clean hook, no button yet. */
-    async signInWithProvider(provider) {
-      if (!PROVIDERS[provider]) return fail(friendlyError({ code: 'provider_disabled' }, 'signin'));
+    /** Google (and others) later: a clean hook, no button yet. It can make an account, so it needs the same tick first. */
+    async signInWithProvider(provider, { agreed = false } = {}) {
+      if (!providers[provider]) return fail(friendlyError({ code: 'provider_disabled' }, 'signin'));
+      if (agreed !== true) return fail(friendlyError({ code: 'agree_needed' }, 'signin'));
       return flow('signin', async (c) => {
         const { error } = await c.auth.signInWithOAuth({ provider, options: { redirectTo: callbackUrl(loc) } });
         return error ? fail(friendlyError(error, 'signin')) : { ok: true, redirecting: true, keepIntent: true };
@@ -594,6 +623,11 @@ export function createAuth({
       if (!uid || ownSession(uid)) { try { const c = await ensureClient(); await c.auth.signOut({ scope: 'local' }); } catch { /* offline: the tokens still go below */ } }
       if (uid) clearOwnKeys(uid); else removeSupabaseKeys(ls, config.storageKey);
       if (removeLocal && uid) removeAccountData(ls, uid);   // once more, right before the reload
+      // a plain sign-out keeps the account's copy for its next sign-in, but never its web plan or its Another Angle
+      // session under the device-level keys: the next person here starts as a guest (the next check brings them back)
+      else if (uid) removeAccountDeviceKeys(ls, uid);
+      // and a change of plan this tab was confirming for it (src/app/plan-change.js): never the next person's to hear
+      removeAccountTabKeys(ss);
       consents = null; user = null; status = 'guest'; verified = null;
       notice('signed-out');
       emit('signed-out');
@@ -737,6 +771,7 @@ export function createAuth({
         // (never another account's that another tab put here meanwhile)
         if (ownSession(uid)) { try { await c.auth.signOut({ scope: 'local' }); } catch { /* the user no longer exists */ } }
         clearOwnKeys(uid);
+        removeAccountTabKeys(ss);
         consents = null; user = null; status = 'guest'; verified = null;
         notice('deleted');
         emit('deleted');
@@ -755,6 +790,7 @@ export function createAuth({
       writeWipe(ls, bootUid, 'device-data', now());   // first: every other page of this account on this device stops writing too
       await quiesce(bootUid);
       const n = removeAccountData(ls, bootUid);
+      removeAccountTabKeys(ss);
       safe(() => ls.setItem(`hm2:u:${bootUid}:${MARKER_KEY}`, JSON.stringify({ v: 1, createdAt: now(), guestChoice: 'cleared', choiceAt: now() })));
       notice('device-cleared');
       onReload({ reason: 'device-cleared', urgent: true, hash: '#account' });

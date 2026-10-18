@@ -1,25 +1,37 @@
 // SETTINGS — reading, the Hushfold, feel, privacy, plan, about. Everything
-// lives on this device. Builds with optional sign-in (src/auth/) add one
+// lives on this device. With web subscriptions on (src/app/billing.js) and the
+// account signed in, Plan also has "Manage subscription": Stripe's customer
+// portal, where cancelling is as easy as subscribing was ("Change plan, update
+// your card or cancel." under it says so), and a line on when the plan renews
+// or ends. The plans page's upgrades never open that page (they open Stripe's
+// confirmation of the one change): this is the way to it, always here. Builds with optional sign-in (src/auth/) add one
 // account row at the top of Privacy; "Delete everything on this phone" then
 // says whose things it deletes (this account's, or the guest's when accounts
 // also live on this phone). About's first sentence (what is written in advance)
 // and its privacy lines come from src/app/privacy.js, shared with the Plans
-// page, so they follow Another Angle going live together.
+// page, so they follow Another Angle going live together. Privacy ends with the
+// Privacy Policy and About with "Terms · Privacy Policy" (src/app/legal.js).
 import { h, iconBtn, openSheet, toast } from '../ui.js';
 import { PLANS } from '../entitlements.js';
+import { outsideNote, FRAMED_MANAGE } from '../billing.js';
 import { openSupport } from './support.js';
-import { BUILD } from '../config.js';
+import { BUILD, deploySettings } from '../config.js';
 import { RUNNING } from '../update.js';
 import { type, withBrand, keepHyphenated } from '../../ui/type.js';
 import { aboutIntro, aboutPrivacy } from '../privacy.js';
 import { accountNamespaces } from '../../auth/namespace.js';
 import { forgetVisitSafety } from '../visit-safety.js';
+import { legalLink, legalLinks } from '../legal.js';
 
 const TEXT_SIZES = [[1, 'Standard'], [1.12, 'Larger'], [1.25, 'Largest']];
 const SPEEDS = [[0.75, '0.75×'], [1, '1×'], [1.25, '1.25×'], [1.5, '1.5×']];
 
+/** Under Settings → Manage subscription: what that page is for, cancelling included (never hidden or softened). */
+export const MANAGE_HINT = 'Change plan, update your card or cancel.';
+
 export default function settings(app) {
   const { prefs, ent, world, rec } = app;
+  const stageLabel = deploySettings().stage === 'staging' ? ' · staging' : '';
   const note = (text) => h('small', { style: type('caption', { display: 'block', color: 'var(--text-3)', marginTop: '2px' }) }, text);
   const rowLabel = (label, sub) => h('div', { class: 'grow', style: type('row') }, label, sub ? note(sub) : null);
   const sw = (key, label, sub, after) => {
@@ -47,6 +59,12 @@ export default function settings(app) {
   vol.addEventListener('change', () => prefs.set('volume', Number(vol.value)));
 
   const tierName = ent.tier() === 'none' ? 'No plan yet' : PLANS[ent.tier()].name + (ent.source() === 'test' ? ' (test)' : '');
+  /** Under Manage subscription: the way out of a frame, a line that stays (role=status: said once, reachable after it). */
+  const manageSaid = h('p', { 'data-manage-said': '', role: 'status', 'aria-live': 'polite', style: type('caption', { color: 'var(--text-2)', textAlign: 'center', margin: '0 0 4px', textWrap: 'balance' }) });
+  // web subscriptions: when the plan renews or ends, and a card that needs a look (the billing server's last answer)
+  const webPlan = ent.isWeb ? ent.webPlan?.() : null;
+  const planNote = webPlan ? webPlanNote(webPlan, ent.tier()) : null;
+  const manageable = !!webPlan && ent.webSignedIn() && (webPlan.manageable || ent.tier() !== 'none');
   const section = (title) => h('h2', { class: 'eyebrow', style: { marginTop: '22px', marginBottom: '2px' } }, title);
   const sample = h('p', { style: type('subtitle', { margin: '12px 0 2px', color: 'var(--text-1)', textAlign: 'center', textWrap: 'balance' }) }, 'Something bothering you? Want to tell me?');
   // Another Angle (W8): share-my-words switch, the notice, Tester code and "Delete my Another Angle data", only
@@ -102,28 +120,53 @@ export default function settings(app) {
       sw('saveWords', 'Keep sealed predictions', 'From the simpler Another Angle that opens if the new one can’t load. Kept on this phone with your words, never uploaded.'),
       angleRows,
       h('button', { class: 'btn block', style: { marginTop: '12px', textWrap: 'balance' }, 'data-act': 'delete-local', onclick: () => confirmClear() }, deleteLabel),
+      // the whole story in plain words (legal/privacy.html, a new tab)
+      legalLink('privacy', { cls: 'btn ghost block', style: { textDecoration: 'none', marginTop: '4px' } }),
 
       section('Plan'),
-      h('div', { class: 'setting' }, rowLabel(tierName), h('button', { class: 'btn', style: { minHeight: '44px' }, onclick: () => app.go('plans') }, 'View plans')),
+      h('div', { class: 'setting' }, rowLabel(tierName, planNote), h('button', { class: 'btn', style: { minHeight: '44px' }, onclick: () => app.go('plans') }, 'View plans')),
       ent.source() === 'test' ? h('button', { class: 'btn ghost block', onclick: () => { ent.cancelTest(); toast('Test plan removed'); app.go('home'); } }, 'Remove test plan') : null,
+      manageable ? h('button', { class: 'btn ghost block', 'data-act': 'manage-subscription', 'aria-describedby': 'manage-hint', onclick: (e) => manageSubscription(e.currentTarget) }, 'Manage subscription') : null,
+      manageable ? h('p', { id: 'manage-hint', 'data-manage-hint': '', style: type('caption', { color: 'var(--text-3)', textAlign: 'center', margin: '0 0 4px', textWrap: 'balance' }) }, MANAGE_HINT) : null,
+      // what came of it, kept on screen (never a toast that leaves before a keyboard or a screen reader reaches its link)
+      manageable ? manageSaid : null,
 
       section('About'),
       // what is written in advance and what leaves this phone: the same source as the Plans page (src/app/privacy.js),
       // so the first sentence and the privacy lines switch together when Another Angle goes live
       aboutPara,
       h('button', { class: 'btn ghost block', onclick: () => openSupport(app) }, 'Support lines'),
-      // the version, exactly as BUILD says it (the server sees the same string), never broken at a hyphen ("sign-" / "in")
-      h('p', { 'data-version': '', style: type('caption', { color: 'var(--text-3)', textAlign: 'center', margin: '8px 0 0', textWrap: 'balance' }) }, ...keepHyphenated(`Version ${BUILD}${RUNNING ? ` · ${RUNNING}` : ''}`)),
+      legalLinks(),
+      // the version, exactly as BUILD says it (the server sees the same string), never broken at a hyphen ("sign-" / "in");
+      // "· staging" on a branch preview (src/app/config.js deploySettings), so a tester can tell it from production
+      h('p', { 'data-version': '', style: type('caption', { color: 'var(--text-3)', textAlign: 'center', margin: '8px 0 0', textWrap: 'balance' }) }, ...keepHyphenated(`Version ${BUILD}${stageLabel}${RUNNING ? ` · ${RUNNING}` : ''}`)),
       // developer tools: not part of the published site
       ['localhost', '127.0.0.1'].includes(location.hostname)
         ? h('div', { style: { display: 'grid', gap: '4px', marginTop: '6px' } },
           h('a', { class: 'btn ghost block', href: './studio.html', style: { textDecoration: 'none' } }, 'Mallow Emotion Studio'),
           h('button', { class: 'btn ghost block', onclick: () => app.go('classic') }, 'Classic home (QA)')) : null));
 
+  /** Stripe's customer portal: cancel, change plan, update the card, see receipts (the page leaves on success). */
+  async function manageSubscription(btn) {
+    if (btn.disabled) return;
+    btn.disabled = true;
+    let r = null;
+    try { r = await ent.manage(); } catch { r = null; }
+    // leaving for the portal; Back from there can restore this page as it was, so the button wakes again
+    if (r?.redirecting) { setTimeout(() => { btn.disabled = false; }, 4000); return; }
+    btn.disabled = false;
+    // inside the Framer site: the portal opens only in a full window; the way there stays under the button (as on the
+    // plans page), with where Manage subscription is once there
+    if (r?.framed) { manageSaid.replaceChildren(outsideNote(h, { after: FRAMED_MANAGE })); return; }
+    manageSaid.replaceChildren();
+    if (r?.needsAccount) { app.go('account', { view: 'signin' }); return; }
+    toast(r?.none ? 'There’s no subscription on this account yet.' : 'That didn’t open just now. Try again in a moment.', 3200);
+  }
+
   function confirmClear() {
-    const body = signedIn ? 'This removes this account’s favourites, history, sealed predictions, Memory Garden, saved worlds and settings from this phone. What you chose to keep with your account stays with it, and other people’s things on this phone aren’t touched. Your subscription isn’t affected.'
-      : otherAccounts ? 'This removes the guest’s favourites, history, sealed predictions, Memory Garden, saved worlds and settings from this phone. Accounts on this phone keep their own things. Your subscription isn’t affected.'
-        : 'This removes your favourites, history, sealed predictions, Memory Garden, saved worlds and settings from this phone. Your subscription isn’t affected.';
+    const body = signedIn ? 'This removes this account’s favourites, history, sealed predictions, kept Belief Mallows, Memory Garden, saved worlds and settings from this phone. What you chose to keep with your account stays with it, and other people’s things on this phone aren’t touched. Your subscription isn’t affected.'
+      : otherAccounts ? 'This removes the guest’s favourites, history, sealed predictions, kept Belief Mallows, Memory Garden, saved worlds and settings from this phone. Accounts on this phone keep their own things. Your subscription isn’t affected.'
+        : 'This removes your favourites, history, sealed predictions, kept Belief Mallows, Memory Garden, saved worlds and settings from this phone. Your subscription isn’t affected.';
     const s = openSheet({ title: signedIn ? 'Delete this account’s things?' : otherAccounts ? 'Delete the guest’s things?' : 'Delete everything?', body: h('p', { style: type('body', { margin: 0, color: 'var(--text-2)' }) }, body),
       foot: h('div', { class: 'row-btns' }, h('button', { class: 'btn', onclick: () => s.close() }, 'Cancel'),
         h('button', { class: 'btn primary', onclick: () => { const keep = app.store.get('entitlement', null); app.store.clearAll(); if (keep) app.store.set('entitlement', keep); prefs.reset(); rec.clearAll(); forgetVisit(); s.close(); toast('Deleted'); app.go('home'); } }, 'Delete')) });
@@ -139,4 +182,21 @@ export default function settings(app) {
 
   // the card fills the screen, so the Mallow rests out of sight (not half-hidden behind its corner)
   return { el, title: 'Settings', enter() { world.dim(true); world.showMallow(false); world.setStage('resting'); }, leave() { world.showMallow(true); } };
+}
+
+/**
+ * "Renews on 12 November 2026", "Ends on 12 November 2026. Nothing more is charged." or a card that needs a look.
+ * The end is the server's ends_at (endsAt); an answer from before it had one: the period end, when cancelled.
+ */
+export function webPlanNote({ status, periodEnd, endsAt = null, cancelAtPeriodEnd } = {}, tier = 'none') {
+  if (tier === 'none') return null;
+  if (status === 'past_due') return 'Your last payment didn’t go through. You can update your card in Manage subscription.';
+  const day = (t) => (Number.isFinite(t) ? new Date(t).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : null);
+  const end = Number.isFinite(endsAt) ? endsAt : cancelAtPeriodEnd ? periodEnd : null;
+  if (day(end)) {
+    // an end set after this period (the Dashboard can; the portal cancels at the period end, D7): it still renews until then
+    const renewsFirst = !cancelAtPeriodEnd && Number.isFinite(periodEnd) && end > periodEnd + 86400000;
+    return renewsFirst ? `Renews on ${day(periodEnd)}. Ends on ${day(end)}.` : `Ends on ${day(end)}. Nothing more is charged.`;
+  }
+  return day(periodEnd) ? `Renews on ${day(periodEnd)}` : null;
 }

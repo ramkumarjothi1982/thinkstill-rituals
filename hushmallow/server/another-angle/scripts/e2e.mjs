@@ -1,9 +1,17 @@
 // End-to-end check against a deployed Another Angle Worker:
-//   node scripts/e2e.mjs https://<worker>.workers.dev [--origin https://…] [--invite CODE]
-// health → session → one angle (a synthetic test sentence, never anyone's
-// real words) → "show me another angle" → feedback → a crisis sentence that
-// must come back as support. Costs two model calls (about $0.03).
+//   node scripts/e2e.mjs https://<worker>.workers.dev [--origin https://…] [--invite CODE] [--stage staging|production]
+// health → the key-free billing checks (scripts/billing-checks.mjs: the
+// webhook refuses what Stripe did not sign, checkout refuses no token and a
+// foreign origin, and /v1/health's billing flags are what wrangler.toml gives
+// this stage; no Stripe key or account is needed) → session → one angle (a
+// synthetic test sentence, never anyone's real words) → "show me another
+// angle" → feedback → a crisis sentence that must come back as support.
+// Costs two model calls (about $0.03). The stage is the staging Worker's when
+// its address says so (…-staging.…), else production.
 // Exits non-zero on any failure. Prints only status, timings and the scene.
+
+import { keyFreeChecks, stageOf } from './billing-checks.mjs';
+import { SUPABASE_PROJECT_URL } from '../src/config.js';
 
 const args = process.argv.slice(2);
 const base = (args.find((a) => /^https?:\/\//.test(a)) || '').replace(/\/+$/, '');
@@ -15,9 +23,10 @@ const opt = (name, dflt) => {
 const origin = opt('origin', 'https://ramkumarjothi1982.github.io');
 const invite = opt('invite', process.env.E2E_INVITE || '');
 if (!base) {
-  console.error('usage: node scripts/e2e.mjs <worker url> [--origin …] [--invite …]');
+  console.error('usage: node scripts/e2e.mjs <worker url> [--origin …] [--invite …] [--stage staging|production]');
   process.exit(2);
 }
+const stage = opt('stage', stageOf(base)) === 'staging' ? 'staging' : 'production';
 
 let failed = 0;
 /** @param {boolean} ok @param {string} what @param {string} [extra] */
@@ -29,15 +38,16 @@ const check = (ok, what, extra = '') => {
 
 /**
  * @param {string} path
- * @param {{ method?: string, body?: unknown, token?: string }} [opts]
+ * @param {{ method?: string, body?: unknown, raw?: string, token?: string, origin?: string, headers?: Record<string, string> }} [opts]
  */
-async function call(path, { method = 'POST', body, token } = {}) {
+async function call(path, { method = 'POST', body, raw, token, origin: from = origin, headers: extra = {} } = {}) {
   const t0 = Date.now();
   /** @type {Record<string, string>} */
-  const headers = { origin };
+  const headers = { origin: from };
   if (body) headers['content-type'] = 'application/json';
   if (token) headers.authorization = `Bearer ${token}`;
-  const res = await fetch(base + path, { method, headers, body: body ? JSON.stringify(body) : undefined });
+  Object.assign(headers, extra);
+  const res = await fetch(base + path, { method, headers, body: raw ?? (body ? JSON.stringify(body) : undefined) });
   let json = null;
   try { json = await res.json(); } catch { /* not JSON */ }
   return { status: res.status, json, ms: Date.now() - t0, headers: res.headers };
@@ -58,6 +68,9 @@ check(health.status === 200 && health.json?.ok === true, 'health', JSON.stringif
 check(health.json?.configured?.provider_key === true, 'model key is set on the Worker');
 check(health.headers.get('access-control-allow-origin') === origin, 'CORS allows the site origin');
 
+// web subscriptions, without a key: off answers while billing is off; on staging, hushmallow1's tokens are refused too
+console.log(`      billing checks for the ${stage} Worker`);
+await keyFreeChecks({ call, check, info: (what) => console.log(`INFO  ${what}`), health: health.json, stage, foreignProject: stage === 'staging' ? SUPABASE_PROJECT_URL : '' });
 
 const deviceId = `e2e-${Buffer.from(crypto.getRandomValues(new Uint8Array(12))).toString('base64url')}`;
 const session = await call('/v1/session', { body: { device_id: deviceId, platform: 'web', app_version: 'e2e', ...(invite ? { invite } : {}) } });

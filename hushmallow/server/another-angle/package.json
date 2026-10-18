@@ -22,6 +22,7 @@
     "build:check": "wrangler deploy --dry-run --outdir dist",
     "dev": "wrangler dev --env dev",
     "harness": "node --import ./test/register.mjs tools/local-harness.mjs",
+    "e2e:billing": "node scripts/billing-e2e.mjs",
     "sync:lexicon": "node scripts/sync-lexicon.mjs",
     "sync:screen": "node scripts/sync-screen.mjs",
     "eval": "node ../../tools/angle-eval.mjs",

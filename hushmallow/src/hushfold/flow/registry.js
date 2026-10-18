@@ -208,7 +208,7 @@ const LUMINOUS_OCEAN = {
     after: 'Swells damp, the dawn path brightens beside Loomi, the next world is prefetched.',
   },
   transition: {
-    next: null,
+    next: 'moonmilk-cove',
     melt: 'In from the storm: the mask spreads from the storm’s horizon (0.655 H); after the midpoint the ocean’s horizon rises to 0.44 H over 3 s. Out: from the ocean horizon.',
     handoff: 'In: the storm’s ground lines become the first gentle swells, postcards turn into bubbles in place and settle on the water, the Thought Mallow glides down and lands; '
       + 'the ambience crossfades. Reduced motion: a straight crossfade with everything already in place. Out: floating things keep their places.',
@@ -222,20 +222,340 @@ const LUMINOUS_OCEAN = {
   },
   playtest: { results: [], note: 'Built 12 Oct; browser-checked with CDP touch (Chromium/SwiftShader). Not yet playtested with real users or on a phone.' },
   status: STATUS.PLAYABLE,
-  // the one world a gentle session plays (no words, no charge: open water at its own pace)
+  // calm: a gentle session may play it (no words, no charge: open water at its own pace)
   calm: true,
-  // (owner P1) nothing follows it yet: it ends with 'Stay as long as you like' and Finish, never a
-  // melt back into the storm. Drop this once a third world exists.
-  final: true,
   fits: {
     emotions: { anxious: 1, overwhelmed: 1, sad: 0.8, lonely: 0.8, restless: 0.7, frustrated: 0.7, angry: 0.6, other: 0.6 },
     intentions: { 'let-go': 1, calm: 0.9, distract: 0.8, steady: 0.7, play: 0.6 },
   },
-  next: [],
+  next: ['moonmilk-cove'],
   load: () => import('./worlds/luminous-ocean.js'),
 };
 
-export const WORLDS = Object.freeze([STATIC_STORM, LUMINOUS_OCEAN]);
+// ---------------------------------------------------------------- worlds 5–7 --
+// Built lab-only in their workstreams (docs/workstreams/world-*.md), switched on by the owner (16 Oct). Their entries
+// live here, not in the world files, so the registry never imports world code (each world file re-exports its own).
+
+const MOONMILK_COVE = {
+  id: 'moonmilk-cove',
+  title: 'Noomi’s Moonmilk Cove',
+  version: 1,
+  realm: 'moonmilk-cove',
+  horizon: 0.5,              // the realm's (REALM_HORIZON['moonmilk-cove'], moonmilk-cove-rules.js COVE.HORIZON)
+  palette: { sky: '#2a2668', deep: '#15123d' },
+  purpose: 'Let a short rest be enough: rest a finger, or simply do nothing, and the moon fills — the things left to do are still there, and resting was allowed.',
+  technique: {
+    name: 'Permission to rest (acceptance and self-kindness)',
+    related: ['A realistic one-minute rest with no task attached', 'Mental holiday (contemplative inspiration)', 'Empty space and stillness'],
+  },
+  evidence: {
+    classification: 'Moderate – treatment-derived skill',
+    skill: 'Permission to Rest',
+    basis: 'Rest can be a valid response even if tasks remain; a realistic one-minute rest permission with no productivity task.',
+    sources: ['skills.js S.rest'],
+    framing: 'Rest is never scored against doing: moving is allowed and only pauses the rest; the shells (things left to do) never vanish, they wait.',
+  },
+  scene: 'A sleepy crescent cove under a huge milky moon: lavender water, a shimmering moon path, a pearly shore with little pinging shells, a slow lighthouse. '
+    + 'Rest fills the moon from a crescent to full; the tide stills to a mirror, more stars come out and a moonmilk aurora unfurls.',
+  touch: [
+    { gesture: 'Resting a finger still, anywhere', effect: 'A pool of moonmilk blooms under it in slow breath rings; the cove hushes and the moon fills.' },
+    { gesture: 'Leaving the cove alone (after the first touch)', effect: 'Counts as rest too: doing nothing fills the moon.' },
+    { gesture: 'Moving fingers', effect: 'Draw moonmilk ribbons that marble and dissolve; the tide gets a little busier; rest pauses, never resets.' },
+    { gesture: 'Tapping a shell', effect: 'It hops and chimes: still there, waiting.' },
+    { gesture: 'Tapping a lantern', effect: 'The photo glows warmer and bobs.' },
+    { gesture: 'Resting a finger on the Thought Mallow', effect: 'Rests with it: its cradle rocks slower and its tension eases.' },
+  ],
+  mallow: { id: 'noomi', behaviour: 'Sleepy and soft; watches the finger, else the thought; grows calmer and sleepier as the moon fills; sighs at the full moon.' },
+  input: {
+    words: 'The person’s exact words stay on the Thought Mallow resting in a crescent moon-cradle on the water, always readable.',
+    photos: { becomes: 'little arched lanterns floating on the far water', change: 'they glow warmer when tapped and as the rest deepens', shape: 'arch', standIn: 'the seven Mallow cards',
+      gentle: 'the stand-in cards become plain lantern light in each card’s colour' },
+  },
+  progression: [
+    'The cove starts a little restless with the chosen feeling; the shells ping now and then.',
+    'Resting a finger (or leaving the cove alone after the first touch) fills the moon; moving only pauses it.',
+    'Discovery: an unbroken rest of 15 s with the things left to do still there.',
+    'Natural completion: a full moon (60 s of rest in all); the tide stills to a mirror. It stays playable.',
+  ],
+  dialogue: {
+    intro: ['Mm. The cove’s sleepy tonight.', 'Those little shells keep pinging. Things left to do.'],
+    hint: ['Rest a finger anywhere.', 'They’ll wait.'],
+    busy: ['Busy hands are allowed too.', 'Rest is here whenever you want it.'],
+    thoughtRest: ['Your thought can rest too.', 'Still yours.'],
+    half: ['Half a moon.', 'A little at a time counts too.'],
+    gentle: {
+      intro: ['Somewhere quiet.', 'Rest here as long as you like.'],
+      hint: ['You can rest a finger anywhere.'],
+      busy: null, half: null,
+      thoughtRest: ['It can rest here too.'],
+    },
+    complete: 'A full moon of rest. What comes next is yours. Stay, or drift on?',
+    completeStay: 'A full moon of rest. Stay as long as you like.',
+    feeling: {
+      more: ['A busier tide tonight.', 'Rest is still here.'],
+      less: ['The tide’s settling.', 'The cove heard you.'],
+      other: ['Noted. The cove’s listening.'],
+    },
+  },
+  discoveries: {
+    rest: { skillId: 'permission-to-rest', lines: ['You rested.', 'The shells are still there.', 'And that was allowed.'] },
+    waited: { skillId: null, offer: false, lines: ['Still there.', 'It waited for you.'] },
+  },
+  sound: {
+    ambience: 'moonmilk-cove',
+    holds: { hum: 'a low hum while resting, warmer as the rest deepens' },
+    fx: ['a soft shimmer when a rest settles', 'a faint drip as a shell pings (never while resting)', 'a glass chime when a shell is tapped', 'a bubble note for a lantern', 'a chime at a discovery', 'bloom at the full moon'],
+  },
+  haptics: ['soft when a rest settles under the finger', 'light when a shell or a lantern is tapped', 'success at a discovery'],
+  completion: {
+    rule: 'Rest ≥ 60 s in all (a finger resting still, or no touch for ≥ 3 s after the first touch), then 1.2 s with no finger moving.',
+    after: 'The moon stays full, the tide a mirror; resting still blooms moonmilk. Stay as long as you like, or Finish / Drift on.',
+  },
+  transition: {
+    next: 'raindrop-lagoon',
+    melt: 'In: the mask spreads from the outgoing world’s horizon; the cove’s horizon is 0.5 H. Out: from the cove’s horizon.',
+    handoff: 'In: the Thought Mallow glides from where it was into its cradle; photos glide into lanterns. Reduced motion: fades in place. Out: the thought and the lanterns keep their places.',
+  },
+  memory: { skillId: 'permission-to-rest' },
+  accessibility: {
+    tapAlt: 'No gesture is needed at all: after one touch, leaving the cove alone fills the moon.',
+    reducedMotion: 'No rocking or bobbing, ribbons fade without marbling, breath rings become a steady glow, glides become fades, the hint holds still.',
+    lowStimulation: 'Fewer motes and softer ribbons; the realm’s low-stimulation contrast.',
+    precision: 'Rest works anywhere on the screen; shells and lanterns have 44 px targets.',
+  },
+  playtest: { results: [], note: 'Built 15 Oct; browser-checked with CDP touch (Chromium) in the dev lab. Not yet playtested with real users or on a phone.' },
+  status: STATUS.PLAYABLE,
+  // a rest world: calm, quiet, no charge — fit for a gentle session
+  calm: true,
+  fits: {
+    emotions: { overwhelmed: 1, sad: 0.9, anxious: 0.85, lonely: 0.8, restless: 0.7, frustrated: 0.6, angry: 0.5, other: 0.55 },
+    intentions: { calm: 1, steady: 0.9, 'let-go': 0.8, distract: 0.6, play: 0.5 },
+  },
+  next: ['raindrop-lagoon'],
+  load: () => import('./worlds/moonmilk-cove.js'),
+};
+
+const RAINDROP_LAGOON = {
+  id: 'raindrop-lagoon',
+  title: 'Blubi’s Raindrop Lagoon',
+  version: 1,
+  realm: 'raindrop-lagoon',
+  horizon: 0.6,
+  palette: { sky: '#0e3f8f', deep: '#06205a' },
+  purpose: 'Notice what is here and give it a word: “This is…”. A named feeling can be a little easier to hold.',
+  technique: {
+    name: 'Affect labelling (putting feelings into words)',
+    related: ['Mindful noting', 'Emotional granularity', 'Emotional expression (in words, not venting)'],
+  },
+  evidence: {
+    classification: 'Promising – component evidence',
+    skill: 'A Word for the Feeling',
+    related: [{ skill: 'Two Feelings at Once', classification: 'Promising – component evidence' }],
+    basis: 'Early research on putting feelings into words supports parts of this. hushmallow itself hasn’t been studied.',
+    sources: ['skills.js name-it'],
+    framing: 'Naming is offered, never required: “unsure” counts, two words are allowed, any word can be given back, and nothing is scored.',
+  },
+  scene: 'Blubi’s blue-hour lagoon in pink haze: soft rain, cushion lily pads, a mirror lagoon with ripple rings. Frosted feeling drops hang round the Thought Mallow; '
+    + 'each word given eases the rain, and sitting with it turns the hanging drops to rising light.',
+  touch: [
+    { gesture: 'Holding a drop still', effect: 'It swells and clears in the hand and its word surfaces; moving fogs it again until the word is clear.' },
+    { gesture: 'Carrying a clear drop to the thought', effect: 'It falls in with a plink and the thought’s tag reads “This is…” and the word.' },
+    { gesture: 'A second word', effect: 'Sits beside the first; a third takes the oldest one’s place and that one floats back up.' },
+    { gesture: 'Tapping a word on the tag', effect: 'Gives it back: the drop floats up to hang again.' },
+    { gesture: 'Tapping a drop', effect: 'It clears by itself; tap the thought (or the word) to give it, anywhere else to let it float back.' },
+    { gesture: 'Touching the water', effect: 'Soft rings and a drip; a drag leaves a trail of rings. Play only, never progress.' },
+  ],
+  mallow: {
+    id: 'blubi',
+    behaviour: 'Tender and a little tearful in the rain; leans in and watches the drop in the hand, nods at each word given, '
+      + 'is comforted as the rain turns to light. In a gentle session, attentive and soft (never a grin).',
+  },
+  input: {
+    words: 'The person’s exact words stay on the Thought Mallow above it, readable all the time; the named feelings go on its own tag, never into their words.',
+    photos: { becomes: 'glass raindrops holding each photo, hanging among the feeling drops', change: 'a tap makes one glow and ring the water', shape: 'drop', standIn: 'the seven Mallow cards',
+      gentle: 'the stand-in cards become plain soft lights in each card’s colour' },
+  },
+  progression: [
+    'Soft rain from the chosen feeling; frosted drops hang round the thought.',
+    'Holding a drop still clears it: its word surfaces.',
+    'Giving a word eases the thought and the rain; a second word sits side by side.',
+    'Discovery: you gave it a word.',
+    'Natural completion: a word kept, and a quiet moment with it; the rain turns to light. It stays playable.',
+  ],
+  dialogue: {
+    intro: ['Oh… it’s raining a little.', 'Hold a drop still. Look inside.'],
+    arrive: ['Soft rain here.', 'Hold a drop still. Look inside.'],
+    fog: ['Hold it still a moment.', 'Let the word come clear.'],
+    carry: ['Now bring it to your thought.'],
+    unsure: ['“Unsure” counts too.'],
+    back: ['That’s fine. Try another.'],
+    // a gentle session (after a death, a loss or harm, or "Just be with it"): quiet lines, no asides
+    gentle: { intro: ['Soft rain here.', 'Take all the time you need.'], arrive: ['Soft rain here.', 'Take all the time you need.'], back: null },
+    complete: 'The rain’s turning to light. Stay, or drift on?',
+    completeStay: 'The rain’s turning to light. Stay as long as you like.',
+    feeling: {
+      more: ['The rain heard you.', 'A little more of it.'],
+      less: ['The rain’s easing.', 'The lagoon heard you.'],
+      other: ['Noted. New drops are forming.'],
+    },
+  },
+  discoveries: {
+    named: { skillId: 'name-it', lines: ['You gave it a word.', 'It has a name now.', 'Sometimes that makes it a little easier to hold.'] },
+    // two at once is allowed: nothing more to keep (the lagoon's tool is offered with 'named')
+    both: { skillId: null, offer: false, lines: ['Two at once.', 'Side by side is allowed.'] },
+  },
+  sound: {
+    ambience: 'raindrop-lagoon',
+    holds: { hum: 'rises as a drop clears in the hand' },
+    fx: ['lens-focus when a word comes clear', 'drop-in as a word falls into the thought', 'a drip for touches on the water (120 ms apart at most)', 'a bubble note as a word floats back', 'a chime at a discovery', 'bloom at the end'],
+  },
+  haptics: ['light as a drop is taken', 'soft when its word comes clear', 'soft as it falls into the thought', 'success at a discovery'],
+  completion: {
+    rule: 'A word given and kept, and 8 s of quiet with it (no drop in hand), after at least 25 s of play; then 2 s with no finger down.',
+    after: 'The rain stops and the hanging drops rise as light. The lagoon stays playable: words can still be given and given back.',
+  },
+  transition: {
+    next: 'sunpop-orchard',
+    melt: 'In: the mask spreads from the outgoing world’s horizon; the lagoon’s own is 0.6 H. Out: from 0.6 H.',
+    handoff: 'In: the Thought Mallow glides from where it was to its place over the lagoon, postcards or bubbles glide in and become glass drops, '
+      + 'the feeling drops condense one by one. Reduced motion: a crossfade, the thought fading out where it was and in at its place. Out: things keep their places.',
+  },
+  memory: { skillId: 'name-it' },
+  accessibility: {
+    tapAlt: 'Tap a drop and it clears by itself; tap the thought or the word to give it. Holding anywhere in the air draws the nearest drop to the finger.',
+    reducedMotion: 'No sway, bob or arcs; drops fade where they are and appear where they go; slower, sparser rain; the melt is a crossfade.',
+    lowStimulation: 'Half the rain and splashes, softer contrast (the realm’s low-stimulation layer).',
+    precision: 'Drops are at least 46 px with a 16 px margin; the thought accepts a drop anywhere on it, its words or its tag.',
+  },
+  playtest: { results: [], note: 'Built 15 Oct in the dev lab; browser-checked in Chromium at 390×844, 360×780 and 320×568. Not yet playtested with real users or on a phone.' },
+  status: STATUS.PLAYABLE,
+  // a gentle session never plays it by itself: naming can feel heavier right after something heavy (skills.js care)
+  calm: false,
+  fits: {
+    emotions: { sad: 1, lonely: 0.9, overwhelmed: 0.85, anxious: 0.8, frustrated: 0.7, other: 0.55, angry: 0.6, restless: 0.5 },
+    intentions: { steady: 1, calm: 0.8, 'let-go': 0.7, distract: 0.5, play: 0.5 },
+  },
+  next: ['sunpop-orchard'],
+  load: () => import('./worlds/raindrop-lagoon.js'),
+};
+
+const SUNPOP_ORCHARD = {
+  id: 'sunpop-orchard',
+  title: 'Boppo’s Sunpop Orchard',
+  version: 1,
+  realm: 'sunpop-orchard',
+  horizon: 0.665,
+  palette: { sky: '#ff9f72', deep: '#e85d78' },
+  purpose: 'Notice the tone of your touch, and offer your thought the warmth you would offer a friend.',
+  technique: {
+    name: 'Self-compassion: a kinder inner voice',
+    related: ['Treating yourself as you would a friend', 'Noticing self-critical tone', 'Mental digestion (contemplative inspiration)'],
+  },
+  evidence: {
+    classification: 'Moderate – intervention family',
+    skill: 'A Kinder Voice',
+    related: [],
+    basis: 'Self-compassion practices in general can help with self-criticism and low mood. hushmallow itself hasn’t been studied.',
+    sources: ['pubmed 37362192'],
+    framing: 'Pokes are allowed and only noticed, never punished; warmth is offered, not forced: no affirmations to repeat, no promise that a thought goes away.',
+  },
+  scene: 'A warm apricot afternoon in Boppo’s floating orchard: two sunpop trees make an arbour over a swing where the Thought Mallow sits in the shade; '
+    + 'sunpops hang down both trees, ripening from lime to gold, and every one given becomes a small light in a crown round the thought. The finish is golden hour with a soft rainbow.',
+  touch: [
+    { gesture: 'A gentle hold on a sunpop', effect: 'Warms it: a ring of light fills round it and it ripens to gold in under two seconds, then stays cupped under the finger.' },
+    { gesture: 'Letting go of a ripe sunpop', effect: 'It floats to the Thought Mallow and becomes a light in its crown; the thought softens a little.' },
+    { gesture: 'Holding still anywhere', effect: 'Warms the nearest sunpop more slowly (nothing needs a precise target).' },
+    { gesture: 'Quick pokes and fast swipes', effect: 'Sunpops wobble on their stems and a leaf drifts down; nothing ripens and nothing is lost.' },
+    { gesture: 'A hand held still on the Thought Mallow', effect: 'Warms it a little, like a hand on a friend’s shoulder.' },
+    { gesture: 'A gentle hold on a photo sunpop', effect: 'Its photo warms from misty back to its own colours and sends a little light to the thought.' },
+  ],
+  mallow: {
+    id: 'boppo',
+    behaviour: 'Watches the finger, else the thought; nods as a sunpop ripens and gives a small happy hop when a light reaches the thought (in a gentle session: calm and comforted, never grinning); '
+      + 'sighs contentedly at golden hour.',
+  },
+  input: {
+    words: 'The person’s exact words ride on the Thought Mallow on the swing, on a readable plate under it; nothing ever covers them.',
+    photos: { becomes: 'sunpops with a round window, hanging in the trees', change: 'a gentle hold warms each photo from misty to its own colours', shape: 'circle', standIn: 'the seven Mallow cards',
+      gentle: 'the stand-in cards become plain sunpops' },
+  },
+  progression: [
+    'Sunpops hang unripe; Boppo shows a gentle hold once.',
+    'Quick pokes wobble them (allowed, noticed); a gentle hold ripens one.',
+    'Each ripe sunpop given becomes a light round the thought, and it softens a step.',
+    'Discovery: being gentle with it, the way you would be with a friend, softened it.',
+    'Natural completion: five lights given after real play; golden hour. It stays playable: sunpops regrow.',
+  ],
+  dialogue: {
+    intro: ['Mm. Sunpops.', 'Try holding one, gently.'],
+    arrive: ['Oh! The orchard.', 'Try holding a sunpop, gently.'],
+    pokes: ['Boing. That’s allowed.', 'A slow, gentle hold works too.'],
+    firstGift: ['That one’s for your thought.'],
+    firstGiftEmpty: ['That one’s for the swing.'],
+    // a gentle session (after a loss, a death, harm or care): no quips, nothing to cheer about
+    gentle: {
+      intro: ['Somewhere warm.', 'Take all the time you need.'],
+      arrive: ['Somewhere warm.', 'Take all the time you need.'],
+      pokes: ['A slow, gentle hold works here.'],
+    },
+    complete: 'The orchard’s glowing now. Stay, or drift on?',
+    completeStay: 'The orchard’s glowing now. Stay as long as you like.',
+    feeling: {
+      more: ['A bit more weather today.', 'The orchard can hold that.'],
+      less: ['A little lighter.', 'The orchard heard you.'],
+      other: ['Noted. The orchard’s listening.'],
+    },
+  },
+  discoveries: {
+    // about the tone of a touch: nothing to keep here (the orchard's tool is offered with 'kinder')
+    'gentle-hands': { skillId: null, offer: false, lines: ['Quick pokes made it wobble.', 'A gentle hold ripened it.'] },
+    kinder: { skillId: 'kinder-voice', lines: ['Look. It’s softer now.', 'You were gentle with it,', 'the way you’d be with a friend.'] },
+    'kinder-light': { skillId: 'kinder-voice', lines: ['All that warmth came from you.', 'The kind you’d give a friend.'] },
+  },
+  sound: {
+    ambience: 'sunpop-orchard',
+    holds: { hum: 'rises softly while a sunpop is being warmed, its pitch following the ripeness' },
+    fx: ['a soft pluck for a poke (120 ms apart at most)', 'a bloom as a sunpop ripens', 'a chime as a light reaches the thought, a step higher each time', 'a shimmer at golden hour'],
+  },
+  haptics: ['light on a poke', 'soft as a sunpop ripens', 'light when a light reaches the thought', 'success at a discovery'],
+  completion: {
+    rule: 'At least five sunpops given, at least 30 s of play and the thought really softened (the \'kinder\' discovery) — or nine given — then 2 s with every finger lifted.',
+    after: 'Golden hour: the realm ripens, a soft rainbow rises behind Boppo, the crown glows. Sunpops keep regrowing; it stays playable.',
+  },
+  transition: {
+    next: null,
+    melt: 'In: the mask spreads from the outgoing world’s horizon; sunpops grow in on their stems as it reaches them. Out: from the orchard’s horizon (0.665 H).',
+    handoff: 'In: the Thought Mallow glides from where it was to the swing, keeping its words; photos glide into their sunpops. Reduced motion: a crossfade with everything in place. '
+      + 'Out: the thought, its tension and the photos where they hang.',
+  },
+  memory: { skillId: 'kinder-voice' },
+  accessibility: {
+    tapAlt: 'Holding still anywhere warms the nearest sunpop; no strokes or precise taps are needed.',
+    reducedMotion: 'No sway or bob, wobbles damped, a gift fades into the crown instead of gliding, the hint is still; the melt is a straight crossfade.',
+    lowStimulation: 'Fewer motes and leaves, softer glow.',
+    precision: 'Every sunpop is a 48 px target or more, and a hold anywhere works.',
+  },
+  playtest: { results: [], note: 'Built 15 Oct; browser-checked in the dev lab (Chromium). Not yet playtested with real users or on a phone.' },
+  status: STATUS.PLAYABLE,
+  // warm and slow, but it has playful lines and faces: not one of the worlds a gentle session picks by itself
+  calm: false,
+  // (owner P1) the last world: nothing follows it. It ends with 'Stay as long as you like' and Finish, never a melt
+  // back into an earlier world. Move this to the new last world when one is added after it.
+  final: true,
+  fits: {
+    emotions: { sad: 1, lonely: 1, frustrated: 0.8, overwhelmed: 0.75, anxious: 0.7, other: 0.55, restless: 0.55, angry: 0.45 },
+    intentions: { steady: 0.9, calm: 0.85, play: 0.85, distract: 0.8, 'let-go': 0.65 },
+  },
+  next: [],
+  load: () => import('./worlds/sunpop-orchard.js'),
+};
+
+/**
+ * Every world, in its authored sequence: the storm → the ocean → the cove → the lagoon → the orchard (each `next[]`
+ * names the one after it; the orchard is `final`). The selector follows these links unless a favourite, the rotation
+ * bag or the fit says otherwise, and a gentle session only ever plays the `calm` ones (the ocean and the cove).
+ */
+export const WORLDS = Object.freeze([STATIC_STORM, LUMINOUS_OCEAN, MOONMILK_COVE, RAINDROP_LAGOON, SUNPOP_ORCHARD]);
 
 /** A registry over a list of entries (the default one, or a test / dev-lab list). */
 export function createRegistry(list = WORLDS) {
@@ -285,7 +605,7 @@ export function hash01(s) {
 /**
  * Pick the next world. Deterministic: the same state always gives the same
  * answer. Rules, in order:
- *   0. nothing follows a `final` world (owner P1: the ocean, until a third world exists);
+ *   0. nothing follows a `final` world (owner P1: the last one, Boppo’s Sunpop Orchard);
  *   1. only playable worlds that suit the feeling × intention, never the current one —
  *      and in a gentle session (`gentle: true`) only `calm` ones;
  *   2. never one of the last 3 played (if that leaves none, the one played longest ago);

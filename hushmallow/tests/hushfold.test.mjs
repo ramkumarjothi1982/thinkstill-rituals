@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
+import { cpuPerCall, within, readings } from './helpers/cost.mjs'; // (before any hushmallow module: its calibration runs first)
 import { checkText, legacySafety, safetyCopy } from '../src/engine/safety.js';
 import * as LEX from '../src/data/safety-lexicon.js';
 import * as F from '../src/ultra/frameworks.js';
@@ -182,11 +183,20 @@ test('safety verification (12 Oct): the lexicon still compiles without lookbehin
     assert.doesNotThrow(() => new RegExp(src, 'i'), src);
     assert.doesNotMatch(src, /\(\?<[=!]/, `no lookbehind: ${src}`);
   }
-  // a long run-on message is still quick (no runaway backtracking)
-  const long = 'i dont know i just feel like everything is too much and i cant and '.repeat(30);
-  const t0 = performance.now();
-  checkText(long);
-  assert.ok(performance.now() - t0 < 150, 'checkText on 2,000 characters stays fast');
+  // a long run-on message is still quick (no runaway backtracking), timed as a person pays for it: every Tell is words
+  // checkText has not read before, so each timed read is of a text of its own, the same run-on message begun at each of
+  // its 15 words in turn (the same words, length and verdict: a cache of past reads, or a cost paid only on a text's
+  // first read, is timed as a person meets it). The warm-up only compiles the lexicon (on its own this test's first
+  // call reads 140-270 ms doing that), on other words, which no timed text shares. The CPU time of five reads, per read
+  // (tests/helpers/cost.mjs: another test file's turn on the core never counts), read again at most twice if it misses,
+  // with five more texts it has not seen
+  checkText('it was a long day and honestly the train was late and the rain just kept on and '.repeat(25));
+  const words = 'i dont know i just feel like everything is too much and i cant and'.split(' ');
+  const unseen = words.map((_, k) => `${[...words.slice(k), ...words.slice(0, k)].join(' ')} `.repeat(30));
+  assert.equal(new Set(unseen.map((t) => t.slice(0, 2000).toLowerCase())).size, 15, 'fifteen texts, no two alike');
+  let next = 0;
+  const r = within(150, () => cpuPerCall(() => checkText(unseen[next++]), 5));
+  assert.ok(r.ok, `checkText on 2,000 characters stays fast: ${readings(r.seen)} ms of CPU per read (5 unseen texts a reading); ${r.note}`);
 });
 
 test('hushfold safety verification (12 Oct): a crisis or care level seen earlier in the visit holds when other words are sent', () => {
@@ -630,11 +640,12 @@ test('H1: MallowTouch is the stage Mallow by default (owner P9); the rig is the 
   // its root is the focusable role=button with the squeeze instructions: no aria-hidden on the box
   assert.match(enter, /touchBox = h\('div', \{ class: 'hf-touch' \}\)/);
   assert.doesNotMatch(scene, /class: 'hf-touch', 'aria-hidden'/);
-  // 'system' follows the OS live; a load that never finishes falls back to the rig after 5 s
+  // 'system' follows the OS live; a set-up that never finishes falls back to the rig 5 s after its art is in
+  // (touchReady: the art has its own 30 s cap; tests/first-mallow.test.mjs)
   assert.match(enter, /reducedMotion: prefs\.get\('motion'\) === 'system' \? undefined : prefs\.reducedMotion\(\)/);
   assert.match(enter, /quality: \(dev && qs\.get\('tier'\)\) \|\| 'auto'/);
-  assert.match(enter, /Promise\.race\(\[touchMt\.loaded, /);
-  assert.match(enter, /, 5000\)/);
+  assert.match(enter, /await touchReady\(touchMt, loadMallowAssets\(touchMt\.id\)\);/);
+  assert.match(scene, /export async function touchReady\(mt, art, \{ artMs = 30000, setupMs = 5000 \} = \{\}\)/);
   assert.match(enter, /touchMt\?\.destroy\(\)/);
   assert.match(enter, /stageMallow \|\|= createStageMallow\(world, \{ touch: null \}\)/);
   // the QA hook is live

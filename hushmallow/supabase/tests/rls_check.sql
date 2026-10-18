@@ -47,9 +47,11 @@ begin
                   where p.oid = 'hm_private.handle_new_user()'::regprocedure and (r.rolbypassrls or r.rolsuper))
      and exists (select 1 from pg_proc p join pg_roles r on r.oid = p.proowner
                   where p.oid = 'public.delete_my_account()'::regprocedure and (r.rolbypassrls or r.rolsuper))
+     and exists (select 1 from pg_proc p join pg_roles r on r.oid = p.proowner
+                  where p.oid = 'hm_private.sync_consents_withdrawn()'::regprocedure and p.prosecdef and (r.rolbypassrls or r.rolsuper))
     into ok;
   total := total + 1; if not ok then fails := fails + 1; end if;
-  report := report || format('%s  the sign-up trigger and delete_my_account() are owned by a role that bypasses RLS (needed with FORCE RLS)', case when ok then 'PASS' else 'FAIL' end);
+  report := report || format('%s  the sign-up trigger, delete_my_account() and the consent-withdrawal trigger run as a role that bypasses RLS (needed with FORCE RLS; 0010 lets the dashboard delete a user with sync on)', case when ok then 'PASS' else 'FAIL' end);
 
   ok := not has_function_privilege('anon', 'public.delete_my_account()', 'EXECUTE')
         and has_function_privilege('authenticated', 'public.delete_my_account()', 'EXECUTE');

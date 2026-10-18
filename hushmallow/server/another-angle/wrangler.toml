@@ -6,6 +6,14 @@
 #   IP_HASH_KEY         ≥16 random characters; keys the IP hashes used for limits
 #   TESTER_INVITE_CODES comma-separated invite codes for testers (recommended
 #                       for the testing phase; without it anyone can get a session)
+# Web subscriptions (Stripe, src/billing/; off until set, see docs/PAYMENTS.md),
+# set by hand with `npx wrangler secret put <NAME>`:
+#   STRIPE_SECRET_KEY     a restricted Stripe key (rk_…, recommended) or the
+#                         secret key (sk_…). This Worker takes a LIVE key only,
+#                         and only once BILLING_LIVE = "approved" (below); the
+#                         staging Worker a TEST key only. A key for the wrong
+#                         stage counts as unset (/v1/health "key_refused").
+#   STRIPE_WEBHOOK_SECRET the webhook endpoint's signing secret (whsec_…)
 name = "hushmallow-another-angle"
 main = "src/index.js"
 compatibility_date = "2026-10-01"
@@ -40,15 +48,54 @@ DAILY_SPEND_CAP_USD = "10"
 APPLE_BUNDLE_ID = ""
 APPLE_PRODUCT_IDS = "hushmallow.ultra.monthly,hushmallow.ultra.yearly"
 APPLE_ENVIRONMENTS = "Production"
+# Web subscriptions (src/billing/, docs/PAYMENTS.md): every /v1/billing route
+# answers 503 until these vars are added here (and the two secrets above are
+# set); nothing else changes while they are absent. The values are the
+# owner's, from the Stripe dashboard, never committed before launch:
+#   SUPABASE_URL              the hushmallow1 project URL (the only one accepted)
+#   SUPABASE_PUBLISHABLE_KEY  its publishable key (sb_publishable_…, public by design)
+#   APP_ORIGIN                where Stripe sends people back; one of ALLOWED_ORIGINS
+#   STRIPE_PRICE_PAID_MONTHLY, STRIPE_PRICE_PAID_YEARLY,
+#   STRIPE_PRICE_ULTRA_MONTHLY, STRIPE_PRICE_ULTRA_YEARLY   price_… ids (US$): live mode's
+#                             own four, never the sandbox's (STRIPE_INTEGRATION_TODO.md)
+#   BILLING_TOKEN_TTL_HOURS   optional, default 24: the longest a Beyond session lasts
+#   STRIPE_AUTOMATIC_TAX      optional, "false" by default (the Checkout Studio's value):
+#                             "true" turns Stripe Tax on at Checkout, only once an active
+#                             registration (Collecting) is verified in this Stripe
+#                             environment (decision D3); it then replaces two Studio values
+#                             (automatic_tax on, billing address required)
+#   STRIPE_API_VERSION        "2026-08-26.dahlia", required with the vars above: pins the
+#                             API version of the server's own requests; create the
+#                             webhook endpoint on the same version (src/config.js
+#                             STRIPE_API_VERSION_EXPECTED, test/billing-env.test.js)
+# Live billing needs one more line, in its own reviewed commit, which is the owner's
+# approval (decision D17):
+#   BILLING_LIVE = "approved"
+# Without it this Worker refuses a live key (and it never takes a test one), so no
+# card can be charged. Only in this table, never in [env.staging.vars] or
+# [env.dev.vars] (test/billing-env.test.js).
+# Then ENTITLEMENT_MODE = "billing" (a Beyond subscription for Another Angle),
+# or "billing+testing" (that, or one of TESTER_INVITE_CODES) while testers
+# keep their codes. "testing", "storekit" and "both" work as before.
 
 # Daily counters: per-device quota, per-IP session cap, global spend cap.
 [[durable_objects.bindings]]
 name = "LEDGER"
 class_name = "Ledger"
 
+# Web subscriptions: one record per signed-in account (src/billing/store.js).
+# Holds nothing until billing is switched on.
+[[durable_objects.bindings]]
+name = "BILLING"
+class_name = "Billing"
+
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["Ledger"]
+
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["Billing"]
 
 # Burst limits per IP (per Cloudflare location). period must be 10 or 60.
 [[ratelimits]]
@@ -66,6 +113,16 @@ simple = { limit = 3, period = 60 }
 [[ratelimits]]
 name = "FEEDBACK_IP_LIMITER"
 namespace_id = "41003"
+simple = { limit = 20, period = 60 }
+
+# Web subscriptions' checkout, status and portal (each asks the sign-in
+# project, and checkout and portal ask Stripe). Not the webhook: Stripe's
+# deliveries are checked by their signature instead. 20, not fewer: the app
+# asks for the status at every start, and many phones on mobile data share
+# one address.
+[[ratelimits]]
+name = "BILLING_IP_LIMITER"
+namespace_id = "41004"
 simple = { limit = 20, period = 60 }
 
 # Workers Logs keep only the server's own metadata lines (src/log.js).
@@ -117,6 +174,10 @@ APPLE_ENVIRONMENTS = "Sandbox"
 name = "LEDGER"
 class_name = "Ledger"
 
+[[env.dev.durable_objects.bindings]]
+name = "BILLING"
+class_name = "Billing"
+
 [[env.dev.ratelimits]]
 name = "ANGLE_IP_LIMITER"
 namespace_id = "41101"
@@ -131,6 +192,11 @@ simple = { limit = 10, period = 60 }
 name = "FEEDBACK_IP_LIMITER"
 namespace_id = "41103"
 simple = { limit = 60, period = 60 }
+
+[[env.dev.ratelimits]]
+name = "BILLING_IP_LIMITER"
+namespace_id = "41104"
+simple = { limit = 30, period = 60 }
 
 [env.dev.observability]
 enabled = true
@@ -147,7 +213,18 @@ enabled = false
 # spending cap, deployed from a work branch by
 # .github/workflows/another-angle-staging.yml (edit deploy/STAGING to run it).
 # Lets the whole path (session → angle → feedback) be checked against the
-# real model before anything is merged to main.
+# real model before anything is merged to main. Staging ONLY (production's
+# [vars] above are untouched): web subscriptions in Stripe TEST mode for the
+# rehearsal on the release branch's preview (docs/STAGING.md), with
+# ENTITLEMENT_MODE "billing+testing" (a test hushmallow Beyond subscription,
+# or one of TESTER_INVITE_CODES, opens Another Angle). Its secrets are the
+# staging Worker's own, set with `--env staging`: STRIPE_SECRET_KEY (a TEST key
+# only, rk_test_… recommended: a live key turns staging billing off) and
+# STRIPE_WEBHOOK_SECRET (the staging webhook endpoint's whsec_…);
+# the deploy sets ANTHROPIC_API_KEY and TESTER_INVITE_CODES from the STAGING
+# repository secrets (ANTHROPIC_API_KEY_STAGING, TESTER_INVITE_CODES_STAGING),
+# never production's. Its accounts are those of its own sign-in project,
+# hushmallow-staging (ACCOUNTS_STAGE below), never production's hushmallow1.
 [env.staging]
 name = "hushmallow-another-angle-staging"
 workers_dev = true
@@ -161,10 +238,10 @@ MODEL_TIMEOUT_MS = "15000"
 REQUEST_DEADLINE_MS = "28000"
 MODEL_MAX_RETRIES = "1"
 REFUSAL_FALLBACK = "default"
-ALLOWED_ORIGINS = "https://ramkumarjothi1982.github.io,https://claude-upbeat-pasteur-b0aqg1.hushmallow.pages.dev,http://localhost:8000,http://127.0.0.1:8000"
+ALLOWED_ORIGINS = "https://ramkumarjothi1982.github.io,https://claude-upbeat-pasteur-b0aqg1.hushmallow.pages.dev,https://claude-launch-rc.hushmallow.pages.dev,http://localhost:8000,http://127.0.0.1:8000"
 ALLOW_NO_ORIGIN = "false"
 REQUIRE_HTTPS = "true"
-ENTITLEMENT_MODE = "testing"
+ENTITLEMENT_MODE = "billing+testing"
 TESTING_TOKEN_TTL_DAYS = "7"
 DEVICE_DAILY_LIMIT = "20"
 SESSION_DAILY_CAP = "100"
@@ -173,14 +250,49 @@ DAILY_SPEND_CAP_USD = "3"
 APPLE_BUNDLE_ID = ""
 APPLE_PRODUCT_IDS = "hushmallow.ultra.monthly,hushmallow.ultra.yearly"
 APPLE_ENVIRONMENTS = "Sandbox"
+# Web subscriptions, Stripe TEST mode (docs/STAGING.md). None of these is secret.
+# The sign-in project: the staging Worker's OWN, hushmallow-staging (ref oghzabvkrxsejkkjdsuc,
+# Singapore, created by the owner on 2026-10-17; the same public values as the Pages branch-preview
+# build, hushmallow/src/auth/config.js), never production's hushmallow1 (src/config.js accepts only
+# STAGING_SUPABASE_PROJECT_URL for ACCOUNTS_STAGE "staging"). The publishable key is public by design
+# (Row Level Security protects the data); the project's secret key never goes in any file.
+ACCOUNTS_STAGE = "staging"
+SUPABASE_URL = "https://oghzabvkrxsejkkjdsuc.supabase.co"
+SUPABASE_PUBLISHABLE_KEY = "sb_publishable_Sn4YKE3TRTzMkWVN9i45_A_MYYxxirc"
+# Where Stripe sends people back: the release branch's preview (one of ALLOWED_ORIGINS).
+APP_ORIGIN = "https://claude-launch-rc.hushmallow.pages.dev"
+# The owner's four SANDBOX prices (2026-10-17, US dollars): hushmallow Flow US$9.99 a month and US$99.99 a year,
+# hushmallow Beyond US$19.99 a month and US$199.99 a year. Not secret. This Worker takes a TEST key only, from
+# the same Stripe sandbox. The owner's ids from the original account are kept for production, after they are
+# checked in live mode (STRIPE_INTEGRATION_TODO.md). Checked against Stripe before every sale (amount, currency,
+# interval, active): an id from another account or mode answers "No such price" and is refused (a 503, and
+# "not_found" in the log line), and the sandbox driver's preflight (P0) names the slot.
+STRIPE_PRICE_PAID_MONTHLY = "price_1URQs5L6VU7tTQ40MQxgK1On"
+STRIPE_PRICE_PAID_YEARLY = "price_1URQtXL6VU7tTQ40hf1mzuLd"
+STRIPE_PRICE_ULTRA_MONTHLY = "price_1URQyUL6VU7tTQ408wYz4vYP"
+STRIPE_PRICE_ULTRA_YEARLY = "price_1URQuYL6VU7tTQ403DSA9bfh"
+# The API version of the Worker's own Stripe requests; the staging webhook endpoint is created on the
+# same one (src/config.js STRIPE_API_VERSION_EXPECTED: every table with billing vars pins exactly this).
+STRIPE_API_VERSION = "2026-08-26.dahlia"
+# Stripe Tax at Checkout (decision D3): "false" (the Checkout Studio's value) until an active registration in
+# the sandbox is verified.
+STRIPE_AUTOMATIC_TAX = "false"
 
 [[env.staging.durable_objects.bindings]]
 name = "LEDGER"
 class_name = "Ledger"
 
+[[env.staging.durable_objects.bindings]]
+name = "BILLING"
+class_name = "Billing"
+
 [[env.staging.migrations]]
 tag = "v1"
 new_sqlite_classes = ["Ledger"]
+
+[[env.staging.migrations]]
+tag = "v2"
+new_sqlite_classes = ["Billing"]
 
 [[env.staging.ratelimits]]
 name = "ANGLE_IP_LIMITER"
@@ -195,6 +307,11 @@ simple = { limit = 3, period = 60 }
 [[env.staging.ratelimits]]
 name = "FEEDBACK_IP_LIMITER"
 namespace_id = "41203"
+simple = { limit = 20, period = 60 }
+
+[[env.staging.ratelimits]]
+name = "BILLING_IP_LIMITER"
+namespace_id = "41204"
 simple = { limit = 20, period = 60 }
 
 [env.staging.observability]

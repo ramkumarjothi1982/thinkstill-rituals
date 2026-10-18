@@ -48,7 +48,9 @@ export async function keyedHash(secret, value, bytes = 16) {
 }
 
 /**
- * @typedef {{ v: 1, aud: string, sub: string, ent: 'beyond', src: 'testing' | 'storekit', iat: number, exp: number }} TokenPayload
+ * @typedef {{ v: 1, aud: string, sub: string, ent: 'beyond', src: 'testing' | 'storekit' | 'billing', inv?: 1, ic?: string, iat: number, exp: number }} TokenPayload
+ *   inv: a testing session minted under billing+testing with a tester code (src/app.js sessionSuperseded); ic: a keyed
+ *   tag of that code (src/auth/entitlement.js inviteTag), so removing the code ends its sessions
  */
 
 /**

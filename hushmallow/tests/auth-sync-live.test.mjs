@@ -43,7 +43,7 @@ async function retire(auth) { try { const c = await auth.ensureClient(); c.auth.
 /** Sign in on a device, answer the guest question, and boot the next page into the account. */
 async function signedIn(ls, email, password = 'gentle-moon-42', { create = false } = {}) {
   const d = device(ls);
-  const r = create ? await d.auth.signUp({ email, password }) : await d.auth.signIn({ email, password });
+  const r = create ? await d.auth.signUp({ email, password, agreed: true }) : await d.auth.signIn({ email, password });
   assert.equal(r.ok, true, JSON.stringify(r));
   if (r.needsGuestChoice) d.auth.chooseGuestData('fresh');
   await retire(d.auth);
@@ -167,7 +167,7 @@ test('the guest question answered "Not now", then "Bring them in" on the account
   await retire(g.auth);
   fake.cfg.autoconfirm = true;
   const d = device(ls);
-  const r = await d.auth.signUp({ email: 'ana@example.com', password: 'gentle-moon-42' });
+  const r = await d.auth.signUp({ email: 'ana@example.com', password: 'gentle-moon-42', agreed: true });
   assert.equal(r.needsGuestChoice, true);
   d.auth.chooseGuestData('fresh');
   await retire(d.auth);

@@ -1,0 +1,103 @@
+/* hushmallow legal pages: legal/privacy.html and legal/terms.html.
+   Plain HTML on the app's own tokens and self-hosted faces (tokens.css,
+   type.css). Nothing comes from another site, and the pages carry no script
+   and no inline style, so their strict Content-Security-Policy holds (the
+   meta tag in each page, and /legal/* in _headers: tools/site/auth-config.mjs).
+   Reading comes first: one column of about 68 characters, body text 17 px,
+   nothing below 13 px, 44 px targets for the navigation, focus rings from
+   tokens.css, and plain black-on-white when printed.
+   The draft notice on both pages is shown by the DRAFT SWITCH below: one line
+   for both. Deleting it hides the notices, and tests/legal-pages.test.mjs then
+   refuses any [Owner: …] placeholder left on either page. */
+
+/* DRAFT SWITCH, for both pages. While the next line is here, each page shows its
+   "Draft — awaiting owner and legal review" notice (.legal-draft, above the title).
+   Once the owner and a lawyer have approved both pages, replace every placeholder
+   (the whole <span class="legal-todo">…</span>) with the final words, then delete
+   this one line. The hidden notices may then stay, or be deleted from the pages. */
+.legal-page { --legal-draft: block; }
+
+html { background: var(--ink-0); -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+.legal-page { margin: 0; min-height: 100vh; color: var(--text-1); overflow-wrap: break-word;
+  background: radial-gradient(90% 40% at 50% -6%, rgba(120, 90, 255, .26), transparent 72%) no-repeat, var(--ink-0);
+  font: var(--type-body); letter-spacing: var(--type-body-ls); -webkit-font-smoothing: antialiased; }
+
+/* "Skip to the text": out of sight until it has the focus */
+.legal-skip { position: absolute; left: 12px; top: -80px; z-index: 2; padding: 12px 16px; border-radius: var(--r-sm);
+  background: var(--accent); color: var(--text-on-accent); font: var(--type-label); text-decoration: none; }
+.legal-skip:focus { top: calc(var(--safe-top) + 12px); }
+
+.legal-top, .legal, .legal-foot { max-width: 680px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.legal-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px;
+  padding-top: calc(var(--safe-top) + 16px); padding-bottom: 8px; }
+.legal-home { display: inline-flex; align-items: center; min-height: 44px; border-radius: 10px; }
+.legal-home img { width: 140px; height: auto; }
+.legal-switch { display: flex; flex-wrap: wrap; gap: 6px; }
+.legal-switch a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 14px; border-radius: var(--r-pill);
+  border: 1px solid var(--line-strong); color: var(--text-2); text-decoration: none; font: var(--type-label); letter-spacing: var(--type-label-ls); }
+.legal-switch a[aria-current="page"] { color: var(--text-1); background: rgba(255, 255, 255, .08); border-color: rgba(255, 217, 138, .55); }
+
+.legal { padding-bottom: 32px; }
+.legal:focus { outline: none; }   /* the skip link's target takes the focus only to move reading there */
+.legal-title { margin: 20px 0 6px; font: var(--type-world); letter-spacing: var(--type-world-ls); font-optical-sizing: auto; text-wrap: balance; }
+.legal-meta { margin: 0 0 20px; color: var(--text-3); font: var(--type-caption); letter-spacing: var(--type-caption-ls); }
+.legal-lead { margin: 0 0 16px; color: var(--text-1); font: var(--type-lead); letter-spacing: var(--type-lead-ls); }
+.legal h2 { margin: 36px 0 10px; font: var(--type-heading); letter-spacing: var(--type-heading-ls); text-wrap: balance; scroll-margin-top: 16px; }
+.legal h3 { margin: 22px 0 6px; font: var(--type-row); letter-spacing: var(--type-row-ls); color: var(--text-1); scroll-margin-top: 16px; }
+.legal p, .legal li, .legal dd { color: var(--text-2); }
+.legal p { margin: 0 0 12px; }
+.legal ul, .legal ol { margin: 0 0 14px; padding-left: 22px; }
+.legal li { margin: 0 0 8px; }
+.legal li::marker { color: var(--text-3); }
+.legal strong, .legal b { color: var(--text-1); font-weight: 750; }
+.legal dl { margin: 0 0 14px; }
+.legal dt { margin: 14px 0 2px; color: var(--text-1); font: var(--type-row); letter-spacing: var(--type-row-ls); }
+.legal dd { margin: 0; }
+.legal blockquote { margin: 0 0 12px; padding: 10px 14px; border-left: 3px solid var(--calm); border-radius: 0 var(--r-sm) var(--r-sm) 0; background: rgba(143, 227, 255, .07); }
+.legal blockquote p { margin: 0 0 6px; color: var(--text-1); }
+.legal blockquote p:last-child { margin-bottom: 0; }
+.legal cite { font-style: italic; }
+.legal code { padding: 1px 5px; border-radius: 6px; background: rgba(255, 255, 255, .08); color: var(--text-1); font: 650 .9em/1 var(--ff-ui); }
+.legal a, .legal-foot a { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; overflow-wrap: anywhere; }
+.legal a:hover, .legal-foot a:hover { text-decoration-thickness: 2px; }
+.brand-name { white-space: nowrap; }
+
+/* the draft notice (hidden unless the DRAFT SWITCH above is on) and the owner's placeholders */
+.legal-draft { display: var(--legal-draft, none); margin: 12px 0 0; padding: 12px 14px; border-radius: var(--r-md);
+  border: 1px solid rgba(255, 217, 138, .7); background: rgba(255, 217, 138, .12); color: var(--text-1);
+  font: var(--type-label); letter-spacing: var(--type-label-ls); }
+.legal-draft strong { color: var(--accent); }
+.legal-todo { padding: 0 4px; border-radius: 6px; border: 1px dashed rgba(255, 217, 138, .7); background: rgba(255, 217, 138, .1);
+  color: var(--accent); font-weight: 650; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+
+/* the short version, the contents and the support box */
+.legal-summary, .legal-toc, .legal-crisis { margin: 0 0 16px; padding: 14px 16px 6px; border-radius: var(--r-md); border: 1px solid var(--line-strong);
+  background: linear-gradient(180deg, rgba(36, 30, 84, .62), rgba(18, 14, 46, .7)); }
+.legal-summary h2, .legal-toc h2, .legal-crisis h2 { margin: 0 0 8px; font: var(--type-overline); letter-spacing: var(--type-overline-ls); text-transform: uppercase; color: var(--text-3); }
+.legal-summary ul { padding-left: 20px; }
+.legal-toc ol { margin: 0 0 8px; padding-left: 0; list-style: none; columns: 2 220px; column-gap: 16px; }
+.legal-toc li { margin: 0; break-inside: avoid; }
+.legal-toc a { display: flex; align-items: center; min-height: 44px; color: var(--text-1); text-decoration: none; font: var(--type-label); letter-spacing: var(--type-label-ls); }
+.legal-toc a:hover { text-decoration: underline; }
+.legal-crisis { border-color: rgba(255, 156, 207, .55); background: rgba(255, 156, 207, .08); }
+.legal-crisis h2 { color: var(--care); }
+.legal-crisis a { white-space: nowrap; }
+
+.legal-foot { padding-top: 18px; padding-bottom: calc(var(--safe-bottom) + 28px); border-top: 1px solid var(--line);
+  color: var(--text-3); font: var(--type-caption); letter-spacing: var(--type-caption-ls); }
+.legal-foot p { margin: 0 0 8px; }
+/* inline blocks, not flex boxes: "Back to hushmallow" keeps the space before its brand span */
+.legal-foot nav { display: flex; flex-wrap: wrap; gap: 0 4px; margin: 0 0 6px -6px; }
+.legal-foot nav a { display: inline-block; padding: 12px 6px; line-height: 20px; color: var(--text-2); }
+
+@media print {
+  html, .legal-page { background: #fff; color: #000; }
+  .legal-skip, .legal-switch, .legal-toc, .legal-foot nav { display: none; }
+  .legal p, .legal li, .legal dd, .legal dt, .legal strong, .legal b, .legal-meta, .legal-lead, .legal-foot { color: #000; }
+  .legal a, .legal-foot a { color: #000; }
+  .legal-summary, .legal-crisis, .legal-draft, .legal blockquote { background: none; border-color: #000; color: #000; }
+  .legal-crisis h2, .legal-summary h2, .legal-draft strong, .legal-todo { color: #000; }
+  .legal-home img { filter: invert(1); }
+}

@@ -4,6 +4,58 @@
 
 const DEFAULT_ORIGINS = 'https://ramkumarjothi1982.github.io';
 const APPLE_ROOT_CA_G3_SHA256 = '63343ABFB89A6A03EBB57E9B3F5FA7BE7C4F5C756F3017B3A8C488C3653E9179';
+/** hushmallow1 (Sydney): production's sign-in project, the one whose accounts can subscribe (hushmallow/src/auth/config.js PROJECT_URL). */
+const SUPABASE_PROJECT_URL = 'https://igbxbfuaoybfzsroxuln.supabase.co';
+/**
+ * hushmallow-staging (ref oghzabvkrxsejkkjdsuc, Singapore, created by the owner on 17 Oct 2026): the STAGING Worker's
+ * own sign-in project (ACCOUNTS_STAGE = "staging" in wrangler.toml [env.staging]; hushmallow/src/auth/config.js
+ * STAGING_PROJECT_REF, docs/STAGING.md), so the staging Worker never accepts a production account and production
+ * never a staging one. The same URL is [env.staging.vars] SUPABASE_URL (test/billing.test.js keeps the two, and the
+ * app's ref, the same). '' would mean "no staging project": the staging Worker's accounts are then not configured
+ * (test/staging-loader.js simulates it).
+ */
+const STAGING_SUPABASE_PROJECT_URL = 'https://oghzabvkrxsejkkjdsuc.supabase.co';
+/**
+ * Placeholder sign-in values, such as SUPABASE_URL "https://STAGING_TODO.supabase.co" and SUPABASE_PUBLISHABLE_KEY
+ * "sb_publishable_TODO" (what wrangler.toml [env.staging] held until the owner created the staging project). They
+ * count as unset and say "accounts not configured": the sign-in project is never asked. Upper-case TODO only (a real
+ * project ref is lower case), and the key only right after its prefix.
+ */
+const ACCOUNTS_URL_PLACEHOLDER = /TODO/;
+const ACCOUNTS_KEY_PLACEHOLDER = /^sb_publishable_TODO(?:_|$)/;
+/** ENTITLEMENT_MODE values; anything else reads as 'testing', as before. */
+const MODES = ['testing', 'storekit', 'both', 'billing', 'billing+testing'];
+/**
+ * An obviously unset Stripe price id: a placeholder such as "price_TODO_owner" (wrangler.toml [env.staging],
+ * docs/STAGING.md, until the owner pastes the real test ids). It counts as unset, like an empty value, so it is
+ * never sent to Stripe; with no real price at all, billing is "not configured" and says why.
+ */
+const PRICE_PLACEHOLDER = /^price_todo/i;
+const PRICE_VARS = ['STRIPE_PRICE_PAID_MONTHLY', 'STRIPE_PRICE_PAID_YEARLY', 'STRIPE_PRICE_ULTRA_MONTHLY', 'STRIPE_PRICE_ULTRA_YEARLY'];
+/** The slot (plan.period) each of PRICE_VARS fills, in the same order. */
+const PRICE_SLOTS = ['paid.monthly', 'paid.yearly', 'ultra.monthly', 'ultra.yearly'];
+/**
+ * The owner's approval of live billing (decision D17): a reviewed commit that sets BILLING_LIVE = "approved" in
+ * production's [vars]. Until then the production Worker refuses a live key, so no real card can be charged, whatever
+ * secrets are set. Read on the production stage only; test/billing-env.test.js keeps it out of [env.staging.vars] and
+ * [env.dev.vars]. Only this exact word approves.
+ */
+const BILLING_LIVE_APPROVED = 'approved';
+/**
+ * The Stripe API version the Worker pins (STRIPE_API_VERSION) and every webhook endpoint is created on. The code reads
+ * both the older and the newer shapes, but one pinned version means the server's reads and the events it receives agree.
+ * test/billing-env.test.js wants exactly this in any wrangler.toml table with billing vars: change both together.
+ */
+const STRIPE_API_VERSION_EXPECTED = '2026-08-26.dahlia';
+/**
+ * Stripe Tax on Checkout (decision D3; the checkout route reads cfg.billing.automaticTax). Off unless STRIPE_AUTOMATIC_TAX
+ * says so: automatic_tax without an active registration (Collecting) calculates and collects nothing, silently, so it is
+ * switched on per environment only once that registration is verified. While it is off a price of any tax behaviour
+ * sells; with it on only an inclusive or exclusive one (src/billing/routes.js CHECKOUT_PRICE_RULES).
+ */
+const AUTOMATIC_TAX_DEFAULT = false;
+/** A Stripe secret or restricted key, and its mode (a publishable pk_ key is never one). */
+const STRIPE_KEY = /^(?:sk|rk)_(live|test)_[A-Za-z0-9]{8,}$/;
 
 /** @param {unknown} v @param {number} dflt @param {number} min @param {number} max */
 function int(v, dflt, min, max) {
@@ -19,6 +71,88 @@ function num(v, dflt, min, max) {
 const list = (v) => String(v ?? '').split(',').map((s) => s.trim()).filter(Boolean);
 /** @param {unknown} v @param {boolean} dflt */
 const bool = (v, dflt) => (v == null || v === '' ? dflt : /^(?:1|true|yes|on)$/i.test(String(v)));
+/** @param {unknown} v */
+const str = (v) => String(v ?? '').trim();
+
+/**
+ * APP_ORIGIN, where Stripe sends people back: an origin only (no path, query or
+ * credentials), https (http only for localhost), and one of ALLOWED_ORIGINS. '' otherwise.
+ * @param {string} v @param {string[]} allowed
+ */
+function appOriginOf(v, allowed) {
+  /** @type {URL} */
+  let u;
+  try { u = new URL(v); } catch { return ''; }
+  const local = u.hostname === 'localhost' || u.hostname === '127.0.0.1';
+  if (u.protocol !== 'https:' && !(local && u.protocol === 'http:')) return '';
+  if (u.origin !== v.replace(/\/+$/, '')) return '';
+  return allowed.includes(u.origin) ? u.origin : '';
+}
+
+/**
+ * Web subscriptions (src/billing/, docs/PAYMENTS.md). Every value is checked for its
+ * shape; one that does not fit counts as unset, and so does a placeholder price id
+ * (PRICE_PLACEHOLDER), a price id in two slots (duplicateSlots) or a placeholder sign-in
+ * value (ACCOUNTS_*_PLACEHOLDER). `configured` needs the Stripe key,
+ * this stage's sign-in project, APP_ORIGIN and at least one real price; the webhook also needs its own
+ * secret. No value here is ever logged or returned (placeholderPrices is only a count, duplicateSlots only slot
+ * names, accountsPlaceholder only a flag, keyMode and keyRefused only codes).
+ *
+ * The key must fit the stage. The staging Worker (and any stage but production) takes test keys only, so the
+ * public preview never takes real money. Production takes live keys only, so card 4242 never opens a plan there, and
+ * only once BILLING_LIVE is "approved". A refused key counts as unset (keyRefused says why).
+ * @param {Record<string, any>} env @param {string[]} allowedOrigins
+ */
+function readBilling(env, allowedOrigins) {
+  // the sign-in project of this Worker's stage (ACCOUNTS_STAGE): production's hushmallow1 (the default, as before) or,
+  // on the staging Worker, hushmallow-staging; never the other one.
+  const accountsStage = str(env.ACCOUNTS_STAGE) || 'production';
+  const liveApproved = accountsStage === 'production' && str(env.BILLING_LIVE) === BILLING_LIVE_APPROVED;
+  const shaped = STRIPE_KEY.exec(str(env.STRIPE_SECRET_KEY));
+  const mode = shaped ? /** @type {'live' | 'test'} */ (shaped[1]) : '';
+  /** @type {'' | 'live_key_on_staging' | 'test_key_on_production' | 'live_not_approved'} */
+  let keyRefused = '';
+  if (mode && accountsStage !== 'production') keyRefused = mode === 'live' ? 'live_key_on_staging' : '';
+  else if (mode) keyRefused = mode === 'test' ? 'test_key_on_production' : liveApproved ? '' : 'live_not_approved';
+  const secretKey = mode && !keyRefused ? str(env.STRIPE_SECRET_KEY) : '';
+  const keyMode = /** @type {'' | 'live' | 'test'} */ (secretKey ? mode : '');
+  const webhookSecret = /^whsec_[A-Za-z0-9+/=_-]{8,}$/.test(str(env.STRIPE_WEBHOOK_SECRET)) ? str(env.STRIPE_WEBHOOK_SECRET) : '';
+  /** @param {unknown} v */
+  const shapedPrice = (v) => (/^price_[A-Za-z0-9]{4,64}$/.test(str(v)) && !PRICE_PLACEHOLDER.test(str(v)) ? str(v) : '');
+  const ids = PRICE_VARS.map((k) => shapedPrice(env[k]));
+  // One price id in two slots or more: which plan it is cannot be told (a price with no lookup key maps by its slot,
+  // store.js planForPrice, and the first slot found would win, so Beyond could be paid for and Flow given). Every slot
+  // holding it counts as unset, so it is never sold; duplicateSlots names those slots, never the id.
+  const duplicateSlots = PRICE_SLOTS.filter((_, i) => !!ids[i] && ids.indexOf(ids[i]) !== ids.lastIndexOf(ids[i]));
+  /** @param {number} i */
+  const price = (i) => (duplicateSlots.includes(PRICE_SLOTS[i]) ? '' : ids[i]);
+  const prices = {
+    paid: { monthly: price(0), yearly: price(1) },
+    ultra: { monthly: price(2), yearly: price(3) },
+  };
+  // Only the project's publishable key (a secret key never belongs in a var). A placeholder (or a staging Worker with
+  // no staging project in this file) is "accounts not configured".
+  const project = accountsStage === 'production' ? SUPABASE_PROJECT_URL : accountsStage === 'staging' ? STAGING_SUPABASE_PROJECT_URL : '';
+  const accountsPlaceholder = ACCOUNTS_URL_PLACEHOLDER.test(str(env.SUPABASE_URL)) || ACCOUNTS_KEY_PLACEHOLDER.test(str(env.SUPABASE_PUBLISHABLE_KEY))
+    || (accountsStage === 'staging' && !STAGING_SUPABASE_PROJECT_URL);
+  const supabaseUrl = !accountsPlaceholder && project && str(env.SUPABASE_URL).replace(/\/+$/, '') === project ? project : '';
+  const supabaseKey = !accountsPlaceholder && /^sb_publishable_[A-Za-z0-9_-]{16,128}$/.test(str(env.SUPABASE_PUBLISHABLE_KEY)) ? str(env.SUPABASE_PUBLISHABLE_KEY) : '';
+  const appOrigin = appOriginOf(str(env.APP_ORIGIN), allowedOrigins);
+  const anyPrice = [prices.paid, prices.ultra].some((p) => !!(p.monthly || p.yearly));
+  // how many price vars still hold a placeholder (never their values): /v1/health and the 503 say so
+  const placeholderPrices = PRICE_VARS.filter((k) => PRICE_PLACEHOLDER.test(str(env[k]))).length;
+  return {
+    secretKey, webhookSecret, prices, supabaseUrl, supabaseKey, appOrigin, placeholderPrices, duplicateSlots, accountsStage, accountsPlaceholder,
+    // the accepted key's mode ('' when unset or refused), why a key was refused, and the owner's approval
+    keyMode, keyRefused, liveApproved,
+    // pins the Stripe API version of the server's own requests (the webhook's comes from its endpoint, created on the
+    // same one): STRIPE_API_VERSION_EXPECTED wherever billing is set (the wrangler guard), sent only when set
+    apiVersion: /^\d{4}-\d{2}-\d{2}(?:\.[a-z]+)?$/.test(str(env.STRIPE_API_VERSION)) ? str(env.STRIPE_API_VERSION) : '',
+    tokenTtlMs: int(env.BILLING_TOKEN_TTL_HOURS, 24, 1, 168) * 3600000,
+    automaticTax: bool(env.STRIPE_AUTOMATIC_TAX, AUTOMATIC_TAX_DEFAULT),
+    configured: !!(secretKey && supabaseUrl && supabaseKey && appOrigin && anyPrice),
+  };
+}
 
 /**
  * @typedef {ReturnType<typeof readConfig>} Config
@@ -30,6 +164,7 @@ export function readConfig(env) {
   const mode = String(env.ENTITLEMENT_MODE || 'testing');
   const signingKey = typeof env.TOKEN_SIGNING_KEY === 'string' && env.TOKEN_SIGNING_KEY.length >= 32 ? env.TOKEN_SIGNING_KEY : '';
   const previousKey = typeof env.TOKEN_SIGNING_KEY_PREVIOUS === 'string' && env.TOKEN_SIGNING_KEY_PREVIOUS.length >= 32 ? env.TOKEN_SIGNING_KEY_PREVIOUS : '';
+  const allowedOrigins = list(env.ALLOWED_ORIGINS || DEFAULT_ORIGINS);
   return {
     provider: env.PROVIDER === 'mock' ? 'mock' : 'anthropic',
     apiKey: typeof env.ANTHROPIC_API_KEY === 'string' ? env.ANTHROPIC_API_KEY : '',
@@ -40,10 +175,10 @@ export function readConfig(env) {
     deadlineMs: int(env.REQUEST_DEADLINE_MS, 28000, 3000, 90000),
     maxRetries: int(env.MODEL_MAX_RETRIES, 1, 0, 4),
     refusalFallback: String(env.REFUSAL_FALLBACK || 'default') !== 'off',
-    allowedOrigins: list(env.ALLOWED_ORIGINS || DEFAULT_ORIGINS),
+    allowedOrigins,
     allowNoOrigin: bool(env.ALLOW_NO_ORIGIN, false),
     requireHttps: bool(env.REQUIRE_HTTPS, true),
-    entitlementMode: /** @type {'testing' | 'storekit' | 'both'} */ (['testing', 'storekit', 'both'].includes(mode) ? mode : 'testing'),
+    entitlementMode: /** @type {'testing' | 'storekit' | 'both' | 'billing' | 'billing+testing'} */ (MODES.includes(mode) ? mode : 'testing'),
     inviteCodes: list(env.TESTER_INVITE_CODES),
     signingKeys: [signingKey, previousKey].filter(Boolean),
     hashKey: typeof env.IP_HASH_KEY === 'string' && env.IP_HASH_KEY.length >= 16 ? env.IP_HASH_KEY : signingKey,
@@ -53,6 +188,8 @@ export function readConfig(env) {
     sessionDailyCap: int(env.SESSION_DAILY_CAP, 500, 1, 1000000),
     sessionsPerIpDaily: int(env.SESSIONS_PER_IP_DAILY, 10, 1, 10000),
     dailySpendCapMicros: Math.round(num(env.DAILY_SPEND_CAP_USD, 10, 0, 100000) * 1e6),
+    // billing+testing: the part of the day's spending cap testers' angles may use (the rest is always there for subscribers)
+    testingSpendShare: num(env.TESTING_SPEND_SHARE, 0.3, 0, 1),
     promptTokenEstimate: int(env.PROMPT_TOKEN_ESTIMATE, 4800, 500, 50000),
     apple: {
       bundleId: String(env.APPLE_BUNDLE_ID || ''),
@@ -60,7 +197,8 @@ export function readConfig(env) {
       environments: list(env.APPLE_ENVIRONMENTS || 'Production'),
       rootFingerprints: list(env.APPLE_ROOT_FINGERPRINTS || APPLE_ROOT_CA_G3_SHA256).map((f) => f.replace(/[^0-9a-f]/gi, '').toUpperCase()),
     },
+    billing: readBilling(env, allowedOrigins),
   };
 }
 
-export { APPLE_ROOT_CA_G3_SHA256 };
+export { APPLE_ROOT_CA_G3_SHA256, SUPABASE_PROJECT_URL, STAGING_SUPABASE_PROJECT_URL, BILLING_LIVE_APPROVED, STRIPE_API_VERSION_EXPECTED };

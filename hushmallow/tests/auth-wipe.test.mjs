@@ -59,7 +59,7 @@ async function twoPages(email) {
   const ls = memoryStorage({ ...GUEST });
   const g = createAuth({ config, ns: bootNamespace({ config, ls }), ls, ss: memoryStorage(), loader: async () => supabaseLib(), storage: ls, ...fakeDom(), loc, onReload: () => {} });
   live.push(g);
-  const su = await g.signUp({ email, password: 'gentle-moon-42' });   // autoconfirm: signed in at once
+  const su = await g.signUp({ email, password: 'gentle-moon-42', agreed: true });   // autoconfirm: signed in at once
   assert.equal(su.signedIn, true);
   g.chooseGuestData('fresh');
   const p1 = await page(ls);   // tab 1: the Memory Garden, say (not a calm scene: its reload waits)

@@ -6,7 +6,7 @@
 //     &photos=3          sample photos (0 = the seven Mallow cards)
 //     &motion=reduce     reduced motion for this lab session only (the saved pref is untouched)
 //     &autoflow=1        Auto-flow on
-//     &next=<worldId>    force the next world (e.g. static-storm, or dev-realm for a melt test)
+//     &next=<worldId>    force the next world (any world in WORLDS, e.g. moonmilk-cove, or dev-realm for a melt test)
 //     &q=fixed | 0..3    quality: no governor / a fixed level
 //     &resume=1          resume saved progress
 //
@@ -41,10 +41,18 @@ const DEV_REALM = {
   }),
 };
 
+/**
+ * The lab's registry: every world in WORLDS (Moonmilk Cove, Raindrop Lagoon and Sunpop Orchard are there now, so the lab
+ * no longer keeps its own list of lab-only worlds), plus the dev fixture only when a melt test asks for it (&next=dev-realm).
+ */
+export function labRegistry(forceNext = null) {
+  return createRegistry([...WORLDS, ...(forceNext === 'dev-realm' ? [DEV_REALM] : [])]);
+}
+
 export async function hushflowLab(app, qs) {
   const worldId = qs.get('hushflow');
   const forceNext = qs.get('next') || null;
-  const registry = createRegistry(forceNext === 'dev-realm' ? [...WORLDS, DEV_REALM] : WORLDS);
+  const registry = labRegistry(forceNext);
   const entry = registry.get(worldId);
   if (!entry || !registry.playable(worldId)) { console.warn(`[hushflow lab] no playable world "${worldId}"`); return false; }
 

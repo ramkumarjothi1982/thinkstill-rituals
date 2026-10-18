@@ -59,7 +59,8 @@
 //                           no offers after it (owner P3: crisis → finish({ reason: 'safety' }), no Resume).
 //   next({ worldId })       Drift on, or into a chosen world (a melt, never a hard cut). On a paused director it
 //                           resumes and melts, unless held by safety (then false). state.canNext is true exactly
-//                           when next() would melt (the panel's Drift on). Nothing follows the ocean (owner P1).
+//                           when next() would melt (the panel's Drift on). Nothing follows a final world (owner P1:
+//                           the orchard), and a gentle session never drifts back into a world it already played.
 //   stay(on = true)         stay(false) un-stays without melting.
 //   hold(key, on)           while any key is held (an open offer, …) the world never melts by itself and
 //                           safeForUpdate() is false; the person's own Drift on still goes.
@@ -410,11 +411,17 @@ export function createHushflow(opts = {}) {
     const res = registry.select({
       current: cur?.id, emotion: session?.emotion, intention: session?.intention,
       history: persist.history, favourites: favourites(), bags: persist.bags,
-      seed: session?.seed ?? 0, sessionCount: persist.sessionCount, exclude: [...exclude, ...failed],
+      seed: session?.seed ?? 0, sessionCount: persist.sessionCount, exclude: [...exclude, ...failed, ...playedGently()],
       gentle: !!session?.gentle,
     });
     return res;
   }
+  /**
+   * A gentle session plays each calm world once: it never drifts back into one it already played (the ocean and the
+   * cove would otherwise take turns for ever). With every calm world played, nothing follows: Stay as long as you
+   * like, and Finish (as owner P1 decided for the ocean). A world the shell asks for by id (next({ worldId })) still goes.
+   */
+  function playedGently() { return session?.gentle ? session.sequence || [] : []; }
   /** Can the Hushflow drift from the current world into `id` (a chosen next world)? */
   function pickable(id) {
     if (!id || id === cur?.id || failed.has(id) || !registry.playable(id)) return false;
@@ -590,7 +597,7 @@ export function createHushflow(opts = {}) {
   const safetyHeld = () => ((paused && pauseReason === 'safety') || pausePending === 'safety') && !session?.gentle;
   /** No Memory Garden offer now: after finish, in a gentle session, or while safety holds the world (owner P4). */
   const offersHushed = () => hushed || !!session?.gentle || (paused && pauseReason === 'safety') || pausePending === 'safety';
-  /** Would next() melt now? (The panel's Drift on: false after the ocean, owner P1.) Pure: chooses nothing. */
+  /** Would next() melt now? (The panel's Drift on: false after the final world, owner P1.) Pure: chooses nothing. */
   function canNextNow() {
     if (destroyed || !cur || melt || phase !== 'playing' || safetyHeld()) return false;
     if (nextChoice?.id && pickable(nextChoice.id)) return true;
@@ -1060,8 +1067,9 @@ export function createHushflow(opts = {}) {
       emit('finish', { worldId: id, reason });
     },
     /**
-     * A gentle session (after care): only calm worlds from here (a staged storm is dropped), and no Memory
-     * Garden offers. For this session only, never saved. Before start(), it is what start() uses.
+     * A gentle session (after care): only calm worlds from here, each at most once (a staged storm, or a world
+     * already played, is dropped), and no Memory Garden offers. For this session only, never saved. Before
+     * start(), it is what start() uses.
      */
     setGentle(b = true) {
       const on = !!b;
@@ -1069,7 +1077,7 @@ export function createHushflow(opts = {}) {
       if (!session || session.gentle === on) return;
       session.gentle = on;
       nextChoice = null;
-      if (on && ((inc && registry.get(inc.id)?.calm !== true) || staging)) dropStaged();
+      if (on && ((inc && (registry.get(inc.id)?.calm !== true || playedGently().includes(inc.id))) || staging)) dropStaged();
       for (const inst of [cur, inc]) { try { inst?.world?.setGentle?.(on); } catch (e) { console.warn('[hushflow] setGentle', e); } }
       emit('gentle', { on, worldId: cur?.id || null });
     },
@@ -1144,7 +1152,7 @@ export function createHushflow(opts = {}) {
         melt: melt ? Math.round(melt.e * 1000) / 1000 : null, emotion: session?.emotion || null, intention: session?.intention || null,
         discoveries: session ? [...session.discoveries] : [], quality: qLevel,
         gentle: !!session?.gentle,
-        // true exactly when next() would melt now (false after the ocean, owner P1; false while safety holds)
+        // true exactly when next() would melt now (false after the final world, owner P1; false while safety holds)
         canNext: canNextNow(),
         held: holds.size > 0,
         hushed: offersHushed(),

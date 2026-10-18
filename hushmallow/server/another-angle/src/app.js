@@ -4,21 +4,25 @@
 //   POST /v1/session  entitlement check → signed session token
 //   POST /v1/angle    one Another Angle scene (or support, or a fallback signal)
 //   POST /v1/feedback which of the four feedback buttons was pressed (metadata only)
+//   /v1/billing/*     web subscriptions through Stripe (src/billing/routes.js), off until configured
 //
 // Order of checks on /v1/angle: HTTPS → CORS allowlist → body size/type →
-// safety pre-check on the text (crisis/care get support straight away: no
-// token, no burst limit, no quota, no model) → per-network rate limit (IPv4
-// address or IPv6 /64, hashed) → bearer token → strict validation →
-// emoji-only text ("unclear", no quota) → per-device daily quota → global
-// daily spend reservation → pipeline → spend settled → metadata log.
+// safety pre-check on the text (the lexicon on the words as typed and on
+// their normalised spelling, and the risk screener: screenInput; crisis/care
+// get support straight away: no token, no burst limit, no quota, no model) →
+// per-network rate limit (IPv4 address or IPv6 /64, hashed) → bearer token →
+// strict validation → the same checks on the validated text and on earlier
+// angles' lines (support, no quota) → emoji-only text ("unclear", no quota) →
+// per-device daily quota → global daily spend reservation → pipeline → spend
+// settled → metadata log.
 
 import { readConfig } from './config.js';
 import { json, error, corsHeaders, preflight, readJson, nextUtcMidnight, utcDay } from './http.js';
 import { validateAngleRequest, validateSessionRequest, validateFeedbackRequest, cleanText, ANGLE_BODY_MAX_BYTES, SESSION_BODY_MAX_BYTES } from './validate.js';
-import { checkSafety, supportPayload } from './safety/index.js';
+import { screenInput, supportPayload } from './safety/index.js';
 import { runAngle, hasWords, PROMPT_VERSION, SCHEMA_VERSION } from './pipeline.js';
 import { signToken, verifyToken, keyedHash } from './auth/tokens.js';
-import { checkEntitlement } from './auth/entitlement.js';
+import { checkEntitlement, inviteTag } from './auth/entitlement.js';
 import { ledgerClient, memoryLedgerNamespace } from './limits/ledger.js';
 import { allow, memoryRateLimiter } from './limits/ratelimit.js';
 import { networkKey } from './limits/netkey.js';
@@ -26,9 +30,31 @@ import { createLogger, lengthBucket } from './log.js';
 import { costMicros, worstCaseMicros } from './cost.js';
 import { createAnthropicProvider } from './providers/anthropic.js';
 import { createMockProvider } from './providers/mock.js';
+import { createBilling, bearerOf, PATHS as BILLING } from './billing/routes.js';
 
 /** The unauthenticated safety pre-check reads at most this many characters of the text (src/validate.js TEXT_MAX is 600). */
 export const EARLY_CHECK_CHARS = 2000;
+
+/**
+ * A session issued under rules this mode no longer has: after the switch to "billing", any session but a billing one;
+ * under "billing+testing", a testing one not minted there with a tester code (inv: 1), and any testing one while it has
+ * no TESTER_INVITE_CODES. A testing session from testing mode does not say whether a code was asked for (production
+ * may have had none: open to anyone), so without this it would keep reaching the model without Beyond for up to 30
+ * days after the switch. The client asks for a new session on a 401 (src/beyond/angle-client.js), with its saved code,
+ * and that one follows the current rules. Other modes are unchanged.
+ * codeTags (billing+testing, the app passes it): the tags of the current TESTER_INVITE_CODES (src/auth/entitlement.js
+ * inviteTag); a testing session must carry one of them (ic), so removing one leaked code ends the sessions it minted
+ * while the other codes keep theirs (a session minted before tags were carried asks for a new one, once).
+ * @param {import('./config.js').Config} cfg @param {{ src?: string, inv?: number, ic?: string }} payload
+ * @param {Set<string> | null} [codeTags]
+ */
+export function sessionSuperseded(cfg, payload, codeTags = null) {
+  if (cfg.entitlementMode === 'billing') return payload.src !== 'billing';
+  if (cfg.entitlementMode === 'billing+testing') {
+    return payload.src === 'testing' && (cfg.inviteCodes.length === 0 || payload.inv !== 1 || (!!codeTags && !(typeof payload.ic === 'string' && codeTags.has(payload.ic))));
+  }
+  return false;
+}
 
 /**
  * @typedef {import('./providers/anthropic.js').Provider} Provider
@@ -41,7 +67,8 @@ export const EARLY_CHECK_CHARS = 2000;
  *   provider?: Provider | ((cfg: import('./config.js').Config) => Provider),
  *   now?: () => number,
  *   log?: (line: string) => void,
- * }} options
+ *   fetch?: typeof fetch,
+ * }} options (fetch: the billing routes' calls to Stripe and the sign-in project; tests pass a fake)
  */
 export function createApp(options) {
   const now = options.now || Date.now;
@@ -54,6 +81,16 @@ export function createApp(options) {
   const fallbackAngleLimiter = memoryRateLimiter({ limit: 6, periodMs: 60000, now });
   const fallbackSessionLimiter = memoryRateLimiter({ limit: 3, periodMs: 60000, now });
   const fallbackFeedbackLimiter = memoryRateLimiter({ limit: 20, periodMs: 60000, now });
+  const billing = createBilling({ logger, now, ...(options.fetch ? { fetch: options.fetch } : {}), ipKey: (request, cfg) => ipKey(request, cfg) });
+  /** @type {WeakMap<object, Promise<Set<string>>>} */
+  const codeTagSets = new WeakMap();
+  /** billing+testing: the tags of the current tester codes (sessionSuperseded); null in other modes. @param {import('./config.js').Config} cfg */
+  const codeTagsFor = (cfg) => {
+    if (cfg.entitlementMode !== 'billing+testing') return Promise.resolve(null);
+    let p = codeTagSets.get(cfg);
+    if (!p) { p = Promise.all(cfg.inviteCodes.map((c) => inviteTag(cfg, c))).then((a) => new Set(a)); codeTagSets.set(cfg, p); }
+    return p;
+  };
 
   /** @param {Record<string, any>} env */
   const configFor = (env) => {
@@ -93,6 +130,8 @@ export function createApp(options) {
     const url = new URL(request.url);
     const local = url.hostname === 'localhost' || url.hostname === '127.0.0.1';
     if (cfg.requireHttps && url.protocol !== 'https:' && !local) return error(403, 'https_required', 'Use HTTPS.');
+    // Stripe's webhook comes from Stripe, not a browser: no Origin and no CORS; its signature is the check
+    if (url.pathname === BILLING.webhook) return billing.webhook(request, env, cfg);
 
     const cors = corsHeaders(request, cfg);
     if (!cors) return error(403, 'origin_not_allowed', 'This origin may not call the Another Angle server.');
@@ -104,14 +143,34 @@ export function createApp(options) {
         ok: true, service: 'another-angle', prompt_version: PROMPT_VERSION, schema_version: SCHEMA_VERSION,
         provider: cfg.provider, entitlement_mode: cfg.entitlementMode,
         // a testing session needs one of TESTER_INVITE_CODES (src/auth/entitlement.js); only whether, never a code
-        invite_required: cfg.entitlementMode !== 'storekit' && cfg.inviteCodes.length > 0,
+        // (billing alone takes no invite code)
+        invite_required: cfg.entitlementMode !== 'storekit' && cfg.entitlementMode !== 'billing' && cfg.inviteCodes.length > 0,
         configured: { signing_key: cfg.signingKeys.length > 0, provider_key: cfg.provider === 'mock' || cfg.apiKey.length > 0 },
+        // web subscriptions (src/billing/): only whether they are set up, never a key or a price (and, while any
+        // price id is still a placeholder such as price_TODO_owner, how many; how many slots hold an id another slot
+        // also holds, never sold; while the sign-in project is a placeholder, that it is: docs/STAGING.md). Enums and
+        // booleans only: the accepted key's Stripe mode (null when unset or refused), why a key was refused, the
+        // owner's live approval, the pinned API version and the Stripe Tax switch, so a deploy can be checked without
+        // a key.
+        billing: {
+          configured: billing.ready(env, cfg), webhook: cfg.billing.webhookSecret.length > 0,
+          stripe_mode: cfg.billing.keyMode || null,
+          ...(cfg.billing.keyRefused ? { key_refused: cfg.billing.keyRefused } : {}),
+          live_approved: cfg.billing.liveApproved, api_version: cfg.billing.apiVersion || null, automatic_tax: cfg.billing.automaticTax,
+          ...(cfg.billing.placeholderPrices ? { placeholder_prices: cfg.billing.placeholderPrices } : {}),
+          ...(cfg.billing.duplicateSlots.length ? { duplicate_prices: cfg.billing.duplicateSlots.length } : {}),
+          ...(cfg.billing.accountsPlaceholder ? { accounts_configured: false } : {}),
+        },
       }, cors);
     }
     if (route === 'POST /v1/session') return session(request, env, cfg, cors);
     if (route === 'POST /v1/angle') return angle(request, env, cfg, cors, ctx);
     if (route === 'POST /v1/feedback') return feedback(request, env, cfg, cors);
-    if (['/v1/health', '/v1/session', '/v1/angle', '/v1/feedback'].includes(url.pathname)) return error(405, 'method_not_allowed', 'Method not allowed.', { ...cors, allow: url.pathname === '/v1/health' ? 'GET, OPTIONS' : 'POST, OPTIONS' });
+    if (route === `POST ${BILLING.checkout}`) return billing.checkout(request, env, cfg, cors);
+    if (route === `GET ${BILLING.status}`) return billing.status(request, env, cfg, cors);
+    if (route === `POST ${BILLING.sync}`) return billing.sync(request, env, cfg, cors);
+    if (route === `POST ${BILLING.portal}`) return billing.portal(request, env, cfg, cors);
+    if (['/v1/health', '/v1/session', '/v1/angle', '/v1/feedback', BILLING.checkout, BILLING.status, BILLING.sync, BILLING.portal].includes(url.pathname)) return error(405, 'method_not_allowed', 'Method not allowed.', { ...cors, allow: ['/v1/health', BILLING.status].includes(url.pathname) ? 'GET, OPTIONS' : 'POST, OPTIONS' });
     return error(404, 'not_found', 'Not found.', cors);
   }
 
@@ -152,7 +211,11 @@ export function createApp(options) {
     const v = validateSessionRequest(body.value);
     if (!v.ok) return error(400, v.code, v.message, cors, { field: v.field });
 
-    const ent = await checkEntitlement(v.value, cfg, now());
+    // billing modes: the signed-in account's Supabase token (Authorization) and its Beyond subscription; other modes never read it
+    const billed = cfg.entitlementMode === 'billing' || cfg.entitlementMode === 'billing+testing';
+    const ent = billed
+      ? await checkEntitlement(v.value, cfg, now(), { accountToken: bearerOf(request), beyond: (t) => billing.beyondAccess(env, cfg, t) })
+      : await checkEntitlement(v.value, cfg, now());
     if (!ent.ok) {
       logger.event({ evt: 'session', status: 'denied', http: ent.status, err: ent.code });
       return error(ent.status, ent.code, ent.message, cors);
@@ -169,7 +232,7 @@ export function createApp(options) {
       }
     }
     const iat = Math.floor(now() / 1000) * 1000;
-    const token = await signToken({ sub: ent.subject, ent: 'beyond', src: ent.source, iat, exp: ent.expiresAt }, cfg.signingKeys[0]);
+    const token = await signToken({ sub: ent.subject, ent: 'beyond', src: ent.source, ...(ent.invited ? { inv: 1, ...(ent.inviteTag ? { ic: ent.inviteTag } : {}) } : {}), iat, exp: ent.expiresAt }, cfg.signingKeys[0]);
     const used = await ledger.peek(`dev:${ent.subject}`, 'angles', day);
     logger.event({ evt: 'session', status: 'ok', http: 200, source: ent.source, latency_ms: now() - t0 });
     return json(200, {
@@ -191,18 +254,30 @@ export function createApp(options) {
 
     // The body is read first so the safety pre-check can run before anything
     // that could turn a person in crisis away (a burst limit, an expired
-    // token, a missing setting). The check is cheap, uses no quota and
-    // returns only the authored support copy. It reads at most the first
-    // EARLY_CHECK_CHARS characters (no token yet, so no unbounded CPU for
-    // anyone); a longer text is refused later anyway (TEXT_MAX), and the full
-    // checks run on the validated text after the token.
+    // token, a missing setting, a used-up quota, the spend cap). The check is
+    // the pipeline's own input screen (screenInput: the lexicon as typed and
+    // in its normalised spelling, then the risk screener), so what the
+    // pipeline would answer with support is answered here, before any of
+    // them; it uses no quota and returns only the authored support copy. It
+    // reads at most the first EARLY_CHECK_CHARS characters (no token yet, so
+    // no unbounded CPU for anyone); a longer text is refused later anyway
+    // (TEXT_MAX), and the full checks run on the validated text after the
+    // token.
     const body = await readJson(request, ANGLE_BODY_MAX_BYTES);
     const raw = body.ok && body.value && typeof body.value === 'object' ? /** @type {Record<string, unknown>} */ (body.value).text : null;
+    // One reading per text for the whole request: the same words read the same way (screenInput is pure), so the check
+    // here, the one on the validated text and earlier angles' lines below, and the pipeline's own steps 1b and 1c
+    // (runAngle deps.screen) each screen a given text once, never twice (README: CPU time).
+    /** @type {Map<string, ReturnType<typeof screenInput>>} */
+    const screens = new Map();
+    /** @param {string} t */
+    const screen = (t) => { let r = screens.get(t); if (!r) { r = screenInput(t); screens.set(t, r); } return r; };
     if (typeof raw === 'string') {
-      const early = checkSafety(cleanText(raw.slice(0, EARLY_CHECK_CHARS)));
+      const early = screen(cleanText(raw.slice(0, EARLY_CHECK_CHARS)));
       if (early.level === 'crisis' || early.level === 'care') {
-        logEvt({ status: early.level, http: 200, safety_level: early.level, safety_source: 'lexicon', text_len_bucket: lengthBucket(raw.length) });
-        return json(200, { ...base, status: early.level, scene: null, support: supportPayload(early.level, early.category, 'lexicon'), fallback: null, keep_support_close: true }, cors);
+        const source = early.source || 'lexicon';
+        logEvt({ status: early.level, http: 200, safety_level: early.level, safety_source: source, text_len_bucket: lengthBucket(raw.length) });
+        return json(200, { ...base, status: early.level, scene: null, support: supportPayload(early.level, early.category, source), fallback: null, keep_support_close: true }, cors);
       }
     }
 
@@ -220,7 +295,12 @@ export function createApp(options) {
       logEvt({ status: 'unauthorised', http: 401, err: /** @type {any} */ (verified).code });
       return error(401, 'unauthorised', 'A valid session token is required.', { ...cors, 'www-authenticate': 'Bearer realm="another-angle"' });
     }
-    const subject = /** @type {any} */ (verified).payload.sub;
+    const payload = /** @type {any} */ (verified).payload;
+    if (sessionSuperseded(cfg, payload, await codeTagsFor(cfg))) {
+      logEvt({ status: 'unauthorised', http: 401, err: 'session_superseded' });
+      return error(401, 'session_superseded', 'This session is from before the current rules; start a new one.', { ...cors, 'www-authenticate': 'Bearer realm="another-angle"' });
+    }
+    const subject = payload.sub;
 
     if (!body.ok) { logEvt({ status: 'invalid', http: body.status, err: body.code }); return error(body.status, body.code, body.message, cors); }
     const v = validateAngleRequest(body.value);
@@ -231,14 +311,28 @@ export function createApp(options) {
       chosen_emotion: input.emotion, intention: input.intention, previous: input.previous.length, text_len_bucket: lengthBucket(input.text.length),
     };
 
-    // Crisis and care never reach the model and never use quota (checked
-    // again on the validated text, which is what the model would see).
-    const safety = checkSafety(input.text);
-    if (safety.level === 'crisis' || safety.level === 'care') {
-      logEvt({ ...common, status: safety.level, http: 200, safety_level: safety.level, safety_source: 'lexicon' });
-      return json(200, { ...base, status: safety.level, scene: null, support: supportPayload(safety.level, safety.category, 'lexicon'), fallback: null, keep_support_close: true }, cors);
+    // Crisis and care never reach the model and never use quota or the spend
+    // cap (checked again on the validated text, which is what the model would
+    // see, and on the earlier angles' lines the device sent back: the
+    // pipeline's steps 1, 1b and 1c, before the quota is taken).
+    const safety = screen(input.text);
+    let support = safety.level === 'crisis' || safety.level === 'care' ? safety : null;
+    for (const p of input.previous) {
+      if (support) break;
+      for (const line of [p.subtitle_line_1, p.subtitle_line_2]) {
+        const r = screen(line);
+        if (r.level === 'crisis' || r.level === 'care') { support = r; break; }
+      }
+    }
+    if (support) {
+      const level = /** @type {'crisis' | 'care'} */ (support.level);
+      const source = support.source || 'lexicon';
+      logEvt({ ...common, status: level, http: 200, safety_level: level, safety_source: source });
+      return json(200, { ...base, status: level, scene: null, support: supportPayload(level, support.category, source), fallback: null, keep_support_close: true }, cors);
     }
 
+    // a fallback still keeps support close after a concern (or the screener's 'check'), as the pipeline does
+    const keepClose = safety.level === 'concern' || safety.check;
     const day = utcDay(now());
     const ledger = ledgerFor(env);
     const devName = `dev:${subject}`;
@@ -265,15 +359,18 @@ export function createApp(options) {
     if (cfg.provider === 'anthropic' && !cfg.apiKey) {
       await ledger.give(devName, 'angles', day);
       logEvt({ ...common, status: 'fallback', fallback_reason: 'provider', err: 'no_api_key', http: 200 });
-      return json(200, { ...base, status: 'fallback', scene: null, support: null, fallback: { reason: 'provider', hint: null }, keep_support_close: safety.level === 'concern', quota: { ...quotaOut, remaining: quotaOut.remaining + 1 } }, cors);
+      return json(200, { ...base, status: 'fallback', scene: null, support: null, fallback: { reason: 'provider', hint: null }, keep_support_close: keepClose, quota: { ...quotaOut, remaining: quotaOut.remaining + 1 } }, cors);
     }
 
     const reserve = worstCaseMicros({ model: cfg.model, attempts: 2, promptTokens: cfg.promptTokenEstimate, maxTokens: cfg.maxTokens });
-    const spend = await ledger.take('global', 'spend', day, cfg.dailySpendCapMicros, reserve);
+    // billing+testing: testers' angles stop at their share of the day's cap (the same counter), so a leaked or shared
+    // tester code can never leave subscribers with only the authored angles; subscribers may use all of it
+    const spendLimit = cfg.entitlementMode === 'billing+testing' && payload.src === 'testing' ? Math.floor(cfg.dailySpendCapMicros * cfg.testingSpendShare) : cfg.dailySpendCapMicros;
+    const spend = await ledger.take('global', 'spend', day, spendLimit, reserve);
     if (!spend.ok) {
       await ledger.give(devName, 'angles', day);
       logEvt({ ...common, status: 'fallback', fallback_reason: 'capacity', http: 200 });
-      return json(200, { ...base, status: 'fallback', scene: null, support: null, fallback: { reason: 'capacity', hint: null }, keep_support_close: safety.level === 'concern', quota: { ...quotaOut, remaining: quotaOut.remaining + 1 } }, cors);
+      return json(200, { ...base, status: 'fallback', scene: null, support: null, fallback: { reason: 'capacity', hint: null }, keep_support_close: keepClose, quota: { ...quotaOut, remaining: quotaOut.remaining + 1 } }, cors);
     }
 
     let result;
@@ -284,14 +381,14 @@ export function createApp(options) {
     try {
       result = await runAngle(input, {
         provider, systemPrompt: options.systemPrompt, maxTokens: cfg.maxTokens, attemptTimeoutMs: cfg.attemptTimeoutMs,
-        deadlineMs: cfg.deadlineMs, userTag: await userTag(cfg, subject, day), now, usage,
+        deadlineMs: cfg.deadlineMs, userTag: await userTag(cfg, subject, day), now, usage, screen,
       });
     } catch (e) {
       await defer(ctx, ledger.settle('global', 'spend', day, reserve, costMicros(usage)));
       await ledger.give(devName, 'angles', day);
       quotaOut.remaining += 1;
       logEvt({ ...common, status: 'fallback', fallback_reason: 'provider', err: 'exception', http: 200 });
-      return json(200, { ...base, status: 'fallback', scene: null, support: null, fallback: { reason: 'provider', hint: null }, keep_support_close: safety.level === 'concern', quota: quotaOut }, cors);
+      return json(200, { ...base, status: 'fallback', scene: null, support: null, fallback: { reason: 'provider', hint: null }, keep_support_close: keepClose, quota: quotaOut }, cors);
     }
 
     const actual = costMicros(result.meta.usage);
@@ -331,7 +428,9 @@ export function createApp(options) {
     if (!cfg.signingKeys.length) return error(503, 'not_configured', 'TOKEN_SIGNING_KEY is not set.', cors);
     if (!(await allow(env.FEEDBACK_IP_LIMITER, fallbackFeedbackLimiter, await ipKey(request, cfg)))) return error(429, 'rate_limited', 'Too many requests. Try again in a minute.', { ...cors, 'retry-after': '60' });
     const m = /^Bearer ([A-Za-z0-9._-]{10,2048})$/.exec(request.headers.get('authorization') || '');
-    if (!m || !(await verifyToken(m[1], cfg.signingKeys, now())).ok) return error(401, 'unauthorised', 'A valid session token is required.', { ...cors, 'www-authenticate': 'Bearer realm="another-angle"' });
+    const verified = m ? await verifyToken(m[1], cfg.signingKeys, now()) : null;
+    if (!verified?.ok) return error(401, 'unauthorised', 'A valid session token is required.', { ...cors, 'www-authenticate': 'Bearer realm="another-angle"' });
+    if (sessionSuperseded(cfg, verified.payload, await codeTagsFor(cfg))) return error(401, 'session_superseded', 'This session is from before the current rules; start a new one.', { ...cors, 'www-authenticate': 'Bearer realm="another-angle"' });
     const body = await readJson(request, 2048);
     if (!body.ok) return error(body.status, body.code, body.message, cors);
     const v = validateFeedbackRequest(body.value);

@@ -6,6 +6,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { cpuPerCall, within, readings } from './helpers/cost.mjs'; // (before any hushmallow module: its calibration runs first)
 import { normalise, canonical, frames, riskScreen, CARE_AT, CHECK_AT, HISTORY } from '../src/beyond/risk-screen.js';
 import { checkText } from '../src/engine/safety.js';
 import { readSafety, loadGrief } from '../src/hushfold/input-overlay.js';
@@ -295,13 +296,18 @@ test('the server keeps a byte-identical copy of the screener (npm run sync:scree
 });
 
 // ------------------------------------------------------------------------------------------------------- cost --
-test('cheap: under 10 ms at 600 characters (median of 7, its own worst repeats)', () => {
+test('cheap: under 10 ms at 600 characters (seven reads, its own worst repeats)', () => {
   for (const s of ['goodbye everyone ', 'tell mum i love her and ', 'i will not be here ', 'by the time you read this ', 'my mum died and i want to be with her ', 'k i l l ', 'not ', 'i want to ']) {
     const t = s.repeat(Math.ceil(600 / s.length)).slice(0, 600);
     riskScreen(t);
-    const runs = [];
-    for (let k = 0; k < 7; k++) { const a = performance.now(); riskScreen(t); runs.push(performance.now() - a); }
-    runs.sort((x, y) => x - y);
-    assert.ok(runs[3] < 10, `${JSON.stringify(s)}: ${runs[3].toFixed(2)} ms`);
+    // each read is of a text of its own, the same words with one letter in capitals (normalise() lower-cases it: the same
+    // reading, the same work): riskScreen remembers its last 48 texts, so reading t again timed that memory (0.003-0.06 ms),
+    // never the screen (1-2 ms). The CPU time of the seven, per read (tests/helpers/cost.mjs: another test file's turn on
+    // the core never counts), read again at most twice if it misses, with seven more texts it has not seen
+    const letters = [...t.matchAll(/[a-z]/g)].map((m) => m.index);
+    let next = 0;
+    const seven = () => Array.from({ length: 7 }, () => { const i = letters[next++]; return t.slice(0, i) + t[i].toUpperCase() + t.slice(i + 1); });
+    const r = within(10, () => { const ts = seven(); return cpuPerCall((k) => riskScreen(ts[k]), ts.length); });
+    assert.ok(r.ok, `${JSON.stringify(s)}: ${readings(r.seen, 2)} ms of CPU per read (7 reads a reading); ${r.note}`);
   }
 });

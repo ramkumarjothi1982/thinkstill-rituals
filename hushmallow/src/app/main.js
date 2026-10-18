@@ -6,7 +6,9 @@
 
 import { authBoot, createAuthHandle, NOTICE_TEXT, noticeText } from '../auth/boot.js';
 import { createPrefs } from './prefs.js';
-import { createEntitlements } from './entitlements.js';
+import { createEntitlements, PLANS } from './entitlements.js';
+import { createBilling, takeReturn, welcomeBack, planNow } from './billing.js';
+import { resumeChange } from './plan-change.js';
 import { createRecommender } from '../engine/recommend.js';
 import { createWorld } from './world.js';
 import { RITUALS } from '../data/rituals.js';
@@ -22,7 +24,12 @@ import { docTitle } from '../brand.js';
 const AUTH = authBoot();
 const store = AUTH.store;
 const prefs = createPrefs(store);
-const ent = createEntitlements({ store });
+// Web subscriptions (src/app/billing.js): null unless src/app/config.js switches them on and this build has
+// sign-in; then the plans page sells through Stripe and a plan is the billing server's answer for the account.
+// Always null in the App Store app's shell (createBilling checks for its StoreKit bridge), so app.billing, and with it
+// the consent card's, the delete screen's and Another Angle's web-billing branches, never run there
+const billing = createBilling({ auth: () => app.auth, signIn: !!AUTH.config.enabled && !AUTH.forwarding });
+const ent = createEntitlements({ store, billing });
 
 // sound + haptics engines load lazily; silent stubs until then
 const silent = { play() {}, ui() {}, fx() {}, hold() { return { update() {}, stop() {} }; }, ambience() {}, setAmbienceMood() {}, stopAmbience() {}, unlock() {}, setEnabled() {}, setVolume() {} };
@@ -46,6 +53,7 @@ const app = {
   world: null,
   scenes: {},
   auth: null,
+  billing,
 };
 
 const sceneEl = document.getElementById('scene');
@@ -90,6 +98,26 @@ app.auth = createAuthHandle(AUTH, {
     } else if (kind) toast(NOTICE_TEXT[kind], 4200);   // say it now; the reload waits for a calm moment
   },
 });
+/**
+ * A plan Stripe has confirmed (src/app/plan-change.js, billing.js welcomeBack): its welcome (src/app/scenes/beyond-welcome.js)
+ * over the Hushfold or a quiet screen; mid-ritual or mid-conversation (a check when the app came back on screen) a line
+ * says it instead, so nothing covers what the person is in the middle of.
+ */
+const WELCOME_SCENES = ['home', 'plans', 'settings', 'account', 'mallows', 'library', 'journey', 'garden', 'landing', 'classic'];
+/** The scenes that show the plan itself (its cards, the Plan row): drawn again once the welcome over them closes, so
+ *  what is behind it is the plan Stripe has just confirmed, never the one before. */
+const PLAN_SCENES = ['plans', 'settings'];
+app.welcomePlan = async (result) => {
+  const top = stack[stack.length - 1];
+  if (!WELCOME_SCENES.includes(top?.name)) {
+    toast(`Welcome to ${PLANS[result?.tier]?.name || 'your new plan'}`, 3200);
+    app.haptic('success');
+    return null;
+  }
+  // (only while that scene is still the one under it: "Try Another Angle" moves on, and the newest go() wins)
+  const redraw = PLAN_SCENES.includes(top.name) ? () => { if (stack[stack.length - 1] === top) app.go(top.name, top.params, { replace: true }).catch(() => {}); } : null;
+  return (await import('./scenes/beyond-welcome.js')).openPlanWelcome(app, result, { onClose: redraw });
+};
 async function checkVersion() {
   newer = (await newerVersion()) || newer;
   if (newer && stack[stack.length - 1]?.name === 'home' && safeToUpdate()) moveTo(newer);
@@ -217,7 +245,16 @@ const SCENES = {
 };
 
 async function boot() {
+  // back from Stripe (?billing=…): out of the address before anything else reads or keeps it, and the plan as kept
+  // before the trip (before the first check below), so the way back from the portal can tell when its change arrives
+  // (and a change kept in this tab from a page that was not signed in is judged against this account's own plan)
+  const billingBack = billing ? takeReturn() : null;
+  const planBefore = billing ? planNow(ent) : null;
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') checkVersion(); });
+  // a web plan is checked again whenever the app comes back to the foreground (at most once a minute)
+  if (billing) document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') ent.refresh().catch(() => {}); });
+  // a change of plan Stripe had not confirmed yet in time (src/app/plan-change.js): asked again quietly when the app is back
+  if (billing) document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') resumeChange(app, { quiet: true }).catch(() => {}); });
   // a page left open for hours still hears about a new deploy (only while it is on screen)
   setInterval(() => { if (document.visibilityState === 'visible') checkVersion(); }, 10 * 60 * 1000);
   app.world = createWorld({ prefs, audio: audioProxy, haptic: (k) => app.haptic(k) });
@@ -249,6 +286,9 @@ async function boot() {
   stack.push({ name: 'home', params: {} });
   await app.go('home', { intro: !prefs.get('seenIntro') }, { replace: true });
   if (app.auth.enabled) afterAuthBoot();
+  if (billingBack) welcomeBack(app, billingBack, { before: planBefore }).catch(() => {});
+  // a reload while a change of plan was being confirmed (kept in this tab for 15 minutes): it carries on
+  else if (billing) resumeChange(app, { before: planBefore }).catch(() => {});
 }
 
 /** Sign-in on: the notice from before a reload, a deep link to the account, and the session check. */

@@ -701,29 +701,41 @@ function anchorExplore(L) {
   const { cx, cy, w, h } = S(L), s = unit(L);
   const anchor = { x: cx - w * 0.3, y: cy + h * 0.05 };
   const way = [{ x: cx - w * 0.02, y: cy - h * 0.18 }, { x: cx + w * 0.22, y: cy + h * 0.02 }, { x: cx + w * 0.32, y: cy - h * 0.22 }];
-  let anchorId = null, locked = false, reached = 0, trail = [], doneAt = -1, explorer = null;
+  let anchorId = null, locked = false, reached = 0, doneAt = -1, reachedAtHold = 0;
+  const explorers = new Map(), trail = [];   // every finger down but the anchor's → where it last was; each line drawn, one step of one finger
   const held = () => anchorId != null || locked;
   return phase(L, {
     name: 'Anchor and Explore', howTo: 'Hold the anchor with one finger while another traces to the three lights (or tap the anchor once to set it).',
     progress: () => (held() ? 0.25 : 0) + reached * 0.25,
     isDone: () => doneAt >= 0 && L.now() - doneAt > 0.6,
     down(p) {
-      if (hit(p, anchor.x, anchor.y, 46 * s + 12)) { if (anchorId == null) { anchorId = p.id; L.sound('thrum', { intensity: 0.3 }); L.haptic('soft'); } return; }
-      if (held()) { explorer = p.id; trail.push([p.x, p.y]); }
+      // the first finger on the anchor holds it (lifted before any light is reached, it sets it); every other finger
+      // explores, one landing on the anchor too, as the ghost hint shows: while the anchor is held or set, a move by
+      // any of them over the next light reaches it (one finger at a time explored, so a finger only resting on the
+      // anchor, or down anywhere else, could take the trace over and every trace after it counted for nothing)
+      if (!held() && hit(p, anchor.x, anchor.y, 46 * s + 12)) { anchorId = p.id; reachedAtHold = reached; explorers.delete(p.id); L.sound('thrum', { intensity: 0.3 }); L.haptic('soft'); return; }
+      explorers.set(p.id, [p.x, p.y]);
     },
     move(p) {
-      if (p.id !== explorer || !held() || doneAt >= 0) return;
-      trail.push([p.x, p.y]); if (trail.length > 400) trail.shift();
+      // each finger draws its own line, from where it last was (one trail for all joined each trace on to the last)
+      const last = explorers.get(p.id);
+      if (!last) return;
+      explorers.set(p.id, [p.x, p.y]);
+      if (!held() || doneAt >= 0) return;
+      trail.push([last[0], last[1], p.x, p.y]); if (trail.length > 400) trail.shift();
       if (reached < 3 && hit(p, way[reached].x, way[reached].y, 34 * s + 8)) reach();
     },
     up(p) {
-      if (p.id === anchorId) { anchorId = null; if (!locked && trail.length < 2) { locked = true; L.setPrompt('Anchor set. Now trace out to the three lights.'); } }
-      if (p.id === explorer) explorer = null;
+      // lifted with no light reached while it was down, the anchor is set (a tap, with a second finger too); a hold
+      // that saw a light reached lets it go, as before (the test was the whole trail ever drawn, so once anything had
+      // been traced no tap could set the anchor again)
+      if (p.id === anchorId) { anchorId = null; if (!locked && reached === reachedAtHold) { locked = true; L.setPrompt('Anchor set. Now trace out to the three lights.'); } }
+      explorers.delete(p.id);
     },
-    assist() { if (!held()) { locked = true; L.setPrompt('Anchor set. Now trace out to the three lights.'); } else if (reached < 3) { trail.push([way[reached].x, way[reached].y]); reach(); } },
+    assist() { if (!held()) { locked = true; L.setPrompt('Anchor set. Now trace out to the three lights.'); } else if (reached < 3) { const a = reached ? way[reached - 1] : anchor; trail.push([a.x, a.y, way[reached].x, way[reached].y]); reach(); } },
     hint() { if (!held()) return tapAt(anchor); const a = reached ? way[reached - 1] : anchor; return reached < 3 ? swipe(a, way[reached]) : null; },
     frame(g, t) {
-      if (trail.length > 1) { g.save(); g.globalCompositeOperation = 'lighter'; g.strokeStyle = rgba('#bfefff', 0.45); g.lineWidth = 4; g.lineCap = 'round'; g.beginPath(); trail.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y))); g.stroke(); g.restore(); }
+      if (trail.length) { g.save(); g.globalCompositeOperation = 'lighter'; g.strokeStyle = rgba('#bfefff', 0.45); g.lineWidth = 4; g.lineCap = 'round'; g.beginPath(); for (const [x0, y0, x1, y1] of trail) { g.moveTo(x0, y0); g.lineTo(x1, y1); } g.stroke(); g.restore(); }
       const hk = held() ? 1 : 0.5 + 0.3 * Math.sin(t * 4);
       glow(g, anchor.x, anchor.y, 40, '#ffe2a8', 0.55 * hk);
       g.fillStyle = mix('#5a4a7a', '#ffe2a8', held() ? 0.5 : 0.2); g.beginPath(); g.ellipse(anchor.x, anchor.y, 20 * s + 4, 15 * s + 3, 0, 0, TAU); g.fill();

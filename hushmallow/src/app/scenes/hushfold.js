@@ -44,12 +44,32 @@ const preloadInput = () => {
 };
 const idle = (fn) => (typeof requestIdleCallback === 'function' ? requestIdleCallback(fn, { timeout: 1500 }) : setTimeout(fn, 300));
 
-function mallowForNow() {
-  const hr = new Date().getHours();
+/** The Mallow of the time of day (nobody has chosen one). index.html asks for its art as the page starts, with a copy of
+ *  this pick that tests/first-mallow.test.mjs holds to this one. */
+export function mallowForNow(now = new Date()) {
+  const hr = now.getHours();
   if (hr >= 21 || hr < 6) return 'noomi';
   if (hr < 11) return 'boppo';
   if (hr < 17) return 'pipzi';
   return 'loomi';
+}
+/** The Mallow a Hushfold opens with: an explicit pick (Meet the Mallows, the panel switcher), then the last one chosen, then the time of day. */
+export function openingMallow(state, prefs, now = new Date()) {
+  return (MALLOWS[state.homeMallow] && state.homeMallow) || (MALLOWS[prefs.get('mallow')] && prefs.get('mallow')) || mallowForNow(now);
+}
+/**
+ * MallowTouch on stage: its art first, then its own set-up. The 5 s are the set-up's alone, timed once the art is in: on a
+ * slow line the art alone can take longer, and the rig it would fall back to waits for the same art, so the visit still
+ * gets the squeezable Mallow. The art has its own generous cap, so a load that never ends still falls back to the rig
+ * (one that fails does at once). Rejects with why it gave up.
+ */
+export async function touchReady(mt, art, { artMs = 30000, setupMs = 5000 } = {}) {
+  let wait = 0;
+  const within = (p, ms, why) => Promise.race([p, new Promise((_, no) => { wait = setTimeout(() => no(new Error(why)), ms); })]).finally(() => clearTimeout(wait));
+  // (when the art fails first, mt.loaded is never awaited here: its own rejection is already the caller's reason)
+  mt.loaded?.catch?.(() => {});
+  await within(art, artMs, `its art not in after ${artMs / 1000} s`);
+  return within(mt.loaded, setupMs, `not ready after ${setupMs / 1000} s`);
 }
 const REACTION_KINDS = new Set(['squeeze', 'tap', 'doubleTap', 'flick', 'stretch', 'massage', 'stroke', 'jiggle', 'pull']);
 // how carefully the stage behaves, from the shared detector (src/engine/safety.js); it only ever rises in a visit
@@ -153,7 +173,7 @@ export default function hushfold(app, params = {}) {
   const { world, prefs, ent, store } = app;
   // explicit picks (Meet the Mallows, the panel switcher) win, then the last one chosen, then the time of day
   if (app.state.homeMallow && MALLOWS[app.state.homeMallow]) prefs.set('mallow', app.state.homeMallow);
-  let mallowId = (MALLOWS[app.state.homeMallow] && app.state.homeMallow) || (MALLOWS[prefs.get('mallow')] && prefs.get('mallow')) || mallowForNow();
+  let mallowId = openingMallow(app.state, prefs);
   const lines = createLines({ store });
   const S = {
     emotion: null, emotionName: null, intention: null, reactions: 0, touches: 0, firstTouchAt: 0, lastLineAt: 0,
@@ -197,7 +217,8 @@ export default function hushfold(app, params = {}) {
   const gearBtn = h('button', { class: 'hf-btn', type: 'button', 'aria-label': 'Settings', onclick: () => app.go('settings') }, hfIcon('gear'));
   const topEl = h('header', { class: 'hf-top' }, logoBox, h('div', { class: 'grow' }), panelBtn, gearBtn);
   const tellLabel = h('span', { class: 'label' });
-  const tellBtn = h('button', { class: 'hf-pill is-hidden', type: 'button', 'data-hf': 'tell', 'data-sheet-return': '2', onclick: () => openTell('pill') }, h('span', { class: 'dot', 'aria-hidden': 'true' }), hfIcon('talk'), tellLabel);
+  // (hidden until it is shown, and out of reach meanwhile: showTell)
+  const tellBtn = h('button', { class: 'hf-pill is-hidden', type: 'button', inert: '', 'aria-hidden': 'true', 'data-hf': 'tell', 'data-sheet-return': '2', onclick: () => openTell('pill') }, h('span', { class: 'dot', 'aria-hidden': 'true' }), hfIcon('talk'), tellLabel);
   // (the focus comes back to the Support pill when a sheet closes and its opener has gone: data-sheet-return, ui.js)
   const supportPill = h('button', { class: 'hf-pill support', type: 'button', hidden: true, 'data-sheet-return': '1', onclick: () => openSupportSheet({ category: pillCategory() }) }, hfIcon('support'), 'Support');
   // a paused world says so on the stage, with one tap back into it
@@ -399,6 +420,9 @@ export default function hushfold(app, params = {}) {
     const vw = stageRight(), vh = innerHeight;
     // the dock keeps to the stage too (its pills centred in it, never under the panel)
     dock.style.right = vw < innerWidth ? `${innerWidth - vw}px` : '';
+    // (under the phone sheet, which covers it, its pills are out of reach: no Tab stop on a pill behind the sheet)
+    const covered = panelSheet();
+    if (dock.inert !== covered) dock.inert = covered;
     const topB = topEl.getBoundingClientRect().bottom || 60;
     const band = Math.max(Math.min(156, Math.max(118, vh * 0.17)), bandNeed ? bandNeed + 24 : 0);
     bandPx = Math.round(band);
@@ -1414,6 +1438,10 @@ export default function hushfold(app, params = {}) {
   function showTell(on) {
     const was = !tellBtn.classList.contains('is-hidden');
     tellBtn.classList.toggle('is-hidden', !on);
+    // hidden (a first visit before the invitation, under the open Tell overlay), it is out of reach too, as the Support pill
+    // under the overlay is: no Tab stop on a pill nobody can see, nothing a screen reader finds (its fade in is the CSS's)
+    tellBtn.inert = !on;
+    if (on) tellBtn.removeAttribute('aria-hidden'); else tellBtn.setAttribute('aria-hidden', 'true');
     // (the dock grew or shrank: the thoughts' room and the Mallow follow)
     if (was !== !!on && stage) layout();
   }
@@ -1698,6 +1726,9 @@ export default function hushfold(app, params = {}) {
     clearTimeout(inviteT);
     panel?.close();
     closeRead();
+    // (opened from the Tell pill, the focus goes back to it on close: the overlay's own focus return finds the pill still out
+    // of reach under it, so onClose gives the focus back once the pill is in reach again)
+    const fromPill = document.activeElement === tellBtn;
     showTell(false);
     // one Support control at a time (review P3, 320 px): while the overlay is open its own Support chip is the one — the
     // dock's pill steps away under it (unseen, untouchable, out of the tab order) and comes back when it closes
@@ -1746,6 +1777,7 @@ export default function hushfold(app, params = {}) {
         // crisis words typed in the last moment before closing: the urgent sheet still opens, once
         if (meta.safety?.level === 'crisis' && !meta.supportShown && reason !== 'submit') openSupportSheet({ urgent: true });
         showTell(true);
+        if (fromPill && reason !== 'submit') focusBackToTell(ov?.el);
         layout();
         subtitles.unsuspend();
         if (reason !== 'submit') {
@@ -1957,6 +1989,14 @@ export default function hushfold(app, params = {}) {
     const a = document.activeElement;
     if (a && a !== document.body && !subtitles.el.contains(a)) return;
     if (!tellBtn.classList.contains('is-hidden')) tellBtn.focus?.({ preventScroll: true });
+  }
+  /**
+   * The Tell overlay opened from the Tell pill has closed unsent: the focus back to the pill, from the page (Escape, Back) or
+   * from the overlay's own ✕ (still there as it fades out) — never taken from a sheet or a field it has gone to meanwhile.
+   */
+  function focusBackToTell(ovEl) {
+    const a = document.activeElement;
+    if (!a || a === document.body || ovEl?.contains?.(a)) tellBtn.focus?.({ preventScroll: true });
   }
   /**
    * (fix round) After Send on the care, crisis and gentle paths, or once their chips have gone: the keyboard focus waits on
@@ -2438,6 +2478,10 @@ export default function hushfold(app, params = {}) {
     if (p.isOpen) { p.close(); return; }
     closeRead();                   // one transient layer at a time
     p.open();
+    // a first visit, before the invitation: the panel says worlds begin with telling a Mallow, and a feeling picked in it
+    // has the Mallow answer towards that, so the Tell pill is there for it, as on a returning visit (the squeeze
+    // invitation still comes in its own time)
+    if (!overlay) showTell(true);
     root.classList.add('hf-panel-open');
     pushLayer('panel');
     panelBtn.setAttribute('aria-expanded', 'true');
@@ -2727,7 +2771,7 @@ export default function hushfold(app, params = {}) {
         keepOut: () => mallowAvoidRect(), bounds: () => thoughtBounds, haptic: (k) => app.haptic?.(k),
         audio: { fx: (n, o) => (prefs.get('sound') ? app.audio?.fx?.(n, o) : false) } });
       // MallowTouch (W2), the squeezable Mallow, is the stage's Mallow for everyone (owner P9), behind the
-      // same stage calls; the approved rig is the fallback (it failed to load in 5 s, or prefs.mallowTouch
+      // same stage calls; the approved rig is the fallback (not ready 5 s after its art: touchReady, or prefs.mallowTouch
       // is false; ?touch=0 on the development host). The classic rig goes at once, before the import, so
       // only one Mallow is ever on screen.
       const dev = ['localhost', '127.0.0.1'].includes(location.hostname), qs = new URLSearchParams(location.search);
@@ -2735,7 +2779,6 @@ export default function hushfold(app, params = {}) {
         world.showMallow(false);
         world.releaseMallow?.();
         rigReleased = true;
-        let wait = 0;
         try {
           const { MallowTouch } = await import('../../mallows/touch/mallow-touch.js');
           if (S.left) return;
@@ -2749,13 +2792,14 @@ export default function hushfold(app, params = {}) {
           // placed before it is ready, it starts exactly where the layout puts it (no entrance glide)
           stageMallow = createStageMallow(world, { touch: touchMt });
           layout();
-          await Promise.race([touchMt.loaded, new Promise((_, no) => { wait = setTimeout(() => no(new Error('not ready after 5 s')), 5000); })]);
+          // (the art is the registry's, shared with the rig inside MallowTouch: the same download, already on its way)
+          await touchReady(touchMt, loadMallowAssets(touchMt.id));
         } catch (e) {
           if (S.left) return;
           console.warn('[hushfold] MallowTouch unavailable; using the rig', e?.message || e);
           try { touchMt?.destroy(); } catch { /* already gone */ }
           touchMt = null; touchBox?.remove(); touchBox = null; stageMallow = null;
-        } finally { clearTimeout(wait); }
+        }
         if (S.left) return;
       }
       if (!touchMt) world.showMallow(true);

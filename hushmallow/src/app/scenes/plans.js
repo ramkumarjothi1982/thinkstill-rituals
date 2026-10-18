@@ -6,12 +6,25 @@
 // through to it) and steps aside once the invitations scroll over it.
 // Each invitation leads with three or four things; the rest waits behind
 // "Everything included".
+// With web subscriptions on (src/app/billing.js, off by default) "Step into…"
+// asks a guest to sign in first (a web plan belongs to an account; the account
+// card then offers that plan again), then goes on to the secure checkout page
+// for the chosen plan and period; prices come from configuration only (none
+// set: none shown). Off, nothing here changes.
+// Signed in with a web plan already, a card that is an upgrade of it (the server's own rule, isUpgrade) says
+// "Upgrade to hushmallow Beyond" (or, the same plan monthly → yearly, "Switch to yearly") and opens Stripe's page
+// confirming exactly that change (never the portal's front page); any other change says "Change plan" and opens
+// Stripe's own plan chooser. Either comes back to src/app/plan-change.js, which says the change only once Stripe has
+// confirmed it. Cancelling stays in Settings → Manage subscription.
+// The foot ends with small "Terms · Privacy Policy" links (src/app/legal.js).
 import { h, iconBtn, toast } from '../ui.js';
 import { PLANS } from '../entitlements.js';
+import { rememberPlan, outsideNote, CHANGE_PLAN, PAYMENT_PENDING, BILLING_SUPPORT } from '../billing.js';
 import { BRAND, brandName } from '../../brand.js';
-import { brandMark, logoImg, fitLabel } from '../../ui/type.js';
+import { brandMark, logoImg, fitWhole, withBrand } from '../../ui/type.js';
 import { openSupport } from './support.js';
 import { plansBeyondNote } from '../privacy.js';
+import { legalLinks } from '../legal.js';
 
 const PERIODS = [['monthly', 'Monthly'], ['yearly', 'Yearly']];
 // Lines that must not leave a word alone at 320 px (no-break spaces; app.css also
@@ -20,13 +33,66 @@ const PERIODS = [['monthly', 'Monthly'], ['yearly', 'Yearly']];
 export const SUPPORT_LINK = 'Need support right\u00a0now? It’s\u00a0free\u00a0→';
 /** Said on the plans page when a test plan kept on this phone is not honoured by this site (entitlements.js testEnded). */
 export const TEST_ENDED = 'Test access ended for the pilot.';
-/** The line under a plan's button: how it is billed (App Store) or that a test purchase is free. */
-export function periodNote({ native = false, period = 'monthly' } = {}) {
+/** The line under a plan's button: how it is billed (the App Store, or the web) or that a test purchase is free. */
+export function periodNote({ native = false, web = false, period = 'monthly' } = {}) {
   const yearly = period === 'yearly';
   if (native) return `${yearly ? 'Billed once a year' : 'Billed monthly'} by the App Store. Cancel any\u00a0time.`;
+  if (web) return `${yearly ? 'Billed once a year' : 'Billed monthly'}. Cancel any\u00a0time in\u00a0Settings.`;
   return `Test\u00a0purchase\u00a0· ${yearly ? 'yearly' : 'monthly'}\u00a0· nothing\u00a0is\u00a0charged`;
 }
+/** How a plan's button keeps its whole label on a narrow phone or at a large text size, in order (app.css): tighter
+ *  padding and tracking; then two lines, broken before the plan's name; then the name may wrap too. */
+export const BUY_FIT = ['is-tight', 'is-wrap', 'is-wrap-name'];
+/** Web subscriptions: the foot of the page (never the App Store's name: this is the web). */
+export const WEB_NOTE = 'You’ll sign in first, so your plan stays with your account. Payment is on a secure checkout page, and you can cancel any time in Settings.';
+/** Web subscriptions: said on the account screen when a guest steps into a plan, or restores one. */
+export const SIGN_IN_FIRST = 'Sign in or create an account first, so your plan stays with you.';
+export const SIGN_IN_TO_RESTORE = 'Sign in to the account your plan is with.';
+/** Web subscriptions, checkout's 409: a plan already, or a payment going through (src/app/billing.js: the account card says them too). */
+export { CHANGE_PLAN, PAYMENT_PENDING };
 const SVG = 'http://www.w3.org/2000/svg';
+
+// ------------------------------------------------ a change of plan (web) --
+const RANK = { paid: 1, ultra: 2 }, LENGTH = { monthly: 1, yearly: 2 };
+/**
+ * The server's upgrade rule (POST /v1/billing/portal, intent 'upgrade'): a higher plan for the same or a longer
+ * period (Flow monthly → Beyond monthly or yearly, Flow yearly → Beyond yearly; never Flow yearly → Beyond monthly),
+ * or the same plan monthly → yearly. from, to: { plan, period }.
+ */
+export function isUpgrade(from, to) {
+  if (!RANK[from?.plan] || !LENGTH[from?.period] || !RANK[to?.plan] || !LENGTH[to?.period]) return false;
+  if (RANK[to.plan] > RANK[from.plan]) return LENGTH[to.period] >= LENGTH[from.period];
+  return to.plan === from.plan && from.period === 'monthly' && to.period === 'yearly';
+}
+/** What a card offers an account holding a web plan: 'held' (that plan), 'upgrade', 'yearly' (the same plan, yearly) or 'change'. */
+export function changeFor(held, target) {
+  // (a period the server has not said yet: the held plan's own card is the plan; every other card the chooser)
+  if (held.plan === target.plan && (held.period === target.period || !held.period)) return 'held';
+  if (isUpgrade(held, target)) return target.plan === held.plan ? 'yearly' : 'upgrade';
+  return 'change';
+}
+export const CHANGE_LABELS = Object.freeze({ upgrade: 'Upgrade to', yearly: 'Switch to yearly', change: 'Change plan', held: '✓ Your plan' });
+/** The full portal from the plans page, where a change cannot be made here (Settings' own Manage subscription). */
+export const MANAGE_TO_CHANGE = 'Change plan in Manage subscription';
+/** What the plans page says when Stripe's page for a change does not open (the server's CHANGE_CODES, billing.js). */
+export const CHANGE_ERRORS = Object.freeze({
+  already_on_plan: (name) => `You’re already on ${name}.`,
+  payment_issue: 'Your last payment didn’t go through. Update your card in Manage subscription, then try again.',
+  not_an_upgrade: 'That change is made in Manage subscription.',
+  plan_change_unavailable: 'Plan changes can’t open here just now. You can change your plan in Manage subscription.',
+  change_pending: 'A change to your plan is already on its way. You can see it in Manage subscription.',
+  not_updatable: 'This subscription can be changed in Manage subscription.',
+  plan_ending: 'Your plan is set to end, so it can’t be changed here. You can renew it in Manage subscription.',
+  none: 'There’s no subscription on this account yet.',
+  offline: 'Couldn’t open Stripe just now. Try again.',
+});
+const TO_PORTAL = ['not_an_upgrade', 'plan_change_unavailable', 'change_pending', 'not_updatable'];
+/** The web plan this account holds, as the billing server last said it: { plan, period, status } | null. */
+function heldPlan(ent, tier) {
+  if (!ent.isWeb || !ent.webSignedIn?.() || ent.source?.() !== 'billing' || !RANK[tier]) return null;
+  const p = ent.webPlan?.() || null;
+  return { plan: tier, period: p?.period === 'monthly' || p?.period === 'yearly' ? p.period : null, status: p?.status ?? null };
+}
 
 // Flow's sigil: three soft swells (Hushflow); Beyond reuses Zuzu's spiral
 function flowSigil() {
@@ -60,14 +126,17 @@ export default function plans(app, params = {}) {
   const { ent, world } = app;
   const tier = ent.tier();
   const focus = params.focus === 'ultra' || params.reason === 'ultra' ? 'ultra' : 'paid';
-  let period = app.state.planPeriod === 'yearly' ? 'yearly' : 'monthly';
+  // a web plan already held: each card offers the change from it (an upgrade, yearly, or Stripe's plan chooser)
+  const held = heldPlan(ent, tier);
+  let period = app.state.planPeriod === 'yearly' || app.state.planPeriod === 'monthly' ? app.state.planPeriod : held?.period || 'monthly';
   const included = (id) => tier === id || (id === 'paid' && tier === 'ultra');
 
-  const noteText = () => periodNote({ native: ent.isNative, period });
+  const noteText = () => periodNote({ native: ent.isNative, web: ent.isWeb, period });
 
   // The App Store's own localised price for the chosen period, when the
   // native shell provides it (StoreKit Product.displayPrice through
-  // ent.prices()); until then the billing note stands alone.
+  // ent.prices()), or on the web the price configured for it
+  // (src/app/config.js BILLING_PRICES); until then the billing note stands alone.
   let prices = null;
   const priceLine = (p) => {
     const v = prices?.[p.productIds[period]];
@@ -76,19 +145,55 @@ export default function plans(app, params = {}) {
   const notes = [];   // [plan, price element, period element]
   const drawNotes = () => notes.forEach(([p, price, note]) => { price.textContent = priceLine(p); price.hidden = !price.textContent; note.textContent = noteText(); });
 
-  const buttons = [], fits = [];
+  const buttons = [], fits = [], redraws = [];
   function action(p) {
+    if (held && ent.canPurchase) return changeAction(p);
     if (included(p.id)) return h('div', { class: 'btn block invite-included', 'aria-disabled': 'true' }, '✓ Included in your plan');
     if (!ent.canPurchase) return h('div', { class: 'btn block', 'aria-disabled': 'true' }, 'Available in the app soon');
     const price = h('p', { class: 'invite-price', hidden: true });
     const note = h('p', { class: 'invite-period', 'aria-live': 'polite' }, noteText());
     notes.push([p, price, note]);
-    const label = h('span', { class: 'invite-buy-label' }, `Step into ${p.name}`);
-    const btn = h('button', { class: `btn block fit-one invite-buy ${p.id === 'ultra' ? 'ultra' : 'primary'}`, onclick: () => buy(p.id, btn) }, label);
+    // "Step into hushmallow Flow": the plan's whole name, always (never "Step into Flow"). Each part stays in one
+    // piece; where the line is too narrow the button tightens, then breaks it before the name (fitWhole, app.css)
+    const label = h('span', { class: 'invite-buy-label' }, h('span', { class: 'nb' }, 'Step into'), ' ', h('span', { class: 'nb' }, p.name));
+    const btn = h('button', { class: `btn block invite-buy ${p.id === 'ultra' ? 'ultra' : 'primary'}`, onclick: () => buy(p.id, btn) }, label);
     buttons.push(btn);
-    // one line: "Step into Beyond" when the full name would wrap
-    fits.push(() => fitLabel(btn, `Step into ${p.name.slice(brandName.length).trim()}`, { target: label }));
+    fits.push(() => fitWhole(btn, BUY_FIT));
     return h('div', { class: 'invite-cta' }, btn, price, note);
+  }
+
+  /** A card for an account that holds a web plan: drawn again for each period (the seg). */
+  function changeAction(p) {
+    const price = h('p', { class: 'invite-price', hidden: true });
+    const note = h('p', { class: 'invite-period', 'aria-live': 'polite' }, noteText());
+    notes.push([p, price, note]);
+    const said = h('div', { class: 'invite-change', role: 'status', 'aria-live': 'polite' });
+    const slot = h('div', { class: 'invite-cta-slot' });
+    let btn = null;
+    const draw = () => {
+      said.replaceChildren();
+      const kind = changeFor(held, { plan: p.id, period });
+      const old = btn;
+      if (kind === 'held') btn = null;
+      else {
+        const label = kind === 'upgrade'
+          ? h('span', { class: 'invite-buy-label' }, h('span', { class: 'nb' }, CHANGE_LABELS.upgrade), ' ', h('span', { class: 'nb' }, p.name))
+          : h('span', { class: 'invite-buy-label' }, h('span', { class: 'nb' }, CHANGE_LABELS[kind]));
+        const tone = kind === 'change' ? '' : p.id === 'ultra' ? ' ultra' : ' primary';
+        const b = h('button', { class: `btn block invite-buy invite-change-buy${tone}`, 'data-plan-action': kind, 'data-to': `${p.id}.${period}`,
+          onclick: () => changePlan(p, kind, b, said) }, label);
+        b.disabled = pending;
+        btn = b;
+      }
+      const i = old ? buttons.indexOf(old) : -1;
+      if (i >= 0) buttons.splice(i, 1, ...(btn ? [btn] : [])); else if (btn) buttons.push(btn);
+      slot.replaceChildren(btn || h('div', { class: 'btn block invite-included', 'aria-disabled': 'true', 'data-plan-action': 'held' }, CHANGE_LABELS.held));
+      if (btn) requestAnimationFrame(() => { if (!gone) fitWhole(btn, BUY_FIT); });
+    };
+    draw();
+    redraws.push(draw);
+    fits.push(() => { if (btn) fitWhole(btn, BUY_FIT); });
+    return h('div', { class: 'invite-cta' }, slot, price, note, said);
   }
 
   function invite(p) {
@@ -118,12 +223,21 @@ export default function plans(app, params = {}) {
 
   // one purchase at a time: a double tap never sends two requests
   let pending = false, homeTimer = 0, gone = false;
+  // web: Back from the checkout page can bring this page back from the browser's cache as it was left, busy
+  const onPageShow = (e) => { if (e?.persisted && pending && !gone) { pending = false; setBusy(false); } };
   function setBusy(on, btn) {
     for (const b of buttons) {
       b.disabled = on;
       b.toggleAttribute('aria-busy', on && b === btn);
       b.classList.toggle('is-busy', on && b === btn);
     }
+  }
+  /** The plan is here: said once, then the Hushfold (the buttons stay quiet until it opens). */
+  function welcome(name, test = false) {
+    toast(test ? `Test purchase: ${name} unlocked (no charge)` : `Welcome to ${name}`);
+    app.haptic('success');
+    world.react('celebrate');
+    homeTimer = setTimeout(() => { if (!gone) app.go('home', {}, { replace: true }); }, 900);
   }
   async function buy(id, btn) {
     if (pending) return;
@@ -134,18 +248,87 @@ export default function plans(app, params = {}) {
     if (gone) return;
     // success only when the plan is really on this phone now (a bridge reply
     // after a cancel can carry the old tier)
-    if (r?.ok && ent.has(id)) {
-      toast(r.test ? `Test purchase: ${PLANS[id].name} unlocked (no charge)` : `Welcome to ${PLANS[id].name}`);
-      app.haptic('success');
-      world.react('celebrate');
-      homeTimer = setTimeout(() => { if (!gone) app.go('home', {}, { replace: true }); }, 900);
-      return;   // the buttons stay quiet until the Hushfold opens
+    if (r?.ok && ent.has(id)) { welcome(PLANS[id].name, r.test); return; }
+    // web: on to the secure checkout page (the buttons stay quiet while the page leaves)
+    if (r?.redirecting) return;
+    if (r?.needsAccount) {
+      pending = false; setBusy(false);
+      rememberPlan(id, period);   // the account card offers it again after sign-in (src/app/scenes/account.js continuePlan)
+      app.go('account', { view: 'welcome', notice: SIGN_IN_FIRST });
+      return;
     }
-    if (r?.unavailable) toast('Subscriptions are handled in the App Store app.');
+    // web: a payment still going through (a checkout just completed): asked for once more; here now, welcome
+    if (r?.pending) {
+      try { await ent.refresh({ force: true }); } catch { /* said below */ }
+      if (gone) return;
+      if (ent.source() === 'billing' && ent.has('paid')) {
+        // hushmallow Beyond, confirmed by the server: its own welcome over the Hushfold (src/app/scenes/beyond-welcome.js)
+        if (ent.tier() === 'ultra' && typeof app.welcomePlan === 'function') {
+          Promise.resolve(app.go('home', {}, { replace: true })).then(() => app.welcomePlan({ tier: 'ultra', period: ent.webPlan?.()?.period ?? null, from: null })).catch(() => {});
+          return;
+        }
+        welcome(PLANS[ent.tier()].name);
+        return;
+      }
+      toast(PAYMENT_PENDING, 3600);
+    } else if (r?.manage) {
+      toast(CHANGE_PLAN, 3200);
+      // a plan already: the portal opens on changing it (Flow → Beyond, monthly → yearly), not on its front page
+      let m = null;
+      try { m = await ent.manage({ intent: 'switch' }); } catch { m = null; }
+      if (gone || m?.redirecting) return;
+      toast('That didn’t open just now. Try again in a moment.', 3200);
+    } else if (r?.unavailable) toast('Subscriptions are handled in the App Store app.');
     else if (r?.cancelled) toast('No problem. Nothing was charged.');
+    else if (r?.support) toast(BILLING_SUPPORT, 6000);   // the account's billing needs a person: where to write
+    else if (r?.framed) toast(outsideNote(h), 9000);   // inside the Framer site: Stripe opens only in a full window
     else toast('That didn’t go through. Nothing was charged.', 3200);
     pending = false;
     setBusy(false);
+  }
+
+  /**
+   * A change from the web plan held: an upgrade (Stripe's page confirming exactly that plan and period) or, for any
+   * other change, Stripe's plan chooser. One at a time (a second tap is ignored until Stripe's page opens or an answer
+   * comes back), so two sessions are never opened; where it cannot open, a calm line, and the full portal where it helps.
+   */
+  async function changePlan(p, kind, btn, said) {
+    if (pending) return;
+    pending = true;
+    setBusy(true, btn);
+    const want = { plan: p.id, period };
+    let r = null;
+    try { r = await ent.manage(kind === 'change' ? { intent: 'switch' } : { intent: 'upgrade', plan: want.plan, period: want.period }); } catch { r = null; }
+    if (gone) return;
+    // on to Stripe's page (the buttons stay quiet while the page leaves; Back restores them: onPageShow)
+    if (r?.redirecting) return;
+    pending = false;
+    setBusy(false);
+    if (r?.needsAccount) { app.go('account', { view: 'signin', notice: SIGN_IN_TO_RESTORE }); return; }
+    // inside the Framer site: Stripe opens only in a full window (nothing was asked of the server)
+    if (r?.framed) { said.replaceChildren(outsideNote(h)); return; }
+    const reason = r?.none ? 'none' : r?.reason;
+    let line, more = null;
+    if (reason === 'already_on_plan') line = CHANGE_ERRORS.already_on_plan(PLANS[want.plan].name);
+    else if (reason === 'payment_issue' || reason === 'plan_ending') { line = CHANGE_ERRORS[reason]; more = 'Manage subscription'; }
+    else if (TO_PORTAL.includes(reason)) { line = CHANGE_ERRORS[reason]; more = MANAGE_TO_CHANGE; }
+    else if (reason === 'none') line = CHANGE_ERRORS.none;
+    else line = CHANGE_ERRORS.offline;
+    said.replaceChildren(h('p', { class: 'invite-change-line' }, ...withBrand(line)),
+      ...(more ? [h('button', { class: 'btn block invite-manage', 'data-act': 'manage-subscription', onclick: (e) => manageNow(e.currentTarget, said) }, more)] : []));
+  }
+  /** Settings' Manage subscription, from here: Stripe's portal (the card, the plan, receipts, cancelling). */
+  async function manageNow(b, said) {
+    if (b.disabled || pending) return;
+    b.disabled = true;
+    let r = null;
+    try { r = await ent.manage(); } catch { r = null; }
+    if (gone) return;
+    if (r?.redirecting) { setTimeout(() => { b.disabled = false; }, 4000); return; }
+    b.disabled = false;
+    if (r?.needsAccount) { app.go('account', { view: 'signin', notice: SIGN_IN_TO_RESTORE }); return; }
+    if (r?.framed) { said.replaceChildren(outsideNote(h)); return; }
+    said.querySelector?.('.invite-change-line')?.replaceChildren?.(r?.none ? CHANGE_ERRORS.none : CHANGE_ERRORS.offline);
   }
 
   // monthly / yearly (a real radio group; arrow keys move between them)
@@ -163,6 +346,7 @@ export default function plans(app, params = {}) {
     app.haptic?.('light'); app.audio?.ui?.('toggle');
     drawSeg();
     drawNotes();
+    redraws.forEach((f) => f());
     if (focusIt) seg.querySelector('[aria-checked="true"]')?.focus();
   }
   drawSeg();
@@ -190,20 +374,23 @@ export default function plans(app, params = {}) {
     gap,
     h('div', { class: 'plans-body' },
       head,
-      !everything && ent.canPurchase ? h('div', { class: 'seg-wrap' }, seg) : null,
+      (!everything || held) && ent.canPurchase ? h('div', { class: 'seg-wrap' }, seg) : null,
       h('div', { class: 'invites' }, ...order.map(invite)),
       h('div', { class: 'plans-foot' },
         h('button', { class: 'btn ghost block', onclick: async (e) => {
           const b = e.currentTarget;
           if (b.disabled) return;
+          // web: a plan lives with an account, so a guest signs in to it first
+          if (ent.isWeb && !ent.webSignedIn()) { app.go('account', { view: 'signin', notice: SIGN_IN_TO_RESTORE }); return; }
           b.disabled = true;
-          try { await ent.restore(); if (!gone) toast(ent.has('paid') ? 'Purchases restored' : 'Nothing to restore yet'); } catch { if (!gone) toast('Couldn’t reach the App Store just now. Try again in a moment.', 3200); }
+          try { await ent.restore(); if (!gone) toast(ent.has('paid') ? 'Purchases restored' : 'Nothing to restore yet'); } catch { if (!gone) toast(ent.isWeb ? 'Couldn’t check just now. Try again in a moment.' : 'Couldn’t reach the App Store just now. Try again in a moment.', 3200); }
           b.disabled = false;
         } }, 'Restore purchases'),
         h('button', { class: 'btn ghost block', onclick: () => openSupport(app) }, SUPPORT_LINK),
-        ent.isNative ? null : h('p', { class: 'test-note' }, ent.canPurchase
+        ent.isNative ? null : h('p', { class: 'test-note' }, ent.isWeb ? WEB_NOTE : ent.canPurchase
           ? 'Development build: purchases here are test purchases. Nothing is charged. In the App Store version, Apple handles payment and receipts.'
-          : 'Subscriptions aren’t on sale on the web yet. The App Store app handles payment and receipts.'))));
+          : 'Subscriptions aren’t on sale on the web yet. The App Store app handles payment and receipts.'),
+        legalLinks('legal-links plans-legal'))));
 
   // the invitations scroll over the Mallow's spot: it steps aside (fades)
   // and comes back near the top, so its face never shows through the cards
@@ -223,6 +410,8 @@ export default function plans(app, params = {}) {
     });
   }
 
+  const refit = () => fits.forEach((f) => f());
+
   // "Meet Another Angle" names Zuzu: Zuzu is the one on screen
   const prevMallow = world.mallowId;
   const swapMallow = focus === 'ultra' && !everything && prevMallow && prevMallow !== 'zuzu';
@@ -234,16 +423,23 @@ export default function plans(app, params = {}) {
       world.showMallow?.(true);
       world.place({ x: 50, y: 14, scale: 0.42 });
       if (swapMallow) await world.setMallow('zuzu').catch(() => {});
+      // left while Zuzu came in: leave() has already run, so nothing more is set up (no listener outlives the page,
+      // and the next scene's Mallow is not moved)
+      if (gone) return;
       world.setStage('curious');
       fit();
-      requestAnimationFrame(() => fits.forEach((f) => f()));
-      setTimeout(() => { if (!gone) fits.forEach((f) => f()); }, 700);   // after the web fonts swap in
-      // localised prices from the App Store, if the native shell offers them
+      requestAnimationFrame(refit);
+      setTimeout(() => { if (!gone) refit(); }, 700);   // after the web fonts swap in
+      globalThis.addEventListener?.('resize', refit);   // (a phone turned: the roomiest fit again)
+      // localised prices from the App Store, if the native shell offers them (or the web's configured ones)
       Promise.resolve(typeof ent.prices === 'function' ? ent.prices() : null)
         .then((v) => { if (v && typeof v === 'object' && !gone) { prices = v; drawNotes(); } }, () => {});
+      if (ent.isWeb) globalThis.addEventListener?.('pageshow', onPageShow);
     },
     leave() {
       gone = true; clearTimeout(homeTimer);
+      globalThis.removeEventListener?.('resize', refit);
+      if (ent.isWeb) globalThis.removeEventListener?.('pageshow', onPageShow);
       if (mallowAway) world.showMallow?.(true);
       if (swapMallow && world.mallowId === 'zuzu') world.setMallow(prevMallow, { entrance: false }).catch(() => {});
     },

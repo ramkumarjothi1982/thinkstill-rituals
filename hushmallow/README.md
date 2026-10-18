@@ -61,7 +61,8 @@ shows **test purchases**. "Step into hushmallow Flow" unlocks Flow and
 "Step into hushmallow Beyond" unlocks Beyond, without charging anything. Settings →
 "Remove test plan" resets this. Test purchases only work on the hosts listed
 in `src/app/config.js`, so a public site can't give plans away. The App
-Store build swaps in StoreKit (see `src/app/entitlements.js`).
+Store build swaps in StoreKit (see `src/app/entitlements.js`). Web
+subscriptions through Stripe are built and switched off: `docs/PAYMENTS.md`.
 
 Putting it on your Framer site: see `docs/FRAMER.md`.
 
@@ -100,6 +101,7 @@ Garden, More rituals, Your journey, Settings).
 ```bash
 node --test hushmallow/tests/*.test.mjs
 ```
+Once per clone, run `git config core.hooksPath tools/hooks` (from the repository root): the pre-commit hook then refuses a commit that adds a Stripe, Supabase or Anthropic secret. The same scan (`node hushmallow/tools/secret-scan.mjs`) runs over every tracked file in both test suites and before every site build, so a commit made without the hook still fails there.
 
 ### Updating the 1,000 rituals
 They come from `content/Hushmallow_1000_Rituals_V3.xlsx`: 50 touch engines ×
@@ -125,8 +127,8 @@ check that every library file is listed and every module exists.
 
 | Folder | Contents |
 |---|---|
-| `assets/mallows/` | The seven approved transparent Mallows (source of truth) |
-| `assets/rig/` | Face-cleaned bodies and iris/spiral sprites derived from the approved art |
+| `assets/mallows/` | The seven approved transparent Mallows (the PNGs are the source of truth; the app loads their lossless `.webp` twins, written by `tools/art-webp.py`) |
+| `assets/rig/` | Face-cleaned bodies and iris/spiral sprites derived from the approved art (PNG, with lossless `.webp` twins the same way) |
 | `assets/source/` | Your original approved artwork and the Human Emotion Atlas |
 | `tools/` | Python scripts that cut the Mallows and derive the rig layers (`extract.py`, `detect.py`, `derive.py`) |
 | `src/mallows/` | Living Mallow engine: registry, expressions, rig renderer, reactions, particles, voices |
@@ -140,7 +142,8 @@ check that every library file is listed and every module exists.
 | `src/beyond/` | Another Angle in the Hushfold: consent and privacy, the endpoint and its one request, authored scenes and the ten mechanics |
 | `src/auth/` | Optional sign-in: boot and local namespaces, the client, opt-in sync, the account Mallow, `/auth/callback` (`docs/AUTH.md`) |
 | `auth/callback/` | The page email links open (confirm, reset, change email) |
-| `supabase/` | Migrations `0001`–`0009`, rollback, RLS check, email templates, `config.toml` for the CI stack |
+| `legal/` | The Privacy Policy and the Terms of Use: static pages published at `/legal/`, linked from Settings, the plans page and the sign-up form (`src/app/legal.js`); drafts until the owner deletes the DRAFT SWITCH line in `src/ui/legal.css` |
+| `supabase/` | Migrations `0001`–`0010`, rollback, RLS check, email templates, `config.toml` for the CI stack |
 | `server/another-angle/` | Another Angle's server (a Cloudflare Worker) and its evaluation tools |
 | `vendor/` | Vendored supabase-js (loaded only for sign-in screens and signed-in sessions) |
 | `content/` | The V3 ritual workbook (source of the 1,000 rituals) and its corrected copy |

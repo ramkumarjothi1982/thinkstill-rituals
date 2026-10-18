@@ -366,7 +366,8 @@ test('7: the offline note comes before the mechanic’s instruction, never betwe
 
 // --------------------------------------------------------------------------------------------- 8. privacy --
 test('8: "Delete my Another Angle data" removes the sealed predictions too, and counts them as data to delete', () => {
-  assert.deepEqual([...ANGLE_EXTRA_KEYS], ['ultra.sealedPredictions']);
+  // (16 Oct 2026, Belief Mallows integrated: kept Belief Mallows are Another Angle data too: tests/belief-mallows.test.mjs)
+  assert.deepEqual([...ANGLE_EXTRA_KEYS], ['ultra.sealedPredictions', 'beyond.belief.kept']);
   assert.match(read('src/ultra/another-angle.js'), /const SEAL_KEY = 'ultra\.sealedPredictions';/, 'the key the older Another Angle uses');
   const store = createStore({ backend: 'memory' });
   assert.equal(hasAngleData(store), false);
@@ -377,7 +378,7 @@ test('8: "Delete my Another Angle data" removes the sealed predictions too, and 
   assert.equal(store.get('ultra.sealedPredictions', null), null);
   assert.equal(store.get(STORE_KEYS.device, null), null);
   assert.equal(hasAngleData(store), false);
-  assert.match(read('src/beyond/consent.js'), /your sharing choice, your feedback and any predictions you sealed\./);
+  assert.match(read('src/beyond/consent.js'), /your sharing choice, your feedback, any predictions you sealed and any Belief Mallows you kept\./);
 });
 
 test('4: the question’s clock never runs out while a support sheet is open over it; once it closes at least QUESTION_BACK_MS is left', async () => {

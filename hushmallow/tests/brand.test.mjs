@@ -5,10 +5,12 @@
 //    change are allow-listed (HushmallowEmbed, the workbook file name, the
 //    product ids).
 //  * Customer plan names are "hushmallow Flow" / "hushmallow Beyond"; never
-//    Paid / Ultra / Premium. The tier ids 'paid' / 'ultra' and every StoreKit
-//    product id stay exactly as they are.
+//    Paid / Ultra / Premium, and never shortened ("Step into Beyond"): a
+//    narrow plan button wraps instead. The tier ids 'paid' / 'ultra' and every
+//    StoreKit product id stay exactly as they are.
 //  * The word "AI" never appears in the experience (consent / privacy
-//    screens may describe automated processing accurately).
+//    screens and the legal pages, legal/*.html, may describe automated
+//    processing accurately).
 //  * Type floor: nothing below 12px anywhere (13px for reading text, 12px
 //    for decorative badges); inputs ≥16px; Fredoka is retired.
 import { test } from 'node:test';
@@ -43,6 +45,7 @@ const PENDING_OTHERS = new Map([]);
 
 const SOURCES = [
   'index.html', 'manifest.webmanifest',
+  ...walk('legal', ['.html']),
   ...walk('framer', ['.tsx']),
   ...walk('src', ['.js', '.css']),
 ].filter((p) => !DEV_ONLY.some((re) => re.test(p)));
@@ -173,7 +176,7 @@ function wordingProblems(paths) {
         : code.split('\n').map((text, i) => ({ text, line: i + 1 }));
     for (const { text, line } of texts) {
       if (PLAN_WORDS.test(text)) bad.push(`${p}:${line}: plan word in "${text.slice(0, 90)}"`);
-      if (AI_WORD.test(text) && !/consent|privacy/i.test(p)) bad.push(`${p}:${line}: "AI" in "${text.slice(0, 90)}"`);
+      if (AI_WORD.test(text) && !/consent|privacy|^legal\//i.test(p)) bad.push(`${p}:${line}: "AI" in "${text.slice(0, 90)}"`);
     }
   }
   return bad;
@@ -260,6 +263,58 @@ test('plans: customer names from brand.js; ids and StoreKit product ids frozen',
     assert.doesNotMatch(line, /\bAI\b|\bUltra\b|\bPaid\b|\bPremium\b/);
     assert.doesNotMatch(line, /\bcure|\bfix(es)? your|guarantee/i, 'no cure or relief claims');
   }
+});
+
+// (mobile QA m6, 16 Oct 2026) at 320 px, and at text size Largest, the buttons swapped in "Step into Beyond" /
+// "Step into Flow". The owner's rule: the customer-visible plan names are exactly "hushmallow Flow" and
+// "hushmallow Beyond", so a narrow button keeps the whole name and wraps instead.
+test('plans: a plan button always says the plan’s whole name (never “Step into Beyond”); a narrow one wraps', () => {
+  const src = read('src/app/scenes/plans.js');
+  assert.doesNotMatch(src, /fitLabel/, 'no shorter wording is ever swapped in');
+  assert.doesNotMatch(src, /name\.slice\(brandName\.length\)[^\n]*Step into|Step into \$\{p\.name\.slice/, 'no button label without the brand');
+  assert.match(src, /h\('span', \{ class: 'invite-buy-label' \}, h\('span', \{ class: 'nb' \}, 'Step into'\), ' ', h\('span', \{ class: 'nb' \}, p\.name\)\)/);
+  assert.match(src, /fits\.push\(\(\) => fitWhole\(btn, BUY_FIT\)\);/);
+  assert.match(src, /export const BUY_FIT = \['is-tight', 'is-wrap', 'is-wrap-name'\];/);
+  assert.doesNotMatch(src, /fit-one invite-buy/, 'the button no longer cuts its line with an ellipsis');
+  // the fit steps tighten and wrap; none steps the type down or hides any of the words
+  const css = read('src/ui/app.css');
+  for (const step of ['is-tight', 'is-wrap', 'is-wrap-name']) {
+    const rules = [...css.matchAll(new RegExp(`\\.invite-buy\\.${step}[^{]*\\{([^}]*)\\}`, 'g'))].map((m) => m[1]);
+    assert.ok(rules.length, `app.css has the ${step} step`);
+    for (const r of rules) assert.doesNotMatch(r, /font-size|font:|display:\s*none|text-overflow|visibility/, `${step}: ${r}`);
+  }
+  assert.match(css, /\.invite-buy\.is-wrap \{ white-space: normal;/);
+  assert.match(css, /\.invite-buy \.nb \{ white-space: nowrap; \}/, '"Step into" and the plan name each stay in one piece');
+});
+
+test('fitWhole: steps through the fits until the words fit, never touching the words; again from none each time', async () => {
+  const { fitWhole } = await import('../src/ui/type.js');
+  // a button whose content width depends on its fit step (widths measured at 320 px, text size Largest)
+  const fake = (widths, clientWidth = 224) => {
+    const cls = new Set();
+    return {
+      textContent: 'Step into hushmallow Beyond', clientWidth,
+      classList: { add: (...c) => c.forEach((x) => cls.add(x)), remove: (...c) => c.forEach((x) => cls.delete(x)), has: (c) => cls.has(c) },
+      get scrollWidth() { return widths[['is-wrap-name', 'is-wrap', 'is-tight'].find((c) => cls.has(c)) || 'none']; },
+      cls,
+    };
+  };
+  const steps = ['is-tight', 'is-wrap', 'is-wrap-name'];
+  const roomy = fake({ none: 200 });
+  assert.equal(fitWhole(roomy, steps), null);
+  assert.equal(roomy.cls.size, 0);
+  const tight = fake({ none: 232, 'is-tight': 220 });
+  assert.equal(fitWhole(tight, steps), 'is-tight');
+  assert.deepEqual([...tight.cls], ['is-tight']);
+  const wrap = fake({ none: 290, 'is-tight': 270, 'is-wrap': 190 });
+  assert.equal(fitWhole(wrap, steps), 'is-wrap');
+  assert.deepEqual([...wrap.cls], ['is-tight', 'is-wrap']);
+  assert.equal(wrap.textContent, 'Step into hushmallow Beyond', 'the words are never changed');
+  // more room later (a phone turned): back to the roomiest step that fits
+  wrap.clientWidth = 300;
+  assert.equal(fitWhole(wrap, steps), null);
+  assert.equal(wrap.cls.size, 0);
+  assert.equal(fitWhole(null, steps), null);
 });
 
 test('brand: index.html, manifest and the Framer embed are lowercase', () => {

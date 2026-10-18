@@ -6,8 +6,12 @@
 // Mallows and perspectives. Nothing is sent before the person taps Accept;
 // "Not now" plays Zuzu's own authored angles on the phone.
 //
-//   consentState(store) → 'yes' | 'no' | 'unasked'      (a newer notice version asks again)
-//   setConsent(store, 'yes'|'no'), withdrawConsent(store), deleteAngleData(store)
+//   consentState(store, { account? }) → 'yes' | 'no' | 'unasked'      (a newer notice version asks again)
+//   setConsent(store, 'yes'|'no', { account? }), withdrawConsent(store), deleteAngleData(store)
+//   sendsAccount(app)  web subscriptions are on (app.billing, src/app/billing.js): the session also carries
+//                      the account's sign-in token, and the notice says so. `account` is that: a yes given to
+//                      a notice whose account line was older than ACCOUNT_NOTICE asks again, once; with billing
+//                      off a stored yes counts exactly as before
 //   openConsent({ app, root, onDecide(choice), support? }) → { el, close }   the calm card in the scene
 //   openConsentSheet(app, { onDecide })                               the same notice as a sheet (Settings)
 //   mountAngleSettings(app, el, { endpoint })                          the Settings rows (with a Tester code row)
@@ -18,7 +22,8 @@
 // feedback buttons per kind of scene. Never words, never photos. (Fix round:
 // "Delete my Another Angle data" also removes the older Another Angle's sealed
 // Future Lens predictions, ANGLE_EXTRA_KEYS, which hold the words typed into
-// them: src/ultra/another-angle.js keeps them only with "Keep sealed predictions" on.)
+// them: src/ultra/another-angle.js keeps them only with "Keep sealed predictions" on.) Belief Mallows the person chose to
+// keep on this phone (src/beyond/belief/store.js, with their words) are deleted here too.
 
 import { h, openSheet, toast } from '../app/ui.js';
 import { openSupport } from '../app/scenes/support.js';
@@ -33,7 +38,7 @@ export const STORE_KEYS = Object.freeze({
  * (fix round, privacy) Another Angle data this phone may hold beyond STORE_KEYS: the older Another Angle's (src/ultra) sealed
  * Future Lens predictions, with the words typed into them. Deleted and counted with the rest (deleteAngleData, hasAngleData).
  */
-export const ANGLE_EXTRA_KEYS = Object.freeze(['ultra.sealedPredictions']);
+export const ANGLE_EXTRA_KEYS = Object.freeze(['ultra.sealedPredictions', 'beyond.belief.kept']);
 /** Bump when the notice changes in a way people should read again (2: the provider's real retention, 12 Oct 2026). */
 export const CONSENT_VERSION = 2;
 
@@ -50,22 +55,41 @@ export const PROVIDER_SAFETY_HOLD = 'If its automatic safety checks flag a messa
 export const PROVIDER_USE = 'Anthropic uses your words only to prepare your perspective, to keep its service safe, and where the law requires. It isn’t sent your account or photos, but it sees anything you type, names included.';
 /** The owner's approved wording (DECISIONS.md line 4), on the delete-data sheet. */
 export const PROVIDER_DELETE = 'Anthropic’s copy is usually deleted within 30 days (kept longer only if flagged or the law requires it). We can’t delete it sooner from here.';
+/**
+ * Web subscriptions on (src/app/billing.js): what the session start also sends, in place of "Never your name or account."
+ * The token is the account's Supabase access token: its claims carry the account's email and its user_metadata (the name
+ * given at sign-up, src/auth/client.js signUp), so the line says so. The server forwards it to the sign-in project and uses
+ * only the account id (server/another-angle/src/billing/account.js: nothing logged, the token not kept).
+ */
+export const ACCOUNT_CHECK = ' When you’re signed in, it also sends your account’s sign-in token, so our server can check your plan. The token carries your email (and the name you gave at sign-up, if any); our server uses only your account’s id and doesn’t log or store it.';
+/**
+ * The account line's version, recorded with a yes given while it showed (setConsent's `account`). 2 (17 Oct 2026): it says
+ * what the token carries; a yes to the line before (recorded as `account: true`, "Never your name or email") asks again, once.
+ */
+export const ACCOUNT_NOTICE = 2;
 export const RETENTION_PLACEHOLDER = '[Owner to confirm before launch: how long Anthropic keeps what it receives, from privacy.claude.com.]';
 
-export function consentState(store) {
+/** Web subscriptions are on: Another Angle's session also carries the account's sign-in token (ACCOUNT_CHECK says so). */
+export const sendsAccount = (app) => !!app?.billing;
+
+export function consentState(store, { account = false } = {}) {
   let c = null;
   try { c = store?.get(STORE_KEYS.consent, null); } catch { c = null; }
   if (!c || typeof c !== 'object' || c.v !== CONSENT_VERSION) return 'unasked';
+  // the session now carries the account's token: a yes to a notice that didn't say so, or said it in the older account
+  // line, is asked again (a "Not now" stays, nothing is sent then)
+  if (account && c.choice === 'yes' && c.account !== ACCOUNT_NOTICE) return 'unasked';
   return c.choice === 'yes' ? 'yes' : c.choice === 'no' ? 'no' : 'unasked';
 }
-export function setConsent(store, choice) {
+export function setConsent(store, choice, { account = false } = {}) {
   const v = choice === 'yes' ? 'yes' : 'no';
-  try { store?.set(STORE_KEYS.consent, { v: CONSENT_VERSION, choice: v, at: new Date().toISOString().slice(0, 10) }); } catch { /* this visit only */ }
+  // (account: the notice shown said the session carries the account's token; off, the record is exactly as before)
+  try { store?.set(STORE_KEYS.consent, { v: CONSENT_VERSION, choice: v, at: new Date().toISOString().slice(0, 10), ...(account ? { account: ACCOUNT_NOTICE } : {}) }); } catch { /* this visit only */ }
   if (v === 'no') { try { store?.remove(STORE_KEYS.session); } catch { /* ignore */ } }
   return v;
 }
 export function withdrawConsent(store) { return setConsent(store, 'no'); }
-/** Removes this phone's Another Angle data: the choice, the device code, the session, the feedback tally and any sealed predictions. */
+/** Removes this phone's Another Angle data: the choice, the device code, the session, the feedback tally, any sealed predictions and kept Belief Mallows. */
 export function deleteAngleData(store) {
   for (const k of [...Object.values(STORE_KEYS), ...ANGLE_EXTRA_KEYS]) { try { store?.remove(k); } catch { /* ignore */ } }
 }
@@ -112,7 +136,10 @@ function noticeBody(app, { compact = false, therapy = false } = {}) {
       'Your words go to our secure server, where an AI language model from Anthropic, an outside provider, suggests a perspective.'),
     h('ul', { class: 'bx-points' },
       h('li', {}, h('b', {}, 'What’s sent. '), 'Only your words, the feeling and the kind of help you pick, and (for another angle) the lines you’ve seen and what kind they were. Each angle request also carries the app’s language and a one-off random code, and every angle and feedback request carries this phone’s session code. A feedback tap sends which button, which Mallow and what kind of angle it was (and its version), never your words. Never your photos.'),
-      h('li', {}, h('b', {}, 'What’s kept. '), h('span', { class: 'brand-name' }, 'hushmallow'), ' stores nothing you write and doesn’t log your words. To start, the app sends a random code for this phone, its version and device type (and any invite code) to keep the daily allowance fair. Never your name or account.'),
+      // (web subscriptions on, src/app/billing.js: the session also carries the account's sign-in token, so the server
+      // can check the plan itself; said here, and the rest of the line is unchanged)
+      h('li', {}, h('b', {}, 'What’s kept. '), h('span', { class: 'brand-name' }, 'hushmallow'), ' stores nothing you write and doesn’t log your words. To start, the app sends a random code for this phone, its version and device type (and any invite code) to keep the daily allowance fair.',
+        sendsAccount(app) ? ACCOUNT_CHECK : ' Never your name or account.'),
       h('li', {}, h('b', {}, 'Anthropic. '), 'The provider receives your words to prepare the perspective. ', retention, ` ${PROVIDER_SAFETY_HOLD}`),
       h('li', {}, h('b', {}, 'Anthropic’s use. '), PROVIDER_USE),
       therapy ? notTherapy(app, 'li') : null),
@@ -171,7 +198,7 @@ export function openConsent({ app, root = document.body, onDecide, support = nul
   const decide = (choice) => {
     if (done) return;
     done = true;
-    setConsent(app?.store, choice);
+    setConsent(app?.store, choice, { account: sendsAccount(app) });
     try { app?.audio?.ui?.('select'); app?.haptic?.('light'); } catch { /* decoration */ }
     close();
     onDecide?.(choice);
@@ -233,8 +260,8 @@ export function openConsentSheet(app, { onDecide } = {}) {
     title: 'Another Angle and your words', label: 'Another Angle privacy notice',
     body: noticeBody(app, { compact: true, therapy: true }),
     foot: h('div', { class: 'row-btns' },
-      h('button', { class: 'btn', onclick: () => { decided = true; setConsent(app.store, 'no'); s.close(); onDecide?.('no'); } }, 'Not now'),
-      h('button', { class: 'btn', onclick: () => { decided = true; setConsent(app.store, 'yes'); s.close(); onDecide?.('yes'); } }, 'Accept')),
+      h('button', { class: 'btn', onclick: () => { decided = true; setConsent(app.store, 'no', { account: sendsAccount(app) }); s.close(); onDecide?.('no'); } }, 'Not now'),
+      h('button', { class: 'btn', onclick: () => { decided = true; setConsent(app.store, 'yes', { account: sendsAccount(app) }); s.close(); onDecide?.('yes'); } }, 'Accept')),
     onClose: () => { if (!decided) onDecide?.(null); },
   });
   return s;
@@ -248,10 +275,11 @@ export function openConsentSheet(app, { onDecide } = {}) {
 export function mountAngleSettings(app, el, { endpoint = null } = {}) {
   ensureBeyondCss();
   const { store } = app;
+  const notice = { account: sendsAccount(app) };
   const rows = [];
   if (endpoint) {
     const input = h('input', { type: 'checkbox', class: 'switch', 'aria-label': 'Share my words with Another Angle' });
-    input.checked = consentState(store) === 'yes';
+    input.checked = consentState(store, notice) === 'yes';
     input.addEventListener('change', () => {
       if (input.checked) {
         input.checked = false;
@@ -266,7 +294,7 @@ export function mountAngleSettings(app, el, { endpoint = null } = {}) {
       h('div', { class: 'grow' }, 'Share my words with Another Angle',
         h('small', { class: 'bx-setting-note' }, 'On: the words you choose go to our server for a new perspective. Off: Zuzu’s own angles, on this phone.')),
       input));
-    rows.push(h('button', { class: 'btn ghost block', onclick: () => openConsentSheet(app, { onDecide: () => { input.checked = consentState(store) === 'yes'; } }) }, 'Another Angle privacy notice'));
+    rows.push(h('button', { class: 'btn ghost block', onclick: () => openConsentSheet(app, { onDecide: () => { input.checked = consentState(store, notice) === 'yes'; } }) }, 'Another Angle privacy notice'));
     rows.push(testerCodeRow(app));
   }
   if (endpoint || hasAngleData(store)) {
@@ -277,7 +305,7 @@ export function mountAngleSettings(app, el, { endpoint = null } = {}) {
     const s = openSheet({
       title: 'Delete your Another Angle data?',
       body: h('div', {},
-        h('p', { class: 'bx-sheet-copy' }, 'This removes this phone’s Another Angle code, any tester code, your sharing choice, your feedback and any predictions you sealed. Our server keeps no copy of your words, so there’s nothing of yours to delete there; its daily usage counts hold no words and are cleared after two days.'),
+        h('p', { class: 'bx-sheet-copy' }, 'This removes this phone’s Another Angle code, any tester code, your sharing choice, your feedback, any predictions you sealed and any Belief Mallows you kept. Our server keeps no copy of your words, so there’s nothing of yours to delete there; its daily usage counts hold no words and are cleared after two days.'),
         h('p', { class: 'bx-sheet-copy', style: { marginTop: '10px' } }, PROVIDER_DELETE)),
       foot: h('div', { class: 'row-btns' }, h('button', { class: 'btn', onclick: () => s.close() }, 'Cancel'),
         h('button', { class: 'btn primary', onclick: () => { deleteAngleData(store); s.close(); toast('Deleted'); mountAngleSettings(app, el, { endpoint }); } }, 'Delete')),
